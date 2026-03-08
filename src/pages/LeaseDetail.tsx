@@ -273,15 +273,15 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.leaseSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div><p className="text-xs text-muted-foreground">Start Date</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">End Date</p><p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Due Day</p><p className="text-sm font-medium text-foreground">{lease.dueDayOfMonth}th of each month</p></div>
-            <div><p className="text-xs text-muted-foreground">Monthly Rent</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Monthly Charges</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Total Monthly</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Deposit / Guarantee</p><p className="text-sm font-medium text-foreground">{lease.depositOrGuaranteeAmount != null ? formatCurrency(lease.depositOrGuaranteeAmount, currency, locale) : "—"}</p></div>
-            <div><p className="text-xs text-muted-foreground">Notice Period</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
-            {lease.signedDate && <div><p className="text-xs text-muted-foreground">Signed Date</p><p className="text-sm font-medium text-foreground">{formatDate(lease.signedDate, locale)}</p></div>}
+            <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{lease.dueDayOfMonth}th of each month</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{lease.depositOrGuaranteeAmount != null ? formatCurrency(lease.depositOrGuaranteeAmount, currency, locale) : "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
+            {lease.signedDate && <div><p className="text-xs text-muted-foreground">{t("leases.signedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.signedDate, locale)}</p></div>}
           </div>
         </CardContent>
       </Card>
@@ -291,11 +291,11 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div><p className="text-xs text-muted-foreground">This Month Due</p><p className="text-lg font-bold text-foreground">{formatCurrency(thisMonthDue, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Total Paid</p><p className="text-lg font-bold text-success">{formatCurrency(totalPaid, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Outstanding</p><p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.thisMonthDue")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(thisMonthDue, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.totalPaid")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalPaid, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("table.outstanding")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p></div>
             <div>
-              <p className="text-xs text-muted-foreground">Overdue</p>
+              <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
               <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
                 {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
                 {formatCurrency(overdue, currency, locale)}
@@ -310,25 +310,25 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Shield className="h-4 w-4" />{t("detail.depositGuarantee")}</CardTitle>
-            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</Button>
+            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>{guarantee ? t("detail.editGuarantee") : t("detail.addGuarantee")}</Button>
           </div>
         </CardHeader>
         <CardContent>
           {guarantee ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div><p className="text-xs text-muted-foreground">Type</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[guarantee.type]}</p></div>
-              <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={guarantee.status} /></div>
-              <div><p className="text-xs text-muted-foreground">Expected</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.expectedAmount, currency, locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">Received</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.receivedAmount, currency, locale)}</p></div>
-              {guarantee.receivedDate && <div><p className="text-xs text-muted-foreground">Received Date</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.receivedDate, locale)}</p></div>}
-              {guarantee.releaseDate && <div><p className="text-xs text-muted-foreground">Release Date</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.releaseDate, locale)}</p></div>}
+              <div><p className="text-xs text-muted-foreground">{t("units.type")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[guarantee.type]}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("filter.status")}</p><StatusBadge status={guarantee.status} /></div>
+              <div><p className="text-xs text-muted-foreground">{t("table.expected")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.expectedAmount, currency, locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("table.received")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.receivedAmount, currency, locale)}</p></div>
+              {guarantee.receivedDate && <div><p className="text-xs text-muted-foreground">{t("detail.receivedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.receivedDate, locale)}</p></div>}
+              {guarantee.releaseDate && <div><p className="text-xs text-muted-foreground">{t("detail.releaseDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.releaseDate, locale)}</p></div>}
               {guarantee.retentionAmount != null && guarantee.retentionAmount > 0 && (
-                <div><p className="text-xs text-muted-foreground">Retention</p><p className="text-sm font-medium text-destructive">{formatCurrency(guarantee.retentionAmount, currency, locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("detail.retention")}</p><p className="text-sm font-medium text-destructive">{formatCurrency(guarantee.retentionAmount, currency, locale)}</p></div>
               )}
-              {guarantee.notes && <div className="col-span-full"><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm text-foreground">{guarantee.notes}</p></div>}
+              {guarantee.notes && <div className="col-span-full"><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{guarantee.notes}</p></div>}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No guarantee record. Click "Add Guarantee" to create one.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noGuaranteeDesc")}</p>
           )}
         </CardContent>
       </Card>
@@ -339,11 +339,11 @@ export default function LeaseDetail() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? "Edit Notice" : "Register Notice"}</Button>
+              <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}</Button>
               {lease.leaseStatus === "active" && (
                 <>
-                  <Button variant="outline" size="sm" onClick={handleMarkEnded}>Mark Ended</Button>
-                  <Button variant="destructive" size="sm" onClick={handleMarkTerminated}>Terminate</Button>
+                  <Button variant="outline" size="sm" onClick={handleMarkEnded}>{t("detail.markEnded")}</Button>
+                  <Button variant="destructive" size="sm" onClick={handleMarkTerminated}>{t("detail.terminate")}</Button>
                 </>
               )}
             </div>
@@ -351,12 +351,12 @@ export default function LeaseDetail() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div><p className="text-xs text-muted-foreground">Lifecycle</p><StatusBadge status={lifecycle} /></div>
-            <div><p className="text-xs text-muted-foreground">Notice Given</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? "Yes" : "No"}</p></div>
-            {lease.noticeDate && <div><p className="text-xs text-muted-foreground">Notice Date</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
-            {lease.intendedMoveOutDate && <div><p className="text-xs text-muted-foreground">Intended Move-Out</p><p className="text-sm font-medium text-foreground">{formatDate(lease.intendedMoveOutDate, locale)}</p></div>}
-            {lease.terminationReason && <div><p className="text-xs text-muted-foreground">Reason</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
-            <div><p className="text-xs text-muted-foreground">Notice Period</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.lifecycle")}</p><StatusBadge status={lifecycle} /></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.noticeGiven")}</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? t("common.yes") : t("common.no")}</p></div>
+            {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
+            {lease.intendedMoveOutDate && <div><p className="text-xs text-muted-foreground">{t("detail.intendedMoveOut")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.intendedMoveOutDate, locale)}</p></div>}
+            {lease.terminationReason && <div><p className="text-xs text-muted-foreground">{t("detail.reason")}</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
+            <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
           </div>
         </CardContent>
       </Card>
@@ -372,18 +372,18 @@ export default function LeaseDetail() {
                 <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Home className="h-4 w-4" />{t("detail.moveIn")}</CardTitle>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={moveInStatus === "completed" ? "completed" : moveInStatus === "scheduled" ? "scheduled" : "not-scheduled"} />
-                  {moveInStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveInForm}>{moveInStatus === "not-scheduled" ? "Schedule" : "Edit"}</Button>}
+                  {moveInStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveInForm}>{moveInStatus === "not-scheduled" ? t("detail.schedule") : t("action.edit")}</Button>}
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-muted-foreground">Scheduled</p><p className="text-sm font-medium text-foreground">{lease.moveInScheduledDate ? formatDate(lease.moveInScheduledDate, locale) : "—"}</p></div>
-                <div><p className="text-xs text-muted-foreground">Actual</p><p className="text-sm font-medium text-foreground">{lease.moveInActualDate ? formatDate(lease.moveInActualDate, locale) : "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("maintenance.scheduled")}</p><p className="text-sm font-medium text-foreground">{lease.moveInScheduledDate ? formatDate(lease.moveInScheduledDate, locale) : "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("detail.actual")}</p><p className="text-sm font-medium text-foreground">{lease.moveInActualDate ? formatDate(lease.moveInActualDate, locale) : "—"}</p></div>
               </div>
               {/* Checklist */}
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checklist</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("detail.checklist")}</p>
                 {(Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[]).map(key => (
                   <div key={key} className="flex items-center justify-between">
                     <span className="text-sm text-foreground">{MOVE_IN_CHECKLIST_LABELS[key]}</span>
@@ -401,18 +401,18 @@ export default function LeaseDetail() {
                 <CardTitle className="text-sm font-medium flex items-center gap-1.5"><PackageCheck className="h-4 w-4" />{t("detail.moveOut")}</CardTitle>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={moveOutStatus === "completed" ? "completed" : moveOutStatus === "scheduled" ? "scheduled" : "not-scheduled"} />
-                  {moveOutStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveOutForm}>{moveOutStatus === "not-scheduled" ? "Schedule" : "Edit"}</Button>}
+                  {moveOutStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveOutForm}>{moveOutStatus === "not-scheduled" ? t("detail.schedule") : t("action.edit")}</Button>}
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-muted-foreground">Scheduled</p><p className="text-sm font-medium text-foreground">{lease.moveOutScheduledDate ? formatDate(lease.moveOutScheduledDate, locale) : "—"}</p></div>
-                <div><p className="text-xs text-muted-foreground">Actual</p><p className="text-sm font-medium text-foreground">{lease.moveOutActualDate ? formatDate(lease.moveOutActualDate, locale) : "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("maintenance.scheduled")}</p><p className="text-sm font-medium text-foreground">{lease.moveOutScheduledDate ? formatDate(lease.moveOutScheduledDate, locale) : "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("detail.actual")}</p><p className="text-sm font-medium text-foreground">{lease.moveOutActualDate ? formatDate(lease.moveOutActualDate, locale) : "—"}</p></div>
               </div>
               {/* Checklist */}
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checklist</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("detail.checklist")}</p>
                 {(Object.keys(lease.moveOutChecklist) as (keyof MoveOutChecklist)[]).map(key => (
                   <div key={key} className="flex items-center justify-between">
                     <span className="text-sm text-foreground">{MOVE_OUT_CHECKLIST_LABELS[key]}</span>
@@ -420,7 +420,7 @@ export default function LeaseDetail() {
                   </div>
                 ))}
               </div>
-              {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
+              {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
             </CardContent>
           </Card>
 
@@ -432,28 +432,28 @@ export default function LeaseDetail() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Keys Handed Over</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.keysHandedOver")}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyHandoverCount} onChange={e => handleUpdateKeys(parseInt(e.target.value) || 0, lease.keyReturnCount)} />
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Keys Returned</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.keysReturned")}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyReturnCount} onChange={e => handleUpdateKeys(lease.keyHandoverCount, parseInt(e.target.value) || 0)} />
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Move-In Meter</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.moveInMeter")}</p>
                   <p className="text-sm font-medium text-foreground">{lease.moveInMeterReading || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Move-Out Meter</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.moveOutMeter")}</p>
                   <p className="text-sm font-medium text-foreground">{lease.moveOutMeterReading || "—"}</p>
                 </div>
                 {lease.moveInMeterReading && lease.moveOutMeterReading && (
                   <div className="col-span-2">
-                    <p className="text-xs text-muted-foreground">Consumption</p>
+                    <p className="text-xs text-muted-foreground">{t("detail.consumption")}</p>
                     <p className="text-sm font-bold text-foreground">{(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading)).toLocaleString()} units</p>
                   </div>
                 )}
@@ -469,7 +469,7 @@ export default function LeaseDetail() {
                 <div className="flex items-center gap-2">
                   {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
                   <Button variant="outline" size="sm" onClick={openReturnForm}>
-                    {lease.returnStatus ? "Update" : "Set Status"}
+                    {lease.returnStatus ? t("detail.update") : t("detail.setStatus")}
                   </Button>
                 </div>
               </div>
@@ -477,11 +477,11 @@ export default function LeaseDetail() {
             <CardContent>
               {lease.returnStatus ? (
                 <div className="space-y-2">
-                  <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={lease.returnStatus} /></div>
-                  {lease.returnNotes && <div><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm text-foreground">{lease.returnNotes}</p></div>}
+                  <div><p className="text-xs text-muted-foreground">{t("filter.status")}</p><StatusBadge status={lease.returnStatus} /></div>
+                  {lease.returnNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.returnNotes}</p></div>}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No return status set. This is relevant after move-out to track unit readiness.</p>
+                <p className="text-sm text-muted-foreground">{t("detail.noReturnDesc")}</p>
               )}
             </CardContent>
           </Card>
@@ -495,9 +495,9 @@ export default function LeaseDetail() {
           <CardContent>
             {tenant ? (
               <div className="space-y-2">
-                <div><p className="text-xs text-muted-foreground">Name</p><Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link></div>
-                <div><p className="text-xs text-muted-foreground">Email</p><p className="text-sm text-foreground">{tenant.email}</p></div>
-                <div><p className="text-xs text-muted-foreground">Phone</p><p className="text-sm text-foreground">{tenant.phone || "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("common.name")}</p><Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link></div>
+                <div><p className="text-xs text-muted-foreground">{t("tenants.email")}</p><p className="text-sm text-foreground">{tenant.email}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("tenants.phone")}</p><p className="text-sm text-foreground">{tenant.phone || "—"}</p></div>
               </div>
             ) : <p className="text-sm text-muted-foreground">Tenant not found.</p>}
           </CardContent>
@@ -506,11 +506,11 @@ export default function LeaseDetail() {
           <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.unitProperty")}</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {unit && <div><p className="text-xs text-muted-foreground">Unit</p><Link to={`/units/${unit.id}`} className="text-sm font-medium text-primary hover:underline">{unit.unitCode} — {unit.unitLabel}</Link></div>}
+              {unit && <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${unit.id}`} className="text-sm font-medium text-primary hover:underline">{unit.unitCode} — {unit.unitLabel}</Link></div>}
               {property && (
                 <>
-                  <div><p className="text-xs text-muted-foreground">Property</p><Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link></div>
-                  <div><p className="text-xs text-muted-foreground">City</p><p className="text-sm text-foreground">{property.city}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link></div>
+                  <div><p className="text-xs text-muted-foreground">{t("properties.city")}</p><p className="text-sm text-foreground">{property.city}</p></div>
                 </>
               )}
             </div>

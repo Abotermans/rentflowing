@@ -86,12 +86,12 @@ export default function PropertyDetail() {
   }
 
   const kpis = [
-    { label: "Total", value: stats?.total ?? 0, icon: DoorOpen, color: "text-foreground" },
-    { label: "Occupied", value: stats?.occupied ?? 0, icon: CheckCircle2, color: "text-success" },
-    { label: "Vacant", value: stats?.vacant ?? 0, icon: XCircle, color: "text-warning" },
-    { label: "Reserved", value: stats?.reserved ?? 0, icon: Clock, color: "text-primary" },
-    { label: "Unavailable", value: stats?.unavailable ?? 0, icon: Ban, color: "text-muted-foreground" },
-    { label: "Occupancy", value: `${stats?.occupancyRate ?? 0}%`, icon: TrendingUp, color: "text-success" },
+    { label: t("common.total"), value: stats?.total ?? 0, icon: DoorOpen, color: "text-foreground" },
+    { label: t("dashboard.occupied"), value: stats?.occupied ?? 0, icon: CheckCircle2, color: "text-success" },
+    { label: t("dashboard.vacantUnits"), value: stats?.vacant ?? 0, icon: XCircle, color: "text-warning" },
+    { label: t("dashboard.reservedUnits"), value: stats?.reserved ?? 0, icon: Clock, color: "text-primary" },
+    { label: t("dashboard.unavailableUnits"), value: stats?.unavailable ?? 0, icon: Ban, color: "text-muted-foreground" },
+    { label: t("properties.occupancy"), value: `${stats?.occupancyRate ?? 0}%`, icon: TrendingUp, color: "text-success" },
   ];
 
   const fullAddress = [
@@ -127,19 +127,19 @@ export default function PropertyDetail() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.overview")}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Address</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Owner</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Country</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Type</span><span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(property.propertyType)}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Status</span><StatusBadge status={property.status} /></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(property.propertyType)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("filter.status")}</span><StatusBadge status={property.status} /></div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.localSettings")}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Locale</span><span className="text-sm font-medium text-foreground font-mono">{property.locale}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Currency</span><span className="text-sm font-medium text-foreground">{property.currencyCode}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Measurement</span><span className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.locale")}</span><span className="text-sm font-medium text-foreground font-mono">{property.locale}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.currency")}</span><span className="text-sm font-medium text-foreground">{property.currencyCode}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.measurement")}</span><span className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</span></div>
           </CardContent>
         </Card>
       </div>

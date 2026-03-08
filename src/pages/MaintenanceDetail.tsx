@@ -70,16 +70,16 @@ export default function MaintenanceDetail() {
         <CardContent>
           <div className="flex gap-2 flex-wrap">
             {ticket.status !== "assigned" && ticket.status !== "completed" && ticket.status !== "cancelled" && (
-              <Button size="sm" variant="outline" onClick={() => quickStatusChange("assigned")}>Mark Assigned</Button>
+              <Button size="sm" variant="outline" onClick={() => quickStatusChange("assigned")}>{t("detail.markAssigned")}</Button>
             )}
             {ticket.status !== "in-progress" && ticket.status !== "completed" && ticket.status !== "cancelled" && (
-              <Button size="sm" variant="outline" onClick={() => quickStatusChange("in-progress")}>Mark In Progress</Button>
+              <Button size="sm" variant="outline" onClick={() => quickStatusChange("in-progress")}>{t("detail.markInProgress")}</Button>
             )}
             {ticket.status !== "completed" && (
-              <Button size="sm" onClick={() => quickStatusChange("completed")}>Mark Completed</Button>
+              <Button size="sm" onClick={() => quickStatusChange("completed")}>{t("detail.markCompleted")}</Button>
             )}
             {ticket.status !== "cancelled" && ticket.status !== "completed" && (
-              <Button size="sm" variant="destructive" onClick={() => quickStatusChange("cancelled")}>Cancel</Button>
+              <Button size="sm" variant="destructive" onClick={() => quickStatusChange("cancelled")}>{t("action.cancel")}</Button>
             )}
           </div>
         </CardContent>
@@ -93,29 +93,29 @@ export default function MaintenanceDetail() {
             <div className="flex items-start gap-2">
               <Building2 className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Property</p>
+                <p className="text-xs text-muted-foreground">{t("table.property")}</p>
                 {property ? <Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link> : <p className="text-sm text-foreground">—</p>}
               </div>
             </div>
             <div className="flex items-start gap-2">
               <DoorOpen className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Unit</p>
+                <p className="text-xs text-muted-foreground">{t("table.unit")}</p>
                 {unit ? <Link to={`/units/${unit.id}`} className="text-sm font-medium text-primary hover:underline">{unit.unitCode}</Link> : <p className="text-sm text-foreground">—</p>}
               </div>
             </div>
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Tenant</p>
+                <p className="text-xs text-muted-foreground">{t("table.tenant")}</p>
                 {tenant ? <Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link> : <p className="text-sm text-muted-foreground">—</p>}
               </div>
             </div>
             <div className="flex items-start gap-2">
               <HardHat className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Vendor</p>
-                {vendor ? <Link to={`/vendors/${vendor.id}`} className="text-sm font-medium text-primary hover:underline">{vendor.vendorName}</Link> : <p className="text-sm text-muted-foreground">Unassigned</p>}
+                <p className="text-xs text-muted-foreground">{t("maintenance.vendor")}</p>
+                {vendor ? <Link to={`/vendors/${vendor.id}`} className="text-sm font-medium text-primary hover:underline">{vendor.vendorName}</Link> : <p className="text-sm text-muted-foreground">{t("maintenance.unassigned")}</p>}
               </div>
             </div>
           </div>
@@ -128,37 +128,37 @@ export default function MaintenanceDetail() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
-              <p className="text-xs text-muted-foreground">Category</p>
+              <p className="text-xs text-muted-foreground">{t("maintenance.category")}</p>
               <p className="text-sm font-medium text-foreground">{MAINTENANCE_CATEGORY_LABELS[ticket.category]}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Priority</p>
+              <p className="text-xs text-muted-foreground">{t("maintenance.priority")}</p>
               <StatusBadge status={ticket.priority} />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-xs text-muted-foreground">{t("maintenance.status")}</p>
               <StatusBadge status={ticket.status} />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Created</p>
+              <p className="text-xs text-muted-foreground">{t("maintenance.created")}</p>
               <p className="text-sm font-medium text-foreground">{formatDate(ticket.createdDate, property?.locale)}</p>
             </div>
             {ticket.scheduledDate && (
               <div>
-                <p className="text-xs text-muted-foreground">Scheduled</p>
+                <p className="text-xs text-muted-foreground">{t("maintenance.scheduled")}</p>
                 <p className="text-sm font-medium text-foreground">{formatDate(ticket.scheduledDate, property?.locale)}</p>
               </div>
             )}
             {ticket.completedDate && (
               <div>
-                <p className="text-xs text-muted-foreground">Completed</p>
+                <p className="text-xs text-muted-foreground">{t("status.completed")}</p>
                 <p className="text-sm font-medium text-success">{formatDate(ticket.completedDate, property?.locale)}</p>
               </div>
             )}
           </div>
           {ticket.description && (
             <div className="mt-4">
-              <p className="text-xs text-muted-foreground mb-1">Description</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("common.description")}</p>
               <p className="text-sm text-foreground">{ticket.description}</p>
             </div>
           )}
@@ -172,13 +172,13 @@ export default function MaintenanceDetail() {
           <CardContent className="space-y-4">
             {ticket.internalNotes && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Internal Notes</p>
+                <p className="text-xs text-muted-foreground mb-1">{t("maintenance.internalNotes")}</p>
                 <p className="text-sm text-foreground">{ticket.internalNotes}</p>
               </div>
             )}
             {ticket.residentVisibleNotes && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Resident Visible Notes</p>
+                <p className="text-xs text-muted-foreground mb-1">{t("maintenance.residentNotes")}</p>
                 <p className="text-sm text-foreground">{ticket.residentVisibleNotes}</p>
               </div>
             )}

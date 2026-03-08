@@ -49,28 +49,28 @@ export default function VendorDetail() {
             <div className="flex items-start gap-2">
               <HardHat className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Contact</p>
+                <p className="text-xs text-muted-foreground">{t("vendors.contact")}</p>
                 <p className="text-sm font-medium text-foreground">{vendor.contactName || "—"}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-xs text-muted-foreground">{t("vendors.email")}</p>
                 <p className="text-sm font-medium text-foreground">{vendor.email || "—"}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Phone</p>
+                <p className="text-xs text-muted-foreground">{t("vendors.phone")}</p>
                 <p className="text-sm font-medium text-foreground">{vendor.phone || "—"}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Address</p>
+                <p className="text-xs text-muted-foreground">{t("vendors.address")}</p>
                 <p className="text-sm font-medium text-foreground">{vendor.address || "—"}</p>
               </div>
             </div>
@@ -82,19 +82,19 @@ export default function VendorDetail() {
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-5 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Tickets</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("detail.totalTickets")}</p>
             <p className="text-2xl font-bold text-foreground mt-1">{vendorTickets.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Open</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("detail.open")}</p>
             <p className="text-2xl font-bold text-warning mt-1">{openTickets.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Completed</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("status.completed")}</p>
             <p className="text-2xl font-bold text-success mt-1">{completedTickets.length}</p>
           </CardContent>
         </Card>

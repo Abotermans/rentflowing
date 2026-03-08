@@ -56,26 +56,26 @@ export default function TenantDetail() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex items-start gap-2">
               <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <div><p className="text-xs text-muted-foreground">Email</p><p className="text-sm font-medium text-foreground">{tenant.email}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("tenants.email")}</p><p className="text-sm font-medium text-foreground">{tenant.email}</p></div>
             </div>
             <div className="flex items-start gap-2">
               <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <div><p className="text-xs text-muted-foreground">Phone</p><p className="text-sm font-medium text-foreground">{tenant.phone || "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("tenants.phone")}</p><p className="text-sm font-medium text-foreground">{tenant.phone || "—"}</p></div>
             </div>
             <div className="flex items-start gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <div><p className="text-xs text-muted-foreground">Date of Birth</p><p className="text-sm font-medium text-foreground">{tenant.dateOfBirth ? formatDate(tenant.dateOfBirth) : "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("tenants.dateOfBirth")}</p><p className="text-sm font-medium text-foreground">{tenant.dateOfBirth ? formatDate(tenant.dateOfBirth) : "—"}</p></div>
             </div>
             {tenant.identificationNumber && (
               <div className="flex items-start gap-2">
                 <CreditCard className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div><p className="text-xs text-muted-foreground">ID Number</p><p className="text-sm font-medium text-foreground">{tenant.identificationNumber}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("detail.idNumber")}</p><p className="text-sm font-medium text-foreground">{tenant.identificationNumber}</p></div>
               </div>
             )}
             {tenant.currentAddress && (
               <div className="flex items-start gap-2 col-span-2">
                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div><p className="text-xs text-muted-foreground">Current Address</p><p className="text-sm font-medium text-foreground">{tenant.currentAddress}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("tenants.currentAddress")}</p><p className="text-sm font-medium text-foreground">{tenant.currentAddress}</p></div>
               </div>
             )}
           </div>
@@ -89,11 +89,11 @@ export default function TenantDetail() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Total Outstanding</p>
+                <p className="text-xs text-muted-foreground">{t("detail.totalOutstanding")}</p>
                 <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, activeProperty?.currencyCode, activeProperty?.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Overdue</p>
+                <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
                 <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
                   {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
                   {formatCurrency(overdue, activeProperty?.currencyCode, activeProperty?.locale)}
@@ -111,38 +111,38 @@ export default function TenantDetail() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Lease</p>
+                <p className="text-xs text-muted-foreground">{t("leases.reference")}</p>
                 <Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Unit</p>
+                <p className="text-xs text-muted-foreground">{t("table.unit")}</p>
                 <Link to={`/units/${activeUnit.id}`} className="text-sm font-medium text-primary hover:underline">{activeUnit.unitCode}</Link>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Property</p>
+                <p className="text-xs text-muted-foreground">{t("table.property")}</p>
                 <Link to={`/properties/${activeProperty.id}`} className="text-sm font-medium text-primary hover:underline">{activeProperty.name}</Link>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Period</p>
+                <p className="text-xs text-muted-foreground">{t("leases.period")}</p>
                 <p className="text-sm font-medium text-foreground">{formatDate(activeLease.startDate, activeProperty.locale)} — {formatDate(activeLease.endDate, activeProperty.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Monthly Rent</p>
+                <p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p>
                 <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyRent, activeProperty.currencyCode, activeProperty.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Monthly Charges</p>
+                <p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p>
                 <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, activeProperty.currencyCode, activeProperty.locale)}</p>
               </div>
               {/* Guarantee summary */}
               {activeGuarantee && (
                 <>
                   <div>
-                    <p className="text-xs text-muted-foreground">Guarantee Type</p>
+                    <p className="text-xs text-muted-foreground">{t("detail.guaranteeType")}</p>
                     <p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[activeGuarantee.type]}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Guarantee Status</p>
+                    <p className="text-xs text-muted-foreground">{t("detail.guaranteeStatus")}</p>
                     <StatusBadge status={activeGuarantee.status} />
                   </div>
                 </>
@@ -150,11 +150,11 @@ export default function TenantDetail() {
               {/* Notice status */}
               {activeLease.noticeGiven && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Notice Status</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.noticeStatus")}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <StatusBadge status="under-notice" />
                     {activeLease.intendedMoveOutDate && (
-                      <span className="text-xs text-muted-foreground">Move-out: {formatDate(activeLease.intendedMoveOutDate, activeProperty.locale)}</span>
+                      <span className="text-xs text-muted-foreground">{t("detail.moveOutLabel")}: {formatDate(activeLease.intendedMoveOutDate, activeProperty.locale)}</span>
                     )}
                   </div>
                 </div>

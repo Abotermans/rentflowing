@@ -39,13 +39,13 @@ export default function UnitDetail() {
   const nextDueLine = ledger.filter(ll => ll.remainingBalance > 0 && ll.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
   const infoItems = [
-    { label: "Type", value: getUnitTypeLabel(unit.unitType), icon: Home },
-    { label: "Floor", value: unit.floor != null ? String(unit.floor) : "—", icon: Home },
-    { label: "Surface", value: unit.surfaceArea != null ? formatArea(unit.surfaceArea, property.measurementSystem) : "—", icon: Ruler },
-    { label: "Bedrooms", value: String(unit.bedrooms), icon: BedDouble },
-    { label: "Bathrooms", value: String(unit.bathrooms), icon: Bath },
-    { label: "Furnished", value: unit.furnished ? "Yes" : "No", icon: Sofa },
-    { label: "Available From", value: unit.availableFrom ? formatDate(unit.availableFrom, property.locale) : "—", icon: CalendarClock },
+    { label: t("units.type"), value: getUnitTypeLabel(unit.unitType), icon: Home },
+    { label: t("units.floor"), value: unit.floor != null ? String(unit.floor) : "—", icon: Home },
+    { label: t("units.surface"), value: unit.surfaceArea != null ? formatArea(unit.surfaceArea, property.measurementSystem) : "—", icon: Ruler },
+    { label: t("units.bedrooms"), value: String(unit.bedrooms), icon: BedDouble },
+    { label: t("units.bathrooms"), value: String(unit.bathrooms), icon: Bath },
+    { label: t("units.furnished"), value: unit.furnished ? t("common.yes") : t("common.no"), icon: Sofa },
+    { label: t("units.availableFrom"), value: unit.availableFrom ? formatDate(unit.availableFrom, property.locale) : "—", icon: CalendarClock },
   ];
 
   return (
@@ -62,7 +62,7 @@ export default function UnitDetail() {
             </div>
             <p className="text-sm text-muted-foreground mt-1">{unit.unitLabel}</p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Property: <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>
+              {t("table.property")}: <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>
               <span className="mx-1 text-muted-foreground">·</span>
               <span className="font-mono text-xs">{property.referenceCode}</span>
               <span className="mx-1 text-muted-foreground">·</span>
@@ -70,7 +70,7 @@ export default function UnitDetail() {
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/units"><Pencil className="h-3.5 w-3.5 mr-1.5" />Edit</Link>
+            <Link to="/units"><Pencil className="h-3.5 w-3.5 mr-1.5" />{t("action.edit")}</Link>
           </Button>
         </div>
       </div>
@@ -99,19 +99,19 @@ export default function UnitDetail() {
         <CardContent>
           <div className="grid grid-cols-3 gap-6">
             <div>
-              <p className="text-xs text-muted-foreground">Base Rent</p>
+              <p className="text-xs text-muted-foreground">{t("detail.baseRent")}</p>
               <p className="text-lg font-bold text-foreground">
                 {unit.baseRent != null ? formatCurrency(unit.baseRent, property.currencyCode, property.locale) : "—"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Base Charges</p>
+              <p className="text-xs text-muted-foreground">{t("detail.baseCharges")}</p>
               <p className="text-lg font-bold text-foreground">
                 {unit.baseCharges != null ? formatCurrency(unit.baseCharges, property.currencyCode, property.locale) : "—"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Currency</p>
+              <p className="text-xs text-muted-foreground">{t("properties.currency")}</p>
               <p className="text-lg font-bold text-foreground">{property.currencyCode}</p>
             </div>
           </div>
@@ -131,40 +131,40 @@ export default function UnitDetail() {
           {activeLease && tenant ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Tenant</p>
+                <p className="text-xs text-muted-foreground">{t("table.tenant")}</p>
                 <Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Lease</p>
+                <p className="text-xs text-muted-foreground">{t("leases.reference")}</p>
                 <Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Period</p>
+                <p className="text-xs text-muted-foreground">{t("leases.period")}</p>
                 <p className="text-sm font-medium text-foreground">{formatDate(activeLease.startDate, property.locale)} — {formatDate(activeLease.endDate, property.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Monthly Rent</p>
+                <p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p>
                 <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyRent, property.currencyCode, property.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Monthly Charges</p>
+                <p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p>
                 <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Total Monthly</p>
+                <p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p>
                 <p className="text-sm font-bold text-primary">{formatCurrency(activeLease.monthlyRent + activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
               </div>
 
               {/* Move-in/out status */}
               {activeLease.moveInActualDate && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Moved In</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.movedIn")}</p>
                   <p className="text-sm font-medium text-foreground">{formatDate(activeLease.moveInActualDate, property.locale)}</p>
                 </div>
               )}
               {activeLease.moveOutScheduledDate && !activeLease.moveOutActualDate && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Move-Out Planned</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.moveOutPlanned")}</p>
                   <p className="text-sm font-medium text-warning">{formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
                 </div>
               )}
@@ -175,11 +175,11 @@ export default function UnitDetail() {
                   <div className="flex items-center gap-2 p-3 rounded-md bg-warning/10 border border-warning/30">
                     <Bell className="h-4 w-4 text-warning" />
                     <div>
-                      <p className="text-sm font-medium text-foreground">Under Notice</p>
+                      <p className="text-sm font-medium text-foreground">{t("detail.underNoticeLabel")}</p>
                       {activeLease.intendedMoveOutDate && (
                         <p className="text-xs text-muted-foreground">
-                          Intended move-out: {formatDate(activeLease.intendedMoveOutDate, property.locale)}
-                          — Available from {formatDate(activeLease.intendedMoveOutDate, property.locale)}
+                          {t("detail.intendedMoveOutLabel")}: {formatDate(activeLease.intendedMoveOutDate, property.locale)}
+                          — {t("detail.availableFromLabel")} {formatDate(activeLease.intendedMoveOutDate, property.locale)}
                         </p>
                       )}
                     </div>
@@ -193,8 +193,8 @@ export default function UnitDetail() {
                   <div className="flex items-center gap-2 p-3 rounded-md bg-primary/10 border border-primary/30">
                     <Truck className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-sm font-medium text-foreground">Move-out scheduled</p>
-                      <p className="text-xs text-muted-foreground">Available from {formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
+                      <p className="text-sm font-medium text-foreground">{t("detail.moveOutScheduledLabel")}</p>
+                      <p className="text-xs text-muted-foreground">{t("detail.availableFromLabel")} {formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
                     </div>
                   </div>
                 </div>
@@ -204,12 +204,12 @@ export default function UnitDetail() {
               {leaseFinancials && leaseFinancials.outstanding > 0 && (
                 <>
                   <div>
-                    <p className="text-xs text-muted-foreground">Outstanding Balance</p>
+                    <p className="text-xs text-muted-foreground">{t("detail.outstandingBalance")}</p>
                     <p className="text-sm font-bold text-foreground">{formatCurrency(leaseFinancials.outstanding, property.currencyCode, property.locale)}</p>
                   </div>
                   {leaseFinancials.overdue > 0 && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Overdue</p>
+                      <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
                       <p className="text-sm font-bold text-destructive">
                         <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />
                         {formatCurrency(leaseFinancials.overdue, property.currencyCode, property.locale)}
@@ -220,7 +220,7 @@ export default function UnitDetail() {
               )}
               {nextDueLine && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Next Due</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.nextDue")}</p>
                   <p className="text-sm font-medium text-foreground">
                     {formatCurrency(nextDueLine.remainingBalance, property.currencyCode, property.locale)} on {formatDate(nextDueLine.dueDate, property.locale)}
                   </p>
@@ -228,7 +228,7 @@ export default function UnitDetail() {
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No active lease. Tenant and lease management available via the Leases module.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noActiveLeaseDesc")}</p>
           )}
         </CardContent>
       </Card>
@@ -241,23 +241,23 @@ export default function UnitDetail() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-muted-foreground">Property</p>
+              <p className="text-xs text-muted-foreground">{t("table.property")}</p>
               <Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">City</p>
+              <p className="text-xs text-muted-foreground">{t("properties.city")}</p>
               <p className="text-sm font-medium text-foreground">{property.city}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Country</p>
+              <p className="text-xs text-muted-foreground">{t("properties.country")}</p>
               <p className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Locale</p>
+              <p className="text-xs text-muted-foreground">{t("properties.locale")}</p>
               <p className="text-sm font-medium text-foreground font-mono">{property.locale}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Measurement</p>
+              <p className="text-xs text-muted-foreground">{t("properties.measurement")}</p>
               <p className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</p>
             </div>
           </div>
