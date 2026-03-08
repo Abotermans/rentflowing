@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,139 +8,191 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { getTenantFullName, type PaymentMethod } from "@/types";
-import { Plus, CreditCard, AlertTriangle, CheckCircle2, Clock, Search } from "lucide-react";
+import { getTenantFullName } from "@/types";
+import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS, ALLOCATION_TYPE_LABELS } from "@/types/receivables";
+import type { CashReceiptSourceType, ReceivableItemType } from "@/types/receivables";
+import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSettings } from "@/context/SettingsContext";
 
 export default function Payments() {
   const { t } = useSettings();
-  const { ledgerLines, payments, leases, tenants, properties, units, addPayment } = useAppData();
+  const {
+    receivableItems, cashReceipts, allocations,
+    leases, tenants, properties, units,
+    createCashReceipt, allocateCashReceipt,
+    getReceivableItemsByLease, getReceivableItemsByTenant,
+  } = useAppData();
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [unmatchedOnly, setUnmatchedOnly] = useState(false);
   const [search, setSearch] = useState("");
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [addReceiptOpen, setAddReceiptOpen] = useState(false);
+  const [allocateReceiptId, setAllocateReceiptId] = useState<string | null>(null);
 
-  // Payment form state
-  const [formLeaseId, setFormLeaseId] = useState("");
+  // Add receipt form
+  const [formSourceType, setFormSourceType] = useState<CashReceiptSourceType>("bank-transfer");
   const [formDate, setFormDate] = useState(new Date().toISOString().split("T")[0]);
   const [formAmount, setFormAmount] = useState("");
-  const [formMethod, setFormMethod] = useState<PaymentMethod>("bank-transfer");
-  const [formRef, setFormRef] = useState("");
+  const [formTenantId, setFormTenantId] = useState("");
+  const [formLeaseId, setFormLeaseId] = useState("");
+  const [formReference, setFormReference] = useState("");
+  const [formRemittance, setFormRemittance] = useState("");
+  const [formPayerName, setFormPayerName] = useState("");
+  const [formPayerIban, setFormPayerIban] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const [formAutoAllocate, setFormAutoAllocate] = useState(true);
+
+  // Manual allocation form
+  const [allocAmounts, setAllocAmounts] = useState<Record<string, string>>({});
 
   const today = new Date().toISOString().split("T")[0];
-  const currentMonth = today.slice(0, 7);
 
   // KPIs
-  const thisMonthLines = ledgerLines.filter(ll => ll.periodMonth === currentMonth);
-  const totalDueThisMonth = thisMonthLines.reduce((s, ll) => s + ll.amountDue, 0);
-  const totalCollectedThisMonth = thisMonthLines.reduce((s, ll) => s + ll.amountPaid, 0);
-  const totalOverdue = ledgerLines.filter(ll => ll.remainingBalance > 0 && ll.dueDate < today).reduce((s, ll) => s + ll.remainingBalance, 0);
-  const partiallyPaidCount = ledgerLines.filter(ll => ll.status === "partially-paid").length;
+  const totalOpenReceivables = receivableItems.filter(ri => ri.outstandingAmount > 0).reduce((s, ri) => s + ri.outstandingAmount, 0);
+  const totalOverdue = receivableItems.filter(ri => ri.outstandingAmount > 0 && ri.dueDate < today).reduce((s, ri) => s + ri.outstandingAmount, 0);
+  const totalUnmatchedReceipts = cashReceipts.filter(cr => cr.unmatchedAmount > 0).reduce((s, cr) => s + cr.unmatchedAmount, 0);
+  const unappliedCreditTotal = cashReceipts.filter(cr => cr.unmatchedAmount > 0 && cr.tenantId).reduce((s, cr) => s + cr.unmatchedAmount, 0);
 
-  // Enriched ledger
-  const enrichedLedger = ledgerLines.map(ll => {
-    const lease = leases.find(l => l.id === ll.leaseId);
-    const tenant = lease ? tenants.find(tn => tn.id === lease.primaryTenantId) : undefined;
-    const prop = lease ? properties.find(p => p.id === lease.propertyId) : undefined;
-    const unit = lease ? units.find(u => u.id === lease.unitId) : undefined;
-    let effectiveStatus = ll.status;
-    if (ll.remainingBalance > 0 && ll.dueDate < today && (ll.status === "due" || ll.status === "partially-paid")) {
+  // Enriched receivables
+  const enrichedReceivables = receivableItems.map(ri => {
+    const lease = ri.leaseId ? leases.find(l => l.id === ri.leaseId) : undefined;
+    const tenant = ri.tenantId ? tenants.find(tn => tn.id === ri.tenantId) : undefined;
+    const prop = ri.propertyId ? properties.find(p => p.id === ri.propertyId) : undefined;
+    const unit = ri.unitId ? units.find(u => u.id === ri.unitId) : undefined;
+    let effectiveStatus = ri.status;
+    if (ri.outstandingAmount > 0 && ri.dueDate < today && (ri.status === "open" || ri.status === "partially-paid")) {
       effectiveStatus = "overdue";
     }
-    return { ...ll, lease, tenant, prop, unit, effectiveStatus };
+    return { ...ri, lease, tenant, prop, unit, effectiveStatus };
   });
 
-  const filteredLedger = enrichedLedger.filter(ll => {
-    if (statusFilter !== "all" && ll.effectiveStatus !== statusFilter) return false;
-    if (propertyFilter !== "all" && ll.prop?.id !== propertyFilter) return false;
-    if (overdueOnly && ll.effectiveStatus !== "overdue") return false;
+  const filteredReceivables = enrichedReceivables.filter(ri => {
+    if (statusFilter !== "all" && ri.effectiveStatus !== statusFilter) return false;
+    if (propertyFilter !== "all" && ri.prop?.id !== propertyFilter) return false;
+    if (typeFilter !== "all" && ri.itemType !== typeFilter) return false;
+    if (overdueOnly && ri.effectiveStatus !== "overdue") return false;
     if (search) {
       const q = search.toLowerCase();
-      const tenantName = ll.tenant ? getTenantFullName(ll.tenant).toLowerCase() : "";
-      const leaseRef = ll.lease?.leaseReference.toLowerCase() ?? "";
-      if (!tenantName.includes(q) && !leaseRef.includes(q)) return false;
+      const tenantName = ri.tenant ? getTenantFullName(ri.tenant).toLowerCase() : "";
+      const leaseRef = ri.lease?.leaseReference.toLowerCase() ?? "";
+      if (!tenantName.includes(q) && !leaseRef.includes(q) && !ri.label.toLowerCase().includes(q)) return false;
     }
     return true;
   }).sort((a, b) => b.dueDate.localeCompare(a.dueDate));
 
-  // Enriched payments
-  const enrichedPayments = [...payments].map(pay => {
-    const lease = leases.find(l => l.id === pay.leaseId);
-    const tenant = tenants.find(tn => tn.id === pay.tenantId);
-    const prop = lease ? properties.find(pr => pr.id === lease.propertyId) : undefined;
-    return { ...pay, lease, tenant, prop };
+  // Enriched receipts
+  const enrichedReceipts = cashReceipts.map(cr => {
+    const lease = cr.leaseId ? leases.find(l => l.id === cr.leaseId) : undefined;
+    const tenant = cr.tenantId ? tenants.find(tn => tn.id === cr.tenantId) : undefined;
+    const prop = cr.propertyId ? properties.find(p => p.id === cr.propertyId) : undefined;
+    return { ...cr, lease, tenant, prop };
   }).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
-  const activeLeases = leases.filter(l => l.leaseStatus === "active");
-  const selectedLease = leases.find(l => l.id === formLeaseId);
-  const selectedTenant = selectedLease ? tenants.find(tn => tn.id === selectedLease.primaryTenantId) : undefined;
+  const filteredReceipts = enrichedReceipts.filter(cr => {
+    if (statusFilter !== "all" && cr.status !== statusFilter) return false;
+    if (propertyFilter !== "all" && cr.prop?.id !== propertyFilter) return false;
+    if (unmatchedOnly && cr.unmatchedAmount <= 0) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const tenantName = cr.tenant ? getTenantFullName(cr.tenant).toLowerCase() : "";
+      const payerName = cr.payerName?.toLowerCase() ?? "";
+      const ref = cr.reference?.toLowerCase() ?? "";
+      if (!tenantName.includes(q) && !payerName.includes(q) && !ref.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Enriched allocations
+  const enrichedAllocations = allocations.map(al => {
+    const receipt = cashReceipts.find(cr => cr.id === al.cashReceiptId);
+    const ri = receivableItems.find(r => r.id === al.receivableItemId);
+    const tenant = ri?.tenantId ? tenants.find(tn => tn.id === ri.tenantId) : undefined;
+    return { ...al, receipt, ri, tenant };
+  }).sort((a, b) => b.allocationDate.localeCompare(a.allocationDate));
+
+  const selectedLease = formLeaseId ? leases.find(l => l.id === formLeaseId) : undefined;
   const selectedProp = selectedLease ? properties.find(p => p.id === selectedLease.propertyId) : undefined;
 
-  const handleAddPayment = () => {
-    if (!formLeaseId || !formAmount || !selectedLease) return;
-    addPayment({
-      leaseId: formLeaseId,
-      tenantId: selectedLease.primaryTenantId,
+  const handleAddReceipt = () => {
+    if (!formAmount) return;
+    const amt = parseFloat(formAmount);
+    const propId = selectedLease ? selectedLease.propertyId : null;
+    const unitId = selectedLease ? selectedLease.unitId : null;
+    createCashReceipt({
+      tenantId: formTenantId || null,
+      leaseId: formLeaseId || null,
+      propertyId: propId,
+      unitId,
+      sourceType: formSourceType,
       paymentDate: formDate,
-      amount: parseFloat(formAmount),
-      paymentMethod: formMethod,
-      reference: formRef,
+      bookingDate: null,
+      valueDate: null,
+      amountReceived: amt,
+      currencyCode: selectedProp?.currencyCode ?? "EUR",
+      payerName: formPayerName || null,
+      payerIban: formPayerIban || null,
+      payerBic: null,
+      reference: formReference || null,
+      remittanceInformation: formRemittance || null,
+      endToEndReference: null,
+      status: "unmatched",
+      unmatchedAmount: amt,
       notes: formNotes,
-    });
-    setSheetOpen(false);
-    setFormLeaseId("");
-    setFormAmount("");
-    setFormRef("");
-    setFormNotes("");
+      importBatchId: null,
+      rawBankTransactionId: null,
+    }, formAutoAllocate);
+    setAddReceiptOpen(false);
+    setFormAmount(""); setFormReference(""); setFormNotes(""); setFormPayerName(""); setFormPayerIban(""); setFormRemittance("");
+    setFormTenantId(""); setFormLeaseId("");
   };
 
-  const methodLabels: Record<PaymentMethod, string> = {
-    "bank-transfer": t("payments.bankTransfer"),
-    cash: t("payments.cash"),
-    card: t("payments.card"),
-    "direct-debit": t("payments.directDebit"),
-    other: t("payments.other"),
-  };
+  // Manual allocation
+  const allocReceipt = allocateReceiptId ? cashReceipts.find(r => r.id === allocateReceiptId) : null;
+  const allocOpenItems = allocReceipt ? receivableItems.filter(ri => {
+    if (ri.outstandingAmount <= 0) return false;
+    if (allocReceipt.leaseId && ri.leaseId === allocReceipt.leaseId) return true;
+    if (allocReceipt.tenantId && ri.tenantId === allocReceipt.tenantId) return true;
+    return false;
+  }) : [];
 
-  const typeLabels: Record<string, string> = {
-    rent: t("payments.rent"),
-    charges: t("payments.charges"),
-    "advance-payment": t("advance.advancePayment"),
+  const handleManualAllocate = () => {
+    if (!allocateReceiptId) return;
+    const manualAllocs = Object.entries(allocAmounts)
+      .filter(([, v]) => parseFloat(v) > 0)
+      .map(([riId, v]) => ({ receivableItemId: riId, amount: parseFloat(v) }));
+    if (manualAllocs.length === 0) return;
+    allocateCashReceipt(allocateReceiptId, manualAllocs);
+    setAllocateReceiptId(null);
+    setAllocAmounts({});
   };
-
-  // Determine dominant currency for KPI display
-  const activeCurrencies = [...new Set(leases.filter(l => l.leaseStatus === "active").map(l => {
-    const prop = properties.find(p => p.id === l.propertyId);
-    return prop?.currencyCode ?? "EUR";
-  }))];
-  const kpiCurrency = activeCurrencies.length === 1 ? activeCurrencies[0] : undefined;
-  const kpiLocale = activeCurrencies.length === 1 ? properties.find(p => p.currencyCode === activeCurrencies[0])?.locale : undefined;
 
   const kpis = [
-    { label: t("payments.dueThisMonth"), value: totalDueThisMonth, icon: Clock, color: "text-primary", isCurrency: true },
-    { label: t("payments.collectedThisMonth"), value: totalCollectedThisMonth, icon: CheckCircle2, color: "text-success", isCurrency: true },
-    { label: t("payments.totalOverdue"), value: totalOverdue, icon: AlertTriangle, color: "text-destructive", isCurrency: true },
-    { label: t("payments.partiallyPaid"), value: partiallyPaidCount, icon: CreditCard, color: "text-warning", isCurrency: false },
+    { label: "Open Receivables", value: formatCurrency(totalOpenReceivables), icon: FileText, color: "text-primary" },
+    { label: "Total Overdue", value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
+    { label: "Unmatched Receipts", value: formatCurrency(totalUnmatchedReceipts), icon: ArrowRightLeft, color: totalUnmatchedReceipts > 0 ? "text-warning" : "text-foreground" },
+    { label: "Unapplied Credit", value: formatCurrency(unappliedCreditTotal), icon: Banknote, color: unappliedCreditTotal > 0 ? "text-primary" : "text-foreground" },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("payments.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("payments.subtitle")}</p>
+          <h1 className="text-2xl font-bold text-foreground">Receivables & Reconciliation</h1>
+          <p className="text-sm text-muted-foreground">Manage receivables, cash receipts, and allocations</p>
         </div>
-        <Button onClick={() => setSheetOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.record")}</Button>
+        <Button onClick={() => setAddReceiptOpen(true)}><Plus className="h-4 w-4 mr-1" />Record Cash Receipt</Button>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPIs */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
         {kpis.map(k => (
           <Card key={k.label}>
@@ -148,9 +200,7 @@ export default function Payments() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">
-                    {k.isCurrency ? formatCurrency(k.value as number, kpiCurrency, kpiLocale) : k.value}
-                  </p>
+                  <p className="text-lg font-bold text-foreground mt-1">{k.value}</p>
                 </div>
                 <k.icon className={`h-5 w-5 ${k.color}`} />
               </div>
@@ -163,71 +213,82 @@ export default function Payments() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t("payments.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input placeholder="Search tenant, lease, reference…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder={t("payments.status")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
-            <SelectItem value="due">{t("payments.due")}</SelectItem>
-            <SelectItem value="paid">{t("payments.paid")}</SelectItem>
-            <SelectItem value="partially-paid">{t("payments.partiallyPaid")}</SelectItem>
-            <SelectItem value="overdue">{t("payments.overdue")}</SelectItem>
-          </SelectContent>
-        </Select>
         <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("payments.property")} /></SelectTrigger>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Property" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("filter.allProperties")}</SelectItem>
             {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button variant={overdueOnly ? "default" : "outline"} size="sm" className="h-9" onClick={() => setOverdueOnly(!overdueOnly)}>
-          <AlertTriangle className="h-3.5 w-3.5 mr-1" />{t("filter.overdueOnly")}
-        </Button>
       </div>
 
-      <Tabs defaultValue="ledger">
+      <Tabs defaultValue="receivables">
         <TabsList>
-          <TabsTrigger value="ledger">{t("payments.ledger")} ({filteredLedger.length})</TabsTrigger>
-          <TabsTrigger value="payments">{t("payments.allPayments")} ({enrichedPayments.length})</TabsTrigger>
+          <TabsTrigger value="receivables">Receivables ({filteredReceivables.length})</TabsTrigger>
+          <TabsTrigger value="receipts">Cash Receipts ({filteredReceipts.length})</TabsTrigger>
+          <TabsTrigger value="allocations">Allocations ({enrichedAllocations.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="ledger">
-          {filteredLedger.length === 0 ? (
-            <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
+        {/* ===== TAB 1: RECEIVABLES ===== */}
+        <TabsContent value="receivables">
+          <div className="flex flex-wrap gap-2 mb-3">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="partially-paid">Partially Paid</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {(Object.keys(ITEM_TYPE_LABELS) as ReceivableItemType[]).map(k => (
+                  <SelectItem key={k} value={k}>{ITEM_TYPE_LABELS[k]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant={overdueOnly ? "default" : "outline"} size="sm" className="h-8 text-xs" onClick={() => setOverdueOnly(!overdueOnly)}>
+              <AlertTriangle className="h-3 w-3 mr-1" />Overdue Only
+            </Button>
+          </div>
+          {filteredReceivables.length === 0 ? (
+            <EmptyState icon={Search} title="No receivables found" description="Adjust filters or add receivable items." />
           ) : (
             <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">{t("payments.tenant")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.lease")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.property")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.unit")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.period")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.type")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.dueDate")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("payments.due")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("payments.paid")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("payments.balance")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.status")}</TableHead>
+                    <TableHead className="text-xs">Due Date</TableHead>
+                    <TableHead className="text-xs">Tenant</TableHead>
+                    <TableHead className="text-xs">Lease</TableHead>
+                    <TableHead className="text-xs">Property</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-xs">Label</TableHead>
+                    <TableHead className="text-xs text-right">Expected</TableHead>
+                    <TableHead className="text-xs text-right">Allocated</TableHead>
+                    <TableHead className="text-xs text-right">Outstanding</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLedger.map(ll => (
-                    <TableRow key={ll.id}>
-                      <TableCell className="text-sm">{ll.tenant ? <Link to={`/tenants/${ll.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(ll.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{ll.lease ? <Link to={`/leases/${ll.lease.id}`} className="hover:underline text-foreground">{ll.lease.leaseReference}</Link> : "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{ll.prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{ll.unit?.unitCode ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{ll.periodMonth}</TableCell>
-                      <TableCell className="text-xs capitalize text-muted-foreground">{typeLabels[ll.type] ?? ll.type}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{formatDate(ll.dueDate, ll.prop?.locale)}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{formatCurrency(ll.amountDue, ll.prop?.currencyCode, ll.prop?.locale)}</TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ll.amountPaid, ll.prop?.currencyCode, ll.prop?.locale)}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{ll.remainingBalance > 0 ? formatCurrency(ll.remainingBalance, ll.prop?.currencyCode, ll.prop?.locale) : "—"}</TableCell>
-                      <TableCell><StatusBadge status={ll.effectiveStatus} /></TableCell>
+                  {filteredReceivables.map(ri => (
+                    <TableRow key={ri.id}>
+                      <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, ri.prop?.locale)}</TableCell>
+                      <TableCell className="text-sm">{ri.tenant ? <Link to={`/tenants/${ri.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(ri.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className="hover:underline text-foreground">{ri.lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{ri.prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{ITEM_TYPE_LABELS[ri.itemType]}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{ri.label}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, ri.currencyCode, ri.prop?.locale) : "—"}</TableCell>
+                      <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -236,31 +297,97 @@ export default function Payments() {
           )}
         </TabsContent>
 
-        <TabsContent value="payments">
-          {enrichedPayments.length === 0 ? (
-            <EmptyState icon={CreditCard} title={t("payments.noPayments")} description={t("payments.noPaymentsDesc")} />
+        {/* ===== TAB 2: CASH RECEIPTS ===== */}
+        <TabsContent value="receipts">
+          <div className="flex flex-wrap gap-2 mb-3">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="matched">Matched</SelectItem>
+                <SelectItem value="partially-matched">Partially Matched</SelectItem>
+                <SelectItem value="unmatched">Unmatched</SelectItem>
+                <SelectItem value="exception">Exception</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant={unmatchedOnly ? "default" : "outline"} size="sm" className="h-8 text-xs" onClick={() => setUnmatchedOnly(!unmatchedOnly)}>
+              <ArrowRightLeft className="h-3 w-3 mr-1" />Unmatched Only
+            </Button>
+          </div>
+          {filteredReceipts.length === 0 ? (
+            <EmptyState icon={Banknote} title="No cash receipts found" description="Record a cash receipt to get started." />
           ) : (
             <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">{t("payments.date")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.tenant")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.lease")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("payments.amount")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.method")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.reference")}</TableHead>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Payer</TableHead>
+                    <TableHead className="text-xs">Tenant</TableHead>
+                    <TableHead className="text-xs">Lease</TableHead>
+                    <TableHead className="text-xs text-right">Received</TableHead>
+                    <TableHead className="text-xs text-right">Unmatched</TableHead>
+                    <TableHead className="text-xs">Source</TableHead>
+                    <TableHead className="text-xs">Reference</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {enrichedPayments.map(pay => (
-                    <TableRow key={pay.id}>
-                      <TableCell className="text-xs text-muted-foreground">{formatDate(pay.paymentDate, pay.prop?.locale)}</TableCell>
-                      <TableCell className="text-sm">{pay.tenant ? <Link to={`/tenants/${pay.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(pay.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{pay.lease ? <Link to={`/leases/${pay.lease.id}`} className="hover:underline text-foreground">{pay.lease.leaseReference}</Link> : "—"}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{formatCurrency(pay.amount, pay.prop?.currencyCode, pay.prop?.locale)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{methodLabels[pay.paymentMethod]}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{pay.reference || "—"}</TableCell>
+                  {filteredReceipts.map(cr => (
+                    <TableRow key={cr.id}>
+                      <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, cr.prop?.locale)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{cr.payerName ?? "—"}</TableCell>
+                      <TableCell className="text-sm">{cr.tenant ? <Link to={`/tenants/${cr.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(cr.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{cr.lease ? <Link to={`/leases/${cr.lease.id}`} className="hover:underline text-foreground">{cr.lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, cr.currencyCode, cr.prop?.locale)}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, cr.prop?.locale) : "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{SOURCE_TYPE_LABELS[cr.sourceType]}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference ?? "—"}</TableCell>
+                      <TableCell><StatusBadge status={cr.status} /></TableCell>
+                      <TableCell>
+                        {cr.unmatchedAmount > 0 && (
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setAllocateReceiptId(cr.id); setAllocAmounts({}); }}>
+                            Allocate
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ===== TAB 3: ALLOCATIONS ===== */}
+        <TabsContent value="allocations">
+          {enrichedAllocations.length === 0 ? (
+            <EmptyState icon={ArrowRightLeft} title="No allocations" description="Allocations are created when cash receipts are matched to receivables." />
+          ) : (
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Receipt Ref</TableHead>
+                    <TableHead className="text-xs">Receivable</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-xs">Tenant</TableHead>
+                    <TableHead className="text-xs text-right">Amount</TableHead>
+                    <TableHead className="text-xs">Method</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {enrichedAllocations.map(al => (
+                    <TableRow key={al.id}>
+                      <TableCell className="text-xs text-muted-foreground">{formatDate(al.allocationDate)}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{al.receipt?.reference ?? al.cashReceiptId}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{al.ri?.label ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{al.ri ? ITEM_TYPE_LABELS[al.ri.itemType] : "—"}</TableCell>
+                      <TableCell className="text-sm">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{formatCurrency(al.allocatedAmount)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{ALLOCATION_TYPE_LABELS[al.allocationType]}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -270,60 +397,122 @@ export default function Payments() {
         </TabsContent>
       </Tabs>
 
-      {/* Add Payment Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      {/* ===== ADD CASH RECEIPT SHEET ===== */}
+      <Sheet open={addReceiptOpen} onOpenChange={setAddReceiptOpen}>
         <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>{t("payments.addPayment")}</SheetTitle></SheetHeader>
+          <SheetHeader><SheetTitle>Record Cash Receipt</SheetTitle></SheetHeader>
           <div className="space-y-4 mt-4">
             <div>
-              <Label>{t("payments.lease")}</Label>
-              <Select value={formLeaseId} onValueChange={setFormLeaseId}>
-                <SelectTrigger><SelectValue placeholder={t("payments.selectLease")} /></SelectTrigger>
+              <Label>Source Type</Label>
+              <Select value={formSourceType} onValueChange={v => setFormSourceType(v as CashReceiptSourceType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {activeLeases.map(lease => {
-                    const tn = tenants.find(x => x.id === lease.primaryTenantId);
-                    return <SelectItem key={lease.id} value={lease.id}>{lease.leaseReference} — {tn ? getTenantFullName(tn) : ""}</SelectItem>;
+                  {(Object.keys(SOURCE_TYPE_LABELS) as CashReceiptSourceType[]).map(k => (
+                    <SelectItem key={k} value={k}>{SOURCE_TYPE_LABELS[k]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Payment Date</Label>
+              <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Amount Received ({selectedProp?.currencyCode ?? "EUR"})</Label>
+              <Input type="number" step="0.01" min="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" />
+            </div>
+            <div>
+              <Label>Tenant (optional)</Label>
+              <Select value={formTenantId} onValueChange={setFormTenantId}>
+                <SelectTrigger><SelectValue placeholder="Select tenant…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">— None —</SelectItem>
+                  {tenants.filter(tn => tn.status === "active").map(tn => (
+                    <SelectItem key={tn.id} value={tn.id}>{getTenantFullName(tn)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Lease (optional)</Label>
+              <Select value={formLeaseId} onValueChange={setFormLeaseId}>
+                <SelectTrigger><SelectValue placeholder="Select lease…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">— None —</SelectItem>
+                  {leases.filter(l => l.leaseStatus === "active").map(l => {
+                    const tn = tenants.find(x => x.id === l.primaryTenantId);
+                    return <SelectItem key={l.id} value={l.id}>{l.leaseReference} — {tn ? getTenantFullName(tn) : ""}</SelectItem>;
                   })}
                 </SelectContent>
               </Select>
             </div>
-            {selectedTenant && (
-              <div>
-                <Label>{t("payments.tenant")}</Label>
-                <p className="text-sm text-foreground mt-1">{getTenantFullName(selectedTenant)}</p>
-              </div>
-            )}
             <div>
-              <Label>{t("payments.paymentDate")}</Label>
-              <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
+              <Label>Reference</Label>
+              <Input value={formReference} onChange={e => setFormReference(e.target.value)} placeholder="Payment reference" />
             </div>
             <div>
-              <Label>{t("payments.amount")} ({selectedProp?.currencyCode ?? "EUR"})</Label>
-              <Input type="number" step="0.01" min="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" />
+              <Label>Payer Name</Label>
+              <Input value={formPayerName} onChange={e => setFormPayerName(e.target.value)} />
             </div>
             <div>
-              <Label>{t("payments.paymentMethod")}</Label>
-              <Select value={formMethod} onValueChange={v => setFormMethod(v as PaymentMethod)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bank-transfer">{t("payments.bankTransfer")}</SelectItem>
-                  <SelectItem value="direct-debit">{t("payments.directDebit")}</SelectItem>
-                  <SelectItem value="card">{t("payments.card")}</SelectItem>
-                  <SelectItem value="cash">{t("payments.cash")}</SelectItem>
-                  <SelectItem value="other">{t("payments.other")}</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Payer IBAN</Label>
+              <Input value={formPayerIban} onChange={e => setFormPayerIban(e.target.value)} placeholder="e.g. FR76 3000 …" />
             </div>
             <div>
-              <Label>{t("payments.reference")}</Label>
-              <Input value={formRef} onChange={e => setFormRef(e.target.value)} placeholder={t("payments.paymentReferencePlaceholder")} />
+              <Label>Remittance Information</Label>
+              <Input value={formRemittance} onChange={e => setFormRemittance(e.target.value)} />
             </div>
             <div>
-              <Label>{t("payments.notes")}</Label>
-              <Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={3} />
+              <Label>Notes</Label>
+              <Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2} />
             </div>
-            <Button onClick={handleAddPayment} disabled={!formLeaseId || !formAmount} className="w-full">{t("payments.recordPayment")}</Button>
+            <div className="flex items-center justify-between">
+              <Label>Auto-allocate</Label>
+              <Switch checked={formAutoAllocate} onCheckedChange={setFormAutoAllocate} />
+            </div>
+            <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">Record Cash Receipt</Button>
           </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ===== MANUAL ALLOCATION SHEET ===== */}
+      <Sheet open={!!allocateReceiptId} onOpenChange={v => { if (!v) { setAllocateReceiptId(null); setAllocAmounts({}); } }}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader><SheetTitle>Manual Allocation</SheetTitle></SheetHeader>
+          {allocReceipt && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 bg-muted rounded-md space-y-1">
+                <p className="text-xs text-muted-foreground">Receipt: <span className="font-mono font-medium text-foreground">{allocReceipt.reference ?? allocReceipt.id}</span></p>
+                <p className="text-xs text-muted-foreground">Amount: <span className="font-medium text-foreground">{formatCurrency(allocReceipt.amountReceived, allocReceipt.currencyCode)}</span></p>
+                <p className="text-xs text-muted-foreground">Unmatched: <span className="font-bold text-warning">{formatCurrency(allocReceipt.unmatchedAmount, allocReceipt.currencyCode)}</span></p>
+              </div>
+
+              {allocOpenItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No open receivable items found for this tenant/lease.</p>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase">Open Receivable Items</p>
+                  {allocOpenItems.map(ri => (
+                    <div key={ri.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{ri.label}</p>
+                        <p className="text-xs text-muted-foreground">{ITEM_TYPE_LABELS[ri.itemType]} · Due {formatDate(ri.dueDate)} · Outstanding {formatCurrency(ri.outstandingAmount, ri.currencyCode)}</p>
+                      </div>
+                      <Input
+                        type="number" step="0.01" min="0"
+                        max={Math.min(ri.outstandingAmount, allocReceipt.unmatchedAmount)}
+                        className="w-24 h-8 text-sm"
+                        value={allocAmounts[ri.id] ?? ""}
+                        onChange={e => setAllocAmounts(prev => ({ ...prev, [ri.id]: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button onClick={handleManualAllocate} disabled={allocOpenItems.length === 0} className="w-full">Apply Allocation</Button>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </div>
