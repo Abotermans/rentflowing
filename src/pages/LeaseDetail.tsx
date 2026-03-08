@@ -477,8 +477,8 @@ export default function LeaseDetail() {
             <CardContent>
               {lease.returnStatus ? (
                 <div className="space-y-2">
-                  <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={lease.returnStatus} /></div>
-                  {lease.returnNotes && <div><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm text-foreground">{lease.returnNotes}</p></div>}
+                  <div><p className="text-xs text-muted-foreground">{t("filter.status")}</p><StatusBadge status={lease.returnStatus} /></div>
+                  {lease.returnNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.returnNotes}</p></div>}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">No return status set. This is relevant after move-out to track unit readiness.</p>
