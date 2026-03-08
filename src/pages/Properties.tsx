@@ -44,8 +44,8 @@ type PropertyFormData = Omit<Property, "id" | "createdAt" | "updatedAt">;
 
 const emptyForm: PropertyFormData = {
   name: "", referenceCode: "", address1: "", address2: "", city: "", postalCode: "",
-  countryCode: "FR", locale: "fr-FR", currencyCode: "EUR", measurementSystem: "metric",
-  propertyType: "residential", description: "", status: "active",
+  regionOrState: "", countryCode: "FR", locale: "fr-FR", currencyCode: "EUR", measurementSystem: "metric",
+  propertyType: "residential", ownerName: "", description: "", status: "active",
 };
 
 export default function Properties() {
@@ -57,6 +57,7 @@ export default function Properties() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterCountry, setFilterCountry] = useState<string>("all");
 
   const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setOpen(true); };
   const openEdit = (p: Property) => {
@@ -97,11 +98,15 @@ export default function Properties() {
 
   const filtered = properties.filter(p => {
     const q = search.toLowerCase();
-    const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.referenceCode.toLowerCase().includes(q) || p.city.toLowerCase().includes(q);
+    const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.referenceCode.toLowerCase().includes(q) || p.city.toLowerCase().includes(q) || p.ownerName.toLowerCase().includes(q);
     const matchesType = filterType === "all" || p.propertyType === filterType;
     const matchesStatus = filterStatus === "all" || p.status === filterStatus;
-    return matchesSearch && matchesType && matchesStatus;
+    const matchesCountry = filterCountry === "all" || p.countryCode === filterCountry;
+    return matchesSearch && matchesType && matchesStatus && matchesCountry;
   });
+
+  // Get unique countries from existing properties for filter
+  const usedCountries = [...new Set(properties.map(p => p.countryCode))].sort();
 
   return (
     <div className="space-y-6">
@@ -117,8 +122,17 @@ export default function Properties() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search name, reference, city…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input placeholder="Search name, reference, city, owner…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
+        <Select value={filterCountry} onValueChange={setFilterCountry}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Country" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Countries</SelectItem>
+            {usedCountries.map(code => (
+              <SelectItem key={code} value={code}>{getCountryName(code)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
@@ -152,6 +166,7 @@ export default function Properties() {
                 <TableHead>City</TableHead>
                 <TableHead>Country</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Owner</TableHead>
                 <TableHead className="text-center">Units</TableHead>
                 <TableHead className="text-center">Occupancy</TableHead>
                 <TableHead>Status</TableHead>
@@ -170,6 +185,7 @@ export default function Properties() {
                     <TableCell className="text-muted-foreground">{p.city}</TableCell>
                     <TableCell className="text-muted-foreground">{getCountryName(p.countryCode)}</TableCell>
                     <TableCell className="text-muted-foreground">{getPropertyTypeLabel(p.propertyType)}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{p.ownerName || "—"}</TableCell>
                     <TableCell className="text-center text-muted-foreground">{stats.total}</TableCell>
                     <TableCell className="text-center">
                       <span className="font-medium text-foreground">{stats.occupied}/{stats.total}</span>
@@ -225,6 +241,10 @@ export default function Properties() {
               </div>
             </div>
             <div>
+              <Label htmlFor="owner">Owner Name</Label>
+              <Input id="owner" value={form.ownerName} onChange={e => setForm(f => ({ ...f, ownerName: e.target.value }))} placeholder="e.g. SCI Rivoli Patrimoine" />
+            </div>
+            <div>
               <Label htmlFor="addr1">Address Line 1 *</Label>
               <Input id="addr1" value={form.address1} onChange={e => setForm(f => ({ ...f, address1: e.target.value }))} placeholder="Street address" />
             </div>
@@ -244,6 +264,10 @@ export default function Properties() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
+                <Label htmlFor="region">Region / State</Label>
+                <Input id="region" value={form.regionOrState} onChange={e => setForm(f => ({ ...f, regionOrState: e.target.value }))} placeholder="e.g. Île-de-France" />
+              </div>
+              <div>
                 <Label>Country *</Label>
                 <Select value={form.countryCode} onValueChange={handleCountryChange}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -254,6 +278,8 @@ export default function Properties() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Property Type *</Label>
                 <Select value={form.propertyType} onValueChange={v => setForm(f => ({ ...f, propertyType: v as Property["propertyType"] }))}>
@@ -262,6 +288,16 @@ export default function Properties() {
                     <SelectItem value="residential">Residential</SelectItem>
                     <SelectItem value="commercial">Commercial</SelectItem>
                     <SelectItem value="mixed-use">Mixed Use</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as "active" | "inactive" }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -287,18 +323,6 @@ export default function Properties() {
                   <SelectContent>
                     <SelectItem value="metric">Metric (m²)</SelectItem>
                     <SelectItem value="imperial">Imperial (sq ft)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as "active" | "inactive" }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -1,83 +1,19 @@
 import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Pencil, Trash2, Plus, Eye, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen } from "lucide-react";
-import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { Unit, UnitType, UnitStatus } from "@/types";
-
-const UNIT_TYPES: { value: UnitType; label: string }[] = [
-  { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
-  { value: "office", label: "Office" }, { value: "parking", label: "Parking" },
-  { value: "storage", label: "Storage" }, { value: "house", label: "House" },
-  { value: "commercial-unit", label: "Commercial Unit" },
-];
-
-const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
-  { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
-  { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
-];
-
-type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
+import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Info } from "lucide-react";
+import { formatCurrency, formatArea, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit } = useAppData();
-  const { toast } = useToast();
+  const { properties, units, getPropertyStats } = useAppData();
 
   const property = properties.find(p => p.id === id);
   const propertyUnits = units.filter(u => u.propertyId === id);
   const stats = id ? getPropertyStats(id) : null;
-
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
-
-  const emptyUnitForm: UnitFormData = {
-    propertyId: id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
-    floor: null, surfaceArea: null, bedrooms: 0, bathrooms: 0, furnished: false,
-    currentStatus: "vacant", baseRent: null, baseCharges: null, availableFrom: null, notes: "",
-  };
-
-  const [unitForm, setUnitForm] = useState<UnitFormData>({ ...emptyUnitForm });
-
-  const openAddUnit = () => { setEditingUnit(null); setUnitForm({ ...emptyUnitForm }); setSheetOpen(true); };
-  const openEditUnit = (u: Unit) => {
-    setEditingUnit(u);
-    const { id: _id, createdAt, updatedAt, ...rest } = u;
-    setUnitForm(rest);
-    setSheetOpen(true);
-  };
-
-  const handleSaveUnit = () => {
-    if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
-      toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
-      return;
-    }
-    if (editingUnit) {
-      updateUnit({ ...editingUnit, ...unitForm });
-      toast({ title: "Unit updated" });
-    } else {
-      addUnit(unitForm);
-      toast({ title: "Unit added" });
-    }
-    setSheetOpen(false);
-  };
-
-  const handleDeleteUnit = (uid: string) => {
-    deleteUnit(uid);
-    toast({ title: "Unit deleted" });
-  };
 
   if (!property) {
     return (
@@ -97,8 +33,17 @@ export default function PropertyDetail() {
     { label: "Occupancy", value: `${stats?.occupancyRate ?? 0}%`, icon: TrendingUp, color: "text-success" },
   ];
 
+  const fullAddress = [
+    property.address1,
+    property.address2,
+    [property.postalCode, property.city].filter(Boolean).join(" "),
+    property.regionOrState,
+    getCountryName(property.countryCode),
+  ].filter(Boolean).join(", ");
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
           <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" />Properties</Link>
@@ -110,9 +55,6 @@ export default function PropertyDetail() {
               <StatusBadge status={property.status} />
             </div>
             <p className="text-sm text-muted-foreground mt-1 font-mono">{property.referenceCode}</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {property.address1}{property.address2 ? `, ${property.address2}` : ""} — {property.postalCode} {property.city}, {getCountryName(property.countryCode)}
-            </p>
             <div className="flex gap-2 mt-2">
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{getPropertyTypeLabel(property.propertyType)}</span>
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{property.currencyCode}</span>
@@ -121,6 +63,54 @@ export default function PropertyDetail() {
         </div>
       </div>
 
+      {/* Overview & Local Settings */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Overview</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Address</span>
+              <span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Owner</span>
+              <span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Country</span>
+              <span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Type</span>
+              <span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(property.propertyType)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <StatusBadge status={property.status} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Local Settings</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Locale</span>
+              <span className="text-sm font-medium text-foreground font-mono">{property.locale}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Currency</span>
+              <span className="text-sm font-medium text-foreground">{property.currencyCode}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Measurement</span>
+              <span className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* KPI cards */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {kpis.map(k => (
           <Card key={k.label}>
@@ -137,6 +127,7 @@ export default function PropertyDetail() {
         ))}
       </div>
 
+      {/* Description */}
       {property.description && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Description</CardTitle></CardHeader>
@@ -144,105 +135,58 @@ export default function PropertyDetail() {
         </Card>
       )}
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Units</h2>
-        <Button size="sm" onClick={openAddUnit}><Plus className="h-4 w-4 mr-1" />Add Unit</Button>
+      {/* Units (read-only) */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-3">Units</h2>
+        {propertyUnits.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">No units in this property yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">Unit management will be available in the next phase.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Label</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-center">Floor</TableHead>
+                  <TableHead className="text-right">Surface</TableHead>
+                  <TableHead className="text-right">Rent</TableHead>
+                  <TableHead className="text-right">Charges</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {propertyUnits.map(u => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-mono text-xs font-medium text-foreground">{u.unitCode}</TableCell>
+                    <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
+                    <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
+                    <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
       </div>
 
-      {propertyUnits.length === 0 ? (
-        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No units in this property yet.</p><Button variant="link" onClick={openAddUnit} className="mt-2">Add your first unit</Button></CardContent></Card>
-      ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-center">Floor</TableHead>
-                <TableHead className="text-right">Surface</TableHead>
-                <TableHead className="text-right">Rent</TableHead>
-                <TableHead className="text-right">Charges</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {propertyUnits.map(u => (
-                <TableRow key={u.id}>
-                  <TableCell className="font-mono text-xs font-medium"><Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link></TableCell>
-                  <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
-                  <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
-                  <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
-                  <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" asChild><Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader><AlertDialogTitle>Delete unit?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{u.unitCode}".</AlertDialogDescription></AlertDialogHeader>
-                          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
-
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="overflow-y-auto">
-          <SheetHeader><SheetTitle>{editingUnit ? "Edit Unit" : "Add Unit"}</SheetTitle></SheetHeader>
-          <div className="space-y-4 mt-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Unit Code *</Label><Input value={unitForm.unitCode} onChange={e => setUnitForm(f => ({ ...f, unitCode: e.target.value }))} placeholder="e.g. PAR-A01" /></div>
-              <div><Label>Label *</Label><Input value={unitForm.unitLabel} onChange={e => setUnitForm(f => ({ ...f, unitLabel: e.target.value }))} placeholder="e.g. Appt 1er" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Type *</Label>
-                <Select value={unitForm.unitType} onValueChange={v => setUnitForm(f => ({ ...f, unitType: v as UnitType }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>Status *</Label>
-                <Select value={unitForm.currentStatus} onValueChange={v => setUnitForm(f => ({ ...f, currentStatus: v as UnitStatus }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Floor</Label><Input type="number" value={unitForm.floor ?? ""} onChange={e => setUnitForm(f => ({ ...f, floor: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>Surface ({property.measurementSystem === "imperial" ? "sq ft" : "m²"})</Label><Input type="number" value={unitForm.surfaceArea ?? ""} onChange={e => setUnitForm(f => ({ ...f, surfaceArea: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>Bedrooms</Label><Input type="number" min={0} value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: Number(e.target.value) }))} /></div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Bathrooms</Label><Input type="number" min={0} value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: Number(e.target.value) }))} /></div>
-              <div><Label>Rent ({property.currencyCode})</Label><Input type="number" value={unitForm.baseRent ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>Charges ({property.currencyCode})</Label><Input type="number" value={unitForm.baseCharges ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Switch checked={unitForm.furnished} onCheckedChange={v => setUnitForm(f => ({ ...f, furnished: v }))} />
-              <Label>Furnished</Label>
-            </div>
-            <div><Label>Available From</Label><Input type="date" value={unitForm.availableFrom ?? ""} onChange={e => setUnitForm(f => ({ ...f, availableFrom: e.target.value || null }))} /></div>
-            <div><Label>Notes</Label><Textarea value={unitForm.notes} onChange={e => setUnitForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
-          </div>
-          <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveUnit}>{editingUnit ? "Save" : "Add Unit"}</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      {/* Phase placeholder */}
+      <Card className="border-dashed">
+        <CardContent className="py-8 text-center">
+          <Info className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm font-medium text-muted-foreground">Unit management will be available in the next phase</p>
+          <p className="text-xs text-muted-foreground mt-1">Add, edit, and manage units directly from this property.</p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
