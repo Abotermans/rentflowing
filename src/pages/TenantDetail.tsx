@@ -41,7 +41,7 @@ export default function TenantDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" />Tenants</Link>
+          <Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.tenants")}</Link>
         </Button>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">{getTenantFullName(tenant)}</h1>
