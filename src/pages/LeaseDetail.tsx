@@ -351,12 +351,12 @@ export default function LeaseDetail() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div><p className="text-xs text-muted-foreground">Lifecycle</p><StatusBadge status={lifecycle} /></div>
-            <div><p className="text-xs text-muted-foreground">Notice Given</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? "Yes" : "No"}</p></div>
-            {lease.noticeDate && <div><p className="text-xs text-muted-foreground">Notice Date</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
-            {lease.intendedMoveOutDate && <div><p className="text-xs text-muted-foreground">Intended Move-Out</p><p className="text-sm font-medium text-foreground">{formatDate(lease.intendedMoveOutDate, locale)}</p></div>}
-            {lease.terminationReason && <div><p className="text-xs text-muted-foreground">Reason</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
-            <div><p className="text-xs text-muted-foreground">Notice Period</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.lifecycle")}</p><StatusBadge status={lifecycle} /></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.noticeGiven")}</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? t("common.yes") : t("common.no")}</p></div>
+            {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
+            {lease.intendedMoveOutDate && <div><p className="text-xs text-muted-foreground">{t("detail.intendedMoveOut")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.intendedMoveOutDate, locale)}</p></div>}
+            {lease.terminationReason && <div><p className="text-xs text-muted-foreground">{t("detail.reason")}</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
+            <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
           </div>
         </CardContent>
       </Card>
