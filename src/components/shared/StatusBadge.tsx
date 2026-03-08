@@ -50,6 +50,10 @@ const statusStyles: Record<StatusType, string> = {
   exception: "bg-destructive/15 text-destructive border-destructive/30",
   reversed: "bg-muted text-muted-foreground border-border",
   refunded: "bg-muted text-muted-foreground border-border",
+  "owner-only": "bg-destructive/15 text-destructive border-destructive/30",
+  "tenant-recoverable": "bg-success/15 text-success border-success/30",
+  "partially-recoverable": "bg-warning/15 text-warning border-warning/30",
+  informational: "bg-muted text-muted-foreground border-border",
 };
 
 const STATUS_KEYS: Record<StatusType, TranslationKey> = {
