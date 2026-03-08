@@ -113,10 +113,10 @@ export default function Leases() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Leases</h1>
-          <p className="text-sm text-muted-foreground">{leases.length} leases</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("leases.title")}</h1>
+          <p className="text-sm text-muted-foreground">{leases.length} {t("leases.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Lease</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("leases.add")}</Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
