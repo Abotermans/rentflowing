@@ -122,17 +122,17 @@ export default function Tenants() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(t => {
-                const activeLease = getActiveLease(t.id);
+              {filtered.map(tenant => {
+                const activeLease = getActiveLease(tenant.id);
                 const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
                 return (
-                  <TableRow key={t.id}>
+                  <TableRow key={tenant.id}>
                     <TableCell className="font-medium">
-                      <Link to={`/tenants/${t.id}`} className="hover:underline text-foreground">{getTenantFullName(t)}</Link>
+                      <Link to={`/tenants/${tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(tenant)}</Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{t.email}</TableCell>
-                    <TableCell className="text-muted-foreground">{t.phone}</TableCell>
-                    <TableCell><StatusBadge status={t.status} /></TableCell>
+                    <TableCell className="text-muted-foreground">{tenant.email}</TableCell>
+                    <TableCell className="text-muted-foreground">{tenant.phone}</TableCell>
+                    <TableCell><StatusBadge status={tenant.status} /></TableCell>
                     <TableCell className="text-muted-foreground">
                       {unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}
                     </TableCell>
@@ -141,13 +141,13 @@ export default function Tenants() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/tenants/${t.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/tenants/${tenant.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(tenant)}><Pencil className="h-3.5 w-3.5" /></Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
                              <AlertDialogHeader><AlertDialogTitle>{t("tenants.deleteTitle")}</AlertDialogTitle><AlertDialogDescription>{t("tenants.deleteItemDesc")}</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(t.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
+                            <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(tenant.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
