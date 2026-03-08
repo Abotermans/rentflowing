@@ -337,7 +337,7 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />Notice / Lease End</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? "Edit Notice" : "Register Notice"}</Button>
               {lease.leaseStatus === "active" && (
