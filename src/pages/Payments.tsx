@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 import { useSettings } from "@/context/SettingsContext";
 
 export default function Payments() {
+  const { t } = useSettings();
   const { ledgerLines, payments, leases, tenants, properties, units, addPayment } = useAppData();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
