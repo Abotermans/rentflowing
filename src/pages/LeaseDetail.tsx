@@ -218,7 +218,7 @@ export default function LeaseDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/leases"><ArrowLeft className="h-4 w-4 mr-1" />Leases</Link>
+          <Link to="/leases"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.leases")}</Link>
         </Button>
         <div className="flex items-center justify-between">
           <div>
