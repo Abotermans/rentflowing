@@ -368,12 +368,6 @@ export default function LeaseDetail() {
               {lease.leaseStatus === "draft" && (
                 <Button variant="default" size="sm" onClick={handleActivateLease}>Activate Lease</Button>
               )}
-              {(lease.leaseStatus === "active" || lease.leaseStatus === "draft") && lease.leaseStatus !== "draft" && (
-                <>
-                  <Button variant="outline" size="sm" onClick={handleMarkEnded}>{t("detail.markEnded")}</Button>
-                  <Button variant="destructive" size="sm" onClick={handleMarkTerminated}>{t("detail.terminate")}</Button>
-                </>
-              )}
               {lease.leaseStatus === "active" && (
                 <>
                   <Button variant="outline" size="sm" onClick={handleMarkEnded}>{t("detail.markEnded")}</Button>
