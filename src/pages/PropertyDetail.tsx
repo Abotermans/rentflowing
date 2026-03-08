@@ -86,12 +86,12 @@ export default function PropertyDetail() {
   }
 
   const kpis = [
-    { label: "Total", value: stats?.total ?? 0, icon: DoorOpen, color: "text-foreground" },
-    { label: "Occupied", value: stats?.occupied ?? 0, icon: CheckCircle2, color: "text-success" },
-    { label: "Vacant", value: stats?.vacant ?? 0, icon: XCircle, color: "text-warning" },
-    { label: "Reserved", value: stats?.reserved ?? 0, icon: Clock, color: "text-primary" },
-    { label: "Unavailable", value: stats?.unavailable ?? 0, icon: Ban, color: "text-muted-foreground" },
-    { label: "Occupancy", value: `${stats?.occupancyRate ?? 0}%`, icon: TrendingUp, color: "text-success" },
+    { label: t("common.total"), value: stats?.total ?? 0, icon: DoorOpen, color: "text-foreground" },
+    { label: t("dashboard.occupied"), value: stats?.occupied ?? 0, icon: CheckCircle2, color: "text-success" },
+    { label: t("dashboard.vacantUnits"), value: stats?.vacant ?? 0, icon: XCircle, color: "text-warning" },
+    { label: t("dashboard.reservedUnits"), value: stats?.reserved ?? 0, icon: Clock, color: "text-primary" },
+    { label: t("dashboard.unavailableUnits"), value: stats?.unavailable ?? 0, icon: Ban, color: "text-muted-foreground" },
+    { label: t("properties.occupancy"), value: `${stats?.occupancyRate ?? 0}%`, icon: TrendingUp, color: "text-success" },
   ];
 
   const fullAddress = [
