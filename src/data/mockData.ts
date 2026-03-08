@@ -1,4 +1,4 @@
-import { Property, Unit } from "@/types";
+import { Property, Unit, Tenant, Lease } from "@/types";
 
 export const initialProperties: Property[] = [
   {
@@ -71,4 +71,75 @@ export const initialUnits: Unit[] = [
   { id: "u16", propertyId: "p5", unitCode: "BER-W01", unitLabel: "Wohnung 1. OG", unitType: "apartment", floor: 1, surfaceArea: 70, bedrooms: 2, bathrooms: 1, furnished: false, currentStatus: "unavailable", baseRent: 900, baseCharges: 200, availableFrom: null, notes: "Major renovation in progress.", createdAt: "2023-11-05", updatedAt: "2025-06-15" },
   { id: "u17", propertyId: "p5", unitCode: "BER-W02", unitLabel: "Wohnung 2. OG", unitType: "apartment", floor: 2, surfaceArea: 65, bedrooms: 2, bathrooms: 1, furnished: false, currentStatus: "vacant", baseRent: 850, baseCharges: 190, availableFrom: "2026-07-01", notes: "Available after renovation completes.", createdAt: "2023-11-05", updatedAt: "2026-02-20" },
   { id: "u18", propertyId: "p5", unitCode: "BER-K01", unitLabel: "Keller Lager", unitType: "storage", floor: -1, surfaceArea: 10, bedrooms: 0, bathrooms: 0, furnished: false, currentStatus: "vacant", baseRent: 60, baseCharges: 0, availableFrom: null, notes: "", createdAt: "2023-11-05", updatedAt: "2025-04-01" },
+];
+
+export const initialTenants: Tenant[] = [
+  {
+    id: "t1", firstName: "Marie", lastName: "Dupont", email: "marie.dupont@email.fr", phone: "+33 6 12 34 56 78",
+    dateOfBirth: "1985-03-12", identificationNumber: null, currentAddress: "12 Rue de Rivoli, Appt 1, 75001 Paris",
+    status: "active", notes: "Long-term tenant, always pays on time.", createdAt: "2024-02-01", updatedAt: "2025-11-20",
+  },
+  {
+    id: "t2", firstName: "Jan", lastName: "De Vries", email: "jan.devries@email.be", phone: "+32 470 12 34 56",
+    dateOfBirth: "1990-07-22", identificationNumber: null, currentAddress: "45 Avenue Louise, Appt 1er, 1050 Bruxelles",
+    status: "active", notes: "", createdAt: "2024-04-10", updatedAt: "2025-08-12",
+  },
+  {
+    id: "t3", firstName: "Fatima", lastName: "El Amrani", email: "fatima.elamrani@email.nl", phone: "+31 6 98 76 54 32",
+    dateOfBirth: "1988-11-05", identificationNumber: null, currentAddress: "Keizersgracht 520, 1st floor, Amsterdam",
+    status: "active", notes: "Office lease, company representative.", createdAt: "2024-07-15", updatedAt: "2025-09-12",
+  },
+  {
+    id: "t4", firstName: "Sophie", lastName: "Martin", email: "sophie.martin@email.fr", phone: "+33 6 55 44 33 22",
+    dateOfBirth: "1992-01-30", identificationNumber: null, currentAddress: null,
+    status: "former", notes: "Left unit PAR-A02 in December 2025.", createdAt: "2023-06-01", updatedAt: "2025-12-31",
+  },
+  {
+    id: "t5", firstName: "Luca", lastName: "Bianchi", email: "luca.bianchi@email.be", phone: "+32 489 11 22 33",
+    dateOfBirth: "1995-09-14", identificationNumber: null, currentAddress: null,
+    status: "applicant", notes: "Applicant for BRU-A02, move-in planned May 2026.", createdAt: "2026-01-10", updatedAt: "2026-01-15",
+  },
+  {
+    id: "t6", firstName: "Emma", lastName: "Williams", email: "emma.williams@email.co.uk", phone: "+44 7700 900123",
+    dateOfBirth: "1987-06-18", identificationNumber: null, currentAddress: "18 Camden High St, Flat 1, London NW1",
+    status: "active", notes: "", createdAt: "2024-09-01", updatedAt: "2025-12-01",
+  },
+];
+
+export const initialLeases: Lease[] = [
+  {
+    id: "l1", leaseReference: "BAIL-PAR-001", propertyId: "p1", unitId: "u1", primaryTenantId: "t1", coTenantIds: [],
+    leaseStatus: "active", startDate: "2024-03-01", endDate: "2027-02-28",
+    monthlyRent: 1350, monthlyCharges: 150, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2700,
+    noticePeriodText: "3 months", signedDate: "2024-02-15", notes: "3-year residential lease.",
+    createdAt: "2024-02-15", updatedAt: "2025-11-20",
+  },
+  {
+    id: "l2", leaseReference: "BAIL-BRU-001", propertyId: "p2", unitId: "u6", primaryTenantId: "t2", coTenantIds: [],
+    leaseStatus: "active", startDate: "2024-06-01", endDate: "2027-05-31",
+    monthlyRent: 1100, monthlyCharges: 150, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2200,
+    noticePeriodText: "3 months", signedDate: "2024-05-20", notes: "",
+    createdAt: "2024-05-20", updatedAt: "2025-08-12",
+  },
+  {
+    id: "l3", leaseReference: "BAIL-BRU-002", propertyId: "p2", unitId: "u7", primaryTenantId: "t5", coTenantIds: [],
+    leaseStatus: "draft", startDate: "2026-05-01", endDate: "2029-04-30",
+    monthlyRent: 1200, monthlyCharges: 160, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2400,
+    noticePeriodText: "3 months", signedDate: null, notes: "Draft lease pending signature.",
+    createdAt: "2026-01-15", updatedAt: "2026-01-15",
+  },
+  {
+    id: "l4", leaseReference: "BAIL-PAR-002", propertyId: "p1", unitId: "u2", primaryTenantId: "t4", coTenantIds: [],
+    leaseStatus: "ended", startDate: "2023-09-01", endDate: "2025-12-31",
+    monthlyRent: 1600, monthlyCharges: 180, dueDayOfMonth: 5, depositOrGuaranteeAmount: 3200,
+    noticePeriodText: "3 months", signedDate: "2023-08-15", notes: "Lease ended, tenant moved out.",
+    createdAt: "2023-08-15", updatedAt: "2025-12-31",
+  },
+  {
+    id: "l5", leaseReference: "BAIL-LON-001", propertyId: "p4", unitId: "u13", primaryTenantId: "t6", coTenantIds: [],
+    leaseStatus: "active", startDate: "2024-10-01", endDate: "2026-09-30",
+    monthlyRent: 1800, monthlyCharges: 120, dueDayOfMonth: 1, depositOrGuaranteeAmount: 3600,
+    noticePeriodText: "2 months", signedDate: "2024-09-15", notes: "",
+    createdAt: "2024-09-15", updatedAt: "2025-12-01",
+  },
 ];
