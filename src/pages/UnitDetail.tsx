@@ -220,7 +220,7 @@ export default function UnitDetail() {
               )}
               {nextDueLine && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Next Due</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.nextDue")}</p>
                   <p className="text-sm font-medium text-foreground">
                     {formatCurrency(nextDueLine.remainingBalance, property.currencyCode, property.locale)} on {formatDate(nextDueLine.dueDate, property.locale)}
                   </p>
