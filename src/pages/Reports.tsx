@@ -526,7 +526,7 @@ export default function Reports() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">{t("reports.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("reports.title")}</p>
+        <p className="text-sm text-muted-foreground">{t("reports.subtitle")}</p>
       </div>
 
       <Tabs defaultValue="rent-roll" className="space-y-4">
