@@ -469,7 +469,7 @@ export default function LeaseDetail() {
                 <div className="flex items-center gap-2">
                   {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
                   <Button variant="outline" size="sm" onClick={openReturnForm}>
-                    {lease.returnStatus ? "Update" : "Set Status"}
+                    {lease.returnStatus ? t("detail.update") : t("detail.setStatus")}
                   </Button>
                 </div>
               </div>
