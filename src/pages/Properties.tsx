@@ -57,6 +57,13 @@ export default function Properties() {
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Property | null>(null);
+  const [form, setForm] = useState<PropertyFormData>({ ...emptyForm });
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterCountry, setFilterCountry] = useState<string>("all");
 
   const propertyStatusValidation = (() => {
     if (!editing) return null;
@@ -65,13 +72,6 @@ export default function Properties() {
     }
     return null;
   })();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Property | null>(null);
-  const [form, setForm] = useState<PropertyFormData>({ ...emptyForm });
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterCountry, setFilterCountry] = useState<string>("all");
 
   const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setOpen(true); };
   const openEdit = (p: Property) => {
