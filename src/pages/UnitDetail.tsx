@@ -124,9 +124,10 @@ export default function UnitDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.occupancySection")}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <StatusBadge status={unit.currentStatus} />
-            {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && <StatusBadge status={lifecycle} />}
-            {activeLease && moveIn === "scheduled" && <StatusBadge status="scheduled" />}
+            <StatusBadge status={occupancy.derived} />
+            {occupancy.derived !== unit.currentStatus && <StatusBadge status={unit.currentStatus} />}
+            {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && lifecycle !== occupancy.derived && <StatusBadge status={lifecycle} />}
+            {activeLease && moveIn === "scheduled" && occupancy.derived !== "move-in-pending" && <StatusBadge status="scheduled" />}
             {activeLease && activeLease.returnStatus && activeLease.returnStatus !== "completed" && <StatusBadge status={activeLease.returnStatus} />}
           </div>
           {activeLease && tenant ? (
