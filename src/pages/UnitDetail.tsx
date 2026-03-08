@@ -164,7 +164,7 @@ export default function UnitDetail() {
               )}
               {activeLease.moveOutScheduledDate && !activeLease.moveOutActualDate && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Move-Out Planned</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.moveOutPlanned")}</p>
                   <p className="text-sm font-medium text-warning">{formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
                 </div>
               )}
