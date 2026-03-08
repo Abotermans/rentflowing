@@ -18,8 +18,8 @@ export default function TenantDetail() {
   if (!tenant) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Tenant not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/tenants">← Back to Tenants</Link></Button>
+        <p className="text-muted-foreground">{t("detail.tenantNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/tenants">← {t("nav.tenants")}</Link></Button>
       </div>
     );
   }
