@@ -1266,6 +1266,15 @@ const fr: TranslationKeys = {
   "status.fullyConsumed": "Entièrement consommé",
   "status.notApplicable": "N/A",
   "payments.partiallyPaidCount": "Partiellement payé",
+  "status.disputed": "Contesté",
+  "status.writtenOff": "Passé en perte",
+  "status.imported": "Importé",
+  "status.unmatched": "Non rapproché",
+  "status.partiallyMatched": "Partiellement rapproché",
+  "status.matched": "Rapproché",
+  "status.exception": "Exception",
+  "status.reversed": "Annulé",
+  "status.refunded": "Remboursé",
 };
 
 export type TranslationKey = keyof typeof en;
