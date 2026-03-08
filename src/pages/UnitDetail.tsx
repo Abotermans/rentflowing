@@ -3,9 +3,9 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryName } from "@/lib/formatters";
-import { getTenantFullName, getLeaseLifecycleStatus } from "@/types";
+import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +26,8 @@ export default function UnitDetail() {
   const activeLease = getActiveLease(unit.id);
   const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
   const lifecycle = activeLease ? getLeaseLifecycleStatus(activeLease) : null;
+  const moveIn = activeLease ? getMoveInStatus(activeLease) : null;
+  const moveOut = activeLease ? getMoveOutStatus(activeLease) : null;
 
   const leaseFinancials = activeLease ? getLeaseOutstanding(activeLease.id) : null;
   const ledger = activeLease ? getLedgerByLease(activeLease.id) : [];
@@ -116,9 +118,11 @@ export default function UnitDetail() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Occupancy</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusBadge status={unit.currentStatus} />
             {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && <StatusBadge status={lifecycle} />}
+            {activeLease && moveIn === "scheduled" && <StatusBadge status="scheduled" />}
+            {activeLease && activeLease.returnStatus && activeLease.returnStatus !== "completed" && <StatusBadge status={activeLease.returnStatus} />}
           </div>
           {activeLease && tenant ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -146,6 +150,21 @@ export default function UnitDetail() {
                 <p className="text-xs text-muted-foreground">Total Monthly</p>
                 <p className="text-sm font-bold text-primary">{formatCurrency(activeLease.monthlyRent + activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
               </div>
+
+              {/* Move-in/out status */}
+              {activeLease.moveInActualDate && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Moved In</p>
+                  <p className="text-sm font-medium text-foreground">{formatDate(activeLease.moveInActualDate, property.locale)}</p>
+                </div>
+              )}
+              {activeLease.moveOutScheduledDate && !activeLease.moveOutActualDate && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Move-Out Planned</p>
+                  <p className="text-sm font-medium text-warning">{formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
+                </div>
+              )}
+
               {/* Under notice indicator */}
               {activeLease.noticeGiven && (
                 <div className="col-span-full">
@@ -156,13 +175,27 @@ export default function UnitDetail() {
                       {activeLease.intendedMoveOutDate && (
                         <p className="text-xs text-muted-foreground">
                           Intended move-out: {formatDate(activeLease.intendedMoveOutDate, property.locale)}
-                          {activeLease.intendedMoveOutDate && <> — Available from {formatDate(activeLease.intendedMoveOutDate, property.locale)}</>}
+                          — Available from {formatDate(activeLease.intendedMoveOutDate, property.locale)}
                         </p>
                       )}
                     </div>
                   </div>
                 </div>
               )}
+
+              {/* Move-out scheduled but not under notice */}
+              {!activeLease.noticeGiven && activeLease.moveOutScheduledDate && !activeLease.moveOutActualDate && (
+                <div className="col-span-full">
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-primary/10 border border-primary/30">
+                    <Truck className="h-4 w-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Move-out scheduled</p>
+                      <p className="text-xs text-muted-foreground">Available from {formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Financial balance */}
               {leaseFinancials && leaseFinancials.outstanding > 0 && (
                 <>
