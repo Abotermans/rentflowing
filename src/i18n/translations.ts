@@ -629,6 +629,15 @@ const en = {
   "status.fullyConsumed": "Fully Consumed",
   "status.notApplicable": "N/A",
   "payments.partiallyPaidCount": "Partially Paid",
+  "status.disputed": "Disputed",
+  "status.writtenOff": "Written Off",
+  "status.imported": "Imported",
+  "status.unmatched": "Unmatched",
+  "status.partiallyMatched": "Partially Matched",
+  "status.matched": "Matched",
+  "status.exception": "Exception",
+  "status.reversed": "Reversed",
+  "status.refunded": "Refunded",
 };
 
 type TranslationKeys = typeof en;
