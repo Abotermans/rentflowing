@@ -105,7 +105,7 @@ export default function UnitDetail() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Base Charges</p>
+              <p className="text-xs text-muted-foreground">{t("detail.baseCharges")}</p>
               <p className="text-lg font-bold text-foreground">
                 {unit.baseCharges != null ? formatCurrency(unit.baseCharges, property.currencyCode, property.locale) : "—"}
               </p>
