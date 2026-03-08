@@ -22,6 +22,7 @@ import Vendors from "./pages/Vendors";
 import VendorDetail from "./pages/VendorDetail";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import CostCategories from "./pages/CostCategories";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient(); // force HMR refresh
@@ -50,6 +51,8 @@ const App = () => (
                 <Route path="/maintenance/:id" element={<MaintenanceDetail />} />
                 <Route path="/vendors" element={<Vendors />} />
                 <Route path="/vendors/:id" element={<VendorDetail />} />
+                <Route path="/costs" element={<CostCategories />} />
+                <Route path="/costs/categories" element={<CostCategories />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>

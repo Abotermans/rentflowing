@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3, Settings, Coins } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
@@ -26,6 +26,7 @@ const items: { titleKey: TranslationKey; url: string; icon: typeof LayoutDashboa
   { titleKey: "nav.payments", url: "/payments", icon: CreditCard },
   { titleKey: "nav.maintenance", url: "/maintenance", icon: Wrench },
   { titleKey: "nav.vendors", url: "/vendors", icon: HardHat },
+  { titleKey: "nav.costs", url: "/costs", icon: Coins },
   { titleKey: "nav.reports", url: "/reports", icon: BarChart3 },
 ];
 
