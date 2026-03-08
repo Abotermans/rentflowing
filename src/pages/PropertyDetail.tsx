@@ -61,10 +61,22 @@ export default function PropertyDetail() {
     setUnitForm(rest);
     setSheetOpen(true);
   };
+  const unitStatusValidation = (() => {
+    if (!editingUnit || unitForm.currentStatus === editingUnit.currentStatus) return null;
+    return canChangeUnitStatus(editingUnit.id, unitForm.currentStatus, integrityState);
+  })();
+
   const handleSaveUnit = () => {
     if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
       toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
       return;
+    }
+    if (editingUnit && unitForm.currentStatus !== editingUnit.currentStatus) {
+      const validation = canChangeUnitStatus(editingUnit.id, unitForm.currentStatus, integrityState);
+      if (!validation.allowed) {
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
     }
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...unitForm });
