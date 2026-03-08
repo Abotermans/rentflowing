@@ -105,7 +105,7 @@ export default function PropertyDetail() {
       {/* Header */}
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" />Properties</Link>
+          <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.properties")}</Link>
         </Button>
         <div className="flex items-start justify-between">
           <div>
