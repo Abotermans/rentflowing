@@ -23,6 +23,9 @@ import VendorDetail from "./pages/VendorDetail";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import CostCategories from "./pages/CostCategories";
+import CostEntries from "./pages/CostEntries";
+import AllocationRules from "./pages/AllocationRules";
+import CostsAllocations from "./pages/CostsAllocations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient(); // force HMR refresh
