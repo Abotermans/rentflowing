@@ -45,6 +45,11 @@ export default function Leases() {
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
     signedDate: null, notes: "",
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
+    moveInScheduledDate: null, moveInActualDate: null, moveInMeterReading: null,
+    moveInChecklist: { leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false, keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: false },
+    moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null,
+    moveOutChecklist: { noticeConfirmed: false, moveOutDateConfirmed: false, keysReturned: false, moveOutMeterReadingCaptured: false, balanceReviewed: false, guaranteeReviewCompleted: false },
+    moveOutNotes: "", keyHandoverCount: 0, keyReturnCount: 0, returnStatus: null, returnNotes: "",
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
 
