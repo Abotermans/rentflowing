@@ -236,7 +236,7 @@ export default function UnitDetail() {
       {/* Property Context */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Building2 className="h-4 w-4" />Property Context</CardTitle>
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Building2 className="h-4 w-4" />{t("detail.propertyContext")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
