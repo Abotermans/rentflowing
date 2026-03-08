@@ -67,6 +67,13 @@ export default function Dashboard() {
   // Unmatched receipts for dashboard table
   const unmatchedReceipts = cashReceipts.filter(cr => cr.unmatchedAmount > 0).slice(0, 5);
 
+  // Costs & Taxes KPIs
+  const activeCostEntries = costEntries.filter(e => e.status === "active");
+  const totalCostsAmount = activeCostEntries.reduce((s, e) => s + e.amount, 0);
+  const totalChargesAmount = activeCostEntries.filter(e => !e.isTax).reduce((s, e) => s + e.amount, 0);
+  const totalTaxesAmount = activeCostEntries.filter(e => e.isTax).reduce((s, e) => s + e.amount, 0);
+  const ownerBorneTotal = activeCostEntries.filter(e => e.recoveryType === "owner-only").reduce((s, e) => s + e.amount, 0);
+
   const kpiSections = [
     {
       title: t("dashboard.portfolio"),
