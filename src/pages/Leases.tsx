@@ -46,6 +46,9 @@ export default function Leases() {
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
+  const { addOverride } = useOverrideHistory();
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterProperty, setFilterProperty] = useState("all");
