@@ -232,14 +232,23 @@ export default function PropertyDetail() {
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                          <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete unit?</AlertDialogTitle>
-                                <AlertDialogDescription>This will permanently delete "{u.unitCode}".</AlertDialogDescription>
+                                <AlertDialogTitle>{t("detail.deleteUnitTitle")}</AlertDialogTitle>
+                                <AlertDialogDescription className="space-y-2">
+                                  <span>{t("units.deleteDesc")}</span>
+                                  {(() => {
+                                    const unitLease = getActiveLease(u.id);
+                                    if (unitLease) {
+                                      return <span className="block text-sm font-medium text-destructive">{t("detail.deleteUnitWarningLease").replace("{ref}", unitLease.leaseReference)}</span>;
+                                    }
+                                    return <span className="block text-sm text-muted-foreground">{t("detail.deleteUnitSafe")}</span>;
+                                  })()}
+                                </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>Delete</AlertDialogAction>
+                                <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>{t("action.delete")}</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>

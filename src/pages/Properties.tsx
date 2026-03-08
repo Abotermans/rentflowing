@@ -207,7 +207,26 @@ export default function Properties() {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>{t("properties.deleteTitle")}</AlertDialogTitle>
-                              <AlertDialogDescription>{t("properties.deleteItemDesc")}</AlertDialogDescription>
+                              <AlertDialogDescription className="space-y-2">
+                                <span>{t("properties.deleteItemDesc")}</span>
+                                {(() => {
+                                  const propUnits = units.filter(u => u.propertyId === p.id);
+                                  const activeLeases = leases.filter(l => l.propertyId === p.id && l.leaseStatus === "active");
+                                  if (propUnits.length === 0 && activeLeases.length === 0) {
+                                    return <span className="block text-sm text-muted-foreground">{t("properties.deleteSafe")}</span>;
+                                  }
+                                  return (
+                                    <>
+                                      {propUnits.length > 0 && (
+                                        <span className="block text-sm font-medium text-warning">{t("properties.deleteWarningUnits").replace("{units}", String(propUnits.length))}</span>
+                                      )}
+                                      {activeLeases.length > 0 && (
+                                        <span className="block text-sm font-medium text-destructive">{t("properties.deleteWarningLeases").replace("{leases}", String(activeLeases.length))}</span>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
