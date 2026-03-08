@@ -521,21 +521,22 @@ function MaintenanceBacklogReport() {
 
 // ─── Main ───
 export default function Reports() {
+  const { t } = useSettings();
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Reports</h1>
-        <p className="text-sm text-muted-foreground">Operational summaries with filters and export</p>
+        <h1 className="text-2xl font-bold text-foreground">{t("reports.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("reports.title")}</p>
       </div>
 
       <Tabs defaultValue="rent-roll" className="space-y-4">
         <TabsList className="print:hidden">
-          <TabsTrigger value="rent-roll">Rent Roll</TabsTrigger>
-          <TabsTrigger value="occupancy">Occupancy</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue</TabsTrigger>
-          <TabsTrigger value="lease-expiry">Lease Expiry</TabsTrigger>
-          <TabsTrigger value="deposits">Deposits</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="rent-roll">{t("reports.rentRoll")}</TabsTrigger>
+          <TabsTrigger value="occupancy">{t("reports.occupancy")}</TabsTrigger>
+          <TabsTrigger value="overdue">{t("reports.overdue")}</TabsTrigger>
+          <TabsTrigger value="lease-expiry">{t("reports.leaseExpiry")}</TabsTrigger>
+          <TabsTrigger value="deposits">{t("reports.deposits")}</TabsTrigger>
+          <TabsTrigger value="maintenance">{t("maintenance.title")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="rent-roll"><RentRollReport /></TabsContent>
