@@ -308,27 +308,31 @@ function LeaseExpiryReport() {
         <KpiCard label="No Notice Yet" value={String(data.length - underNotice)} accent={data.length - underNotice > 0} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="leases" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Tenant</TableHead>
-          <TableHead className="text-xs">Property</TableHead><TableHead className="text-xs">End Date</TableHead>
-          <TableHead className="text-xs text-right">Days Left</TableHead><TableHead className="text-xs">Status</TableHead>
-          <TableHead className="text-xs">Notice</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.l.id}>
-              <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
-              <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-xs font-medium">{formatDate(d.l.endDate, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm">{d.daysLeft}</TableCell>
-              <TableCell><StatusBadge status={d.lifecycle} /></TableCell>
-              <TableCell className="text-xs">{d.l.noticeGiven ? <span className="text-success font-medium">Yes</span> : <span className="text-muted-foreground">No</span>}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Tenant</TableHead>
+            <TableHead className="text-xs">Property</TableHead><TableHead className="text-xs">End Date</TableHead>
+            <TableHead className="text-xs text-right">Days Left</TableHead><TableHead className="text-xs">Status</TableHead>
+            <TableHead className="text-xs">Notice</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No leases expiring in this period.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.l.id}>
+                <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
+                <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-xs font-medium">{formatDate(d.l.endDate, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm">{d.daysLeft}</TableCell>
+                <TableCell><StatusBadge status={d.lifecycle} /></TableCell>
+                <TableCell className="text-xs">{d.l.noticeGiven ? <span className="text-success font-medium">Yes</span> : <span className="text-muted-foreground">No</span>}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
