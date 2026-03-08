@@ -107,7 +107,7 @@ export default function MaintenanceDetail() {
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Tenant</p>
+                <p className="text-xs text-muted-foreground">{t("table.tenant")}</p>
                 {tenant ? <Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link> : <p className="text-sm text-muted-foreground">—</p>}
               </div>
             </div>
