@@ -101,6 +101,10 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   exception: "status.exception",
   reversed: "status.reversed",
   refunded: "status.refunded",
+  "owner-only": "status.ownerOnly",
+  "tenant-recoverable": "status.tenantRecoverable",
+  "partially-recoverable": "status.partiallyRecoverable",
+  informational: "status.informational",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {
