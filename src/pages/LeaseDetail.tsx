@@ -19,6 +19,9 @@ import type { CashReceiptSourceType } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeLeaseStatus, canActivateLease } from "@/lib/integrity/leaseIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
