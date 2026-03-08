@@ -56,6 +56,15 @@ export default function Properties() {
   const { properties, units, leases, addProperty, updateProperty, deleteProperty, getPropertyStats } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
+
+  const propertyStatusValidation = (() => {
+    if (!editing) return null;
+    if (form.status === "inactive" && editing.status === "active") {
+      return canArchiveProperty(editing.id, integrityState);
+    }
+    return null;
+  })();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<PropertyFormData>({ ...emptyForm });
