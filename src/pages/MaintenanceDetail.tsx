@@ -140,7 +140,7 @@ export default function MaintenanceDetail() {
               <StatusBadge status={ticket.status} />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Created</p>
+              <p className="text-xs text-muted-foreground">{t("maintenance.created")}</p>
               <p className="text-sm font-medium text-foreground">{formatDate(ticket.createdDate, property?.locale)}</p>
             </div>
             {ticket.scheduledDate && (
