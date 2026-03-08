@@ -58,24 +58,43 @@ export default function Dashboard() {
     })
     .filter(x => x.overdue > 0 && x.tenant);
 
-  const kpis = [
-    { label: "Properties", value: properties.length, icon: Building2, color: "text-primary" },
-    { label: "Total Units", value: totalUnits, icon: DoorOpen, color: "text-foreground" },
-    { label: "Occupied", value: occupied, icon: CheckCircle2, color: "text-success" },
-    { label: "Vacant", value: vacant, icon: XCircle, color: "text-warning" },
-    { label: "Occupancy Rate", value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
-    { label: "Active Leases", value: activeLeases.length, icon: FileText, color: "text-primary" },
-    { label: "Ending Soon", value: leasesEndingSoon.length, icon: CalendarClock, color: leasesEndingSoon.length > 0 ? "text-destructive" : "text-foreground" },
-    { label: "Under Notice", value: leasesUnderNotice.length, icon: Bell, color: leasesUnderNotice.length > 0 ? "text-warning" : "text-foreground" },
-    { label: "Expected Monthly", value: formatCurrency(totalExpectedMonthlyRent), icon: CreditCard, color: "text-primary", isText: true },
-    { label: "Total Overdue", value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
-    { label: "Pending Guarantees", value: pendingGuarantees.length, icon: Shield, color: pendingGuarantees.length > 0 ? "text-warning" : "text-foreground" },
-    { label: "Upcoming Move-Ins", value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
-    { label: "Upcoming Move-Outs", value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
-    { label: "Returns Pending", value: returnsPending.length, icon: Truck, color: returnsPending.length > 0 ? "text-warning" : "text-foreground" },
-    { label: "Open Tickets", value: openTicketsCount, icon: Wrench, color: openTicketsCount > 0 ? "text-warning" : "text-foreground" },
-    { label: "Urgent Tickets", value: urgentTicketsCount, icon: Wrench, color: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
-    { label: "Completed (Month)", value: completedThisMonth, icon: Wrench, color: "text-success" },
+  const kpiSections = [
+    {
+      title: "Portfolio",
+      items: [
+        { label: "Properties", value: properties.length, icon: Building2, color: "text-primary" },
+        { label: "Total Units", value: totalUnits, icon: DoorOpen, color: "text-foreground" },
+        { label: "Occupied", value: occupied, icon: CheckCircle2, color: "text-success" },
+        { label: "Occupancy Rate", value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
+      ],
+    },
+    {
+      title: "Leases",
+      items: [
+        { label: "Active Leases", value: activeLeases.length, icon: FileText, color: "text-primary" },
+        { label: "Ending Soon", value: leasesEndingSoon.length, icon: CalendarClock, color: leasesEndingSoon.length > 0 ? "text-destructive" : "text-foreground" },
+        { label: "Under Notice", value: leasesUnderNotice.length, icon: Bell, color: leasesUnderNotice.length > 0 ? "text-warning" : "text-foreground" },
+        { label: "Vacant", value: vacant, icon: XCircle, color: "text-warning" },
+      ],
+    },
+    {
+      title: "Financial",
+      items: [
+        { label: "Expected Monthly", value: formatCurrency(totalExpectedMonthlyRent), icon: CreditCard, color: "text-primary", isText: true },
+        { label: "Total Overdue", value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
+        { label: "Pending Guarantees", value: pendingGuarantees.length, icon: Shield, color: pendingGuarantees.length > 0 ? "text-warning" : "text-foreground" },
+        { label: "Returns Pending", value: returnsPending.length, icon: Truck, color: returnsPending.length > 0 ? "text-warning" : "text-foreground" },
+      ],
+    },
+    {
+      title: "Operations",
+      items: [
+        { label: "Open Tickets", value: openTicketsCount, icon: Wrench, color: openTicketsCount > 0 ? "text-warning" : "text-foreground" },
+        { label: "Urgent Tickets", value: urgentTicketsCount, icon: Wrench, color: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
+        { label: "Move-Ins", value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
+        { label: "Move-Outs", value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
+      ],
+    },
   ];
 
   const statusSegments = [
@@ -103,21 +122,26 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">Portfolio overview</p>
       </div>
 
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
-        {kpis.map(k => (
-          <Card key={k.label}>
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
-                  <p className={`text-2xl font-bold text-foreground mt-1 ${(k as any).isText ? "text-lg" : ""}`}>{k.value}</p>
-                </div>
-                <k.icon className={`h-5 w-5 ${k.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {kpiSections.map(section => (
+        <div key={section.title}>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{section.title}</p>
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+            {section.items.map(k => (
+              <Card key={k.label}>
+                <CardContent className="pt-5 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
+                      <p className={`font-bold text-foreground mt-1 ${(k as any).isText ? "text-lg" : "text-2xl"}`}>{k.value}</p>
+                    </div>
+                    <k.icon className={`h-5 w-5 ${k.color}`} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
 
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Units by Status</CardTitle></CardHeader>

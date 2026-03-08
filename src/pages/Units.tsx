@@ -129,7 +129,7 @@ export default function Units() {
       {units.length === 0 ? (
         <EmptyState icon={DoorOpen} title="No units yet" description="Add units to your properties." actionLabel="Add Unit" onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No units match your filters.</p></CardContent></Card>
+        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
       ) : (
         <Card>
           <Table>
@@ -169,10 +169,10 @@ export default function Units() {
                     <TableCell className="text-muted-foreground text-xs">{u.availableFrom ? formatDate(u.availableFrom, prop?.locale) : "—"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" asChild><Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
                         <AlertDialog>
-                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader><AlertDialogTitle>Delete unit?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{u.unitCode}".</AlertDialogDescription></AlertDialogHeader>
                             <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(u.id)}>Delete</AlertDialogAction></AlertDialogFooter>

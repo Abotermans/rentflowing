@@ -90,28 +90,32 @@ function RentRollReport() {
         <KpiCard label="Total Monthly Income" value={formatCurrency(totalAll)} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="leases" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Property</TableHead>
-          <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Tenant</TableHead>
-          <TableHead className="text-xs text-right">Rent</TableHead><TableHead className="text-xs text-right">Charges</TableHead>
-          <TableHead className="text-xs text-right">Total</TableHead><TableHead className="text-xs">Deposit</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.l.id}>
-              <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
-              <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm font-medium">{formatCurrency(d.total, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell><StatusBadge status={d.guarantee?.status ?? "none"} /></TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Property</TableHead>
+            <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Tenant</TableHead>
+            <TableHead className="text-xs text-right">Rent</TableHead><TableHead className="text-xs text-right">Charges</TableHead>
+            <TableHead className="text-xs text-right">Total</TableHead><TableHead className="text-xs">Deposit</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No active leases found.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.l.id}>
+                <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
+                <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
+                <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm font-medium">{formatCurrency(d.total, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell><StatusBadge status={d.guarantee?.status ?? "none"} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
@@ -165,27 +169,31 @@ function OccupancyReport() {
         <KpiCard label="Occupancy Rate" value={`${rate}%`} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="units" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Property</TableHead>
-          <TableHead className="text-xs">Type</TableHead><TableHead className="text-xs">Status</TableHead>
-          <TableHead className="text-xs">Tenant</TableHead><TableHead className="text-xs text-right">Rent</TableHead>
-          <TableHead className="text-xs">Available From</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.u.id}>
-              <TableCell className="font-medium"><Link to={`/units/${d.u.id}`} className="hover:underline text-foreground">{d.u.unitCode}</Link></TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-xs capitalize">{d.u.unitType.replace(/-/g, " ")}</TableCell>
-              <TableCell><StatusBadge status={d.u.currentStatus} /></TableCell>
-              <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
-              <TableCell className="text-right text-sm">{d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "—"}</TableCell>
-              <TableCell className="text-xs text-muted-foreground">{d.u.availableFrom ? formatDate(d.u.availableFrom) : "—"}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Property</TableHead>
+            <TableHead className="text-xs">Type</TableHead><TableHead className="text-xs">Status</TableHead>
+            <TableHead className="text-xs">Tenant</TableHead><TableHead className="text-xs text-right">Rent</TableHead>
+            <TableHead className="text-xs">Available From</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No units found.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.u.id}>
+                <TableCell className="font-medium"><Link to={`/units/${d.u.id}`} className="hover:underline text-foreground">{d.u.unitCode}</Link></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-xs capitalize">{d.u.unitType.replace(/-/g, " ")}</TableCell>
+                <TableCell><StatusBadge status={d.u.currentStatus} /></TableCell>
+                <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
+                <TableCell className="text-right text-sm">{d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{d.u.availableFrom ? formatDate(d.u.availableFrom) : "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
@@ -224,24 +232,28 @@ function OverdueReport() {
         <KpiCard label="Total Outstanding" value={formatCurrency(totalOutstanding)} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="tenants" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Tenant</TableHead><TableHead className="text-xs">Lease</TableHead>
-          <TableHead className="text-xs">Property</TableHead>
-          <TableHead className="text-xs text-right">Overdue</TableHead><TableHead className="text-xs text-right">Outstanding</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.tenant!.id}>
-              <TableCell className="text-sm font-medium"><Link to={`/tenants/${d.tenant!.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant!)}</Link></TableCell>
-              <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.outstanding, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Tenant</TableHead><TableHead className="text-xs">Lease</TableHead>
+            <TableHead className="text-xs">Property</TableHead>
+            <TableHead className="text-xs text-right">Overdue</TableHead><TableHead className="text-xs text-right">Outstanding</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No overdue tenants.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.tenant!.id}>
+                <TableCell className="text-sm font-medium"><Link to={`/tenants/${d.tenant!.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant!)}</Link></TableCell>
+                <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.outstanding, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
@@ -296,27 +308,31 @@ function LeaseExpiryReport() {
         <KpiCard label="No Notice Yet" value={String(data.length - underNotice)} accent={data.length - underNotice > 0} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="leases" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Tenant</TableHead>
-          <TableHead className="text-xs">Property</TableHead><TableHead className="text-xs">End Date</TableHead>
-          <TableHead className="text-xs text-right">Days Left</TableHead><TableHead className="text-xs">Status</TableHead>
-          <TableHead className="text-xs">Notice</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.l.id}>
-              <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
-              <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-xs font-medium">{formatDate(d.l.endDate, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm">{d.daysLeft}</TableCell>
-              <TableCell><StatusBadge status={d.lifecycle} /></TableCell>
-              <TableCell className="text-xs">{d.l.noticeGiven ? <span className="text-success font-medium">Yes</span> : <span className="text-muted-foreground">No</span>}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Tenant</TableHead>
+            <TableHead className="text-xs">Property</TableHead><TableHead className="text-xs">End Date</TableHead>
+            <TableHead className="text-xs text-right">Days Left</TableHead><TableHead className="text-xs">Status</TableHead>
+            <TableHead className="text-xs">Notice</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No leases expiring in this period.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.l.id}>
+                <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
+                <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-xs font-medium">{formatDate(d.l.endDate, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm">{d.daysLeft}</TableCell>
+                <TableCell><StatusBadge status={d.lifecycle} /></TableCell>
+                <TableCell className="text-xs">{d.l.noticeGiven ? <span className="text-success font-medium">Yes</span> : <span className="text-muted-foreground">No</span>}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
@@ -371,27 +387,31 @@ function DepositsReport() {
         <KpiCard label="Pending / Incomplete" value={String(pending)} accent={pending > 0} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="guarantees" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Lease</TableHead><TableHead className="text-xs">Tenant</TableHead>
-          <TableHead className="text-xs">Property</TableHead><TableHead className="text-xs">Type</TableHead>
-          <TableHead className="text-xs text-right">Expected</TableHead><TableHead className="text-xs text-right">Received</TableHead>
-          <TableHead className="text-xs">Status</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.g.id}>
-              <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
-              <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-xs">{GUARANTEE_TYPE_LABELS[d.g.type]}</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(d.g.expectedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(d.g.receivedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell><StatusBadge status={d.g.status} /></TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Lease</TableHead><TableHead className="text-xs">Tenant</TableHead>
+            <TableHead className="text-xs">Property</TableHead><TableHead className="text-xs">Type</TableHead>
+            <TableHead className="text-xs text-right">Expected</TableHead><TableHead className="text-xs text-right">Received</TableHead>
+            <TableHead className="text-xs">Status</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No guarantees found.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.g.id}>
+                <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
+                <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-xs">{GUARANTEE_TYPE_LABELS[d.g.type]}</TableCell>
+                <TableCell className="text-right text-sm">{formatCurrency(d.g.expectedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm">{formatCurrency(d.g.receivedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell><StatusBadge status={d.g.status} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
@@ -468,28 +488,32 @@ function MaintenanceBacklogReport() {
         <KpiCard label="Avg. Age (days)" value={String(avgAge)} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="tickets" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Title</TableHead><TableHead className="text-xs">Property</TableHead>
-          <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Category</TableHead>
-          <TableHead className="text-xs">Priority</TableHead><TableHead className="text-xs">Status</TableHead>
-          <TableHead className="text-xs">Vendor</TableHead><TableHead className="text-xs text-right">Age</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.t.id}>
-              <TableCell className="font-medium"><Link to={`/maintenance/${d.t.id}`} className="hover:underline text-foreground">{d.t.title}</Link></TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
-              <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[d.t.category]}</TableCell>
-              <TableCell><StatusBadge status={d.t.priority} /></TableCell>
-              <TableCell><StatusBadge status={d.t.status} /></TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.vendor ? <Link to={`/vendors/${d.vendor.id}`} className="hover:underline">{d.vendor.vendorName}</Link> : "—"}</TableCell>
-              <TableCell className="text-right text-sm">{d.ageDays}d</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Title</TableHead><TableHead className="text-xs">Property</TableHead>
+            <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Category</TableHead>
+            <TableHead className="text-xs">Priority</TableHead><TableHead className="text-xs">Status</TableHead>
+            <TableHead className="text-xs">Vendor</TableHead><TableHead className="text-xs text-right">Age</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No open tickets.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.t.id}>
+                <TableCell className="font-medium"><Link to={`/maintenance/${d.t.id}`} className="hover:underline text-foreground">{d.t.title}</Link></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
+                <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[d.t.category]}</TableCell>
+                <TableCell><StatusBadge status={d.t.priority} /></TableCell>
+                <TableCell><StatusBadge status={d.t.status} /></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.vendor ? <Link to={`/vendors/${d.vendor.id}`} className="hover:underline">{d.vendor.vendorName}</Link> : "—"}</TableCell>
+                <TableCell className="text-right text-sm">{d.ageDays}d</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
@@ -499,9 +523,7 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" />Reports
-        </h1>
+        <h1 className="text-2xl font-bold text-foreground">Reports</h1>
         <p className="text-sm text-muted-foreground">Operational summaries with filters and export</p>
       </div>
 
