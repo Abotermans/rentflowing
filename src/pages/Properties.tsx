@@ -238,7 +238,7 @@ export default function Properties() {
                 <Input id="name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Property name" />
               </div>
               <div>
-                <Label htmlFor="ref">Reference Code *</Label>
+                <Label htmlFor="ref">{t("properties.reference")} *</Label>
                 <Input id="ref" value={form.referenceCode} onChange={e => setForm(f => ({ ...f, referenceCode: e.target.value }))} placeholder="e.g. PAR-001" />
               </div>
             </div>
