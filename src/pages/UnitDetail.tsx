@@ -135,7 +135,7 @@ export default function UnitDetail() {
                 <Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Lease</p>
+                <p className="text-xs text-muted-foreground">{t("leases.reference")}</p>
                 <Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link>
               </div>
               <div>
