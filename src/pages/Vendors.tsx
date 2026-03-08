@@ -22,6 +22,7 @@ type VendorFormData = Omit<Vendor, "id">;
 export default function Vendors() {
   const { vendors, addVendor, updateVendor, deleteVendor } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
