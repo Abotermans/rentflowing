@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational" | "move-in-pending" | "move-out-scheduled" | "available-soon";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational" | "move-in-pending" | "move-out-scheduled" | "available-soon" | "not-applicable";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -57,6 +57,7 @@ const statusStyles: Record<StatusType, string> = {
   "move-in-pending": "bg-primary/15 text-primary border-primary/30",
   "move-out-scheduled": "bg-warning/15 text-warning border-warning/30",
   "available-soon": "bg-success/15 text-success border-success/30",
+  "not-applicable": "bg-muted text-muted-foreground border-border",
 };
 
 const STATUS_KEYS: Record<StatusType, TranslationKey> = {
@@ -111,6 +112,7 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   "move-in-pending": "status.moveInPending",
   "move-out-scheduled": "status.moveOutScheduled",
   "available-soon": "status.availableSoon",
+  "not-applicable": "status.none",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {

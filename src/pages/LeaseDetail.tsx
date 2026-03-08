@@ -12,7 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet } from "lucide-react";
+import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
 import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
 import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS, ALLOCATION_TYPE_LABELS } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
@@ -108,6 +111,8 @@ export default function LeaseDetail() {
   const moveOutStatus = getMoveOutStatus(lease);
 
   const totalMonthly = lease.monthlyRent + lease.monthlyCharges;
+  const advancePricing = computeAdvancePricing(lease);
+  const hasAdvance = lease.hasAdvancePayment && advancePricing.advanceStatus !== 'not-applicable';
   const receivables = getReceivableItemsByLease(lease.id).sort((a, b) => b.dueDate.localeCompare(a.dueDate));
   const receipts = getCashReceiptsByLease(lease.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
   const { outstanding, overdue } = getLeaseOutstanding(lease.id);
@@ -348,9 +353,16 @@ export default function LeaseDetail() {
             <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{lease.dueDayOfMonth}th of each month</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Rent" : t("leases.monthlyRent")}</p><p className={`font-bold text-foreground ${hasAdvance ? "text-sm line-through opacity-60" : "text-lg"}`}>{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Charges" : t("leases.monthlyCharges")}</p><p className={`font-bold text-foreground ${hasAdvance ? "text-sm line-through opacity-60" : "text-lg"}`}>{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Total" : t("detail.totalMonthly")}</p><p className={`font-bold ${hasAdvance ? "text-sm line-through opacity-60 text-foreground" : "text-lg text-primary"}`}>{formatCurrency(totalMonthly, currency, locale)}</p></div>
+            {hasAdvance && (
+              <>
+                <div><p className="text-xs text-muted-foreground">Effective Rent</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.effectiveMonthlyRent, currency, locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Effective Charges</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.effectiveMonthlyCharges, currency, locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Effective Total</p><p className="text-lg font-bold text-primary">{formatCurrency(advancePricing.effectiveMonthlyDue, currency, locale)}</p></div>
+              </>
+            )}
             <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{lease.depositOrGuaranteeAmount != null ? formatCurrency(lease.depositOrGuaranteeAmount, currency, locale) : "—"}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
             {lease.signedDate && <div><p className="text-xs text-muted-foreground">{t("leases.signedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.signedDate, locale)}</p></div>}
@@ -384,6 +396,84 @@ export default function LeaseDetail() {
           </div>
         </CardContent>
       </Card>
+
+
+      {/* Advance Payment Card */}
+      {hasAdvance && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />Advance Payment</CardTitle>
+              <StatusBadge status={advancePricing.advanceStatus} />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div><p className="text-xs text-muted-foreground">Advance Amount</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.advancePaymentAmount!, currency, locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Method</p><p className="text-sm font-medium text-foreground">{ADVANCE_METHOD_LABELS[lease.advanceAllocationMethod!]}</p></div>
+              <div><p className="text-xs text-muted-foreground">Applied To</p><p className="text-sm font-medium text-foreground">{ADVANCE_APPLIED_LABELS[lease.advanceAppliedTo || 'rent']}</p></div>
+              <div><p className="text-xs text-muted-foreground">Reduction / Month</p><p className="text-sm font-medium text-foreground">{formatCurrency(advancePricing.pricingAdjustmentPerMonth, currency, locale)}</p></div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Consumed: {formatCurrency(advancePricing.advanceConsumed, currency, locale)}</span>
+                <span>Remaining: {formatCurrency(advancePricing.advanceRemaining, currency, locale)}</span>
+              </div>
+              <Progress value={lease.advancePaymentAmount! > 0 ? (advancePricing.advanceConsumed / lease.advancePaymentAmount!) * 100 : 0} className="h-2" />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+              <div><p className="text-xs text-muted-foreground">Allocation Start</p><p className="font-medium text-foreground">{lease.advanceAllocationStartDate ? formatDate(lease.advanceAllocationStartDate + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
+              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">Allocation End</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
+              <div><p className="text-xs text-muted-foreground">Duration</p><p className="font-medium text-foreground">{advancePricing.durationMonths} months</p></div>
+            </div>
+
+            {/* Collapsible Monthly Schedule */}
+            {advancePricing.monthlySchedule.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground hover:text-foreground">
+                    Monthly Allocation Schedule
+                    <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-2 border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Month</TableHead>
+                          <TableHead className="text-xs text-right">Base Due</TableHead>
+                          <TableHead className="text-xs text-right">Adjustment</TableHead>
+                          <TableHead className="text-xs text-right">Effective Due</TableHead>
+                          <TableHead className="text-xs text-right">Remaining</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {advancePricing.monthlySchedule.map((row) => {
+                          const now = new Date();
+                          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                          const isCurrent = row.month === currentMonth;
+                          return (
+                            <TableRow key={row.month} className={isCurrent ? "bg-primary/5 font-medium" : ""}>
+                              <TableCell className="text-xs">{row.month}{isCurrent && <span className="ml-1 text-primary text-[10px]">●</span>}</TableCell>
+                              <TableCell className="text-xs text-right">{formatCurrency(row.baseDue, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right text-success">-{formatCurrency(row.adjustment, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right font-medium">{formatCurrency(row.effectiveDue, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right text-muted-foreground">{formatCurrency(row.advanceRemaining, currency, locale)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Deposit / Guarantee Card */}
       <Card>
