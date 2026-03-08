@@ -233,7 +233,7 @@ export default function Leases() {
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
-          <SheetHeader><SheetTitle>{editingLease ? "Edit Lease" : "Add Lease"}</SheetTitle></SheetHeader>
+          <SheetHeader><SheetTitle>{editingLease ? t("leases.edit") : t("leases.add")}</SheetTitle></SheetHeader>
           <div className="space-y-4 mt-6">
             <div><Label>Lease Reference *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
             <div className="grid grid-cols-2 gap-4">
