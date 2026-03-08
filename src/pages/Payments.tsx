@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getTenantFullName, type PaymentMethod } from "@/types";
-import { Plus, CreditCard, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { Plus, CreditCard, AlertTriangle, CheckCircle2, Clock, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Payments() {
@@ -47,7 +48,6 @@ export default function Payments() {
     const tenant = lease ? tenants.find(t => t.id === lease.primaryTenantId) : undefined;
     const prop = lease ? properties.find(p => p.id === lease.propertyId) : undefined;
     const unit = lease ? units.find(u => u.id === lease.unitId) : undefined;
-    // Compute effective status (overdue if past due and unpaid)
     let effectiveStatus = ll.status;
     if (ll.remainingBalance > 0 && ll.dueDate < today && (ll.status === "due" || ll.status === "partially-paid")) {
       effectiveStatus = "overdue";
@@ -145,9 +145,12 @@ export default function Payments() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <Input placeholder="Search tenant or lease..." value={search} onChange={e => setSearch(e.target.value)} className="w-64" />
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search tenant or lease…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+        </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="due">Due</SelectItem>
@@ -157,13 +160,13 @@ export default function Payments() {
           </SelectContent>
         </Select>
         <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Property" /></SelectTrigger>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Property" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Properties</SelectItem>
             {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button variant={overdueOnly ? "default" : "outline"} size="sm" onClick={() => setOverdueOnly(!overdueOnly)}>
+        <Button variant={overdueOnly ? "default" : "outline"} size="sm" className="h-9" onClick={() => setOverdueOnly(!overdueOnly)}>
           <AlertTriangle className="h-3.5 w-3.5 mr-1" />Overdue Only
         </Button>
       </div>
@@ -175,8 +178,10 @@ export default function Payments() {
         </TabsList>
 
         <TabsContent value="ledger">
-          <Card>
-            <CardContent className="pt-4">
+          {filteredLedger.length === 0 ? (
+            <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+          ) : (
+            <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -194,9 +199,7 @@ export default function Payments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLedger.length === 0 ? (
-                    <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No ledger lines found.</TableCell></TableRow>
-                  ) : filteredLedger.map(ll => (
+                  {filteredLedger.map(ll => (
                     <TableRow key={ll.id}>
                       <TableCell className="text-sm">{ll.tenant ? <Link to={`/tenants/${ll.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(ll.tenant)}</Link> : "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{ll.lease ? <Link to={`/leases/${ll.lease.id}`} className="hover:underline text-foreground">{ll.lease.leaseReference}</Link> : "—"}</TableCell>
@@ -213,13 +216,15 @@ export default function Payments() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="payments">
-          <Card>
-            <CardContent className="pt-4">
+          {enrichedPayments.length === 0 ? (
+            <EmptyState icon={CreditCard} title="No payments recorded" description="Payments will appear here once recorded." />
+          ) : (
+            <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -232,9 +237,7 @@ export default function Payments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {enrichedPayments.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No payments recorded.</TableCell></TableRow>
-                  ) : enrichedPayments.map(p => (
+                  {enrichedPayments.map(p => (
                     <TableRow key={p.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(p.paymentDate, p.prop?.locale)}</TableCell>
                       <TableCell className="text-sm">{p.tenant ? <Link to={`/tenants/${p.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(p.tenant)}</Link> : "—"}</TableCell>
@@ -246,8 +249,8 @@ export default function Payments() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 

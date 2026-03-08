@@ -4,8 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { HardHat, Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { HardHat, Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ export default function Vendors() {
   const { vendors, addVendor, updateVendor, deleteVendor } = useAppData();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Vendor | null>(null);
 
@@ -53,7 +54,9 @@ export default function Vendors() {
 
   const filtered = vendors.filter(v => {
     const q = search.toLowerCase();
-    return !q || v.vendorName.toLowerCase().includes(q) || v.tradeCategory.toLowerCase().includes(q) || v.contactName.toLowerCase().includes(q);
+    const matchSearch = !q || v.vendorName.toLowerCase().includes(q) || v.tradeCategory.toLowerCase().includes(q) || v.contactName.toLowerCase().includes(q);
+    const matchStatus = filterStatus === "all" || v.status === filterStatus;
+    return matchSearch && matchStatus;
   });
 
   return (
@@ -66,15 +69,25 @@ export default function Vendors() {
         <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Vendor</Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search vendors…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search vendors…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+        </div>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {vendors.length === 0 ? (
         <EmptyState icon={HardHat} title="No vendors yet" description="Add your first vendor." actionLabel="Add Vendor" onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No vendors match your search.</p></CardContent></Card>
+        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
       ) : (
         <Card>
           <Table>
@@ -100,10 +113,10 @@ export default function Vendors() {
                   <TableCell><StatusBadge status={v.status} /></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" asChild><Link to={`/vendors/${v.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(v)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/vendors/${v.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(v)}><Pencil className="h-3.5 w-3.5" /></Button>
                       <AlertDialog>
-                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader><AlertDialogTitle>Delete vendor?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{v.vendorName}".</AlertDialogDescription></AlertDialogHeader>
                           <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(v.id)}>Delete</AlertDialogAction></AlertDialogFooter>

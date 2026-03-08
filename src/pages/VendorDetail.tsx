@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, HardHat, Mail, Phone, MapPin, StickyNote } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, StickyNote, HardHat } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 
@@ -33,7 +33,6 @@ export default function VendorDetail() {
           <Link to="/vendors"><ArrowLeft className="h-4 w-4 mr-1" />Vendors</Link>
         </Button>
         <div className="flex items-center gap-3">
-          <HardHat className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">{vendor.vendorName}</h1>
           <StatusBadge status={vendor.status} />
         </div>
