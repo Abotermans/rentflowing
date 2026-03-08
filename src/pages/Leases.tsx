@@ -235,24 +235,24 @@ export default function Leases() {
         <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
           <SheetHeader><SheetTitle>{editingLease ? t("leases.edit") : t("leases.add")}</SheetTitle></SheetHeader>
           <div className="space-y-4 mt-6">
-            <div><Label>Lease Reference *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
+            <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Property *</Label>
+              <div><Label>{t("leases.property")} *</Label>
                 <Select value={form.propertyId} onValueChange={v => setForm(f => ({ ...f, propertyId: v, unitId: "" }))}>
-                  <SelectTrigger><SelectValue placeholder="Select property" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
                   <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Unit *</Label>
+              <div><Label>{t("leases.unit")} *</Label>
                 <Select value={form.unitId} onValueChange={v => setForm(f => ({ ...f, unitId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                   <SelectContent>
                     {formUnits.map(u => {
                       const existing = getActiveLease(u.id);
                       const blocked = existing && existing.id !== editingLease?.id;
                       return (
                         <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                          {u.unitCode} — {u.unitLabel}{blocked ? " (active lease)" : ""}
+                          {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
                         </SelectItem>
                       );
                     })}
@@ -261,13 +261,13 @@ export default function Leases() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Primary Tenant *</Label>
+              <div><Label>{t("leases.primaryTenant")} *</Label>
                 <Select value={form.primaryTenantId} onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select tenant" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("leases.selectTenant")} /></SelectTrigger>
                   <SelectContent>{tenants.map(t => <SelectItem key={t.id} value={t.id}>{getTenantFullName(t)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Status *</Label>
+              <div><Label>{t("leases.status")} *</Label>
                 <Select value={form.leaseStatus} onValueChange={v => setForm(f => ({ ...f, leaseStatus: v as LeaseStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{LEASE_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
@@ -275,24 +275,24 @@ export default function Leases() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Start Date *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
-              <div><Label>End Date *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+              <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
+              <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <div><Label>Monthly Rent *</Label><Input type="number" min={0} value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: Number(e.target.value) || 0 }))} /></div>
-              <div><Label>Monthly Charges *</Label><Input type="number" min={0} value={form.monthlyCharges} onChange={e => setForm(f => ({ ...f, monthlyCharges: Number(e.target.value) || 0 }))} /></div>
-              <div><Label>Due Day</Label><Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} /></div>
+              <div><Label>{t("leases.monthlyRent")} *</Label><Input type="number" min={0} value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: Number(e.target.value) || 0 }))} /></div>
+              <div><Label>{t("leases.monthlyCharges")} *</Label><Input type="number" min={0} value={form.monthlyCharges} onChange={e => setForm(f => ({ ...f, monthlyCharges: Number(e.target.value) || 0 }))} /></div>
+              <div><Label>{t("leases.dueDay")}</Label><Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Deposit / Guarantee</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>Notice Period</Label><Input value={form.noticePeriodText} onChange={e => setForm(f => ({ ...f, noticePeriodText: e.target.value }))} placeholder="e.g. 3 months" /></div>
+              <div><Label>{t("leases.deposit")}</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>{t("leases.noticePeriod")}</Label><Input value={form.noticePeriodText} onChange={e => setForm(f => ({ ...f, noticePeriodText: e.target.value }))} /></div>
             </div>
-            <div><Label>Signed Date</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
-            <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
+            <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editingLease ? "Save" : "Add Lease"}</Button>
+            <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleSave}>{editingLease ? t("action.save") : t("leases.add")}</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
