@@ -70,7 +70,7 @@ export default function UnitDetail() {
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/units"><Pencil className="h-3.5 w-3.5 mr-1.5" />{t("action.edit")}</Link>
+            <Link to={`/units?edit=${unit.id}`}><Pencil className="h-3.5 w-3.5 mr-1.5" />{t("action.edit")}</Link>
           </Button>
         </div>
       </div>
