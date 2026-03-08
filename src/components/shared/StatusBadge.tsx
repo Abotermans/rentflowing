@@ -112,6 +112,7 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   "move-in-pending": "status.moveInPending",
   "move-out-scheduled": "status.moveOutScheduled",
   "available-soon": "status.availableSoon",
+  "not-applicable": "status.none",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {
