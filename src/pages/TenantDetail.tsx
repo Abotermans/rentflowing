@@ -142,7 +142,7 @@ export default function TenantDetail() {
                     <p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[activeGuarantee.type]}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Guarantee Status</p>
+                    <p className="text-xs text-muted-foreground">{t("detail.guaranteeStatus")}</p>
                     <StatusBadge status={activeGuarantee.status} />
                   </div>
                 </>
