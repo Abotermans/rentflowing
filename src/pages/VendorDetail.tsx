@@ -70,7 +70,7 @@ export default function VendorDetail() {
             <div className="flex items-start gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Address</p>
+                <p className="text-xs text-muted-foreground">{t("vendors.address")}</p>
                 <p className="text-sm font-medium text-foreground">{vendor.address || "—"}</p>
               </div>
             </div>
