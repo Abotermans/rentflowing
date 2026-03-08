@@ -253,7 +253,7 @@ export default function UnitDetail() {
               <p className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Locale</p>
+              <p className="text-xs text-muted-foreground">{t("properties.locale")}</p>
               <p className="text-sm font-medium text-foreground font-mono">{property.locale}</p>
             </div>
             <div>
