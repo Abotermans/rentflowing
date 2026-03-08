@@ -12,6 +12,7 @@ import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 export default function VendorDetail() {
   const { id } = useParams<{ id: string }>();
   const { vendors, tickets, properties, units } = useAppData();
+  const { t } = useSettings();
 
   const vendor = vendors.find(v => v.id === id);
   if (!vendor) {

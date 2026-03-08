@@ -20,6 +20,7 @@ export default function MaintenanceDetail() {
   const { id } = useParams<{ id: string }>();
   const { tickets, properties, units, tenants, vendors, updateTicket } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [editOpen, setEditOpen] = useState(false);
 
   const ticket = tickets.find(t => t.id === id);

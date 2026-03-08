@@ -35,6 +35,7 @@ export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
 
   const property = properties.find(p => p.id === id);
   const propertyUnits = units.filter(u => u.propertyId === id);

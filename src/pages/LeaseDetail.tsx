@@ -22,6 +22,7 @@ export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
   const { leases, tenants, units, properties, getLedgerByLease, getPaymentsByLease, getLeaseOutstanding, addPayment, getGuaranteeByLease, addGuarantee, updateGuarantee, updateLease, confirmMoveOut } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
 
   // Payment form
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);

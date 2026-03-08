@@ -12,6 +12,7 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
   const { tenants, leases, units, properties, getTenantOutstanding, getPaymentsByTenant, getGuaranteeByLease } = useAppData();
+  const { t } = useSettings();
 
   const tenant = tenants.find(t => t.id === id);
   if (!tenant) {
