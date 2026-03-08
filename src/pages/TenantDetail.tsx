@@ -204,7 +204,7 @@ export default function TenantDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.leaseHistory")}</CardTitle></CardHeader>
         <CardContent>
           {tenantLeases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No leases for this tenant.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noLeases")}</p>
           ) : (
             <Table>
               <TableHeader>
