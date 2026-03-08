@@ -560,7 +560,7 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.paymentHistory")}</CardTitle></CardHeader>
         <CardContent>
           {paymentHistory.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No payments recorded.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noPaymentsRecorded")}</p>
           ) : (
             <Table>
               <TableHeader>
