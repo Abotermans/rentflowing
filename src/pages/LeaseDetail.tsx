@@ -24,6 +24,9 @@ import { canChangeLeaseStatus, canActivateLease, canDeleteLease } from "@/lib/in
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
+import { useOverrideHistory } from "@/context/OverrideContext";
+import type { ValidationResult } from "@/lib/integrity/types";
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -37,6 +40,10 @@ export default function LeaseDetail() {
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
+  const { addOverride } = useOverrideHistory();
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
+  const [pendingOverrideAction, setPendingOverrideAction] = useState<string>("");
 
   // Cash receipt form
   const [receiptSheetOpen, setReceiptSheetOpen] = useState(false);
@@ -180,6 +187,12 @@ export default function LeaseDetail() {
   const handleMarkEnded = () => {
     const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
     if (!validation.allowed) {
+      if (validation.overrideAllowed) {
+        setPendingOverrideValidation(validation);
+        setPendingOverrideAction("ended");
+        setOverrideDialogOpen(true);
+        return;
+      }
       toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
@@ -193,11 +206,35 @@ export default function LeaseDetail() {
   const handleMarkTerminated = () => {
     const validation = canChangeLeaseStatus(lease.id, "terminated", integrityState);
     if (!validation.allowed) {
+      if (validation.overrideAllowed) {
+        setPendingOverrideValidation(validation);
+        setPendingOverrideAction("terminated");
+        setOverrideDialogOpen(true);
+        return;
+      }
       toast({ title: "Cannot terminate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
     updateLease({ ...lease, leaseStatus: "terminated" });
     toast({ title: "Lease marked as terminated" });
+  };
+
+  const handleLeaseOverrideConfirm = (reason: string) => {
+    if (!pendingOverrideValidation || !pendingOverrideAction) return;
+    addOverride({
+      entityType: "lease",
+      entityId: lease.id,
+      action: `status_change:${pendingOverrideAction}`,
+      blockerCodes: [
+        ...pendingOverrideValidation.blockers.map(b => b.code),
+        ...pendingOverrideValidation.warnings.map(w => w.code),
+      ],
+      reason,
+    });
+    updateLease({ ...lease, leaseStatus: pendingOverrideAction as any });
+    toast({ title: `Lease marked as ${pendingOverrideAction} (overridden)`, description: `Override reason: ${reason}` });
+    setPendingOverrideValidation(null);
+    setPendingOverrideAction("");
   };
 
   const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
@@ -402,15 +439,17 @@ export default function LeaseDetail() {
                 {lease.leaseStatus === "active" && (() => {
                   const endCheck = canChangeLeaseStatus(lease.id, "ended", integrityState);
                   const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  const endDisabled = !endCheck.allowed && !endCheck.overrideAllowed;
+                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
                   return (
                     <>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
-                            <Button variant="outline" size="sm" onClick={handleMarkEnded} disabled={!endCheck.allowed}>{t("detail.markEnded")}</Button>
+                            <Button variant="outline" size="sm" onClick={handleMarkEnded} disabled={endDisabled}>{t("detail.markEnded")}</Button>
                           </span>
                         </TooltipTrigger>
-                        {!endCheck.allowed && (
+                        {endDisabled && (
                           <TooltipContent className="max-w-[300px]">
                             <p className="text-xs">{endCheck.blockers.map(b => b.message).join(". ")}</p>
                           </TooltipContent>
@@ -419,10 +458,10 @@ export default function LeaseDetail() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
-                            <Button variant="destructive" size="sm" onClick={handleMarkTerminated} disabled={!termCheck.allowed}>{t("detail.terminate")}</Button>
+                            <Button variant="destructive" size="sm" onClick={handleMarkTerminated} disabled={termDisabled}>{t("detail.terminate")}</Button>
                           </span>
                         </TooltipTrigger>
-                        {!termCheck.allowed && (
+                        {termDisabled && (
                           <TooltipContent className="max-w-[300px]">
                             <p className="text-xs">{termCheck.blockers.map(b => b.message).join(". ")}</p>
                           </TooltipContent>
@@ -817,6 +856,17 @@ export default function LeaseDetail() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Override Confirm Dialog */}
+      {pendingOverrideValidation && (
+        <OverrideConfirmDialog
+          open={overrideDialogOpen}
+          onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) { setPendingOverrideValidation(null); setPendingOverrideAction(""); } }}
+          validation={pendingOverrideValidation}
+          actionLabel={`Override and ${pendingOverrideAction === "ended" ? "End Lease" : "Terminate Lease"}`}
+          onOverride={handleLeaseOverrideConfirm}
+        />
+      )}
     </div>
   );
 }

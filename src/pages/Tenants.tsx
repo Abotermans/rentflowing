@@ -19,6 +19,9 @@ import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
+import { useOverrideHistory } from "@/context/OverrideContext";
+import type { ValidationResult } from "@/lib/integrity/types";
 
 const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -33,6 +36,9 @@ export default function Tenants() {
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
+  const { addOverride } = useOverrideHistory();
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -58,18 +64,7 @@ export default function Tenants() {
     return canChangeTenantStatus(editingTenant.id, form.status, integrityState);
   })();
 
-  const handleSave = () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
-      toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
-      return;
-    }
-    if (editingTenant && form.status !== editingTenant.status) {
-      const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
-      if (!validation.allowed) {
-        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
-        return;
-      }
-    }
+  const executeTenantSave = () => {
     if (editingTenant) {
       updateTenant({ ...editingTenant, ...form });
       toast({ title: "Tenant updated" });
@@ -80,6 +75,39 @@ export default function Tenants() {
     setSheetOpen(false);
   };
 
+  const handleSave = () => {
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
+      toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+      return;
+    }
+    if (editingTenant && form.status !== editingTenant.status) {
+      const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
+      if (!validation.allowed) {
+        if (validation.overrideAllowed) {
+          setPendingOverrideValidation(validation);
+          setOverrideDialogOpen(true);
+          return;
+        }
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
+    }
+    executeTenantSave();
+  };
+
+  const handleTenantOverrideConfirm = (reason: string) => {
+    if (!editingTenant || !pendingOverrideValidation) return;
+    addOverride({
+      entityType: "tenant",
+      entityId: editingTenant.id,
+      action: `status_change:${form.status}`,
+      blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
+      reason,
+    });
+    executeTenantSave();
+    toast({ title: "Tenant updated (overridden)", description: `Override reason: ${reason}` });
+    setPendingOverrideValidation(null);
+  };
   const handleDelete = (tid: string) => {
     deleteTenant(tid);
     toast({ title: "Tenant deleted" });
@@ -200,6 +228,17 @@ export default function Tenants() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Override Confirm Dialog */}
+      {pendingOverrideValidation && (
+        <OverrideConfirmDialog
+          open={overrideDialogOpen}
+          onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) setPendingOverrideValidation(null); }}
+          validation={pendingOverrideValidation}
+          actionLabel="Override and Save"
+          onOverride={handleTenantOverrideConfirm}
+        />
+      )}
     </div>
   );
 }

@@ -24,6 +24,9 @@ import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert
 import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
+import { useOverrideHistory } from "@/context/OverrideContext";
+import type { ValidationResult } from "@/lib/integrity/types";
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
@@ -44,6 +47,9 @@ export default function PropertyDetail() {
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
+  const { addOverride } = useOverrideHistory();
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
 
   const property = properties.find(p => p.id === id);
   const propertyUnits = units.filter(u => u.propertyId === id);
@@ -70,18 +76,7 @@ export default function PropertyDetail() {
     return canChangeUnitStatus(editingUnit.id, unitForm.currentStatus, integrityState);
   })();
 
-  const handleSaveUnit = () => {
-    if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
-      toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
-      return;
-    }
-    if (editingUnit && unitForm.currentStatus !== editingUnit.currentStatus) {
-      const validation = canChangeUnitStatus(editingUnit.id, unitForm.currentStatus, integrityState);
-      if (!validation.allowed) {
-        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
-        return;
-      }
-    }
+  const executeUnitSave = () => {
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...unitForm });
       toast({ title: "Unit updated" });
@@ -91,6 +86,41 @@ export default function PropertyDetail() {
     }
     setSheetOpen(false);
   };
+
+  const handleSaveUnit = () => {
+    if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
+      toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
+      return;
+    }
+    if (editingUnit && unitForm.currentStatus !== editingUnit.currentStatus) {
+      const validation = canChangeUnitStatus(editingUnit.id, unitForm.currentStatus, integrityState);
+      if (!validation.allowed) {
+        if (validation.overrideAllowed) {
+          setPendingOverrideValidation(validation);
+          setOverrideDialogOpen(true);
+          return;
+        }
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
+    }
+    executeUnitSave();
+  };
+
+  const handleUnitOverrideConfirm = (reason: string) => {
+    if (!editingUnit || !pendingOverrideValidation) return;
+    addOverride({
+      entityType: "unit",
+      entityId: editingUnit.id,
+      action: `status_change:${unitForm.currentStatus}`,
+      blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
+      reason,
+    });
+    executeUnitSave();
+    toast({ title: "Unit updated (overridden)", description: `Override reason: ${reason}` });
+    setPendingOverrideValidation(null);
+  };
+
   const handleDeleteUnit = (unitId: string) => {
     deleteUnit(unitId);
     toast({ title: "Unit deleted" });
@@ -427,6 +457,17 @@ export default function PropertyDetail() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Override Confirm Dialog */}
+      {pendingOverrideValidation && (
+        <OverrideConfirmDialog
+          open={overrideDialogOpen}
+          onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) setPendingOverrideValidation(null); }}
+          validation={pendingOverrideValidation}
+          actionLabel="Override and Save"
+          onOverride={handleUnitOverrideConfirm}
+        />
+      )}
     </div>
   );
 }
