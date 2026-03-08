@@ -232,24 +232,28 @@ function OverdueReport() {
         <KpiCard label="Total Outstanding" value={formatCurrency(totalOutstanding)} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="tenants" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Tenant</TableHead><TableHead className="text-xs">Lease</TableHead>
-          <TableHead className="text-xs">Property</TableHead>
-          <TableHead className="text-xs text-right">Overdue</TableHead><TableHead className="text-xs text-right">Outstanding</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.tenant!.id}>
-              <TableCell className="text-sm font-medium"><Link to={`/tenants/${d.tenant!.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant!)}</Link></TableCell>
-              <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.outstanding, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Tenant</TableHead><TableHead className="text-xs">Lease</TableHead>
+            <TableHead className="text-xs">Property</TableHead>
+            <TableHead className="text-xs text-right">Overdue</TableHead><TableHead className="text-xs text-right">Outstanding</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No overdue tenants.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.tenant!.id}>
+                <TableCell className="text-sm font-medium"><Link to={`/tenants/${d.tenant!.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant!)}</Link></TableCell>
+                <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.outstanding, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
