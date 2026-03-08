@@ -47,8 +47,9 @@ export default function PropertyDetail() {
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
-
-  const property = properties.find(p => p.id === id);
+  const { addOverride } = useOverrideHistory();
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const propertyUnits = units.filter(u => u.propertyId === id);
   const stats = id ? getPropertyStats(id) : null;
 
