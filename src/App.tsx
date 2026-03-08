@@ -10,6 +10,10 @@ import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
 import Units from "./pages/Units";
 import UnitDetail from "./pages/UnitDetail";
+import Tenants from "./pages/Tenants";
+import TenantDetail from "./pages/TenantDetail";
+import Leases from "./pages/Leases";
+import LeaseDetail from "./pages/LeaseDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +32,10 @@ const App = () => (
               <Route path="/properties/:id" element={<PropertyDetail />} />
               <Route path="/units" element={<Units />} />
               <Route path="/units/:id" element={<UnitDetail />} />
+              <Route path="/tenants" element={<Tenants />} />
+              <Route path="/tenants/:id" element={<TenantDetail />} />
+              <Route path="/leases" element={<Leases />} />
+              <Route path="/leases/:id" element={<LeaseDetail />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

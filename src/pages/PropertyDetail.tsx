@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
-import { Unit, UnitType, UnitStatus } from "@/types";
+import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,7 +32,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit } = useAppData();
+  const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants } = useAppData();
   const { toast } = useToast();
 
   const property = properties.find(p => p.id === id);
@@ -193,49 +193,59 @@ export default function PropertyDetail() {
                   <TableHead className="text-right">Rent</TableHead>
                   <TableHead className="text-right">Charges</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Available</TableHead>
+                  <TableHead>Tenant</TableHead>
+                  <TableHead>Lease</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {propertyUnits.map(u => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-mono text-xs font-medium text-foreground">
-                      <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
-                    <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
-                    <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{u.availableFrom ? formatDate(u.availableFrom, property.locale) : "—"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                          <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete unit?</AlertDialogTitle>
-                              <AlertDialogDescription>This will permanently delete "{u.unitCode}".</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {propertyUnits.map(u => {
+                  const activeLease = getActiveLease(u.id);
+                  const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
+                  return (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-mono text-xs font-medium text-foreground">
+                        <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
+                      <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
+                      <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline">{activeLease.leaseReference}</Link> : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                            <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete unit?</AlertDialogTitle>
+                                <AlertDialogDescription>This will permanently delete "{u.unitCode}".</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </Card>

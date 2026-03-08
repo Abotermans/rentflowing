@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
-import { Property, Unit, UnitStatus } from "@/types";
-import { initialProperties, initialUnits } from "@/data/mockData";
+import { Property, Unit, UnitStatus, Tenant, Lease } from "@/types";
+import { initialProperties, initialUnits, initialTenants, initialLeases } from "@/data/mockData";
 
 interface PropertyStats {
   total: number;
@@ -14,15 +14,27 @@ interface PropertyStats {
 interface AppState {
   properties: Property[];
   units: Unit[];
+  tenants: Tenant[];
+  leases: Lease[];
   addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => void;
   updateProperty: (p: Property) => void;
   deleteProperty: (id: string) => void;
   addUnit: (u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => void;
   updateUnit: (u: Unit) => void;
   deleteUnit: (id: string) => void;
+  addTenant: (t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => void;
+  updateTenant: (t: Tenant) => void;
+  deleteTenant: (id: string) => void;
+  addLease: (l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => void;
+  updateLease: (l: Lease) => void;
+  deleteLease: (id: string) => void;
   getPropertyStats: (propertyId: string) => PropertyStats;
   getPropertyById: (id: string) => Property | undefined;
   getUnitById: (id: string) => Unit | undefined;
+  getTenantById: (id: string) => Tenant | undefined;
+  getActiveLease: (unitId: string) => Lease | undefined;
+  getLeasesByTenant: (tenantId: string) => Lease[];
+  getLeasesByProperty: (propertyId: string) => Lease[];
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -34,6 +46,8 @@ const now = () => new Date().toISOString().split("T")[0];
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [properties, setProperties] = useState<Property[]>(initialProperties);
   const [units, setUnits] = useState<Unit[]>(initialUnits);
+  const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
+  const [leases, setLeases] = useState<Lease[]>(initialLeases);
 
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
@@ -58,6 +72,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUnits(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  const addTenant = useCallback((t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    setTenants(prev => [...prev, { ...t, id: genId("t"), createdAt: ts, updatedAt: ts }]);
+  }, []);
+  const updateTenant = useCallback((t: Tenant) => {
+    setTenants(prev => prev.map(x => x.id === t.id ? { ...t, updatedAt: now() } : x));
+  }, []);
+  const deleteTenant = useCallback((id: string) => {
+    setTenants(prev => prev.filter(x => x.id !== id));
+  }, []);
+
+  const addLease = useCallback((l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    setLeases(prev => [...prev, { ...l, id: genId("l"), createdAt: ts, updatedAt: ts }]);
+  }, []);
+  const updateLease = useCallback((l: Lease) => {
+    setLeases(prev => prev.map(x => x.id === l.id ? { ...l, updatedAt: now() } : x));
+  }, []);
+  const deleteLease = useCallback((id: string) => {
+    setLeases(prev => prev.filter(x => x.id !== id));
+  }, []);
+
   const getPropertyStats = useCallback((propertyId: string): PropertyStats => {
     const propUnits = units.filter(u => u.propertyId === propertyId);
     const total = propUnits.length;
@@ -72,13 +108,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const getPropertyById = useCallback((id: string) => properties.find(p => p.id === id), [properties]);
   const getUnitById = useCallback((id: string) => units.find(u => u.id === id), [units]);
+  const getTenantById = useCallback((id: string) => tenants.find(t => t.id === id), [tenants]);
+  const getActiveLease = useCallback((unitId: string) => leases.find(l => l.unitId === unitId && l.leaseStatus === "active"), [leases]);
+  const getLeasesByTenant = useCallback((tenantId: string) => leases.filter(l => l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId)), [leases]);
+  const getLeasesByProperty = useCallback((propertyId: string) => leases.filter(l => l.propertyId === propertyId), [leases]);
 
   const value = useMemo(() => ({
-    properties, units,
+    properties, units, tenants, leases,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
-    getPropertyStats, getPropertyById, getUnitById,
-  }), [properties, units, addProperty, updateProperty, deleteProperty, addUnit, updateUnit, deleteUnit, getPropertyStats, getPropertyById, getUnitById]);
+    addTenant, updateTenant, deleteTenant,
+    addLease, updateLease, deleteLease,
+    getPropertyStats, getPropertyById, getUnitById, getTenantById,
+    getActiveLease, getLeasesByTenant, getLeasesByProperty,
+  }), [properties, units, tenants, leases, addProperty, updateProperty, deleteProperty, addUnit, updateUnit, deleteUnit, addTenant, updateTenant, deleteTenant, addLease, updateLease, deleteLease, getPropertyStats, getPropertyById, getUnitById, getTenantById, getActiveLease, getLeasesByTenant, getLeasesByProperty]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

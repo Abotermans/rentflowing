@@ -3,12 +3,13 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Settings2, Pencil } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryName } from "@/lib/formatters";
+import { getTenantFullName } from "@/types";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties } = useAppData();
+  const { units, properties, getActiveLease, tenants } = useAppData();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
@@ -21,6 +22,9 @@ export default function UnitDetail() {
       </div>
     );
   }
+
+  const activeLease = getActiveLease(unit.id);
+  const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
 
   const infoItems = [
     { label: "Type", value: getUnitTypeLabel(unit.unitType), icon: Home },
@@ -106,10 +110,39 @@ export default function UnitDetail() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Occupancy</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-3">
             <StatusBadge status={unit.currentStatus} />
           </div>
-          <p className="text-sm text-muted-foreground mt-3">Tenant and lease management coming in a future update.</p>
+          {activeLease && tenant ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Tenant</p>
+                <Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Lease</p>
+                <Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Period</p>
+                <p className="text-sm font-medium text-foreground">{formatDate(activeLease.startDate, property.locale)} — {formatDate(activeLease.endDate, property.locale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Monthly Rent</p>
+                <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyRent, property.currencyCode, property.locale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Monthly Charges</p>
+                <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Monthly</p>
+                <p className="text-sm font-bold text-primary">{formatCurrency(activeLease.monthlyRent + activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No active lease. Tenant and lease management available via the Leases module.</p>
+          )}
         </CardContent>
       </Card>
 

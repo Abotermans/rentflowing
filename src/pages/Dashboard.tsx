@@ -2,12 +2,13 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2 } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users } from "lucide-react";
 import { Link } from "react-router-dom";
-import { formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
+import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
+import { getTenantFullName } from "@/types";
 
 export default function Dashboard() {
-  const { properties, units, getPropertyStats } = useAppData();
+  const { properties, units, leases, tenants, getPropertyStats } = useAppData();
 
   const totalUnits = units.length;
   const occupied = units.filter(u => u.currentStatus === "occupied").length;
@@ -18,11 +19,15 @@ export default function Dashboard() {
 
   const now = new Date();
   const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
   const availableSoon = units.filter(u => {
     if (!u.availableFrom) return false;
     const d = new Date(u.availableFrom);
     return d >= now && d <= in30Days;
   }).length;
+
+  const activeLeases = leases.filter(l => l.leaseStatus === "active");
+  const leasesEndingSoon = activeLeases.filter(l => new Date(l.endDate) <= in90Days);
 
   const kpis = [
     { label: "Properties", value: properties.length, icon: Building2, color: "text-primary" },
@@ -33,6 +38,8 @@ export default function Dashboard() {
     { label: "Unavailable", value: unavailable, icon: Ban, color: "text-muted-foreground" },
     { label: "Occupancy Rate", value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
     { label: "Available Soon", value: availableSoon, icon: CalendarClock, color: "text-warning" },
+    { label: "Active Leases", value: activeLeases.length, icon: FileText, color: "text-primary" },
+    { label: "Ending Soon", value: leasesEndingSoon.length, icon: CalendarClock, color: "text-destructive" },
   ];
 
   const statusSegments = [
@@ -42,34 +49,23 @@ export default function Dashboard() {
     { status: "unavailable" as const, count: unavailable, className: "bg-muted-foreground" },
   ];
 
-  // Portfolio by Country
   const countryGroups = properties.reduce<Record<string, number>>((acc, p) => {
     acc[p.countryCode] = (acc[p.countryCode] || 0) + 1;
     return acc;
   }, {});
 
-  // Properties by Type
   const typeGroups = properties.reduce<Record<string, number>>((acc, p) => {
     acc[p.propertyType] = (acc[p.propertyType] || 0) + 1;
     return acc;
   }, {});
 
-  // Configuration Summary
   const uniqueCurrencies = [...new Set(properties.map(p => p.currencyCode))];
   const uniqueLocales = [...new Set(properties.map(p => p.locale))];
   const uniqueMeasurements = [...new Set(properties.map(p => p.measurementSystem))];
 
-  // Recent properties
-  const recentProperties = [...properties]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 5);
+  const recentProperties = [...properties].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5);
+  const recentUnits = [...units].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8);
 
-  // Recent units
-  const recentUnits = [...units]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 8);
-
-  // Vacancy overview by property
   const vacancyOverview = properties.map(p => {
     const stats = getPropertyStats(p.id);
     return { ...p, ...stats };
@@ -82,7 +78,7 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">Portfolio overview</p>
       </div>
 
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
         {kpis.map(k => (
           <Card key={k.label}>
             <CardContent className="pt-5 pb-4">
@@ -124,6 +120,46 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Active Leases */}
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Active Leases</CardTitle></CardHeader>
+        <CardContent>
+          {activeLeases.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active leases.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Reference</TableHead>
+                  <TableHead className="text-xs">Tenant</TableHead>
+                  <TableHead className="text-xs">Property</TableHead>
+                  <TableHead className="text-xs">Unit</TableHead>
+                  <TableHead className="text-xs">End Date</TableHead>
+                  <TableHead className="text-xs text-right">Monthly Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {activeLeases.map(l => {
+                  const tenant = tenants.find(t => t.id === l.primaryTenantId);
+                  const prop = properties.find(p => p.id === l.propertyId);
+                  const unit = units.find(u => u.id === l.unitId);
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link></TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{prop ? <Link to={`/properties/${prop.id}`} className="hover:underline">{prop.name}</Link> : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{formatDate(l.endDate, prop?.locale)}</TableCell>
+                      <TableCell className="text-right font-medium text-foreground">{prop ? formatCurrency(l.monthlyRent + l.monthlyCharges, prop.currencyCode, prop.locale) : `${l.monthlyRent + l.monthlyCharges}`}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Vacancy Overview by Property */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Vacancy Overview by Property</CardTitle></CardHeader>
@@ -160,7 +196,6 @@ export default function Dashboard() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Properties */}
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Properties</CardTitle></CardHeader>
           <CardContent>
@@ -181,9 +216,7 @@ export default function Dashboard() {
                 <TableBody>
                   {recentProperties.map(p => (
                     <TableRow key={p.id}>
-                      <TableCell className="font-medium">
-                        <Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link>
-                      </TableCell>
+                      <TableCell className="font-medium"><Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link></TableCell>
                       <TableCell className="text-muted-foreground">{p.city}</TableCell>
                       <TableCell className="text-muted-foreground">{getCountryName(p.countryCode)}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{getPropertyTypeLabel(p.propertyType)}</TableCell>
@@ -197,7 +230,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Units */}
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Units</CardTitle></CardHeader>
           <CardContent>
@@ -219,9 +251,7 @@ export default function Dashboard() {
                     const prop = properties.find(p => p.id === u.propertyId);
                     return (
                       <TableRow key={u.id}>
-                        <TableCell className="font-mono text-xs font-medium">
-                          <Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link>
-                        </TableCell>
+                        <TableCell className="font-mono text-xs font-medium"><Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link></TableCell>
                         <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
                         <TableCell className="text-muted-foreground text-xs">{getUnitTypeLabel(u.unitType)}</TableCell>
                         <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
@@ -286,7 +316,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Portfolio Configuration Summary */}
+        {/* Portfolio Configuration */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
