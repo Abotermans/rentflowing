@@ -448,7 +448,7 @@ export default function LeaseDetail() {
                   <p className="text-sm font-medium text-foreground">{lease.moveInMeterReading || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Move-Out Meter</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.moveOutMeter")}</p>
                   <p className="text-sm font-medium text-foreground">{lease.moveOutMeterReading || "—"}</p>
                 </div>
                 {lease.moveInMeterReading && lease.moveOutMeterReading && (
