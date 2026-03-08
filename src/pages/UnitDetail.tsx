@@ -283,11 +283,11 @@ export default function UnitDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Title</TableHead>
-                      <TableHead className="text-xs">Category</TableHead>
-                      <TableHead className="text-xs">Priority</TableHead>
-                      <TableHead className="text-xs">Status</TableHead>
-                      <TableHead className="text-xs">Created</TableHead>
+                      <TableHead className="text-xs">{t("table.title")}</TableHead>
+                      <TableHead className="text-xs">{t("table.category")}</TableHead>
+                      <TableHead className="text-xs">{t("table.priority")}</TableHead>
+                      <TableHead className="text-xs">{t("table.status")}</TableHead>
+                      <TableHead className="text-xs">{t("table.created")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
