@@ -1,4 +1,4 @@
-import { AlertTriangle, XCircle, Lightbulb } from "lucide-react";
+import { AlertTriangle, XCircle, Lightbulb, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { ValidationResult } from "@/lib/integrity/types";
 
@@ -34,6 +34,12 @@ export function StatusTransitionAlert({ validation }: StatusTransitionAlertProps
             </ul>
           </AlertDescription>
         </Alert>
+      )}
+      {!validation.allowed && validation.overrideAllowed && (
+        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <ShieldAlert className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+          <span>This can be overridden on save for exceptional cases.</span>
+        </div>
       )}
       {validation.recommendedAction && (
         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
