@@ -69,8 +69,8 @@ export default function LeaseDetail() {
   if (!lease) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Lease not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/leases">← Back to Leases</Link></Button>
+        <p className="text-muted-foreground">{t("detail.leaseNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/leases">← {t("nav.leases")}</Link></Button>
       </div>
     );
   }
