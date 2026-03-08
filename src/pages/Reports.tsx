@@ -488,28 +488,32 @@ function MaintenanceBacklogReport() {
         <KpiCard label="Avg. Age (days)" value={String(avgAge)} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="tickets" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Title</TableHead><TableHead className="text-xs">Property</TableHead>
-          <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Category</TableHead>
-          <TableHead className="text-xs">Priority</TableHead><TableHead className="text-xs">Status</TableHead>
-          <TableHead className="text-xs">Vendor</TableHead><TableHead className="text-xs text-right">Age</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.t.id}>
-              <TableCell className="font-medium"><Link to={`/maintenance/${d.t.id}`} className="hover:underline text-foreground">{d.t.title}</Link></TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
-              <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[d.t.category]}</TableCell>
-              <TableCell><StatusBadge status={d.t.priority} /></TableCell>
-              <TableCell><StatusBadge status={d.t.status} /></TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.vendor ? <Link to={`/vendors/${d.vendor.id}`} className="hover:underline">{d.vendor.vendorName}</Link> : "—"}</TableCell>
-              <TableCell className="text-right text-sm">{d.ageDays}d</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Title</TableHead><TableHead className="text-xs">Property</TableHead>
+            <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Category</TableHead>
+            <TableHead className="text-xs">Priority</TableHead><TableHead className="text-xs">Status</TableHead>
+            <TableHead className="text-xs">Vendor</TableHead><TableHead className="text-xs text-right">Age</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No open tickets.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.t.id}>
+                <TableCell className="font-medium"><Link to={`/maintenance/${d.t.id}`} className="hover:underline text-foreground">{d.t.title}</Link></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
+                <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[d.t.category]}</TableCell>
+                <TableCell><StatusBadge status={d.t.priority} /></TableCell>
+                <TableCell><StatusBadge status={d.t.status} /></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.vendor ? <Link to={`/vendors/${d.vendor.id}`} className="hover:underline">{d.vendor.vendorName}</Link> : "—"}</TableCell>
+                <TableCell className="text-right text-sm">{d.ageDays}d</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
