@@ -111,6 +111,15 @@ export default function Dashboard() {
         { label: t("dashboard.pendingMoveOuts"), value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
       ],
     },
+    {
+      title: "Costs & Taxes",
+      items: [
+        { label: "Total Costs", value: formatCurrency(totalCostsAmount), icon: Banknote, color: "text-foreground", isText: true },
+        { label: "Charges", value: formatCurrency(totalChargesAmount), icon: Receipt, color: "text-primary", isText: true },
+        { label: "Taxes", value: formatCurrency(totalTaxesAmount), icon: Landmark, color: "text-warning", isText: true },
+        { label: "Owner-Borne", value: formatCurrency(ownerBorneTotal), icon: AlertTriangle, color: ownerBorneTotal > 0 ? "text-destructive" : "text-foreground", isText: true },
+      ],
+    },
   ];
 
   const statusSegments = [

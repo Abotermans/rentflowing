@@ -12,7 +12,7 @@ import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit } = useAppData();
+  const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
   const { t } = useSettings();
 
   const unit = units.find(u => u.id === id);
