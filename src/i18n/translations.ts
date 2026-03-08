@@ -913,6 +913,12 @@ const fr: TranslationKeys = {
   "payments.cash": "Espèces",
   "payments.other": "Autre",
   "payments.selectLease": "Sélectionner un bail",
+  "payments.property": "Propriété",
+  "payments.unit": "Lot",
+  "payments.status": "Statut",
+  "payments.paymentReferencePlaceholder": "Référence de paiement",
+  "payments.rent": "Loyer",
+  "payments.charges": "Charges",
 
   // Maintenance
   "maintenance.title": "Maintenance",
