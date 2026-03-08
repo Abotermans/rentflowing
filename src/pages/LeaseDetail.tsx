@@ -353,9 +353,16 @@ export default function LeaseDetail() {
             <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{lease.dueDayOfMonth}th of each month</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Rent" : t("leases.monthlyRent")}</p><p className={`font-bold text-foreground ${hasAdvance ? "text-sm line-through opacity-60" : "text-lg"}`}>{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Charges" : t("leases.monthlyCharges")}</p><p className={`font-bold text-foreground ${hasAdvance ? "text-sm line-through opacity-60" : "text-lg"}`}>{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Total" : t("detail.totalMonthly")}</p><p className={`font-bold ${hasAdvance ? "text-sm line-through opacity-60 text-foreground" : "text-lg text-primary"}`}>{formatCurrency(totalMonthly, currency, locale)}</p></div>
+            {hasAdvance && (
+              <>
+                <div><p className="text-xs text-muted-foreground">Effective Rent</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.effectiveMonthlyRent, currency, locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Effective Charges</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.effectiveMonthlyCharges, currency, locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Effective Total</p><p className="text-lg font-bold text-primary">{formatCurrency(advancePricing.effectiveMonthlyDue, currency, locale)}</p></div>
+              </>
+            )}
             <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{lease.depositOrGuaranteeAmount != null ? formatCurrency(lease.depositOrGuaranteeAmount, currency, locale) : "—"}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
             {lease.signedDate && <div><p className="text-xs text-muted-foreground">{t("leases.signedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.signedDate, locale)}</p></div>}
