@@ -260,7 +260,7 @@ export default function Properties() {
                 <Input id="city" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder="City" />
               </div>
               <div>
-                <Label htmlFor="postal">Postal Code</Label>
+                <Label htmlFor="postal">{t("properties.postalCode")}</Label>
                 <Input id="postal" value={form.postalCode} onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))} placeholder="Postal code" />
               </div>
             </div>
