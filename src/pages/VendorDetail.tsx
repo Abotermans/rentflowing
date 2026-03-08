@@ -18,8 +18,8 @@ export default function VendorDetail() {
   if (!vendor) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Vendor not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/vendors">← Back to Vendors</Link></Button>
+        <p className="text-muted-foreground">{t("detail.vendorNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/vendors">← {t("nav.vendors")}</Link></Button>
       </div>
     );
   }
