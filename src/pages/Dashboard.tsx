@@ -2,13 +2,13 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
-import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
-import { getTenantFullName } from "@/types";
+import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
+import { getTenantFullName, getLeaseLifecycleStatus } from "@/types";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding } = useAppData();
+  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees } = useAppData();
 
   const totalUnits = units.length;
   const occupied = units.filter(u => u.currentStatus === "occupied").length;
@@ -22,11 +22,16 @@ export default function Dashboard() {
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
   const activeLeases = leases.filter(l => l.leaseStatus === "active");
-  const leasesEndingSoon = activeLeases.filter(l => new Date(l.endDate) <= in90Days);
+  const leasesEndingSoon = activeLeases.filter(l => new Date(l.endDate) <= in90Days && !l.noticeGiven);
+  const leasesUnderNotice = activeLeases.filter(l => l.noticeGiven);
 
   // Financial KPIs
   const totalExpectedMonthlyRent = activeLeases.reduce((s, l) => s + l.monthlyRent + l.monthlyCharges, 0);
   const totalOverdue = ledgerLines.filter(ll => ll.remainingBalance > 0 && ll.dueDate < today).reduce((s, ll) => s + ll.remainingBalance, 0);
+
+  // Guarantee KPIs
+  const pendingGuarantees = guarantees.filter(g => g.status === "pending");
+  const incompleteGuarantees = guarantees.filter(g => g.status === "incomplete");
 
   // Overdue tenants
   const activeTenantIds = [...new Set(activeLeases.map(l => l.primaryTenantId))];
@@ -47,10 +52,12 @@ export default function Dashboard() {
     { label: "Vacant", value: vacant, icon: XCircle, color: "text-warning" },
     { label: "Occupancy Rate", value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
     { label: "Active Leases", value: activeLeases.length, icon: FileText, color: "text-primary" },
-    { label: "Ending Soon", value: leasesEndingSoon.length, icon: CalendarClock, color: "text-destructive" },
+    { label: "Ending Soon", value: leasesEndingSoon.length, icon: CalendarClock, color: leasesEndingSoon.length > 0 ? "text-destructive" : "text-foreground" },
+    { label: "Under Notice", value: leasesUnderNotice.length, icon: Bell, color: leasesUnderNotice.length > 0 ? "text-warning" : "text-foreground" },
     { label: "Expected Monthly", value: formatCurrency(totalExpectedMonthlyRent), icon: CreditCard, color: "text-primary", isText: true },
     { label: "Total Overdue", value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
     { label: "Overdue Tenants", value: overdueTenants.length, icon: Users, color: overdueTenants.length > 0 ? "text-destructive" : "text-foreground" },
+    { label: "Pending Guarantees", value: pendingGuarantees.length, icon: Shield, color: pendingGuarantees.length > 0 ? "text-warning" : "text-foreground" },
   ];
 
   const statusSegments = [
@@ -72,7 +79,7 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">Portfolio overview</p>
       </div>
 
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
         {kpis.map(k => (
           <Card key={k.label}>
             <CardContent className="pt-5 pb-4">
@@ -143,6 +150,87 @@ export default function Dashboard() {
                     <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(outstanding, prop?.currencyCode, prop?.locale)}</TableCell>
                   </TableRow>
                 ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Leases Under Notice */}
+      {leasesUnderNotice.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              <Bell className="h-4 w-4 text-warning" />Leases Under Notice
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Reference</TableHead>
+                  <TableHead className="text-xs">Tenant</TableHead>
+                  <TableHead className="text-xs">Property</TableHead>
+                  <TableHead className="text-xs">Notice Date</TableHead>
+                  <TableHead className="text-xs">Intended Move-Out</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leasesUnderNotice.map(l => {
+                  const tenant = tenants.find(t => t.id === l.primaryTenantId);
+                  const prop = properties.find(p => p.id === l.propertyId);
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{l.noticeDate ? formatDate(l.noticeDate, prop?.locale) : "—"}</TableCell>
+                      <TableCell className="text-xs text-warning font-medium">{l.intendedMoveOutDate ? formatDate(l.intendedMoveOutDate, prop?.locale) : "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pending / Incomplete Guarantees */}
+      {(pendingGuarantees.length > 0 || incompleteGuarantees.length > 0) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              <Shield className="h-4 w-4 text-warning" />Guarantee Issues
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Lease</TableHead>
+                  <TableHead className="text-xs">Tenant</TableHead>
+                  <TableHead className="text-xs">Type</TableHead>
+                  <TableHead className="text-xs text-right">Expected</TableHead>
+                  <TableHead className="text-xs text-right">Received</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...pendingGuarantees, ...incompleteGuarantees].map(g => {
+                  const lease = leases.find(l => l.id === g.leaseId);
+                  const tenant = lease ? tenants.find(t => t.id === lease.primaryTenantId) : undefined;
+                  const prop = lease ? properties.find(p => p.id === lease.propertyId) : undefined;
+                  return (
+                    <TableRow key={g.id}>
+                      <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className="hover:underline text-foreground">{lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground capitalize">{g.type.replace(/-/g, " ")}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{formatCurrency(g.expectedAmount, prop?.currencyCode, prop?.locale)}</TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(g.receivedAmount, prop?.currencyCode, prop?.locale)}</TableCell>
+                      <TableCell><StatusBadge status={g.status} /></TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
@@ -254,7 +342,6 @@ export default function Dashboard() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Portfolio by Country */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
@@ -277,7 +364,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Properties by Type */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
@@ -297,7 +383,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Portfolio Configuration */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">

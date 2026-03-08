@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { FileText, Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
+import { FileText, Plus, Search, Eye, Pencil, Trash2, AlertTriangle, Bell } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -15,7 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Lease, LeaseStatus, getTenantFullName } from "@/types";
+import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -27,12 +28,13 @@ const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 
 export default function Leases() {
-  const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease } = useAppData();
+  const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease, getGuaranteeByLease } = useAppData();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterEndingSoon, setFilterEndingSoon] = useState(false);
+  const [filterUnderNotice, setFilterUnderNotice] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingLease, setEditingLease] = useState<Lease | null>(null);
 
@@ -42,6 +44,7 @@ export default function Leases() {
     monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
     signedDate: null, notes: "",
+    noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
 
@@ -58,7 +61,6 @@ export default function Leases() {
       toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
       return;
     }
-    // Prevent duplicate active lease on same unit
     if (form.leaseStatus === "active") {
       const existing = getActiveLease(form.unitId);
       if (existing && existing.id !== editingLease?.id) {
@@ -94,10 +96,10 @@ export default function Leases() {
     const matchStatus = filterStatus === "all" || l.leaseStatus === filterStatus;
     const matchProperty = filterProperty === "all" || l.propertyId === filterProperty;
     const matchEnding = !filterEndingSoon || (l.leaseStatus === "active" && new Date(l.endDate) <= in90Days);
-    return matchSearch && matchStatus && matchProperty && matchEnding;
+    const matchNotice = !filterUnderNotice || l.noticeGiven;
+    return matchSearch && matchStatus && matchProperty && matchEnding && matchNotice;
   });
 
-  // Available units for lease form (filter by selected property)
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
   return (
@@ -132,6 +134,9 @@ export default function Leases() {
         <Button variant={filterEndingSoon ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterEndingSoon(!filterEndingSoon)}>
           Ending Soon
         </Button>
+        <Button variant={filterUnderNotice ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterUnderNotice(!filterUnderNotice)}>
+          <Bell className="h-3.5 w-3.5 mr-1" />Under Notice
+        </Button>
       </div>
 
       {leases.length === 0 ? (
@@ -148,10 +153,9 @@ export default function Leases() {
                 <TableHead>Property</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Guarantee</TableHead>
                 <TableHead>Start</TableHead>
                 <TableHead>End</TableHead>
-                <TableHead className="text-right">Rent</TableHead>
-                <TableHead className="text-right">Charges</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -161,10 +165,16 @@ export default function Leases() {
                 const tenant = tenants.find(t => t.id === l.primaryTenantId);
                 const prop = properties.find(p => p.id === l.propertyId);
                 const unit = units.find(u => u.id === l.unitId);
+                const guarantee = getGuaranteeByLease(l.id);
+                const lifecycle = getLeaseLifecycleStatus(l);
                 return (
                   <TableRow key={l.id}>
                     <TableCell className="font-mono text-xs font-medium">
-                      <Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link>
+                        {l.noticeGiven && <StatusBadge status="under-notice" />}
+                        {lifecycle === "ending-soon" && !l.noticeGiven && <StatusBadge status="ending-soon" />}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}
@@ -176,10 +186,15 @@ export default function Leases() {
                       {unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}
                     </TableCell>
                     <TableCell><StatusBadge status={l.leaseStatus} /></TableCell>
+                    <TableCell>
+                      {guarantee ? (
+                        <StatusBadge status={guarantee.status} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">{formatDate(l.endDate, prop?.locale)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{prop ? formatCurrency(l.monthlyRent, prop.currencyCode, prop.locale) : l.monthlyRent}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{prop ? formatCurrency(l.monthlyCharges, prop.currencyCode, prop.locale) : l.monthlyCharges}</TableCell>
                     <TableCell className="text-right font-medium text-foreground">{prop ? formatCurrency(l.monthlyRent + l.monthlyCharges, prop.currencyCode, prop.locale) : l.monthlyRent + l.monthlyCharges}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

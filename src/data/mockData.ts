@@ -1,4 +1,4 @@
-import { Property, Unit, Tenant, Lease, LedgerLine, Payment } from "@/types";
+import { Property, Unit, Tenant, Lease, LedgerLine, Payment, Guarantee } from "@/types";
 
 export const initialProperties: Property[] = [
   {
@@ -74,15 +74,14 @@ export const initialTenants: Tenant[] = [
 ];
 
 export const initialLeases: Lease[] = [
-  { id: "l1", leaseReference: "BAIL-PAR-001", propertyId: "p1", unitId: "u1", primaryTenantId: "t1", coTenantIds: [], leaseStatus: "active", startDate: "2024-03-01", endDate: "2027-02-28", monthlyRent: 1350, monthlyCharges: 150, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2700, noticePeriodText: "3 months", signedDate: "2024-02-15", notes: "3-year residential lease.", createdAt: "2024-02-15", updatedAt: "2025-11-20" },
-  { id: "l2", leaseReference: "BAIL-BRU-001", propertyId: "p2", unitId: "u6", primaryTenantId: "t2", coTenantIds: [], leaseStatus: "active", startDate: "2024-06-01", endDate: "2027-05-31", monthlyRent: 1100, monthlyCharges: 150, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2200, noticePeriodText: "3 months", signedDate: "2024-05-20", notes: "", createdAt: "2024-05-20", updatedAt: "2025-08-12" },
-  { id: "l3", leaseReference: "BAIL-BRU-002", propertyId: "p2", unitId: "u7", primaryTenantId: "t5", coTenantIds: [], leaseStatus: "draft", startDate: "2026-05-01", endDate: "2029-04-30", monthlyRent: 1200, monthlyCharges: 160, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2400, noticePeriodText: "3 months", signedDate: null, notes: "Draft lease pending signature.", createdAt: "2026-01-15", updatedAt: "2026-01-15" },
-  { id: "l4", leaseReference: "BAIL-PAR-002", propertyId: "p1", unitId: "u2", primaryTenantId: "t4", coTenantIds: [], leaseStatus: "ended", startDate: "2023-09-01", endDate: "2025-12-31", monthlyRent: 1600, monthlyCharges: 180, dueDayOfMonth: 5, depositOrGuaranteeAmount: 3200, noticePeriodText: "3 months", signedDate: "2023-08-15", notes: "Lease ended, tenant moved out.", createdAt: "2023-08-15", updatedAt: "2025-12-31" },
-  { id: "l5", leaseReference: "BAIL-LON-001", propertyId: "p4", unitId: "u13", primaryTenantId: "t6", coTenantIds: [], leaseStatus: "active", startDate: "2024-10-01", endDate: "2026-09-30", monthlyRent: 1800, monthlyCharges: 120, dueDayOfMonth: 1, depositOrGuaranteeAmount: 3600, noticePeriodText: "2 months", signedDate: "2024-09-15", notes: "", createdAt: "2024-09-15", updatedAt: "2025-12-01" },
+  { id: "l1", leaseReference: "BAIL-PAR-001", propertyId: "p1", unitId: "u1", primaryTenantId: "t1", coTenantIds: [], leaseStatus: "active", startDate: "2024-03-01", endDate: "2027-02-28", monthlyRent: 1350, monthlyCharges: 150, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2700, noticePeriodText: "3 months", signedDate: "2024-02-15", notes: "3-year residential lease.", noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null, createdAt: "2024-02-15", updatedAt: "2025-11-20" },
+  { id: "l2", leaseReference: "BAIL-BRU-001", propertyId: "p2", unitId: "u6", primaryTenantId: "t2", coTenantIds: [], leaseStatus: "active", startDate: "2024-06-01", endDate: "2027-05-31", monthlyRent: 1100, monthlyCharges: 150, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2200, noticePeriodText: "3 months", signedDate: "2024-05-20", notes: "", noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null, createdAt: "2024-05-20", updatedAt: "2025-08-12" },
+  { id: "l3", leaseReference: "BAIL-BRU-002", propertyId: "p2", unitId: "u7", primaryTenantId: "t5", coTenantIds: [], leaseStatus: "draft", startDate: "2026-05-01", endDate: "2029-04-30", monthlyRent: 1200, monthlyCharges: 160, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2400, noticePeriodText: "3 months", signedDate: null, notes: "Draft lease pending signature.", noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null, createdAt: "2026-01-15", updatedAt: "2026-01-15" },
+  { id: "l4", leaseReference: "BAIL-PAR-002", propertyId: "p1", unitId: "u2", primaryTenantId: "t4", coTenantIds: [], leaseStatus: "ended", startDate: "2023-09-01", endDate: "2025-12-31", monthlyRent: 1600, monthlyCharges: 180, dueDayOfMonth: 5, depositOrGuaranteeAmount: 3200, noticePeriodText: "3 months", signedDate: "2023-08-15", notes: "Lease ended, tenant moved out.", noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null, createdAt: "2023-08-15", updatedAt: "2025-12-31" },
+  { id: "l5", leaseReference: "BAIL-LON-001", propertyId: "p4", unitId: "u13", primaryTenantId: "t6", coTenantIds: [], leaseStatus: "active", startDate: "2024-10-01", endDate: "2026-09-30", monthlyRent: 1800, monthlyCharges: 120, dueDayOfMonth: 1, depositOrGuaranteeAmount: 3600, noticePeriodText: "2 months", signedDate: "2024-09-15", notes: "", noticeGiven: true, noticeDate: "2026-02-15", intendedMoveOutDate: "2026-04-30", terminationReason: "Relocating", createdAt: "2024-09-15", updatedAt: "2025-12-01" },
 ];
 
 // Ledger lines: Jan, Feb, Mar 2026
-// l1 (Marie Dupont, Paris, EUR) — fully paid
 export const initialLedgerLines: LedgerLine[] = [
   // l1 — Jan 2026
   { id: "ll1", leaseId: "l1", type: "rent", label: "Monthly Rent", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 1350, amountPaid: 1350, remainingBalance: 0, status: "paid" },
@@ -94,7 +93,6 @@ export const initialLedgerLines: LedgerLine[] = [
   { id: "ll5", leaseId: "l1", type: "rent", label: "Monthly Rent", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 1350, amountPaid: 1350, remainingBalance: 0, status: "paid" },
   { id: "ll6", leaseId: "l1", type: "charges", label: "Monthly Charges", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 150, amountPaid: 150, remainingBalance: 0, status: "paid" },
 
-  // l2 (Jan De Vries, Brussels, EUR) — partially paid (Mar only partial)
   // l2 — Jan 2026
   { id: "ll7", leaseId: "l2", type: "rent", label: "Monthly Rent", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 1100, amountPaid: 1100, remainingBalance: 0, status: "paid" },
   { id: "ll8", leaseId: "l2", type: "charges", label: "Monthly Charges", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 150, amountPaid: 150, remainingBalance: 0, status: "paid" },
@@ -105,7 +103,6 @@ export const initialLedgerLines: LedgerLine[] = [
   { id: "ll11", leaseId: "l2", type: "rent", label: "Monthly Rent", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 1100, amountPaid: 800, remainingBalance: 300, status: "partially-paid" },
   { id: "ll12", leaseId: "l2", type: "charges", label: "Monthly Charges", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 150, amountPaid: 0, remainingBalance: 150, status: "due" },
 
-  // l5 (Emma Williams, London, GBP) — overdue (Feb unpaid, Mar due)
   // l5 — Jan 2026
   { id: "ll13", leaseId: "l5", type: "rent", label: "Monthly Rent", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 1800, amountPaid: 1800, remainingBalance: 0, status: "paid" },
   { id: "ll14", leaseId: "l5", type: "charges", label: "Monthly Charges", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 120, amountPaid: 120, remainingBalance: 0, status: "paid" },
@@ -118,16 +115,22 @@ export const initialLedgerLines: LedgerLine[] = [
 ];
 
 export const initialPayments: Payment[] = [
-  // l1 payments — fully paid each month
   { id: "pay1", leaseId: "l1", tenantId: "t1", paymentDate: "2025-12-30", amount: 1500, paymentMethod: "direct-debit", reference: "DD-PAR001-2601", notes: "January 2026 rent + charges" },
   { id: "pay2", leaseId: "l1", tenantId: "t1", paymentDate: "2026-01-31", amount: 1500, paymentMethod: "direct-debit", reference: "DD-PAR001-2602", notes: "February 2026 rent + charges" },
   { id: "pay3", leaseId: "l1", tenantId: "t1", paymentDate: "2026-02-28", amount: 1500, paymentMethod: "direct-debit", reference: "DD-PAR001-2603", notes: "March 2026 rent + charges" },
-
-  // l2 payments — Jan & Feb paid, Mar partial
   { id: "pay4", leaseId: "l2", tenantId: "t2", paymentDate: "2025-12-29", amount: 1250, paymentMethod: "bank-transfer", reference: "VIR-BRU001-2601", notes: "January 2026" },
   { id: "pay5", leaseId: "l2", tenantId: "t2", paymentDate: "2026-01-30", amount: 1250, paymentMethod: "bank-transfer", reference: "VIR-BRU001-2602", notes: "February 2026" },
   { id: "pay6", leaseId: "l2", tenantId: "t2", paymentDate: "2026-03-03", amount: 800, paymentMethod: "bank-transfer", reference: "VIR-BRU001-2603", notes: "Partial payment March 2026" },
-
-  // l5 payments — Jan only
   { id: "pay7", leaseId: "l5", tenantId: "t6", paymentDate: "2025-12-31", amount: 1920, paymentMethod: "bank-transfer", reference: "TRF-LON001-2601", notes: "January 2026 rent + charges" },
+];
+
+export const initialGuarantees: Guarantee[] = [
+  // l1 (Marie, Paris) — active cash deposit
+  { id: "g1", leaseId: "l1", type: "cash-deposit", expectedAmount: 2700, receivedAmount: 2700, status: "active", receivedDate: "2024-02-20", releaseDate: null, retentionAmount: null, notes: "Deposit received in full." },
+  // l2 (Jan, Brussels) — pending bank guarantee (missing)
+  { id: "g2", leaseId: "l2", type: "bank-guarantee", expectedAmount: 2200, receivedAmount: 0, status: "pending", receivedDate: null, releaseDate: null, retentionAmount: null, notes: "Bank guarantee requested, awaiting confirmation." },
+  // l5 (Emma, London) — active cash deposit, lease under notice
+  { id: "g3", leaseId: "l5", type: "cash-deposit", expectedAmount: 3600, receivedAmount: 3600, status: "active", receivedDate: "2024-09-20", releaseDate: null, retentionAmount: null, notes: "" },
+  // l4 (Sophie, ended) — partially retained
+  { id: "g4", leaseId: "l4", type: "cash-deposit", expectedAmount: 3200, receivedAmount: 3200, status: "partially-retained", receivedDate: "2023-08-20", releaseDate: "2026-01-15", retentionAmount: 500, notes: "€500 retained for cleaning and minor repairs." },
 ];

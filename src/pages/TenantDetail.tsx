@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle } from "lucide-react";
-import { getTenantFullName } from "@/types";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Shield, Bell } from "lucide-react";
+import { getTenantFullName, getLeaseLifecycleStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
-  const { tenants, leases, units, properties, getTenantOutstanding, getPaymentsByTenant } = useAppData();
+  const { tenants, leases, units, properties, getTenantOutstanding, getPaymentsByTenant, getGuaranteeByLease } = useAppData();
 
   const tenant = tenants.find(t => t.id === id);
   if (!tenant) {
@@ -28,6 +28,8 @@ export default function TenantDetail() {
   const activeProperty = activeLease ? properties.find(p => p.id === activeLease.propertyId) : null;
   const { outstanding, overdue } = getTenantOutstanding(tenant.id);
   const recentPayments = getPaymentsByTenant(tenant.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
+  const activeGuarantee = activeLease ? getGuaranteeByLease(activeLease.id) : undefined;
+  const activeLifecycle = activeLease ? getLeaseLifecycleStatus(activeLease) : undefined;
 
   const methodLabels: Record<string, string> = {
     "bank-transfer": "Bank Transfer", cash: "Cash", card: "Card", "direct-debit": "Direct Debit", other: "Other",
@@ -130,6 +132,31 @@ export default function TenantDetail() {
                 <p className="text-xs text-muted-foreground">Monthly Charges</p>
                 <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, activeProperty.currencyCode, activeProperty.locale)}</p>
               </div>
+              {/* Guarantee summary */}
+              {activeGuarantee && (
+                <>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Guarantee Type</p>
+                    <p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[activeGuarantee.type]}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Guarantee Status</p>
+                    <StatusBadge status={activeGuarantee.status} />
+                  </div>
+                </>
+              )}
+              {/* Notice status */}
+              {activeLease.noticeGiven && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Notice Status</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <StatusBadge status="under-notice" />
+                    {activeLease.intendedMoveOutDate && (
+                      <span className="text-xs text-muted-foreground">Move-out: {formatDate(activeLease.intendedMoveOutDate, activeProperty.locale)}</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

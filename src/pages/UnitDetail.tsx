@@ -3,9 +3,9 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryName } from "@/lib/formatters";
-import { getTenantFullName } from "@/types";
+import { getTenantFullName, getLeaseLifecycleStatus } from "@/types";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
@@ -25,8 +25,8 @@ export default function UnitDetail() {
 
   const activeLease = getActiveLease(unit.id);
   const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
+  const lifecycle = activeLease ? getLeaseLifecycleStatus(activeLease) : null;
 
-  // Financial info for active lease
   const leaseFinancials = activeLease ? getLeaseOutstanding(activeLease.id) : null;
   const ledger = activeLease ? getLedgerByLease(activeLease.id) : [];
   const today = new Date().toISOString().split("T")[0];
@@ -118,6 +118,7 @@ export default function UnitDetail() {
         <CardContent>
           <div className="flex items-center gap-2 mb-3">
             <StatusBadge status={unit.currentStatus} />
+            {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && <StatusBadge status={lifecycle} />}
           </div>
           {activeLease && tenant ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -145,6 +146,23 @@ export default function UnitDetail() {
                 <p className="text-xs text-muted-foreground">Total Monthly</p>
                 <p className="text-sm font-bold text-primary">{formatCurrency(activeLease.monthlyRent + activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
               </div>
+              {/* Under notice indicator */}
+              {activeLease.noticeGiven && (
+                <div className="col-span-full">
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-warning/10 border border-warning/30">
+                    <Bell className="h-4 w-4 text-warning" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Under Notice</p>
+                      {activeLease.intendedMoveOutDate && (
+                        <p className="text-xs text-muted-foreground">
+                          Intended move-out: {formatDate(activeLease.intendedMoveOutDate, property.locale)}
+                          {activeLease.intendedMoveOutDate && <> — Available from {formatDate(activeLease.intendedMoveOutDate, property.locale)}</>}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Financial balance */}
               {leaseFinancials && leaseFinancials.outstanding > 0 && (
                 <>
