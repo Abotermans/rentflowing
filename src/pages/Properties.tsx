@@ -251,7 +251,7 @@ export default function Properties() {
               <Input id="addr1" value={form.address1} onChange={e => setForm(f => ({ ...f, address1: e.target.value }))} placeholder="Street address" />
             </div>
             <div>
-              <Label htmlFor="addr2">Address Line 2</Label>
+              <Label htmlFor="addr2">{t("properties.addressLine2")}</Label>
               <Input id="addr2" value={form.address2} onChange={e => setForm(f => ({ ...f, address2: e.target.value }))} placeholder="Building, floor, etc." />
             </div>
             <div className="grid grid-cols-2 gap-4">
