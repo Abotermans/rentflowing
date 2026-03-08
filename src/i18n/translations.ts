@@ -1134,6 +1134,13 @@ const fr: TranslationKeys = {
   "detail.noGuaranteeDesc": "Aucun enregistrement de garantie. Cliquez sur « Ajouter une garantie » pour en créer un.",
   "detail.noReturnDesc": "Aucun statut de restitution défini. Pertinent après la sortie pour suivre la remise en état.",
   "detail.moveOutLabel": "Sortie",
+  "detail.maintenanceCount": "Maintenance ({count})",
+  "table.title": "Titre",
+  "table.category": "Catégorie",
+  "table.priority": "Priorité",
+  "table.status": "Statut",
+  "table.created": "Créé",
+  "table.updated": "Mis à jour",
 };
 
 export type TranslationKey = keyof typeof en;
