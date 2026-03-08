@@ -438,7 +438,7 @@ export default function LeaseDetail() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Keys Returned</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.keysReturned")}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyReturnCount} onChange={e => handleUpdateKeys(lease.keyHandoverCount, parseInt(e.target.value) || 0)} />
                   </div>
