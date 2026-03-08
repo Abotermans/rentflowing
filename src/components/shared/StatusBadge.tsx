@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -27,6 +27,11 @@ const statusStyles: Record<StatusType, string> = {
   // Lifecycle statuses
   "under-notice": "bg-warning/15 text-warning border-warning/30",
   "ending-soon": "bg-destructive/15 text-destructive border-destructive/30",
+  // Return / move statuses
+  "in-review": "bg-warning/15 text-warning border-warning/30",
+  completed: "bg-success/15 text-success border-success/30",
+  scheduled: "bg-primary/15 text-primary border-primary/30",
+  "not-scheduled": "bg-muted text-muted-foreground border-border",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {

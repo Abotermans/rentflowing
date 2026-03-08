@@ -68,6 +68,55 @@ export function getTenantFullName(t: Tenant): string {
 
 export type LeaseStatus = "draft" | "active" | "ended" | "terminated";
 
+// Checklist types
+export interface MoveInChecklist {
+  leaseSigned: boolean;
+  firstPaymentReceived: boolean;
+  guaranteeConfirmed: boolean;
+  keysHandedOver: boolean;
+  meterReadingCaptured: boolean;
+  tenantDocumentsComplete: boolean;
+}
+
+export interface MoveOutChecklist {
+  noticeConfirmed: boolean;
+  moveOutDateConfirmed: boolean;
+  keysReturned: boolean;
+  moveOutMeterReadingCaptured: boolean;
+  balanceReviewed: boolean;
+  guaranteeReviewCompleted: boolean;
+}
+
+export type ReturnStatus = "pending" | "in-review" | "completed";
+
+export const DEFAULT_MOVE_IN_CHECKLIST: MoveInChecklist = {
+  leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false,
+  keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: false,
+};
+
+export const DEFAULT_MOVE_OUT_CHECKLIST: MoveOutChecklist = {
+  noticeConfirmed: false, moveOutDateConfirmed: false, keysReturned: false,
+  moveOutMeterReadingCaptured: false, balanceReviewed: false, guaranteeReviewCompleted: false,
+};
+
+export const MOVE_IN_CHECKLIST_LABELS: Record<keyof MoveInChecklist, string> = {
+  leaseSigned: "Lease signed",
+  firstPaymentReceived: "First payment received",
+  guaranteeConfirmed: "Guarantee / deposit confirmed",
+  keysHandedOver: "Keys handed over",
+  meterReadingCaptured: "Meter reading captured",
+  tenantDocumentsComplete: "Tenant documents complete",
+};
+
+export const MOVE_OUT_CHECKLIST_LABELS: Record<keyof MoveOutChecklist, string> = {
+  noticeConfirmed: "Notice confirmed",
+  moveOutDateConfirmed: "Move-out date confirmed",
+  keysReturned: "Keys returned",
+  moveOutMeterReadingCaptured: "Move-out meter reading captured",
+  balanceReviewed: "Balance reviewed",
+  guaranteeReviewCompleted: "Guarantee / deposit review completed",
+};
+
 export interface Lease {
   id: string;
   leaseReference: string;
@@ -90,6 +139,24 @@ export interface Lease {
   noticeDate: string | null;
   intendedMoveOutDate: string | null;
   terminationReason: string | null;
+  // Move-in fields
+  moveInScheduledDate: string | null;
+  moveInActualDate: string | null;
+  moveInMeterReading: string | null;
+  moveInChecklist: MoveInChecklist;
+  // Move-out fields
+  moveOutScheduledDate: string | null;
+  moveOutActualDate: string | null;
+  moveOutMeterReading: string | null;
+  moveOutChecklist: MoveOutChecklist;
+  moveOutNotes: string;
+  // Keys
+  keyHandoverCount: number;
+  keyReturnCount: number;
+  // Return
+  returnStatus: ReturnStatus | null;
+  returnNotes: string;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -107,6 +174,21 @@ export function getLeaseLifecycleStatus(lease: Lease): LeaseLifecycleStatus {
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
   if (endDate <= in90Days) return "ending-soon";
   return "active";
+}
+
+export type MoveInStatus = "not-scheduled" | "scheduled" | "completed";
+export type MoveOutStatus = "not-scheduled" | "scheduled" | "completed";
+
+export function getMoveInStatus(lease: Lease): MoveInStatus {
+  if (lease.moveInActualDate) return "completed";
+  if (lease.moveInScheduledDate) return "scheduled";
+  return "not-scheduled";
+}
+
+export function getMoveOutStatus(lease: Lease): MoveOutStatus {
+  if (lease.moveOutActualDate) return "completed";
+  if (lease.moveOutScheduledDate) return "scheduled";
+  return "not-scheduled";
 }
 
 export type LedgerLineType = "rent" | "charges" | "adjustment";
