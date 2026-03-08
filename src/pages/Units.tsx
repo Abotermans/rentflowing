@@ -94,10 +94,10 @@ export default function Units() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Units</h1>
-          <p className="text-sm text-muted-foreground">{units.length} units across all properties</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("units.title")}</h1>
+          <p className="text-sm text-muted-foreground">{units.length} {t("units.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Unit</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("units.add")}</Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
