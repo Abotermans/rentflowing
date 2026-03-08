@@ -150,7 +150,7 @@ export default function TenantDetail() {
               {/* Notice status */}
               {activeLease.noticeGiven && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Notice Status</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.noticeStatus")}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <StatusBadge status="under-notice" />
                     {activeLease.intendedMoveOutDate && (
