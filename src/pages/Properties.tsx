@@ -17,6 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { useSettings } from "@/context/SettingsContext";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canArchiveProperty } from "@/lib/integrity/propertyIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const EUROPEAN_COUNTRIES = [
   { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
