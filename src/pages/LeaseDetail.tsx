@@ -339,11 +339,11 @@ export default function LeaseDetail() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? "Edit Notice" : "Register Notice"}</Button>
+              <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}</Button>
               {lease.leaseStatus === "active" && (
                 <>
-                  <Button variant="outline" size="sm" onClick={handleMarkEnded}>Mark Ended</Button>
-                  <Button variant="destructive" size="sm" onClick={handleMarkTerminated}>Terminate</Button>
+                  <Button variant="outline" size="sm" onClick={handleMarkEnded}>{t("detail.markEnded")}</Button>
+                  <Button variant="destructive" size="sm" onClick={handleMarkTerminated}>{t("detail.terminate")}</Button>
                 </>
               )}
             </div>
