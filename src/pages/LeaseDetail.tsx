@@ -453,7 +453,7 @@ export default function LeaseDetail() {
                 </div>
                 {lease.moveInMeterReading && lease.moveOutMeterReading && (
                   <div className="col-span-2">
-                    <p className="text-xs text-muted-foreground">Consumption</p>
+                    <p className="text-xs text-muted-foreground">{t("detail.consumption")}</p>
                     <p className="text-sm font-bold text-foreground">{(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading)).toLocaleString()} units</p>
                   </div>
                 )}
