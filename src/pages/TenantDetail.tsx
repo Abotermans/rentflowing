@@ -119,7 +119,7 @@ export default function TenantDetail() {
                 <Link to={`/units/${activeUnit.id}`} className="text-sm font-medium text-primary hover:underline">{activeUnit.unitCode}</Link>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Property</p>
+                <p className="text-xs text-muted-foreground">{t("table.property")}</p>
                 <Link to={`/properties/${activeProperty.id}`} className="text-sm font-medium text-primary hover:underline">{activeProperty.name}</Link>
               </div>
               <div>
