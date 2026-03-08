@@ -127,7 +127,7 @@ export default function TenantDetail() {
                 <p className="text-sm font-medium text-foreground">{formatDate(activeLease.startDate, activeProperty.locale)} — {formatDate(activeLease.endDate, activeProperty.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Monthly Rent</p>
+                <p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p>
                 <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyRent, activeProperty.currencyCode, activeProperty.locale)}</p>
               </div>
               <div>
