@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { useSettings } from "@/context/SettingsContext";
 
 const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
