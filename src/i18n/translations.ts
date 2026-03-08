@@ -629,6 +629,15 @@ const en = {
   "status.fullyConsumed": "Fully Consumed",
   "status.notApplicable": "N/A",
   "payments.partiallyPaidCount": "Partially Paid",
+  "status.disputed": "Disputed",
+  "status.writtenOff": "Written Off",
+  "status.imported": "Imported",
+  "status.unmatched": "Unmatched",
+  "status.partiallyMatched": "Partially Matched",
+  "status.matched": "Matched",
+  "status.exception": "Exception",
+  "status.reversed": "Reversed",
+  "status.refunded": "Refunded",
 };
 
 type TranslationKeys = typeof en;
@@ -1257,6 +1266,15 @@ const fr: TranslationKeys = {
   "status.fullyConsumed": "Entièrement consommé",
   "status.notApplicable": "N/A",
   "payments.partiallyPaidCount": "Partiellement payé",
+  "status.disputed": "Contesté",
+  "status.writtenOff": "Passé en perte",
+  "status.imported": "Importé",
+  "status.unmatched": "Non rapproché",
+  "status.partiallyMatched": "Partiellement rapproché",
+  "status.matched": "Rapproché",
+  "status.exception": "Exception",
+  "status.reversed": "Annulé",
+  "status.refunded": "Remboursé",
 };
 
 export type TranslationKey = keyof typeof en;
