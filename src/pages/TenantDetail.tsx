@@ -138,7 +138,7 @@ export default function TenantDetail() {
               {activeGuarantee && (
                 <>
                   <div>
-                    <p className="text-xs text-muted-foreground">Guarantee Type</p>
+                    <p className="text-xs text-muted-foreground">{t("detail.guaranteeType")}</p>
                     <p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[activeGuarantee.type]}</p>
                   </div>
                   <div>
