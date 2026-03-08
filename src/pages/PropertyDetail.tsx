@@ -19,7 +19,9 @@ import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
+import { canDeleteProperty, canArchiveProperty } from "@/lib/integrity/propertyIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
