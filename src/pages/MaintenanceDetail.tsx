@@ -172,7 +172,7 @@ export default function MaintenanceDetail() {
           <CardContent className="space-y-4">
             {ticket.internalNotes && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Internal Notes</p>
+                <p className="text-xs text-muted-foreground mb-1">{t("maintenance.internalNotes")}</p>
                 <p className="text-sm text-foreground">{ticket.internalNotes}</p>
               </div>
             )}
