@@ -158,7 +158,7 @@ export default function UnitDetail() {
               {/* Move-in/out status */}
               {activeLease.moveInActualDate && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Moved In</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.movedIn")}</p>
                   <p className="text-sm font-medium text-foreground">{formatDate(activeLease.moveInActualDate, property.locale)}</p>
                 </div>
               )}
