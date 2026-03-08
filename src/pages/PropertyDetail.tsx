@@ -38,7 +38,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
+  const { properties, units, leases, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
