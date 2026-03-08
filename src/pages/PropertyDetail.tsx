@@ -172,8 +172,8 @@ export default function PropertyDetail() {
       {/* Units */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-foreground">Units</h2>
-          <Button size="sm" onClick={openAddUnit}><Plus className="h-4 w-4 mr-1.5" />Add Unit</Button>
+          <h2 className="text-lg font-semibold text-foreground">{t("nav.units")}</h2>
+          <Button size="sm" onClick={openAddUnit}><Plus className="h-4 w-4 mr-1.5" />{t("units.add")}</Button>
         </div>
         {propertyUnits.length === 0 ? (
           <Card>
