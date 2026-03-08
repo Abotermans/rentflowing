@@ -2,7 +2,7 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench, ArrowRightLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
@@ -10,7 +10,7 @@ import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees, tickets } = useAppData();
+  const { properties, units, leases, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets } = useAppData();
   const { t } = useSettings();
 
   // Maintenance KPIs
@@ -36,9 +36,12 @@ export default function Dashboard() {
   const leasesEndingSoon = activeLeases.filter(l => new Date(l.endDate) <= in90Days && !l.noticeGiven);
   const leasesUnderNotice = activeLeases.filter(l => l.noticeGiven);
 
-  // Financial KPIs
+  // Financial KPIs from receivables
   const totalExpectedMonthlyRent = activeLeases.reduce((s, l) => s + l.monthlyRent + l.monthlyCharges, 0);
-  const totalOverdue = ledgerLines.filter(ll => ll.remainingBalance > 0 && ll.dueDate < today).reduce((s, ll) => s + ll.remainingBalance, 0);
+  const totalOverdue = receivableItems.filter(ri => ri.outstandingAmount > 0 && ri.dueDate < today).reduce((s, ri) => s + ri.outstandingAmount, 0);
+  const totalOpenReceivables = receivableItems.filter(ri => ri.outstandingAmount > 0).reduce((s, ri) => s + ri.outstandingAmount, 0);
+  const unmatchedReceiptsCount = cashReceipts.filter(cr => cr.unmatchedAmount > 0).length;
+  const unappliedCreditTotal = cashReceipts.filter(cr => cr.unmatchedAmount > 0 && cr.tenantId).reduce((s, cr) => s + cr.unmatchedAmount, 0);
 
   // Guarantee KPIs
   const pendingGuarantees = guarantees.filter(g => g.status === "pending");
@@ -60,6 +63,9 @@ export default function Dashboard() {
       return { tenant, outstanding, overdue, lease, prop };
     })
     .filter(x => x.overdue > 0 && x.tenant);
+
+  // Unmatched receipts for dashboard table
+  const unmatchedReceipts = cashReceipts.filter(cr => cr.unmatchedAmount > 0).slice(0, 5);
 
   const kpiSections = [
     {
@@ -83,10 +89,10 @@ export default function Dashboard() {
     {
       title: t("dashboard.financial"),
       items: [
-        { label: t("dashboard.expectedMonthly"), value: formatCurrency(totalExpectedMonthlyRent), icon: CreditCard, color: "text-primary", isText: true },
+        { label: "Open Receivables", value: formatCurrency(totalOpenReceivables), icon: FileText, color: "text-primary", isText: true },
         { label: t("dashboard.totalOverdue"), value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
-        { label: t("dashboard.pendingGuarantees"), value: pendingGuarantees.length, icon: Shield, color: pendingGuarantees.length > 0 ? "text-warning" : "text-foreground" },
-        { label: t("dashboard.returnsPending"), value: returnsPending.length, icon: Truck, color: returnsPending.length > 0 ? "text-warning" : "text-foreground" },
+        { label: "Unmatched Receipts", value: unmatchedReceiptsCount, icon: ArrowRightLeft, color: unmatchedReceiptsCount > 0 ? "text-warning" : "text-foreground" },
+        { label: "Unapplied Credit", value: formatCurrency(unappliedCreditTotal), icon: CreditCard, color: unappliedCreditTotal > 0 ? "text-primary" : "text-foreground", isText: true },
       ],
     },
     {
@@ -197,12 +203,8 @@ export default function Dashboard() {
                   const prop = properties.find(p => p.id === op.lease.propertyId);
                   return (
                     <TableRow key={`${op.type}-${op.lease.id}`}>
-                      <TableCell>
-                        <StatusBadge status={op.type === "move-in" ? "scheduled" : "pending"} />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        <Link to={`/leases/${op.lease.id}`} className="hover:underline text-foreground">{op.lease.leaseReference}</Link>
-                      </TableCell>
+                      <TableCell><StatusBadge status={op.type === "move-in" ? "scheduled" : "pending"} /></TableCell>
+                      <TableCell className="font-mono text-xs"><Link to={`/leases/${op.lease.id}`} className="hover:underline text-foreground">{op.lease.leaseReference}</Link></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-xs font-medium text-foreground">{formatDate(op.date, prop?.locale)}</TableCell>
@@ -242,6 +244,43 @@ export default function Dashboard() {
                     <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                     <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(overdue, prop?.currencyCode, prop?.locale)}</TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(outstanding, prop?.currencyCode, prop?.locale)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unmatched Receipts */}
+      {unmatchedReceipts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              <ArrowRightLeft className="h-4 w-4 text-warning" />Unmatched Cash Receipts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Payer</TableHead>
+                  <TableHead className="text-xs">Reference</TableHead>
+                  <TableHead className="text-xs text-right">Received</TableHead>
+                  <TableHead className="text-xs text-right">Unmatched</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {unmatchedReceipts.map(cr => (
+                  <TableRow key={cr.id}>
+                    <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{cr.payerName ?? "—"}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference ?? "—"}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, cr.currencyCode)}</TableCell>
+                    <TableCell className="text-right text-sm font-bold text-warning">{formatCurrency(cr.unmatchedAmount, cr.currencyCode)}</TableCell>
+                    <TableCell><StatusBadge status={cr.status} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -458,9 +497,7 @@ export default function Dashboard() {
             <TableBody>
               {vacancyOverview.map(v => (
                 <TableRow key={v.id}>
-                  <TableCell className="font-medium">
-                    <Link to={`/properties/${v.id}`} className="hover:underline text-foreground">{v.name}</Link>
-                  </TableCell>
+                  <TableCell className="font-medium"><Link to={`/properties/${v.id}`} className="hover:underline text-foreground">{v.name}</Link></TableCell>
                   <TableCell className="text-center text-muted-foreground">{v.total}</TableCell>
                   <TableCell className="text-center text-muted-foreground">{v.occupied}</TableCell>
                   <TableCell className="text-center text-muted-foreground">{v.vacant}</TableCell>
