@@ -167,7 +167,7 @@ export default function TenantDetail() {
       {/* Recent Payments */}
       {recentPayments.length > 0 && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Payments</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.recentPayments")}</CardTitle></CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
