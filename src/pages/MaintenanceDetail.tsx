@@ -93,7 +93,7 @@ export default function MaintenanceDetail() {
             <div className="flex items-start gap-2">
               <Building2 className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Property</p>
+                <p className="text-xs text-muted-foreground">{t("table.property")}</p>
                 {property ? <Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link> : <p className="text-sm text-foreground">—</p>}
               </div>
             </div>
