@@ -37,12 +37,26 @@ export default function Units() {
   const { properties, units, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, leases } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+
+  // Auto-open edit sheet from query param
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId) {
+      const unitToEdit = units.find(u => u.id === editId);
+      if (unitToEdit) {
+        openEdit(unitToEdit);
+      }
+      searchParams.delete("edit");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
 
   const emptyForm: UnitFormData = {
     propertyId: properties[0]?.id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
