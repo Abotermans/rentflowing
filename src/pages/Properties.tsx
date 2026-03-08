@@ -50,7 +50,7 @@ const emptyForm: PropertyFormData = {
 };
 
 export default function Properties() {
-  const { properties, units, addProperty, updateProperty, deleteProperty, getPropertyStats } = useAppData();
+  const { properties, units, leases, addProperty, updateProperty, deleteProperty, getPropertyStats } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const [open, setOpen] = useState(false);
