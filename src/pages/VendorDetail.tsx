@@ -32,7 +32,7 @@ export default function VendorDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/vendors"><ArrowLeft className="h-4 w-4 mr-1" />Vendors</Link>
+          <Link to="/vendors"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.vendors")}</Link>
         </Button>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">{vendor.vendorName}</h1>
