@@ -19,6 +19,7 @@ const items = [
   { title: "Units", url: "/units", icon: DoorOpen },
   { title: "Tenants", url: "/tenants", icon: Users },
   { title: "Leases", url: "/leases", icon: FileText },
+  { title: "Payments", url: "/payments", icon: CreditCard },
 ];
 
 export function AppSidebar() {
