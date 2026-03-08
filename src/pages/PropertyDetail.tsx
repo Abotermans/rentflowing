@@ -79,8 +79,8 @@ export default function PropertyDetail() {
   if (!property) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Property not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/properties">← Back to Properties</Link></Button>
+        <p className="text-muted-foreground">{t("detail.propertyNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/properties">← {t("nav.properties")}</Link></Button>
       </div>
     );
   }
