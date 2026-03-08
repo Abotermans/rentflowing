@@ -1,5 +1,7 @@
 import { Property, Unit, Tenant, Lease, LedgerLine, Payment, Guarantee, DEFAULT_MOVE_IN_CHECKLIST, DEFAULT_MOVE_OUT_CHECKLIST } from "@/types";
 
+// initialProperties, initialUnits, initialTenants arrays stay identical
+
 export const initialProperties: Property[] = [
   {
     id: "p1", name: "Résidence du Parc", referenceCode: "PAR-001",
@@ -73,6 +75,17 @@ export const initialTenants: Tenant[] = [
   { id: "t6", firstName: "Emma", lastName: "Williams", email: "emma.williams@email.co.uk", phone: "+44 7700 900123", dateOfBirth: "1987-06-18", identificationNumber: null, currentAddress: "18 Camden High St, Flat 1, London NW1", status: "active", notes: "", createdAt: "2024-09-01", updatedAt: "2025-12-01" },
 ];
 
+const noAdvance = {
+  hasAdvancePayment: false as boolean,
+  advancePaymentAmount: null as number | null,
+  advancePaymentDate: null as string | null,
+  advanceAllocationMethod: null as Lease["advanceAllocationMethod"],
+  advanceAppliedTo: null as Lease["advanceAppliedTo"],
+  advanceAllocationStartDate: null as string | null,
+  advanceAllocationDurationMonths: null as number | null,
+  fixedMonthlyReductionAmount: null as number | null,
+};
+
 const completedMoveInChecklist = {
   leaseSigned: true, firstPaymentReceived: true, guaranteeConfirmed: true,
   keysHandedOver: true, meterReadingCaptured: true, tenantDocumentsComplete: true,
@@ -84,84 +97,128 @@ const completedMoveOutChecklist = {
 };
 
 export const initialLeases: Lease[] = [
-  // l1 (Marie, active) — completed move-in
+  // l1 (Marie, active) — no advance
   {
     id: "l1", leaseReference: "BAIL-PAR-001", propertyId: "p1", unitId: "u1", primaryTenantId: "t1", coTenantIds: [], leaseStatus: "active", startDate: "2024-03-01", endDate: "2027-02-28", monthlyRent: 1350, monthlyCharges: 150, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2700, noticePeriodText: "3 months", signedDate: "2024-02-15", notes: "3-year residential lease.",
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
     moveInScheduledDate: "2024-03-01", moveInActualDate: "2024-03-01", moveInMeterReading: "12450", moveInChecklist: { ...completedMoveInChecklist },
     moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null, moveOutChecklist: { ...DEFAULT_MOVE_OUT_CHECKLIST }, moveOutNotes: "",
     keyHandoverCount: 3, keyReturnCount: 0, returnStatus: null, returnNotes: "",
+    ...noAdvance,
     createdAt: "2024-02-15", updatedAt: "2025-11-20",
   },
-  // l2 (Jan, active) — completed move-in
+  // l2 (Jan, active) — no advance
   {
     id: "l2", leaseReference: "BAIL-BRU-001", propertyId: "p2", unitId: "u6", primaryTenantId: "t2", coTenantIds: [], leaseStatus: "active", startDate: "2024-06-01", endDate: "2027-05-31", monthlyRent: 1100, monthlyCharges: 150, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2200, noticePeriodText: "3 months", signedDate: "2024-05-20", notes: "",
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
     moveInScheduledDate: "2024-06-01", moveInActualDate: "2024-06-01", moveInMeterReading: "8920", moveInChecklist: { ...completedMoveInChecklist },
     moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null, moveOutChecklist: { ...DEFAULT_MOVE_OUT_CHECKLIST }, moveOutNotes: "",
     keyHandoverCount: 2, keyReturnCount: 0, returnStatus: null, returnNotes: "",
+    ...noAdvance,
     createdAt: "2024-05-20", updatedAt: "2025-08-12",
   },
-  // l3 (Luca, draft) — scheduled move-in, checklist incomplete
+  // l3 (Luca, draft) — no advance
   {
     id: "l3", leaseReference: "BAIL-BRU-002", propertyId: "p2", unitId: "u7", primaryTenantId: "t5", coTenantIds: [], leaseStatus: "draft", startDate: "2026-05-01", endDate: "2029-04-30", monthlyRent: 1200, monthlyCharges: 160, dueDayOfMonth: 1, depositOrGuaranteeAmount: 2400, noticePeriodText: "3 months", signedDate: null, notes: "Draft lease pending signature.",
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
     moveInScheduledDate: "2026-05-01", moveInActualDate: null, moveInMeterReading: null, moveInChecklist: { leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false, keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: true },
     moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null, moveOutChecklist: { ...DEFAULT_MOVE_OUT_CHECKLIST }, moveOutNotes: "",
     keyHandoverCount: 0, keyReturnCount: 0, returnStatus: null, returnNotes: "",
+    ...noAdvance,
     createdAt: "2026-01-15", updatedAt: "2026-01-15",
   },
-  // l4 (Sophie, ended) — completed move-in + move-out, return completed
+  // l4 (Sophie, ended) — no advance
   {
     id: "l4", leaseReference: "BAIL-PAR-002", propertyId: "p1", unitId: "u2", primaryTenantId: "t4", coTenantIds: [], leaseStatus: "ended", startDate: "2023-09-01", endDate: "2025-12-31", monthlyRent: 1600, monthlyCharges: 180, dueDayOfMonth: 5, depositOrGuaranteeAmount: 3200, noticePeriodText: "3 months", signedDate: "2023-08-15", notes: "Lease ended, tenant moved out.",
     noticeGiven: true, noticeDate: "2025-09-15", intendedMoveOutDate: "2025-12-31", terminationReason: "End of contract",
     moveInScheduledDate: "2023-09-01", moveInActualDate: "2023-09-01", moveInMeterReading: "5200", moveInChecklist: { ...completedMoveInChecklist },
     moveOutScheduledDate: "2025-12-31", moveOutActualDate: "2025-12-31", moveOutMeterReading: "14800", moveOutChecklist: { ...completedMoveOutChecklist }, moveOutNotes: "Minor wall damage in bedroom.",
     keyHandoverCount: 2, keyReturnCount: 2, returnStatus: "completed", returnNotes: "Unit cleaned and inspected. Minor repairs completed.",
+    ...noAdvance,
     createdAt: "2023-08-15", updatedAt: "2025-12-31",
   },
-  // l5 (Emma, under notice) — completed move-in, scheduled move-out, return pending
+  // l5 (Emma, under notice) — no advance
   {
     id: "l5", leaseReference: "BAIL-LON-001", propertyId: "p4", unitId: "u13", primaryTenantId: "t6", coTenantIds: [], leaseStatus: "active", startDate: "2024-10-01", endDate: "2026-09-30", monthlyRent: 1800, monthlyCharges: 120, dueDayOfMonth: 1, depositOrGuaranteeAmount: 3600, noticePeriodText: "2 months", signedDate: "2024-09-15", notes: "",
     noticeGiven: true, noticeDate: "2026-02-15", intendedMoveOutDate: "2026-04-30", terminationReason: "Relocating",
     moveInScheduledDate: "2024-10-01", moveInActualDate: "2024-10-01", moveInMeterReading: "3200", moveInChecklist: { ...completedMoveInChecklist },
     moveOutScheduledDate: "2026-04-30", moveOutActualDate: null, moveOutMeterReading: null, moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: false, moveOutMeterReadingCaptured: false, balanceReviewed: false, guaranteeReviewCompleted: false }, moveOutNotes: "",
     keyHandoverCount: 2, keyReturnCount: 0, returnStatus: "pending", returnNotes: "",
+    ...noAdvance,
     createdAt: "2024-09-15", updatedAt: "2025-12-01",
+  },
+  // l6 (Jan, active) — spread-evenly advance: €6,000 over 12 months on rent, commercial unit BRU-C01
+  {
+    id: "l6", leaseReference: "BAIL-BRU-003", propertyId: "p2", unitId: "u5", primaryTenantId: "t2", coTenantIds: [], leaseStatus: "active", startDate: "2025-07-01", endDate: "2028-06-30", monthlyRent: 2200, monthlyCharges: 350, dueDayOfMonth: 1, depositOrGuaranteeAmount: 4400, noticePeriodText: "6 months", signedDate: "2025-06-15", notes: "Commercial lease with advance payment reducing rent over 12 months.",
+    noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
+    moveInScheduledDate: "2025-07-01", moveInActualDate: "2025-07-01", moveInMeterReading: "2100", moveInChecklist: { ...completedMoveInChecklist },
+    moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null, moveOutChecklist: { ...DEFAULT_MOVE_OUT_CHECKLIST }, moveOutNotes: "",
+    keyHandoverCount: 2, keyReturnCount: 0, returnStatus: null, returnNotes: "",
+    hasAdvancePayment: true, advancePaymentAmount: 6000, advancePaymentDate: "2025-06-20",
+    advanceAllocationMethod: "spread-evenly", advanceAppliedTo: "rent",
+    advanceAllocationStartDate: "2025-07-01", advanceAllocationDurationMonths: 12,
+    fixedMonthlyReductionAmount: null,
+    createdAt: "2025-06-15", updatedAt: "2026-01-10",
+  },
+  // l7 (Fatima, active) — fixed-monthly-reduction: €3,600 at €150/month on rent-and-charges, office AMS-O01
+  {
+    id: "l7", leaseReference: "BAIL-AMS-001", propertyId: "p3", unitId: "u9", primaryTenantId: "t3", coTenantIds: [], leaseStatus: "active", startDate: "2025-01-01", endDate: "2027-12-31", monthlyRent: 3200, monthlyCharges: 400, dueDayOfMonth: 1, depositOrGuaranteeAmount: 6400, noticePeriodText: "6 months", signedDate: "2024-12-15", notes: "Office lease with fixed monthly rent reduction from advance payment.",
+    noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
+    moveInScheduledDate: "2025-01-01", moveInActualDate: "2025-01-01", moveInMeterReading: "4500", moveInChecklist: { ...completedMoveInChecklist },
+    moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null, moveOutChecklist: { ...DEFAULT_MOVE_OUT_CHECKLIST }, moveOutNotes: "",
+    keyHandoverCount: 3, keyReturnCount: 0, returnStatus: null, returnNotes: "",
+    hasAdvancePayment: true, advancePaymentAmount: 3600, advancePaymentDate: "2024-12-20",
+    advanceAllocationMethod: "fixed-monthly-reduction", advanceAppliedTo: "rent-and-charges",
+    advanceAllocationStartDate: "2025-01-01", advanceAllocationDurationMonths: null,
+    fixedMonthlyReductionAmount: 150,
+    createdAt: "2024-12-15", updatedAt: "2026-01-05",
   },
 ];
 
-// Ledger lines: Jan, Feb, Mar 2026
 export const initialLedgerLines: LedgerLine[] = [
-  // l1 — Jan 2026
+  // l1 — Jan–Mar 2026 (no advance, full base amounts)
   { id: "ll1", leaseId: "l1", type: "rent", label: "Monthly Rent", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 1350, amountPaid: 1350, remainingBalance: 0, status: "paid" },
   { id: "ll2", leaseId: "l1", type: "charges", label: "Monthly Charges", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 150, amountPaid: 150, remainingBalance: 0, status: "paid" },
-  // l1 — Feb 2026
   { id: "ll3", leaseId: "l1", type: "rent", label: "Monthly Rent", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 1350, amountPaid: 1350, remainingBalance: 0, status: "paid" },
   { id: "ll4", leaseId: "l1", type: "charges", label: "Monthly Charges", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 150, amountPaid: 150, remainingBalance: 0, status: "paid" },
-  // l1 — Mar 2026
   { id: "ll5", leaseId: "l1", type: "rent", label: "Monthly Rent", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 1350, amountPaid: 1350, remainingBalance: 0, status: "paid" },
   { id: "ll6", leaseId: "l1", type: "charges", label: "Monthly Charges", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 150, amountPaid: 150, remainingBalance: 0, status: "paid" },
 
-  // l2 — Jan 2026
+  // l2 — Jan–Mar 2026 (no advance)
   { id: "ll7", leaseId: "l2", type: "rent", label: "Monthly Rent", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 1100, amountPaid: 1100, remainingBalance: 0, status: "paid" },
   { id: "ll8", leaseId: "l2", type: "charges", label: "Monthly Charges", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 150, amountPaid: 150, remainingBalance: 0, status: "paid" },
-  // l2 — Feb 2026
   { id: "ll9", leaseId: "l2", type: "rent", label: "Monthly Rent", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 1100, amountPaid: 1100, remainingBalance: 0, status: "paid" },
   { id: "ll10", leaseId: "l2", type: "charges", label: "Monthly Charges", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 150, amountPaid: 150, remainingBalance: 0, status: "paid" },
-  // l2 — Mar 2026 — partially paid
   { id: "ll11", leaseId: "l2", type: "rent", label: "Monthly Rent", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 1100, amountPaid: 800, remainingBalance: 300, status: "partially-paid" },
   { id: "ll12", leaseId: "l2", type: "charges", label: "Monthly Charges", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 150, amountPaid: 0, remainingBalance: 150, status: "due" },
 
-  // l5 — Jan 2026
+  // l5 — Jan–Mar 2026
   { id: "ll13", leaseId: "l5", type: "rent", label: "Monthly Rent", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 1800, amountPaid: 1800, remainingBalance: 0, status: "paid" },
   { id: "ll14", leaseId: "l5", type: "charges", label: "Monthly Charges", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 120, amountPaid: 120, remainingBalance: 0, status: "paid" },
-  // l5 — Feb 2026 — overdue
   { id: "ll15", leaseId: "l5", type: "rent", label: "Monthly Rent", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 1800, amountPaid: 0, remainingBalance: 1800, status: "overdue" },
   { id: "ll16", leaseId: "l5", type: "charges", label: "Monthly Charges", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 120, amountPaid: 0, remainingBalance: 120, status: "overdue" },
-  // l5 — Mar 2026 — due
   { id: "ll17", leaseId: "l5", type: "rent", label: "Monthly Rent", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 1800, amountPaid: 0, remainingBalance: 1800, status: "due" },
   { id: "ll18", leaseId: "l5", type: "charges", label: "Monthly Charges", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 120, amountPaid: 0, remainingBalance: 120, status: "due" },
+
+  // l6 — Advance upfront payment
+  { id: "ll-adv1", leaseId: "l6", type: "advance-payment", label: "Advance Payment", periodMonth: "2025-07", dueDate: "2025-06-20", amountDue: 6000, amountPaid: 6000, remainingBalance: 0, status: "paid" },
+  // l6 — Jan–Mar 2026 (effective rent: 2200-500=1700, charges: 350)
+  { id: "ll19", leaseId: "l6", type: "rent", label: "Monthly Rent", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 1700, amountPaid: 1700, remainingBalance: 0, status: "paid" },
+  { id: "ll20", leaseId: "l6", type: "charges", label: "Monthly Charges", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 350, amountPaid: 350, remainingBalance: 0, status: "paid" },
+  { id: "ll21", leaseId: "l6", type: "rent", label: "Monthly Rent", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 1700, amountPaid: 1700, remainingBalance: 0, status: "paid" },
+  { id: "ll22", leaseId: "l6", type: "charges", label: "Monthly Charges", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 350, amountPaid: 350, remainingBalance: 0, status: "paid" },
+  { id: "ll23", leaseId: "l6", type: "rent", label: "Monthly Rent", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 1700, amountPaid: 1700, remainingBalance: 0, status: "paid" },
+  { id: "ll24", leaseId: "l6", type: "charges", label: "Monthly Charges", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 350, amountPaid: 350, remainingBalance: 0, status: "paid" },
+
+  // l7 — Advance upfront payment
+  { id: "ll-adv2", leaseId: "l7", type: "advance-payment", label: "Advance Payment", periodMonth: "2025-01", dueDate: "2024-12-20", amountDue: 3600, amountPaid: 3600, remainingBalance: 0, status: "paid" },
+  // l7 — Jan–Mar 2026 (effective: rent 3200-150=3050, charges 400, reduction on rent-and-charges → rent first)
+  { id: "ll25", leaseId: "l7", type: "rent", label: "Monthly Rent", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 3050, amountPaid: 3050, remainingBalance: 0, status: "paid" },
+  { id: "ll26", leaseId: "l7", type: "charges", label: "Monthly Charges", periodMonth: "2026-01", dueDate: "2026-01-01", amountDue: 400, amountPaid: 400, remainingBalance: 0, status: "paid" },
+  { id: "ll27", leaseId: "l7", type: "rent", label: "Monthly Rent", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 3050, amountPaid: 3050, remainingBalance: 0, status: "paid" },
+  { id: "ll28", leaseId: "l7", type: "charges", label: "Monthly Charges", periodMonth: "2026-02", dueDate: "2026-02-01", amountDue: 400, amountPaid: 400, remainingBalance: 0, status: "paid" },
+  { id: "ll29", leaseId: "l7", type: "rent", label: "Monthly Rent", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 3050, amountPaid: 3050, remainingBalance: 0, status: "paid" },
+  { id: "ll30", leaseId: "l7", type: "charges", label: "Monthly Charges", periodMonth: "2026-03", dueDate: "2026-03-01", amountDue: 400, amountPaid: 400, remainingBalance: 0, status: "paid" },
 ];
 
 export const initialPayments: Payment[] = [
@@ -172,6 +229,18 @@ export const initialPayments: Payment[] = [
   { id: "pay5", leaseId: "l2", tenantId: "t2", paymentDate: "2026-01-30", amount: 1250, paymentMethod: "bank-transfer", reference: "VIR-BRU001-2602", notes: "February 2026" },
   { id: "pay6", leaseId: "l2", tenantId: "t2", paymentDate: "2026-03-03", amount: 800, paymentMethod: "bank-transfer", reference: "VIR-BRU001-2603", notes: "Partial payment March 2026" },
   { id: "pay7", leaseId: "l5", tenantId: "t6", paymentDate: "2025-12-31", amount: 1920, paymentMethod: "bank-transfer", reference: "TRF-LON001-2601", notes: "January 2026 rent + charges" },
+  // l6 advance upfront
+  { id: "pay8", leaseId: "l6", tenantId: "t2", paymentDate: "2025-06-20", amount: 6000, paymentMethod: "bank-transfer", reference: "ADV-BRU003-01", notes: "Advance payment for commercial lease" },
+  // l6 monthly payments Jan–Mar 2026 (effective: 1700+350=2050)
+  { id: "pay9", leaseId: "l6", tenantId: "t2", paymentDate: "2025-12-30", amount: 2050, paymentMethod: "direct-debit", reference: "DD-BRU003-2601", notes: "January 2026" },
+  { id: "pay10", leaseId: "l6", tenantId: "t2", paymentDate: "2026-01-31", amount: 2050, paymentMethod: "direct-debit", reference: "DD-BRU003-2602", notes: "February 2026" },
+  { id: "pay11", leaseId: "l6", tenantId: "t2", paymentDate: "2026-02-28", amount: 2050, paymentMethod: "direct-debit", reference: "DD-BRU003-2603", notes: "March 2026" },
+  // l7 advance upfront
+  { id: "pay12", leaseId: "l7", tenantId: "t3", paymentDate: "2024-12-20", amount: 3600, paymentMethod: "bank-transfer", reference: "ADV-AMS001-01", notes: "Advance payment for office lease" },
+  // l7 monthly payments Jan–Mar 2026 (effective: 3050+400=3450)
+  { id: "pay13", leaseId: "l7", tenantId: "t3", paymentDate: "2025-12-30", amount: 3450, paymentMethod: "bank-transfer", reference: "VIR-AMS001-2601", notes: "January 2026" },
+  { id: "pay14", leaseId: "l7", tenantId: "t3", paymentDate: "2026-01-31", amount: 3450, paymentMethod: "bank-transfer", reference: "VIR-AMS001-2602", notes: "February 2026" },
+  { id: "pay15", leaseId: "l7", tenantId: "t3", paymentDate: "2026-02-28", amount: 3450, paymentMethod: "bank-transfer", reference: "VIR-AMS001-2603", notes: "March 2026" },
 ];
 
 export const initialGuarantees: Guarantee[] = [
@@ -179,4 +248,6 @@ export const initialGuarantees: Guarantee[] = [
   { id: "g2", leaseId: "l2", type: "bank-guarantee", expectedAmount: 2200, receivedAmount: 0, status: "pending", receivedDate: null, releaseDate: null, retentionAmount: null, notes: "Bank guarantee requested, awaiting confirmation." },
   { id: "g3", leaseId: "l5", type: "cash-deposit", expectedAmount: 3600, receivedAmount: 3600, status: "active", receivedDate: "2024-09-20", releaseDate: null, retentionAmount: null, notes: "" },
   { id: "g4", leaseId: "l4", type: "cash-deposit", expectedAmount: 3200, receivedAmount: 3200, status: "partially-retained", receivedDate: "2023-08-20", releaseDate: "2026-01-15", retentionAmount: 500, notes: "€500 retained for cleaning and minor repairs." },
+  { id: "g5", leaseId: "l6", type: "cash-deposit", expectedAmount: 4400, receivedAmount: 4400, status: "active", receivedDate: "2025-06-25", releaseDate: null, retentionAmount: null, notes: "Commercial deposit received in full." },
+  { id: "g6", leaseId: "l7", type: "cash-deposit", expectedAmount: 6400, receivedAmount: 6400, status: "active", receivedDate: "2024-12-22", releaseDate: null, retentionAmount: null, notes: "Office lease deposit." },
 ];

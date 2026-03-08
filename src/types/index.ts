@@ -68,6 +68,10 @@ export function getTenantFullName(t: Tenant): string {
 
 export type LeaseStatus = "draft" | "active" | "ended" | "terminated";
 
+export type AdvanceAllocationMethod = 'spread-evenly' | 'fixed-monthly-reduction';
+export type AdvanceAppliedTo = 'rent' | 'charges' | 'rent-and-charges';
+export type AdvanceStatus = 'not-applicable' | 'scheduled' | 'active' | 'fully-consumed';
+
 // Checklist types
 export interface MoveInChecklist {
   leaseSigned: boolean;
@@ -157,6 +161,16 @@ export interface Lease {
   returnStatus: ReturnStatus | null;
   returnNotes: string;
 
+  // Advance payment
+  hasAdvancePayment: boolean;
+  advancePaymentAmount: number | null;
+  advancePaymentDate: string | null;
+  advanceAllocationMethod: AdvanceAllocationMethod | null;
+  advanceAppliedTo: AdvanceAppliedTo | null;
+  advanceAllocationStartDate: string | null;
+  advanceAllocationDurationMonths: number | null;
+  fixedMonthlyReductionAmount: number | null;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -191,7 +205,7 @@ export function getMoveOutStatus(lease: Lease): MoveOutStatus {
   return "not-scheduled";
 }
 
-export type LedgerLineType = "rent" | "charges" | "adjustment";
+export type LedgerLineType = "rent" | "charges" | "adjustment" | "advance-payment";
 export type LedgerLineStatus = "due" | "paid" | "partially-paid" | "overdue";
 
 export interface LedgerLine {
