@@ -2,14 +2,16 @@ import { useParams, Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
+import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getLedgerByLease } = useAppData();
+  const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getLedgerByLease, getTicketsByUnit } = useAppData();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
@@ -259,6 +261,50 @@ export default function UnitDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Maintenance */}
+      {(() => {
+        const unitTickets = getTicketsByUnit(unit.id);
+        const openMaintenance = unitTickets.filter(t => t.status !== "completed" && t.status !== "cancelled");
+        const historyMaintenance = unitTickets.filter(t => t.status === "completed" || t.status === "cancelled");
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <Wrench className="h-4 w-4" />Maintenance ({unitTickets.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {unitTickets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No maintenance tickets for this unit.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Title</TableHead>
+                      <TableHead className="text-xs">Category</TableHead>
+                      <TableHead className="text-xs">Priority</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                      <TableHead className="text-xs">Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unitTickets.map(t => (
+                      <TableRow key={t.id}>
+                        <TableCell className="font-medium"><Link to={`/maintenance/${t.id}`} className="hover:underline text-foreground">{t.title}</Link></TableCell>
+                        <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[t.category]}</TableCell>
+                        <TableCell><StatusBadge status={t.priority} /></TableCell>
+                        <TableCell><StatusBadge status={t.status} /></TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{formatDate(t.createdDate, property.locale)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Notes */}
       {unit.notes && (

@@ -2,13 +2,19 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees } = useAppData();
+  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees, tickets } = useAppData();
+
+  // Maintenance KPIs
+  const openTicketsCount = tickets.filter(t => t.status !== "completed" && t.status !== "cancelled").length;
+  const urgentTicketsCount = tickets.filter(t => (t.priority === "urgent" || t.priority === "high") && t.status !== "completed" && t.status !== "cancelled").length;
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const completedThisMonth = tickets.filter(t => t.status === "completed" && t.completedDate?.startsWith(thisMonth)).length;
 
   const totalUnits = units.length;
   const occupied = units.filter(u => u.currentStatus === "occupied").length;
@@ -67,6 +73,9 @@ export default function Dashboard() {
     { label: "Upcoming Move-Ins", value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
     { label: "Upcoming Move-Outs", value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
     { label: "Returns Pending", value: returnsPending.length, icon: Truck, color: returnsPending.length > 0 ? "text-warning" : "text-foreground" },
+    { label: "Open Tickets", value: openTicketsCount, icon: Wrench, color: openTicketsCount > 0 ? "text-warning" : "text-foreground" },
+    { label: "Urgent Tickets", value: urgentTicketsCount, icon: Wrench, color: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
+    { label: "Completed (Month)", value: completedThisMonth, icon: Wrench, color: "text-success" },
   ];
 
   const statusSegments = [

@@ -15,6 +15,11 @@ import TenantDetail from "./pages/TenantDetail";
 import Leases from "./pages/Leases";
 import LeaseDetail from "./pages/LeaseDetail";
 import Payments from "./pages/Payments";
+import Maintenance from "./pages/Maintenance";
+import MaintenanceDetail from "./pages/MaintenanceDetail";
+import Vendors from "./pages/Vendors";
+import VendorDetail from "./pages/VendorDetail";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +43,11 @@ const App = () => (
               <Route path="/leases" element={<Leases />} />
               <Route path="/leases/:id" element={<LeaseDetail />} />
               <Route path="/payments" element={<Payments />} />
+              <Route path="/maintenance" element={<Maintenance />} />
+              <Route path="/maintenance/:id" element={<MaintenanceDetail />} />
+              <Route path="/vendors" element={<Vendors />} />
+              <Route path="/vendors/:id" element={<VendorDetail />} />
+              <Route path="/reports" element={<Reports />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
