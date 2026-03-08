@@ -88,6 +88,15 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   urgent: "status.urgent",
   "fully-consumed": "status.fullyConsumed",
   none: "status.none",
+  disputed: "status.disputed",
+  "written-off": "status.writtenOff",
+  imported: "status.imported",
+  unmatched: "status.unmatched",
+  "partially-matched": "status.partiallyMatched",
+  matched: "status.matched",
+  exception: "status.exception",
+  reversed: "status.reversed",
+  refunded: "status.refunded",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {
