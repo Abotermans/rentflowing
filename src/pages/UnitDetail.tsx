@@ -241,7 +241,7 @@ export default function UnitDetail() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-muted-foreground">Property</p>
+              <p className="text-xs text-muted-foreground">{t("table.property")}</p>
               <Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link>
             </div>
             <div>
