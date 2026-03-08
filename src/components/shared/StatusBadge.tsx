@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -39,6 +39,7 @@ const statusStyles: Record<StatusType, string> = {
   medium: "bg-primary/15 text-primary border-primary/30",
   high: "bg-warning/15 text-warning border-warning/30",
   urgent: "bg-destructive/15 text-destructive border-destructive/30",
+  "fully-consumed": "bg-success/15 text-success border-success/30",
   none: "bg-muted text-muted-foreground border-border",
 };
 
@@ -76,6 +77,7 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   medium: "status.medium",
   high: "status.high",
   urgent: "status.urgent",
+  "fully-consumed": "status.fullyConsumed",
   none: "status.none",
 };
 

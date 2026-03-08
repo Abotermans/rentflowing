@@ -205,7 +205,7 @@ export function getMoveOutStatus(lease: Lease): MoveOutStatus {
   return "not-scheduled";
 }
 
-export type LedgerLineType = "rent" | "charges" | "adjustment";
+export type LedgerLineType = "rent" | "charges" | "adjustment" | "advance-payment";
 export type LedgerLineStatus = "due" | "paid" | "partially-paid" | "overdue";
 
 export interface LedgerLine {
