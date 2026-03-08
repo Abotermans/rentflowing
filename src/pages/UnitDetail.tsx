@@ -19,6 +19,7 @@ export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
   const { units, properties, leases, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
