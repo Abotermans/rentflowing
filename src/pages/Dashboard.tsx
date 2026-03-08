@@ -2,7 +2,7 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench, ArrowRightLeft } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench, ArrowRightLeft, Banknote, Receipt } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
