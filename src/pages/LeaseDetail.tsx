@@ -111,6 +111,8 @@ export default function LeaseDetail() {
   const moveOutStatus = getMoveOutStatus(lease);
 
   const totalMonthly = lease.monthlyRent + lease.monthlyCharges;
+  const advancePricing = computeAdvancePricing(lease);
+  const hasAdvance = lease.hasAdvancePayment && advancePricing.advanceStatus !== 'not-applicable';
   const receivables = getReceivableItemsByLease(lease.id).sort((a, b) => b.dueDate.localeCompare(a.dueDate));
   const receipts = getCashReceiptsByLease(lease.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
   const { outstanding, overdue } = getLeaseOutstanding(lease.id);
