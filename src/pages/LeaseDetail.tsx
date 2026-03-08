@@ -177,11 +177,12 @@ export default function LeaseDetail() {
       toast({ title: "Cannot activate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
+    updateLease({ ...lease, leaseStatus: "active" });
     if (validation.warnings.length > 0) {
       toast({ title: "Lease activated with warnings", description: validation.warnings.map(w => w.message).join(". ") });
+    } else {
+      toast({ title: "Lease activated" });
     }
-    updateLease({ ...lease, leaseStatus: "active" });
-    toast({ title: "Lease activated" });
   };
 
   const handleMarkEnded = () => {
