@@ -1,0 +1,46 @@
+import { AlertTriangle, XCircle, Lightbulb } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { ValidationResult } from "@/lib/integrity/types";
+
+interface StatusTransitionAlertProps {
+  validation: ValidationResult | null;
+}
+
+export function StatusTransitionAlert({ validation }: StatusTransitionAlertProps) {
+  if (!validation || (validation.allowed && validation.warnings.length === 0)) return null;
+
+  return (
+    <div className="space-y-2 mt-2">
+      {validation.blockers.length > 0 && (
+        <Alert variant="destructive" className="py-2">
+          <XCircle className="h-4 w-4" />
+          <AlertDescription>
+            <ul className="list-disc list-inside text-xs space-y-0.5">
+              {validation.blockers.map(b => (
+                <li key={b.code}>{b.message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+      {validation.warnings.length > 0 && (
+        <Alert className="py-2 border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <ul className="list-disc list-inside text-xs space-y-0.5">
+              {validation.warnings.map(w => (
+                <li key={w.code}>{w.message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+      {validation.recommendedAction && (
+        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>{validation.recommendedAction}</span>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -17,6 +17,9 @@ import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyType
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
@@ -36,6 +39,7 @@ export default function PropertyDetail() {
   const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
 
   const property = properties.find(p => p.id === id);
   const propertyUnits = units.filter(u => u.propertyId === id);
@@ -57,10 +61,22 @@ export default function PropertyDetail() {
     setUnitForm(rest);
     setSheetOpen(true);
   };
+  const unitStatusValidation = (() => {
+    if (!editingUnit || unitForm.currentStatus === editingUnit.currentStatus) return null;
+    return canChangeUnitStatus(editingUnit.id, unitForm.currentStatus, integrityState);
+  })();
+
   const handleSaveUnit = () => {
     if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
       toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
       return;
+    }
+    if (editingUnit && unitForm.currentStatus !== editingUnit.currentStatus) {
+      const validation = canChangeUnitStatus(editingUnit.id, unitForm.currentStatus, integrityState);
+      if (!validation.allowed) {
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
     }
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...unitForm });
@@ -356,6 +372,7 @@ export default function PropertyDetail() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
+                <StatusTransitionAlert validation={unitStatusValidation} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

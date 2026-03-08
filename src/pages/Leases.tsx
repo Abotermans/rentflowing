@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAppData } from "@/context/AppContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -28,10 +31,18 @@ const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 
+const ALLOWED_TRANSITIONS: Record<LeaseStatus, LeaseStatus[]> = {
+  draft: ["draft", "active"],
+  active: ["active", "ended", "terminated"],
+  ended: ["ended"],
+  terminated: ["terminated"],
+};
+
 export default function Leases() {
   const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease, getGuaranteeByLease } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterProperty, setFilterProperty] = useState("all");
@@ -66,10 +77,30 @@ export default function Leases() {
     setSheetOpen(true);
   };
 
+  // Status transition validation for the form
+  const statusValidation = useMemo(() => {
+    if (!editingLease || form.leaseStatus === editingLease.leaseStatus) return null;
+    return canChangeLeaseStatus(editingLease.id, form.leaseStatus, integrityState);
+  }, [editingLease, form.leaseStatus, integrityState]);
+
+  const availableStatuses = useMemo(() => {
+    if (!editingLease) return LEASE_STATUSES; // new lease: all statuses
+    const allowed = ALLOWED_TRANSITIONS[editingLease.leaseStatus] || [editingLease.leaseStatus];
+    return LEASE_STATUSES.filter(s => allowed.includes(s.value));
+  }, [editingLease]);
+
   const handleSave = () => {
     if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.primaryTenantId || !form.startDate || !form.endDate) {
       toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
       return;
+    }
+    // Validate status transition
+    if (editingLease && form.leaseStatus !== editingLease.leaseStatus) {
+      const validation = canChangeLeaseStatus(editingLease.id, form.leaseStatus, integrityState);
+      if (!validation.allowed) {
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
     }
     if (form.leaseStatus === "active") {
       const existing = getActiveLease(form.unitId);
@@ -264,11 +295,12 @@ export default function Leases() {
                   <SelectContent>{tenants.map(t => <SelectItem key={t.id} value={t.id}>{getTenantFullName(t)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>{t("leases.status")} *</Label>
+            <div><Label>{t("leases.status")} *</Label>
                 <Select value={form.leaseStatus} onValueChange={v => setForm(f => ({ ...f, leaseStatus: v as LeaseStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{LEASE_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{availableStatuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
+                <StatusTransitionAlert validation={statusValidation} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

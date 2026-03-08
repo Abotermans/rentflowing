@@ -16,6 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Tenant, TenantStatus, getTenantFullName } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -29,6 +32,7 @@ export default function Tenants() {
   const { tenants, leases, units, properties, addTenant, updateTenant, deleteTenant } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -49,10 +53,22 @@ export default function Tenants() {
     setSheetOpen(true);
   };
 
+  const tenantStatusValidation = (() => {
+    if (!editingTenant || form.status === editingTenant.status) return null;
+    return canChangeTenantStatus(editingTenant.id, form.status, integrityState);
+  })();
+
   const handleSave = () => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
       toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
       return;
+    }
+    if (editingTenant && form.status !== editingTenant.status) {
+      const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
+      if (!validation.allowed) {
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
     }
     if (editingTenant) {
       updateTenant({ ...editingTenant, ...form });
@@ -171,6 +187,7 @@ export default function Tenants() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
+                <StatusTransitionAlert validation={tenantStatusValidation} />
               </div>
             </div>
             <div><Label>{t("tenants.identificationNumber")}</Label><Input value={form.identificationNumber ?? ""} onChange={e => setForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>

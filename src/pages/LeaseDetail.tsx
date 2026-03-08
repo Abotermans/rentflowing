@@ -19,6 +19,9 @@ import type { CashReceiptSourceType } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeLeaseStatus, canActivateLease } from "@/lib/integrity/leaseIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +34,7 @@ export default function LeaseDetail() {
   } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
 
   // Cash receipt form
   const [receiptSheetOpen, setReceiptSheetOpen] = useState(false);
@@ -158,8 +162,41 @@ export default function LeaseDetail() {
 
   const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
   const handleSaveNotice = () => { updateLease({ ...lease, noticeGiven: true, noticeDate: nDate || null, intendedMoveOutDate: nMoveOut || null, terminationReason: nReason || null }); toast({ title: "Notice registered" }); setNoticeSheetOpen(false); };
-  const handleMarkEnded = () => { updateLease({ ...lease, leaseStatus: "ended" }); toast({ title: "Lease marked as ended" }); };
-  const handleMarkTerminated = () => { updateLease({ ...lease, leaseStatus: "terminated" }); toast({ title: "Lease marked as terminated" }); };
+  const handleActivateLease = () => {
+    const validation = canActivateLease(lease.id, integrityState);
+    if (!validation.allowed) {
+      toast({ title: "Cannot activate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      toast({ title: "Lease activated with warnings", description: validation.warnings.map(w => w.message).join(". ") });
+    }
+    updateLease({ ...lease, leaseStatus: "active" });
+    toast({ title: "Lease activated" });
+  };
+
+  const handleMarkEnded = () => {
+    const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
+    if (!validation.allowed) {
+      toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      toast({ title: "Warnings", description: validation.warnings.map(w => w.message).join(". ") });
+    }
+    updateLease({ ...lease, leaseStatus: "ended" });
+    toast({ title: "Lease marked as ended" });
+  };
+
+  const handleMarkTerminated = () => {
+    const validation = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+    if (!validation.allowed) {
+      toast({ title: "Cannot terminate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      return;
+    }
+    updateLease({ ...lease, leaseStatus: "terminated" });
+    toast({ title: "Lease marked as terminated" });
+  };
 
   const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
   const handleScheduleMoveIn = () => { updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, keyHandoverCount: parseInt(miKeys) || 0 }); toast({ title: "Move-in scheduled" }); setMoveInSheetOpen(false); };
@@ -328,6 +365,9 @@ export default function LeaseDetail() {
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}</Button>
+              {lease.leaseStatus === "draft" && (
+                <Button variant="default" size="sm" onClick={handleActivateLease}>Activate Lease</Button>
+              )}
               {lease.leaseStatus === "active" && (
                 <>
                   <Button variant="outline" size="sm" onClick={handleMarkEnded}>{t("detail.markEnded")}</Button>

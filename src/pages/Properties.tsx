@@ -17,6 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { useSettings } from "@/context/SettingsContext";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canArchiveProperty } from "@/lib/integrity/propertyIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const EUROPEAN_COUNTRIES = [
   { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
@@ -53,6 +56,7 @@ export default function Properties() {
   const { properties, units, leases, addProperty, updateProperty, deleteProperty, getPropertyStats } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<PropertyFormData>({ ...emptyForm });
@@ -60,6 +64,14 @@ export default function Properties() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterCountry, setFilterCountry] = useState<string>("all");
+
+  const propertyStatusValidation = (() => {
+    if (!editing) return null;
+    if (form.status === "inactive" && editing.status === "active") {
+      return canArchiveProperty(editing.id, integrityState);
+    }
+    return null;
+  })();
 
   const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setOpen(true); };
   const openEdit = (p: Property) => {
@@ -288,6 +300,7 @@ export default function Properties() {
                     <SelectItem value="inactive">{t("properties.inactive")}</SelectItem>
                   </SelectContent>
                 </Select>
+                <StatusTransitionAlert validation={propertyStatusValidation} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
