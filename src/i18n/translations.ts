@@ -172,6 +172,11 @@ const en = {
   "status.high": "High",
   "status.urgent": "Urgent",
   "status.none": "None",
+  "status.moveInPending": "Move-In Pending",
+  "status.moveOutScheduled": "Move-Out Scheduled",
+  "status.availableSoon": "Available Soon",
+  "occupancy.derivedLabel": "Occupancy",
+  "occupancy.inconsistencyWarning": "Status Inconsistency",
 
   // Tenants
   "tenants.title": "Tenants",
