@@ -155,7 +155,7 @@ export default function Properties() {
       {properties.length === 0 ? (
         <EmptyState icon={Building2} title="No properties yet" description="Add your first property to get started." actionLabel="Add Property" onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No properties match your filters.</p></CardContent></Card>
+        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
       ) : (
         <Card>
           <Table>
