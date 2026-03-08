@@ -77,7 +77,7 @@ export default function UnitDetail() {
 
       {/* Main Info */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Unit Information</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.unitInformation")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {infoItems.map(item => (
