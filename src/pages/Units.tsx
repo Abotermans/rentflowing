@@ -95,18 +95,7 @@ export default function Units() {
     return canChangeUnitStatus(editingUnit.id, form.currentStatus, integrityState);
   })();
 
-  const handleSave = () => {
-    if (!form.unitCode.trim() || !form.unitLabel.trim() || !form.propertyId) {
-      toast({ title: "Validation Error", description: "Property, unit code, and label are required.", variant: "destructive" });
-      return;
-    }
-    if (editingUnit && form.currentStatus !== editingUnit.currentStatus) {
-      const validation = canChangeUnitStatus(editingUnit.id, form.currentStatus, integrityState);
-      if (!validation.allowed) {
-        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
-        return;
-      }
-    }
+  const executeSave = () => {
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...form });
       toast({ title: "Unit updated" });
@@ -115,6 +104,40 @@ export default function Units() {
       toast({ title: "Unit added" });
     }
     setSheetOpen(false);
+  };
+
+  const handleSave = () => {
+    if (!form.unitCode.trim() || !form.unitLabel.trim() || !form.propertyId) {
+      toast({ title: "Validation Error", description: "Property, unit code, and label are required.", variant: "destructive" });
+      return;
+    }
+    if (editingUnit && form.currentStatus !== editingUnit.currentStatus) {
+      const validation = canChangeUnitStatus(editingUnit.id, form.currentStatus, integrityState);
+      if (!validation.allowed) {
+        if (validation.overrideAllowed) {
+          setPendingOverrideValidation(validation);
+          setOverrideDialogOpen(true);
+          return;
+        }
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
+    }
+    executeSave();
+  };
+
+  const handleOverrideConfirm = (reason: string) => {
+    if (!editingUnit || !pendingOverrideValidation) return;
+    addOverride({
+      entityType: "unit",
+      entityId: editingUnit.id,
+      action: `status_change:${form.currentStatus}`,
+      blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
+      reason,
+    });
+    executeSave();
+    toast({ title: "Unit updated (overridden)", description: `Override reason: ${reason}` });
+    setPendingOverrideValidation(null);
   };
 
   const handleDelete = (uid: string) => {
