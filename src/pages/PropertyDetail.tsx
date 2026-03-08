@@ -127,11 +127,11 @@ export default function PropertyDetail() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.overview")}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Address</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Owner</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Country</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Type</span><span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(property.propertyType)}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Status</span><StatusBadge status={property.status} /></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(property.propertyType)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("filter.status")}</span><StatusBadge status={property.status} /></div>
           </CardContent>
         </Card>
         <Card>
