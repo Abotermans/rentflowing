@@ -2,13 +2,13 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats } = useAppData();
+  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding } = useAppData();
 
   const totalUnits = units.length;
   const occupied = units.filter(u => u.currentStatus === "occupied").length;
@@ -18,28 +18,39 @@ export default function Dashboard() {
   const occupancyRate = totalUnits > 0 ? Math.round((occupied / totalUnits) * 100) : 0;
 
   const now = new Date();
-  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const today = now.toISOString().split("T")[0];
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-  const availableSoon = units.filter(u => {
-    if (!u.availableFrom) return false;
-    const d = new Date(u.availableFrom);
-    return d >= now && d <= in30Days;
-  }).length;
 
   const activeLeases = leases.filter(l => l.leaseStatus === "active");
   const leasesEndingSoon = activeLeases.filter(l => new Date(l.endDate) <= in90Days);
+
+  // Financial KPIs
+  const totalExpectedMonthlyRent = activeLeases.reduce((s, l) => s + l.monthlyRent + l.monthlyCharges, 0);
+  const totalOverdue = ledgerLines.filter(ll => ll.remainingBalance > 0 && ll.dueDate < today).reduce((s, ll) => s + ll.remainingBalance, 0);
+
+  // Overdue tenants
+  const activeTenantIds = [...new Set(activeLeases.map(l => l.primaryTenantId))];
+  const overdueTenants = activeTenantIds
+    .map(tid => {
+      const t = tenants.find(x => x.id === tid);
+      const { outstanding, overdue } = getTenantOutstanding(tid);
+      const lease = activeLeases.find(l => l.primaryTenantId === tid);
+      const prop = lease ? properties.find(p => p.id === lease.propertyId) : undefined;
+      return { tenant: t, outstanding, overdue, lease, prop };
+    })
+    .filter(x => x.overdue > 0 && x.tenant);
 
   const kpis = [
     { label: "Properties", value: properties.length, icon: Building2, color: "text-primary" },
     { label: "Total Units", value: totalUnits, icon: DoorOpen, color: "text-foreground" },
     { label: "Occupied", value: occupied, icon: CheckCircle2, color: "text-success" },
     { label: "Vacant", value: vacant, icon: XCircle, color: "text-warning" },
-    { label: "Reserved", value: reserved, icon: Clock, color: "text-primary" },
-    { label: "Unavailable", value: unavailable, icon: Ban, color: "text-muted-foreground" },
     { label: "Occupancy Rate", value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
-    { label: "Available Soon", value: availableSoon, icon: CalendarClock, color: "text-warning" },
     { label: "Active Leases", value: activeLeases.length, icon: FileText, color: "text-primary" },
     { label: "Ending Soon", value: leasesEndingSoon.length, icon: CalendarClock, color: "text-destructive" },
+    { label: "Expected Monthly", value: formatCurrency(totalExpectedMonthlyRent), icon: CreditCard, color: "text-primary", isText: true },
+    { label: "Total Overdue", value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
+    { label: "Overdue Tenants", value: overdueTenants.length, icon: Users, color: overdueTenants.length > 0 ? "text-destructive" : "text-foreground" },
   ];
 
   const statusSegments = [
@@ -48,23 +59,6 @@ export default function Dashboard() {
     { status: "vacant" as const, count: vacant, className: "bg-warning" },
     { status: "unavailable" as const, count: unavailable, className: "bg-muted-foreground" },
   ];
-
-  const countryGroups = properties.reduce<Record<string, number>>((acc, p) => {
-    acc[p.countryCode] = (acc[p.countryCode] || 0) + 1;
-    return acc;
-  }, {});
-
-  const typeGroups = properties.reduce<Record<string, number>>((acc, p) => {
-    acc[p.propertyType] = (acc[p.propertyType] || 0) + 1;
-    return acc;
-  }, {});
-
-  const uniqueCurrencies = [...new Set(properties.map(p => p.currencyCode))];
-  const uniqueLocales = [...new Set(properties.map(p => p.locale))];
-  const uniqueMeasurements = [...new Set(properties.map(p => p.measurementSystem))];
-
-  const recentProperties = [...properties].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5);
-  const recentUnits = [...units].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8);
 
   const vacancyOverview = properties.map(p => {
     const stats = getPropertyStats(p.id);
@@ -85,7 +79,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">{k.value}</p>
+                  <p className={`text-2xl font-bold text-foreground mt-1 ${(k as any).isText ? "text-lg" : ""}`}>{k.value}</p>
                 </div>
                 <k.icon className={`h-5 w-5 ${k.color}`} />
               </div>
@@ -119,6 +113,41 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Overdue Tenants */}
+      {overdueTenants.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-destructive" />Overdue Tenants
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Tenant</TableHead>
+                  <TableHead className="text-xs">Lease</TableHead>
+                  <TableHead className="text-xs">Property</TableHead>
+                  <TableHead className="text-xs text-right">Overdue</TableHead>
+                  <TableHead className="text-xs text-right">Outstanding</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {overdueTenants.map(({ tenant: t, overdue, outstanding, lease: l, prop }) => (
+                  <TableRow key={t!.id}>
+                    <TableCell className="text-sm font-medium"><Link to={`/tenants/${t!.id}`} className="hover:underline text-foreground">{getTenantFullName(t!)}</Link></TableCell>
+                    <TableCell className="font-mono text-xs">{l ? <Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link> : "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                    <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(overdue, prop?.currencyCode, prop?.locale)}</TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(outstanding, prop?.currencyCode, prop?.locale)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Active Leases */}
       <Card>
@@ -160,111 +189,71 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Leases Ending Soon */}
+      {leasesEndingSoon.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><CalendarClock className="h-4 w-4 text-destructive" />Leases Ending Soon (90 days)</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Reference</TableHead>
+                  <TableHead className="text-xs">Tenant</TableHead>
+                  <TableHead className="text-xs">Property</TableHead>
+                  <TableHead className="text-xs">End Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leasesEndingSoon.map(l => {
+                  const tenant = tenants.find(t => t.id === l.primaryTenantId);
+                  const prop = properties.find(p => p.id === l.propertyId);
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-destructive font-medium">{formatDate(l.endDate, prop?.locale)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Vacancy Overview by Property */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Vacancy Overview by Property</CardTitle></CardHeader>
         <CardContent>
-          {vacancyOverview.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No properties yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Property</TableHead>
-                  <TableHead className="text-xs text-center">Total</TableHead>
-                  <TableHead className="text-xs text-center">Occupied</TableHead>
-                  <TableHead className="text-xs text-center">Vacant</TableHead>
-                  <TableHead className="text-xs text-right">Occupancy</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Property</TableHead>
+                <TableHead className="text-xs text-center">Total</TableHead>
+                <TableHead className="text-xs text-center">Occupied</TableHead>
+                <TableHead className="text-xs text-center">Vacant</TableHead>
+                <TableHead className="text-xs text-right">Occupancy</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {vacancyOverview.map(v => (
+                <TableRow key={v.id}>
+                  <TableCell className="font-medium">
+                    <Link to={`/properties/${v.id}`} className="hover:underline text-foreground">{v.name}</Link>
+                  </TableCell>
+                  <TableCell className="text-center text-muted-foreground">{v.total}</TableCell>
+                  <TableCell className="text-center text-muted-foreground">{v.occupied}</TableCell>
+                  <TableCell className="text-center text-muted-foreground">{v.vacant}</TableCell>
+                  <TableCell className="text-right font-medium text-foreground">{v.occupancyRate}%</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vacancyOverview.map(v => (
-                  <TableRow key={v.id}>
-                    <TableCell className="font-medium">
-                      <Link to={`/properties/${v.id}`} className="hover:underline text-foreground">{v.name}</Link>
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground">{v.total}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">{v.occupied}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">{v.vacant}</TableCell>
-                    <TableCell className="text-right font-medium text-foreground">{v.occupancyRate}%</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Properties</CardTitle></CardHeader>
-          <CardContent>
-            {recentProperties.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No properties yet.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Name</TableHead>
-                    <TableHead className="text-xs">City</TableHead>
-                    <TableHead className="text-xs">Country</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs text-right">Updated</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentProperties.map(p => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium"><Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link></TableCell>
-                      <TableCell className="text-muted-foreground">{p.city}</TableCell>
-                      <TableCell className="text-muted-foreground">{getCountryName(p.countryCode)}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{getPropertyTypeLabel(p.propertyType)}</TableCell>
-                      <TableCell><StatusBadge status={p.status} /></TableCell>
-                      <TableCell className="text-right text-muted-foreground text-xs">{formatDate(p.updatedAt)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Units</CardTitle></CardHeader>
-          <CardContent>
-            {recentUnits.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No units yet.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Code</TableHead>
-                    <TableHead className="text-xs">Property</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs text-right">Updated</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentUnits.map(u => {
-                    const prop = properties.find(p => p.id === u.propertyId);
-                    return (
-                      <TableRow key={u.id}>
-                        <TableCell className="font-mono text-xs font-medium"><Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link></TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{getUnitTypeLabel(u.unitType)}</TableCell>
-                        <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
-                        <TableCell className="text-right text-muted-foreground text-xs">{formatDate(u.updatedAt)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Portfolio by Country */}
         <Card>
           <CardHeader className="pb-3">
@@ -274,21 +263,17 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {Object.keys(countryGroups).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No properties yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {Object.entries(countryGroups).sort((a, b) => b[1] - a[1]).map(([code, count]) => (
-                  <div key={code} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">{getCountryName(code)}</span>
-                      <span className="text-xs text-muted-foreground font-mono">{code}</span>
-                    </div>
-                    <span className="text-sm font-bold text-foreground">{count}</span>
+            <div className="space-y-3">
+              {Object.entries(properties.reduce<Record<string, number>>((acc, p) => { acc[p.countryCode] = (acc[p.countryCode] || 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]).map(([code, count]) => (
+                <div key={code} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{getCountryName(code)}</span>
+                    <span className="text-xs text-muted-foreground font-mono">{code}</span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <span className="text-sm font-bold text-foreground">{count}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -301,18 +286,14 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {Object.keys(typeGroups).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No properties yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {Object.entries(typeGroups).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
-                  <div key={type} className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(type)}</span>
-                    <span className="text-sm font-bold text-foreground">{count}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="space-y-3">
+              {Object.entries(properties.reduce<Record<string, number>>((acc, p) => { acc[p.propertyType] = (acc[p.propertyType] || 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                <div key={type} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(type)}</span>
+                  <span className="text-sm font-bold text-foreground">{count}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -326,10 +307,9 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Currencies</span><span className="text-sm font-medium text-foreground">{uniqueCurrencies.join(", ") || "—"}</span></div>
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Locales</span><span className="text-sm font-medium text-foreground">{uniqueLocales.join(", ") || "—"}</span></div>
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Measurement</span><span className="text-sm font-medium text-foreground capitalize">{uniqueMeasurements.join(", ") || "—"}</span></div>
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Countries</span><span className="text-sm font-medium text-foreground">{Object.keys(countryGroups).length}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Currencies</span><span className="text-sm font-medium text-foreground">{[...new Set(properties.map(p => p.currencyCode))].join(", ") || "—"}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Locales</span><span className="text-sm font-medium text-foreground">{[...new Set(properties.map(p => p.locale))].join(", ") || "—"}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Measurement</span><span className="text-sm font-medium text-foreground capitalize">{[...new Set(properties.map(p => p.measurementSystem))].join(", ") || "—"}</span></div>
             </div>
           </CardContent>
         </Card>

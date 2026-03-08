@@ -3,13 +3,13 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryName } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, getActiveLease, tenants } = useAppData();
+  const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getLedgerByLease } = useAppData();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
@@ -25,6 +25,12 @@ export default function UnitDetail() {
 
   const activeLease = getActiveLease(unit.id);
   const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
+
+  // Financial info for active lease
+  const leaseFinancials = activeLease ? getLeaseOutstanding(activeLease.id) : null;
+  const ledger = activeLease ? getLedgerByLease(activeLease.id) : [];
+  const today = new Date().toISOString().split("T")[0];
+  const nextDueLine = ledger.filter(ll => ll.remainingBalance > 0 && ll.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
   const infoItems = [
     { label: "Type", value: getUnitTypeLabel(unit.unitType), icon: Home },
@@ -139,6 +145,32 @@ export default function UnitDetail() {
                 <p className="text-xs text-muted-foreground">Total Monthly</p>
                 <p className="text-sm font-bold text-primary">{formatCurrency(activeLease.monthlyRent + activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
               </div>
+              {/* Financial balance */}
+              {leaseFinancials && leaseFinancials.outstanding > 0 && (
+                <>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Outstanding Balance</p>
+                    <p className="text-sm font-bold text-foreground">{formatCurrency(leaseFinancials.outstanding, property.currencyCode, property.locale)}</p>
+                  </div>
+                  {leaseFinancials.overdue > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Overdue</p>
+                      <p className="text-sm font-bold text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />
+                        {formatCurrency(leaseFinancials.overdue, property.currencyCode, property.locale)}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+              {nextDueLine && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Next Due</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {formatCurrency(nextDueLine.remainingBalance, property.currencyCode, property.locale)} on {formatDate(nextDueLine.dueDate, property.locale)}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No active lease. Tenant and lease management available via the Leases module.</p>

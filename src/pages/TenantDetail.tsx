@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle } from "lucide-react";
 import { getTenantFullName } from "@/types";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
-  const { tenants, leases, units, properties } = useAppData();
+  const { tenants, leases, units, properties, getTenantOutstanding, getPaymentsByTenant } = useAppData();
 
   const tenant = tenants.find(t => t.id === id);
   if (!tenant) {
@@ -26,6 +26,12 @@ export default function TenantDetail() {
   const activeLease = tenantLeases.find(l => l.leaseStatus === "active");
   const activeUnit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
   const activeProperty = activeLease ? properties.find(p => p.id === activeLease.propertyId) : null;
+  const { outstanding, overdue } = getTenantOutstanding(tenant.id);
+  const recentPayments = getPaymentsByTenant(tenant.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
+
+  const methodLabels: Record<string, string> = {
+    "bank-transfer": "Bank Transfer", cash: "Cash", card: "Card", "direct-debit": "Direct Debit", other: "Other",
+  };
 
   return (
     <div className="space-y-6">
@@ -72,6 +78,28 @@ export default function TenantDetail() {
         </CardContent>
       </Card>
 
+      {/* Financial Overview */}
+      {(outstanding > 0 || overdue > 0) && (
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Overview</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Total Outstanding</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, activeProperty?.currencyCode, activeProperty?.locale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Overdue</p>
+                <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
+                  {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
+                  {formatCurrency(overdue, activeProperty?.currencyCode, activeProperty?.locale)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Current Lease Summary */}
       {activeLease && activeProperty && activeUnit && (
         <Card>
@@ -103,6 +131,41 @@ export default function TenantDetail() {
                 <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, activeProperty.currencyCode, activeProperty.locale)}</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Payments */}
+      {recentPayments.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Payments</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Lease</TableHead>
+                  <TableHead className="text-xs text-right">Amount</TableHead>
+                  <TableHead className="text-xs">Method</TableHead>
+                  <TableHead className="text-xs">Reference</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentPayments.map(p => {
+                  const lease = leases.find(l => l.id === p.leaseId);
+                  const prop = lease ? properties.find(pr => pr.id === lease.propertyId) : undefined;
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell className="text-xs text-muted-foreground">{formatDate(p.paymentDate, prop?.locale)}</TableCell>
+                      <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className="hover:underline text-foreground">{lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{formatCurrency(p.amount, prop?.currencyCode, prop?.locale)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{methodLabels[p.paymentMethod] ?? p.paymentMethod}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{p.reference || "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
