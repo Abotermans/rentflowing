@@ -8,7 +8,13 @@ import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees } = useAppData();
+  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees, tickets } = useAppData();
+
+  // Maintenance KPIs
+  const openTicketsCount = tickets.filter(t => t.status !== "completed" && t.status !== "cancelled").length;
+  const urgentTicketsCount = tickets.filter(t => (t.priority === "urgent" || t.priority === "high") && t.status !== "completed" && t.status !== "cancelled").length;
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const completedThisMonth = tickets.filter(t => t.status === "completed" && t.completedDate?.startsWith(thisMonth)).length;
 
   const totalUnits = units.length;
   const occupied = units.filter(u => u.currentStatus === "occupied").length;
