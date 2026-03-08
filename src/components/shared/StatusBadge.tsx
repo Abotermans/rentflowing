@@ -39,6 +39,7 @@ const statusStyles: Record<StatusType, string> = {
   medium: "bg-primary/15 text-primary border-primary/30",
   high: "bg-warning/15 text-warning border-warning/30",
   urgent: "bg-destructive/15 text-destructive border-destructive/30",
+  none: "bg-muted text-muted-foreground border-border",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {
