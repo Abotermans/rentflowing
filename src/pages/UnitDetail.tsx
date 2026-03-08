@@ -175,11 +175,11 @@ export default function UnitDetail() {
                   <div className="flex items-center gap-2 p-3 rounded-md bg-warning/10 border border-warning/30">
                     <Bell className="h-4 w-4 text-warning" />
                     <div>
-                      <p className="text-sm font-medium text-foreground">Under Notice</p>
+                      <p className="text-sm font-medium text-foreground">{t("detail.underNoticeLabel")}</p>
                       {activeLease.intendedMoveOutDate && (
                         <p className="text-xs text-muted-foreground">
-                          Intended move-out: {formatDate(activeLease.intendedMoveOutDate, property.locale)}
-                          — Available from {formatDate(activeLease.intendedMoveOutDate, property.locale)}
+                          {t("detail.intendedMoveOutLabel")}: {formatDate(activeLease.intendedMoveOutDate, property.locale)}
+                          — {t("detail.availableFromLabel")} {formatDate(activeLease.intendedMoveOutDate, property.locale)}
                         </p>
                       )}
                     </div>
