@@ -553,7 +553,42 @@ export default function LeaseDetail() {
         </CardContent>
       </Card>
 
-      {/* Notes */}
+      {/* Allocation History */}
+      {(() => {
+        const leaseReceivableIds = new Set(receivables.map(r => r.id));
+        const leaseAllocations = allocations.filter(a => leaseReceivableIds.has(a.receivableItemId)).sort((a, b) => b.allocationDate.localeCompare(a.allocationDate));
+        if (leaseAllocations.length === 0) return null;
+        return (
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Allocation History</CardTitle></CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Receivable</TableHead>
+                    <TableHead className="text-xs text-right">Amount</TableHead>
+                    <TableHead className="text-xs">Method</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leaseAllocations.map(al => {
+                    const ri = receivables.find(r => r.id === al.receivableItemId);
+                    return (
+                      <TableRow key={al.id}>
+                        <TableCell className="text-xs text-muted-foreground">{formatDate(al.allocationDate, locale)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{ri?.label ?? "—"}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{formatCurrency(al.allocatedAmount, currency, locale)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{ALLOCATION_TYPE_LABELS[al.allocationType]}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        );
+      })()}
       {lease.notes && (
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
