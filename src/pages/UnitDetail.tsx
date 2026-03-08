@@ -3,8 +3,8 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock } from "lucide-react";
-import { formatCurrency, formatArea, formatDate, getUnitTypeLabel } from "@/lib/formatters";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Settings2, Pencil } from "lucide-react";
+import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryName } from "@/lib/formatters";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
@@ -47,9 +47,15 @@ export default function UnitDetail() {
             <p className="text-sm text-muted-foreground mt-1">{unit.unitLabel}</p>
             <p className="text-sm text-muted-foreground mt-0.5">
               Property: <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>
-              <span className="mx-1">·</span>{property.city}, {property.countryCode}
+              <span className="mx-1 text-muted-foreground">·</span>
+              <span className="font-mono text-xs">{property.referenceCode}</span>
+              <span className="mx-1 text-muted-foreground">·</span>
+              {property.city}, {getCountryName(property.countryCode)}
             </p>
           </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/units"><Pencil className="h-3.5 w-3.5 mr-1.5" />Edit</Link>
+          </Button>
         </div>
       </div>
 
@@ -75,7 +81,7 @@ export default function UnitDetail() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Defaults</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-3 gap-6">
             <div>
               <p className="text-xs text-muted-foreground">Base Rent</p>
               <p className="text-lg font-bold text-foreground">
@@ -88,11 +94,15 @@ export default function UnitDetail() {
                 {unit.baseCharges != null ? formatCurrency(unit.baseCharges, property.currencyCode, property.locale) : "—"}
               </p>
             </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Currency</p>
+              <p className="text-lg font-bold text-foreground">{property.currencyCode}</p>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Occupancy placeholder */}
+      {/* Occupancy */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Occupancy</CardTitle></CardHeader>
         <CardContent>
@@ -100,6 +110,37 @@ export default function UnitDetail() {
             <StatusBadge status={unit.currentStatus} />
           </div>
           <p className="text-sm text-muted-foreground mt-3">Tenant and lease management coming in a future update.</p>
+        </CardContent>
+      </Card>
+
+      {/* Property Context */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Building2 className="h-4 w-4" />Property Context</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Property</p>
+              <Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">City</p>
+              <p className="text-sm font-medium text-foreground">{property.city}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Country</p>
+              <p className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Locale</p>
+              <p className="text-sm font-medium text-foreground font-mono">{property.locale}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Measurement</p>
+              <p className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

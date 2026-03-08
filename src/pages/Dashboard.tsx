@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { formatDate, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
+import { formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
 
 export default function Dashboard() {
   const { properties, units, getPropertyStats } = useAppData();
@@ -64,6 +64,17 @@ export default function Dashboard() {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 5);
 
+  // Recent units
+  const recentUnits = [...units]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 8);
+
+  // Vacancy overview by property
+  const vacancyOverview = properties.map(p => {
+    const stats = getPropertyStats(p.id);
+    return { ...p, ...stats };
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -113,6 +124,41 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Vacancy Overview by Property */}
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Vacancy Overview by Property</CardTitle></CardHeader>
+        <CardContent>
+          {vacancyOverview.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No properties yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Property</TableHead>
+                  <TableHead className="text-xs text-center">Total</TableHead>
+                  <TableHead className="text-xs text-center">Occupied</TableHead>
+                  <TableHead className="text-xs text-center">Vacant</TableHead>
+                  <TableHead className="text-xs text-right">Occupancy</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vacancyOverview.map(v => (
+                  <TableRow key={v.id}>
+                    <TableCell className="font-medium">
+                      <Link to={`/properties/${v.id}`} className="hover:underline text-foreground">{v.name}</Link>
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground">{v.total}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{v.occupied}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{v.vacant}</TableCell>
+                    <TableCell className="text-right font-medium text-foreground">{v.occupancyRate}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Properties */}
         <Card>
@@ -151,6 +197,44 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* Recent Units */}
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Units</CardTitle></CardHeader>
+          <CardContent>
+            {recentUnits.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No units yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Code</TableHead>
+                    <TableHead className="text-xs">Property</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs text-right">Updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentUnits.map(u => {
+                    const prop = properties.find(p => p.id === u.propertyId);
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-mono text-xs font-medium">
+                          <Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{getUnitTypeLabel(u.unitType)}</TableCell>
+                        <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
+                        <TableCell className="text-right text-muted-foreground text-xs">{formatDate(u.updatedAt)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Portfolio by Country */}
         <Card>
           <CardHeader className="pb-3">
@@ -164,17 +248,15 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">No properties yet.</p>
             ) : (
               <div className="space-y-3">
-                {Object.entries(countryGroups)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([code, count]) => (
-                    <div key={code} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-foreground">{getCountryName(code)}</span>
-                        <span className="text-xs text-muted-foreground font-mono">{code}</span>
-                      </div>
-                      <span className="text-sm font-bold text-foreground">{count}</span>
+                {Object.entries(countryGroups).sort((a, b) => b[1] - a[1]).map(([code, count]) => (
+                  <div key={code} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">{getCountryName(code)}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{code}</span>
                     </div>
-                  ))}
+                    <span className="text-sm font-bold text-foreground">{count}</span>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
@@ -193,14 +275,12 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">No properties yet.</p>
             ) : (
               <div className="space-y-3">
-                {Object.entries(typeGroups)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([type, count]) => (
-                    <div key={type} className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(type)}</span>
-                      <span className="text-sm font-bold text-foreground">{count}</span>
-                    </div>
-                  ))}
+                {Object.entries(typeGroups).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                  <div key={type} className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(type)}</span>
+                    <span className="text-sm font-bold text-foreground">{count}</span>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
@@ -216,22 +296,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Currencies</span>
-                <span className="text-sm font-medium text-foreground">{uniqueCurrencies.join(", ") || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Locales</span>
-                <span className="text-sm font-medium text-foreground">{uniqueLocales.join(", ") || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Measurement</span>
-                <span className="text-sm font-medium text-foreground capitalize">{uniqueMeasurements.join(", ") || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Countries</span>
-                <span className="text-sm font-medium text-foreground">{Object.keys(countryGroups).length}</span>
-              </div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Currencies</span><span className="text-sm font-medium text-foreground">{uniqueCurrencies.join(", ") || "—"}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Locales</span><span className="text-sm font-medium text-foreground">{uniqueLocales.join(", ") || "—"}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Measurement</span><span className="text-sm font-medium text-foreground capitalize">{uniqueMeasurements.join(", ") || "—"}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Countries</span><span className="text-sm font-medium text-foreground">{Object.keys(countryGroups).length}</span></div>
             </div>
           </CardContent>
         </Card>
