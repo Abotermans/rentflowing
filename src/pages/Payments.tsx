@@ -15,6 +15,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getTenantFullName, type PaymentMethod } from "@/types";
 import { Plus, CreditCard, AlertTriangle, CheckCircle2, Clock, Search } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function Payments() {
   const { ledgerLines, payments, leases, tenants, properties, units, addPayment } = useAppData();
