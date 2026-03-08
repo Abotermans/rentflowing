@@ -90,28 +90,32 @@ function RentRollReport() {
         <KpiCard label="Total Monthly Income" value={formatCurrency(totalAll)} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="leases" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Property</TableHead>
-          <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Tenant</TableHead>
-          <TableHead className="text-xs text-right">Rent</TableHead><TableHead className="text-xs text-right">Charges</TableHead>
-          <TableHead className="text-xs text-right">Total</TableHead><TableHead className="text-xs">Deposit</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.l.id}>
-              <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
-              <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm font-medium">{formatCurrency(d.total, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell><StatusBadge status={d.guarantee?.status ?? "none"} /></TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Property</TableHead>
+            <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Tenant</TableHead>
+            <TableHead className="text-xs text-right">Rent</TableHead><TableHead className="text-xs text-right">Charges</TableHead>
+            <TableHead className="text-xs text-right">Total</TableHead><TableHead className="text-xs">Deposit</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No active leases found.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.l.id}>
+                <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
+                <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
+                <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm font-medium">{formatCurrency(d.total, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell><StatusBadge status={d.guarantee?.status ?? "none"} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
