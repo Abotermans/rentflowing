@@ -111,7 +111,7 @@ export default function UnitDetail() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Currency</p>
+              <p className="text-xs text-muted-foreground">{t("properties.currency")}</p>
               <p className="text-lg font-bold text-foreground">{property.currencyCode}</p>
             </div>
           </div>
