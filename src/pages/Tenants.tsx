@@ -83,10 +83,10 @@ export default function Tenants() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Tenants</h1>
-          <p className="text-sm text-muted-foreground">{tenants.length} tenants</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("tenants.title")}</h1>
+          <p className="text-sm text-muted-foreground">{tenants.length} {t("tenants.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Tenant</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("tenants.add")}</Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
