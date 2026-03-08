@@ -125,6 +125,8 @@ const en = {
   "units.selectProperty": "Select property",
   "units.deleteTitle": "Delete unit?",
   "units.deleteDesc": "This will permanently delete this unit.",
+  "units.deleteWarningLease": "This unit has an active lease ({ref}) with tenant {tenant}. Deleting it will orphan lease data.",
+  "units.deleteSafe": "This unit has no active leases. It can be safely deleted.",
   "units.apartment": "Apartment",
   "units.studio": "Studio",
   "units.office": "Office",
