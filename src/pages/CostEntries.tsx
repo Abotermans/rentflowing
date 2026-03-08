@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Receipt, Plus, Search, Pencil, Trash2 } from "lucide-react";
@@ -203,21 +203,12 @@ export default function CostEntries() {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>{t("costs.deleteEntry")}?</AlertDialogTitle>
-                                <AlertDialogDescription>{t("costs.deleteEntryDesc")}</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(e.id)}>{t("action.delete")}</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <DeleteDialog
+                            entityType="cost-entry"
+                            entityId={e.id}
+                            entityLabel={e.label}
+                            onDelete={handleDelete}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

@@ -9,7 +9,7 @@ export { canDeleteUnit, canChangeUnitStatus, getUnitIntegrityWarnings } from "./
 export { canDeleteTenant, canChangeTenantStatus } from "./tenantIntegrity";
 export { canDeleteLease, canActivateLease, canChangeLeaseStatus } from "./leaseIntegrity";
 export { canDeleteReceivable, canDeleteCashReceipt, canCreateAllocation } from "./financialIntegrity";
-export { canDeleteCostEntry, canDeleteAllocationRule, validateCostEntry, validateManualPercentageShares } from "./costIntegrity";
+export { canDeleteCostCategory, canDeleteCostEntry, canDeleteAllocationRule, validateCostEntry, validateManualPercentageShares } from "./costIntegrity";
 
 // ===== Generic Dispatchers =====
 
@@ -19,7 +19,7 @@ import { canDeleteUnit, canChangeUnitStatus, getUnitIntegrityWarnings } from "./
 import { canDeleteTenant, canChangeTenantStatus } from "./tenantIntegrity";
 import { canDeleteLease, canChangeLeaseStatus } from "./leaseIntegrity";
 import { canDeleteReceivable, canDeleteCashReceipt } from "./financialIntegrity";
-import { canDeleteCostEntry, canDeleteAllocationRule } from "./costIntegrity";
+import { canDeleteCostCategory, canDeleteCostEntry, canDeleteAllocationRule } from "./costIntegrity";
 
 export function getDeletionImpact(entityType: IntegrityEntityType, entityId: string, s: IntegrityState): ValidationResult {
   switch (entityType) {
@@ -31,6 +31,7 @@ export function getDeletionImpact(entityType: IntegrityEntityType, entityId: str
     case "cash-receipt": return canDeleteCashReceipt(entityId, s);
     case "cost-entry": return canDeleteCostEntry(entityId, s);
     case "allocation-rule": return canDeleteAllocationRule(entityId, s);
+    case "cost-category": return canDeleteCostCategory(entityId, s);
     default: return { allowed: true, blockers: [], warnings: [], overrideAllowed: false };
   }
 }
