@@ -245,7 +245,7 @@ export default function UnitDetail() {
               <Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">City</p>
+              <p className="text-xs text-muted-foreground">{t("properties.city")}</p>
               <p className="text-sm font-medium text-foreground">{property.city}</p>
             </div>
             <div>
