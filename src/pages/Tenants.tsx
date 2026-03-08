@@ -28,6 +28,7 @@ type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
 export default function Tenants() {
   const { tenants, leases, units, properties, addTenant, updateTenant, deleteTenant } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
