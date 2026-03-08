@@ -139,18 +139,18 @@ export default function MaintenanceDetail() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Created</p>
-              <p className="text-sm font-medium text-foreground">{formatDate(ticket.createdDate)}</p>
+              <p className="text-sm font-medium text-foreground">{formatDate(ticket.createdDate, property?.locale)}</p>
             </div>
             {ticket.scheduledDate && (
               <div>
                 <p className="text-xs text-muted-foreground">Scheduled</p>
-                <p className="text-sm font-medium text-foreground">{formatDate(ticket.scheduledDate)}</p>
+                <p className="text-sm font-medium text-foreground">{formatDate(ticket.scheduledDate, property?.locale)}</p>
               </div>
             )}
             {ticket.completedDate && (
               <div>
                 <p className="text-xs text-muted-foreground">Completed</p>
-                <p className="text-sm font-medium text-success">{formatDate(ticket.completedDate)}</p>
+                <p className="text-sm font-medium text-success">{formatDate(ticket.completedDate, property?.locale)}</p>
               </div>
             )}
           </div>
