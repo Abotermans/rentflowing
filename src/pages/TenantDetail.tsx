@@ -69,7 +69,7 @@ export default function TenantDetail() {
             {tenant.identificationNumber && (
               <div className="flex items-start gap-2">
                 <CreditCard className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div><p className="text-xs text-muted-foreground">ID Number</p><p className="text-sm font-medium text-foreground">{tenant.identificationNumber}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("detail.idNumber")}</p><p className="text-sm font-medium text-foreground">{tenant.identificationNumber}</p></div>
               </div>
             )}
             {tenant.currentAddress && (
