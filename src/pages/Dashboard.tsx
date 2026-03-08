@@ -20,10 +20,14 @@ export default function Dashboard() {
   const completedThisMonth = tickets.filter(tk => tk.status === "completed" && tk.completedDate?.startsWith(thisMonth)).length;
 
   const totalUnits = units.length;
-  const occupied = units.filter(u => u.currentStatus === "occupied").length;
-  const vacant = units.filter(u => u.currentStatus === "vacant").length;
-  const reserved = units.filter(u => u.currentStatus === "reserved").length;
+  // Use derived occupancy: a unit is "occupied" if it has an active lease, regardless of manual status
+  const occupied = units.filter(u => {
+    const hasActiveLease = leases.some(l => l.unitId === u.id && l.leaseStatus === "active");
+    return hasActiveLease || u.currentStatus === "occupied";
+  }).length;
   const unavailable = units.filter(u => u.currentStatus === "unavailable").length;
+  const reserved = units.filter(u => u.currentStatus === "reserved" && !leases.some(l => l.unitId === u.id && l.leaseStatus === "active")).length;
+  const vacant = totalUnits - occupied - reserved - unavailable;
   const occupancyRate = totalUnits > 0 ? Math.round((occupied / totalUnits) * 100) : 0;
 
   const now = new Date();

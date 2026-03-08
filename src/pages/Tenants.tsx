@@ -104,7 +104,8 @@ export default function Tenants() {
       blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
       reason,
     });
-    executeTenantSave();
+    updateTenant({ ...editingTenant, ...form });
+    setSheetOpen(false);
     toast({ title: "Tenant updated (overridden)", description: `Override reason: ${reason}` });
     setPendingOverrideValidation(null);
   };

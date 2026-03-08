@@ -136,7 +136,8 @@ export default function Units() {
       blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
       reason,
     });
-    executeSave();
+    updateUnit({ ...editingUnit, ...form });
+    setSheetOpen(false);
     toast({ title: "Unit updated (overridden)", description: `Override reason: ${reason}` });
     setPendingOverrideValidation(null);
   };

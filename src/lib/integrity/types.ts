@@ -59,7 +59,9 @@ export type IntegrityEntityType =
   | "guarantee"
   | "cost-entry"
   | "allocation-rule"
-  | "cost-category";
+  | "cost-category"
+  | "cost-allocation-result"
+  | "ticket";
 
 // ===== Helpers =====
 
