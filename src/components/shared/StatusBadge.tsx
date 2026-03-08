@@ -54,6 +54,9 @@ const statusStyles: Record<StatusType, string> = {
   "tenant-recoverable": "bg-success/15 text-success border-success/30",
   "partially-recoverable": "bg-warning/15 text-warning border-warning/30",
   informational: "bg-muted text-muted-foreground border-border",
+  "move-in-pending": "bg-primary/15 text-primary border-primary/30",
+  "move-out-scheduled": "bg-warning/15 text-warning border-warning/30",
+  "available-soon": "bg-success/15 text-success border-success/30",
 };
 
 const STATUS_KEYS: Record<StatusType, TranslationKey> = {
