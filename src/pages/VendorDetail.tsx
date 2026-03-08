@@ -82,7 +82,7 @@ export default function VendorDetail() {
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-5 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Tickets</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("detail.totalTickets")}</p>
             <p className="text-2xl font-bold text-foreground mt-1">{vendorTickets.length}</p>
           </CardContent>
         </Card>
