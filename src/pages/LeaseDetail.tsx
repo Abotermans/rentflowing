@@ -444,7 +444,7 @@ export default function LeaseDetail() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Move-In Meter</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.moveInMeter")}</p>
                   <p className="text-sm font-medium text-foreground">{lease.moveInMeterReading || "—"}</p>
                 </div>
                 <div>
