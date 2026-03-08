@@ -112,13 +112,13 @@ export default function Tenants() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Current Unit</TableHead>
-                <TableHead>Current Lease</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("tenants.name")}</TableHead>
+                <TableHead>{t("tenants.email")}</TableHead>
+                <TableHead>{t("tenants.phone")}</TableHead>
+                <TableHead>{t("filter.status")}</TableHead>
+                <TableHead>{t("leases.unit")}</TableHead>
+                <TableHead>{t("leases.title")}</TableHead>
+                <TableHead className="text-right">{t("tenants.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

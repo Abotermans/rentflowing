@@ -163,16 +163,16 @@ export default function Properties() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>{t("properties.name")}</TableHead>
                 <TableHead>Reference</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>{t("properties.city")}</TableHead>
+                <TableHead>{t("properties.country")}</TableHead>
+                <TableHead>{t("properties.type")}</TableHead>
                 <TableHead>Owner</TableHead>
-                <TableHead className="text-center">Units</TableHead>
-                <TableHead className="text-center">Occupancy</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-center">{t("properties.units")}</TableHead>
+                <TableHead className="text-center">{t("properties.occupancy")}</TableHead>
+                <TableHead>{t("filter.status")}</TableHead>
+                <TableHead className="text-right">{t("properties.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

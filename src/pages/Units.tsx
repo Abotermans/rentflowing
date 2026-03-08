@@ -129,9 +129,9 @@ export default function Units() {
       </div>
 
       {units.length === 0 ? (
-        <EmptyState icon={DoorOpen} title="No units yet" description="Add units to your properties." actionLabel="Add Unit" onAction={openAdd} />
+        <EmptyState icon={DoorOpen} title={t("units.empty")} description={t("units.emptyDesc")} actionLabel={t("units.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>
