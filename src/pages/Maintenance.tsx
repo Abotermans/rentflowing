@@ -24,6 +24,7 @@ type TicketFormData = Omit<MaintenanceTicket, "id">;
 export default function Maintenance() {
   const { tickets, properties, units, tenants, vendors, addTicket, updateTicket, deleteTicket } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
