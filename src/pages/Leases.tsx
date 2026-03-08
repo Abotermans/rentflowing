@@ -31,10 +31,18 @@ const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 
+const ALLOWED_TRANSITIONS: Record<LeaseStatus, LeaseStatus[]> = {
+  draft: ["draft", "active"],
+  active: ["active", "ended", "terminated"],
+  ended: ["ended"],
+  terminated: ["terminated"],
+};
+
 export default function Leases() {
   const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease, getGuaranteeByLease } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterProperty, setFilterProperty] = useState("all");
