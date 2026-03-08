@@ -52,7 +52,7 @@ export default function UnitDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/units"><ArrowLeft className="h-4 w-4 mr-1" />Units</Link>
+          <Link to="/units"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.units")}</Link>
         </Button>
         <div className="flex items-start justify-between">
           <div>
