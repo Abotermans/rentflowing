@@ -54,7 +54,7 @@ export default function MaintenanceDetail() {
               <StatusBadge status={ticket.status} />
               <StatusBadge status={ticket.priority} />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{MAINTENANCE_CATEGORY_LABELS[ticket.category]} · Created {formatDate(ticket.createdDate)}</p>
+            <p className="text-sm text-muted-foreground mt-1">{MAINTENANCE_CATEGORY_LABELS[ticket.category]} · {formatDate(ticket.createdDate, property?.locale)}</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
