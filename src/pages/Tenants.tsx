@@ -187,6 +187,7 @@ export default function Tenants() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
+                <StatusTransitionAlert validation={tenantStatusValidation} />
               </div>
             </div>
             <div><Label>{t("tenants.identificationNumber")}</Label><Input value={form.identificationNumber ?? ""} onChange={e => setForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>

@@ -300,6 +300,7 @@ export default function Properties() {
                     <SelectItem value="inactive">{t("properties.inactive")}</SelectItem>
                   </SelectContent>
                 </Select>
+                <StatusTransitionAlert validation={propertyStatusValidation} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

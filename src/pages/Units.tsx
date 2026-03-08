@@ -243,6 +243,7 @@ export default function Units() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
+                <StatusTransitionAlert validation={unitStatusValidation} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

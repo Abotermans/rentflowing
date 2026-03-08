@@ -295,11 +295,12 @@ export default function Leases() {
                   <SelectContent>{tenants.map(t => <SelectItem key={t.id} value={t.id}>{getTenantFullName(t)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>{t("leases.status")} *</Label>
+            <div><Label>{t("leases.status")} *</Label>
                 <Select value={form.leaseStatus} onValueChange={v => setForm(f => ({ ...f, leaseStatus: v as LeaseStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{LEASE_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{availableStatuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
+                <StatusTransitionAlert validation={statusValidation} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

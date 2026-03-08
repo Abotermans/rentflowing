@@ -365,6 +365,15 @@ export default function LeaseDetail() {
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}</Button>
+              {lease.leaseStatus === "draft" && (
+                <Button variant="default" size="sm" onClick={handleActivateLease}>Activate Lease</Button>
+              )}
+              {(lease.leaseStatus === "active" || lease.leaseStatus === "draft") && lease.leaseStatus !== "draft" && (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleMarkEnded}>{t("detail.markEnded")}</Button>
+                  <Button variant="destructive" size="sm" onClick={handleMarkTerminated}>{t("detail.terminate")}</Button>
+                </>
+              )}
               {lease.leaseStatus === "active" && (
                 <>
                   <Button variant="outline" size="sm" onClick={handleMarkEnded}>{t("detail.markEnded")}</Button>
