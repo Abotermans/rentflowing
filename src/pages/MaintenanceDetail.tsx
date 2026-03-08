@@ -158,7 +158,7 @@ export default function MaintenanceDetail() {
           </div>
           {ticket.description && (
             <div className="mt-4">
-              <p className="text-xs text-muted-foreground mb-1">Description</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("common.description")}</p>
               <p className="text-sm text-foreground">{ticket.description}</p>
             </div>
           )}
