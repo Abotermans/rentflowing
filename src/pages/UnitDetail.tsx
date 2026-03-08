@@ -99,7 +99,7 @@ export default function UnitDetail() {
         <CardContent>
           <div className="grid grid-cols-3 gap-6">
             <div>
-              <p className="text-xs text-muted-foreground">Base Rent</p>
+              <p className="text-xs text-muted-foreground">{t("detail.baseRent")}</p>
               <p className="text-lg font-bold text-foreground">
                 {unit.baseRent != null ? formatCurrency(unit.baseRent, property.currencyCode, property.locale) : "—"}
               </p>
