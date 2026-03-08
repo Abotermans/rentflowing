@@ -95,6 +95,17 @@ export default function Leases() {
     return LEASE_STATUSES.filter(s => allowed.includes(s.value));
   }, [editingLease]);
 
+  const executeLeaseSave = () => {
+    if (editingLease) {
+      updateLease({ ...editingLease, ...form });
+      toast({ title: "Lease updated" });
+    } else {
+      addLease(form);
+      toast({ title: "Lease added" });
+    }
+    setSheetOpen(false);
+  };
+
   const handleSave = () => {
     if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.primaryTenantId || !form.startDate || !form.endDate) {
       toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
@@ -104,8 +115,17 @@ export default function Leases() {
     if (editingLease && form.leaseStatus !== editingLease.leaseStatus) {
       const validation = canChangeLeaseStatus(editingLease.id, form.leaseStatus, integrityState);
       if (!validation.allowed) {
+        if (validation.overrideAllowed) {
+          setPendingOverrideValidation(validation);
+          setOverrideDialogOpen(true);
+          return;
+        }
         toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
         return;
+      }
+      // Show warning toast if allowed but has warnings
+      if (validation.warnings.length > 0) {
+        toast({ title: "Lease saved with warnings", description: validation.warnings.map(w => w.message).join(". ") });
       }
     }
     if (form.leaseStatus === "active") {
@@ -115,14 +135,22 @@ export default function Leases() {
         return;
       }
     }
-    if (editingLease) {
-      updateLease({ ...editingLease, ...form });
-      toast({ title: "Lease updated" });
-    } else {
-      addLease(form);
-      toast({ title: "Lease added" });
-    }
+    executeLeaseSave();
+  };
+
+  const handleLeaseOverrideConfirm = (reason: string) => {
+    if (!editingLease || !pendingOverrideValidation) return;
+    addOverride({
+      entityType: "lease",
+      entityId: editingLease.id,
+      action: `status_change:${form.leaseStatus}`,
+      blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
+      reason,
+    });
+    updateLease({ ...editingLease, ...form });
     setSheetOpen(false);
+    toast({ title: "Lease updated (overridden)", description: `Override reason: ${reason}` });
+    setPendingOverrideValidation(null);
   };
 
   const handleDelete = (lid: string) => {
