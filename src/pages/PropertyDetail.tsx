@@ -50,6 +50,8 @@ export default function PropertyDetail() {
   const { addOverride } = useOverrideHistory();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
+
+  const property = properties.find(p => p.id === id);
   const propertyUnits = units.filter(u => u.propertyId === id);
   const stats = id ? getPropertyStats(id) : null;
 
