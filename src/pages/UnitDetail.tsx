@@ -39,13 +39,13 @@ export default function UnitDetail() {
   const nextDueLine = ledger.filter(ll => ll.remainingBalance > 0 && ll.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
   const infoItems = [
-    { label: "Type", value: getUnitTypeLabel(unit.unitType), icon: Home },
-    { label: "Floor", value: unit.floor != null ? String(unit.floor) : "—", icon: Home },
-    { label: "Surface", value: unit.surfaceArea != null ? formatArea(unit.surfaceArea, property.measurementSystem) : "—", icon: Ruler },
-    { label: "Bedrooms", value: String(unit.bedrooms), icon: BedDouble },
-    { label: "Bathrooms", value: String(unit.bathrooms), icon: Bath },
-    { label: "Furnished", value: unit.furnished ? "Yes" : "No", icon: Sofa },
-    { label: "Available From", value: unit.availableFrom ? formatDate(unit.availableFrom, property.locale) : "—", icon: CalendarClock },
+    { label: t("units.type"), value: getUnitTypeLabel(unit.unitType), icon: Home },
+    { label: t("units.floor"), value: unit.floor != null ? String(unit.floor) : "—", icon: Home },
+    { label: t("units.surface"), value: unit.surfaceArea != null ? formatArea(unit.surfaceArea, property.measurementSystem) : "—", icon: Ruler },
+    { label: t("units.bedrooms"), value: String(unit.bedrooms), icon: BedDouble },
+    { label: t("units.bathrooms"), value: String(unit.bathrooms), icon: Bath },
+    { label: t("units.furnished"), value: unit.furnished ? t("common.yes") : t("common.no"), icon: Sofa },
+    { label: t("units.availableFrom"), value: unit.availableFrom ? formatDate(unit.availableFrom, property.locale) : "—", icon: CalendarClock },
   ];
 
   return (
