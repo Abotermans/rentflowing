@@ -108,6 +108,10 @@ export default function Tenants() {
     toast({ title: "Tenant updated (overridden)", description: `Override reason: ${reason}` });
     setPendingOverrideValidation(null);
   };
+  const handleDelete = (tid: string) => {
+    deleteTenant(tid);
+    toast({ title: "Tenant deleted" });
+  };
 
   const filtered = tenants.filter(t => {
     const name = getTenantFullName(t).toLowerCase();
