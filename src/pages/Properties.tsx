@@ -114,10 +114,10 @@ export default function Properties() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Properties</h1>
-          <p className="text-sm text-muted-foreground">{properties.length} properties in portfolio</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("properties.title")}</h1>
+          <p className="text-sm text-muted-foreground">{properties.length} {t("properties.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Property</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("properties.add")}</Button>
       </div>
 
       {/* Filters */}
