@@ -34,7 +34,7 @@ const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function Units() {
-  const { properties, units, addUnit, updateUnit, deleteUnit } = useAppData();
+  const { properties, units, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, leases } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const [search, setSearch] = useState("");
