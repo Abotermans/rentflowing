@@ -206,12 +206,12 @@ export default function Properties() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete property?</AlertDialogTitle>
-                              <AlertDialogDescription>This will permanently delete "{p.name}" and all its units.</AlertDialogDescription>
+                              <AlertDialogTitle>{t("properties.deleteTitle")}</AlertDialogTitle>
+                              <AlertDialogDescription>{t("properties.deleteItemDesc")}</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(p.id)}>Delete</AlertDialogAction>
+                              <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(p.id)}>{t("action.delete")}</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
