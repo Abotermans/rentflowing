@@ -6,11 +6,13 @@ export interface Property {
   address2: string;
   city: string;
   postalCode: string;
+  regionOrState: string;
   countryCode: string;
   locale: string;
   currencyCode: string;
   measurementSystem: "metric" | "imperial";
   propertyType: "residential" | "commercial" | "mixed-use";
+  ownerName: string;
   description: string;
   status: "active" | "inactive";
   createdAt: string;

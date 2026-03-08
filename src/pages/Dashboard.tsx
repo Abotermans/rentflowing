@@ -2,9 +2,9 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { formatDate } from "@/lib/formatters";
+import { formatDate, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 
 export default function Dashboard() {
   const { properties, units, getPropertyStats } = useAppData();
@@ -24,10 +24,6 @@ export default function Dashboard() {
     return d >= now && d <= in30Days;
   }).length;
 
-  const recentUnits = [...units]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 8);
-
   const kpis = [
     { label: "Properties", value: properties.length, icon: Building2, color: "text-primary" },
     { label: "Total Units", value: totalUnits, icon: DoorOpen, color: "text-foreground" },
@@ -45,6 +41,28 @@ export default function Dashboard() {
     { status: "vacant" as const, count: vacant, className: "bg-warning" },
     { status: "unavailable" as const, count: unavailable, className: "bg-muted-foreground" },
   ];
+
+  // Portfolio by Country
+  const countryGroups = properties.reduce<Record<string, number>>((acc, p) => {
+    acc[p.countryCode] = (acc[p.countryCode] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Properties by Type
+  const typeGroups = properties.reduce<Record<string, number>>((acc, p) => {
+    acc[p.propertyType] = (acc[p.propertyType] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Configuration Summary
+  const uniqueCurrencies = [...new Set(properties.map(p => p.currencyCode))];
+  const uniqueLocales = [...new Set(properties.map(p => p.locale))];
+  const uniqueMeasurements = [...new Set(properties.map(p => p.measurementSystem))];
+
+  // Recent properties
+  const recentProperties = [...properties]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -96,69 +114,125 @@ export default function Dashboard() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Recent Properties */}
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Vacancy by Property</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Properties</CardTitle></CardHeader>
           <CardContent>
-            {properties.length === 0 ? (
+            {recentProperties.length === 0 ? (
               <p className="text-sm text-muted-foreground">No properties yet.</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Property</TableHead>
-                    <TableHead className="text-xs text-right">Units</TableHead>
-                    <TableHead className="text-xs text-right">Vacant</TableHead>
-                    <TableHead className="text-xs text-right">Occupancy</TableHead>
+                    <TableHead className="text-xs">Name</TableHead>
+                    <TableHead className="text-xs">City</TableHead>
+                    <TableHead className="text-xs">Country</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs text-right">Updated</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {properties.filter(p => p.status === "active").map(p => {
-                    const stats = getPropertyStats(p.id);
-                    return (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium"><Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link></TableCell>
-                        <TableCell className="text-right text-muted-foreground">{stats.total}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{stats.vacant}</TableCell>
-                        <TableCell className="text-right font-medium">{stats.occupancyRate}%</TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {recentProperties.map(p => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">
+                        <Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{p.city}</TableCell>
+                      <TableCell className="text-muted-foreground">{getCountryName(p.countryCode)}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{getPropertyTypeLabel(p.propertyType)}</TableCell>
+                      <TableCell><StatusBadge status={p.status} /></TableCell>
+                      <TableCell className="text-right text-muted-foreground text-xs">{formatDate(p.updatedAt)}</TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             )}
           </CardContent>
         </Card>
 
+        {/* Portfolio by Country */}
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recently Updated Units</CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Portfolio by Country</CardTitle>
+            </div>
+          </CardHeader>
           <CardContent>
-            {recentUnits.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No units yet.</p>
+            {Object.keys(countryGroups).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No properties yet.</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Unit</TableHead>
-                    <TableHead className="text-xs">Property</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs text-right">Updated</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentUnits.map(u => {
-                    const prop = properties.find(p => p.id === u.propertyId);
-                    return (
-                      <TableRow key={u.id}>
-                        <TableCell><Link to={`/units/${u.id}`} className="hover:underline font-medium text-foreground">{u.unitCode}</Link></TableCell>
-                        <TableCell className="text-muted-foreground">{prop?.name ?? "—"}</TableCell>
-                        <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
-                        <TableCell className="text-right text-muted-foreground text-xs">{formatDate(u.updatedAt)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <div className="space-y-3">
+                {Object.entries(countryGroups)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([code, count]) => (
+                    <div key={code} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{getCountryName(code)}</span>
+                        <span className="text-xs text-muted-foreground font-mono">{code}</span>
+                      </div>
+                      <span className="text-sm font-bold text-foreground">{count}</span>
+                    </div>
+                  ))}
+              </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Properties by Type */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Landmark className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Properties by Type</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(typeGroups).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No properties yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(typeGroups)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([type, count]) => (
+                    <div key={type} className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(type)}</span>
+                      <span className="text-sm font-bold text-foreground">{count}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Portfolio Configuration Summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Portfolio Configuration</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Currencies</span>
+                <span className="text-sm font-medium text-foreground">{uniqueCurrencies.join(", ") || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Locales</span>
+                <span className="text-sm font-medium text-foreground">{uniqueLocales.join(", ") || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Measurement</span>
+                <span className="text-sm font-medium text-foreground capitalize">{uniqueMeasurements.join(", ") || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Countries</span>
+                <span className="text-sm font-medium text-foreground">{Object.keys(countryGroups).length}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
