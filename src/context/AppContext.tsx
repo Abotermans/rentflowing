@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
-import { Property, Unit, UnitStatus, Tenant, Lease, LedgerLine, Payment, Guarantee } from "@/types";
+import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee } from "@/types";
+import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
-import { initialProperties, initialUnits, initialTenants, initialLeases, initialLedgerLines, initialPayments, initialGuarantees } from "@/data/mockData";
+import { initialProperties, initialUnits, initialTenants, initialLeases, initialGuarantees } from "@/data/mockData";
+import { initialReceivableItems, initialCashReceipts, initialAllocations } from "@/data/receivablesMockData";
 import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
+import { autoAllocate } from "@/lib/reconciliation";
 
 interface PropertyStats {
   total: number;
@@ -18,34 +21,62 @@ interface AppState {
   units: Unit[];
   tenants: Tenant[];
   leases: Lease[];
-  ledgerLines: LedgerLine[];
-  payments: Payment[];
   guarantees: Guarantee[];
+  receivableItems: ReceivableItem[];
+  cashReceipts: CashReceipt[];
+  allocations: ReceiptAllocation[];
   tickets: MaintenanceTicket[];
   vendors: Vendor[];
+
+  // Property CRUD
   addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => void;
   updateProperty: (p: Property) => void;
   deleteProperty: (id: string) => void;
+
+  // Unit CRUD
   addUnit: (u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => void;
   updateUnit: (u: Unit) => void;
   deleteUnit: (id: string) => void;
+
+  // Tenant CRUD
   addTenant: (t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => void;
   updateTenant: (t: Tenant) => void;
   deleteTenant: (id: string) => void;
+
+  // Lease CRUD
   addLease: (l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => void;
   updateLease: (l: Lease) => void;
   deleteLease: (id: string) => void;
   confirmMoveOut: (lease: Lease) => void;
-  addPayment: (p: Omit<Payment, "id">) => void;
+
+  // Guarantee
   addGuarantee: (g: Omit<Guarantee, "id">) => void;
   updateGuarantee: (g: Guarantee) => void;
   deleteGuarantee: (id: string) => void;
+
+  // Receivables
+  createReceivableItem: (r: Omit<ReceivableItem, "id" | "createdAt" | "updatedAt">) => void;
+  updateReceivableItem: (r: ReceivableItem) => void;
+  deleteReceivableItem: (id: string) => void;
+
+  // Cash Receipts
+  createCashReceipt: (r: Omit<CashReceipt, "id" | "createdAt" | "updatedAt">, autoAllocateFlag?: boolean) => void;
+  
+  // Allocation
+  allocateCashReceipt: (receiptId: string, manualAllocations: { receivableItemId: string; amount: number; notes?: string }[]) => void;
+  autoAllocateCashReceipt: (receiptId: string) => void;
+
+  // Maintenance
   addTicket: (t: Omit<MaintenanceTicket, "id">) => void;
   updateTicket: (t: MaintenanceTicket) => void;
   deleteTicket: (id: string) => void;
+
+  // Vendors
   addVendor: (v: Omit<Vendor, "id">) => void;
   updateVendor: (v: Vendor) => void;
   deleteVendor: (id: string) => void;
+
+  // Queries
   getPropertyStats: (propertyId: string) => PropertyStats;
   getPropertyById: (id: string) => Property | undefined;
   getUnitById: (id: string) => Unit | undefined;
@@ -53,12 +84,23 @@ interface AppState {
   getActiveLease: (unitId: string) => Lease | undefined;
   getLeasesByTenant: (tenantId: string) => Lease[];
   getLeasesByProperty: (propertyId: string) => Lease[];
-  getLedgerByLease: (leaseId: string) => LedgerLine[];
-  getPaymentsByLease: (leaseId: string) => Payment[];
-  getPaymentsByTenant: (tenantId: string) => Payment[];
+  getGuaranteeByLease: (leaseId: string) => Guarantee | undefined;
+
+  // Receivables queries
+  getReceivableItemsByLease: (leaseId: string) => ReceivableItem[];
+  getReceivableItemsByTenant: (tenantId: string) => ReceivableItem[];
+  getCashReceiptsByLease: (leaseId: string) => CashReceipt[];
+  getCashReceiptsByTenant: (tenantId: string) => CashReceipt[];
+  getAllocationsByReceipt: (receiptId: string) => ReceiptAllocation[];
+  getAllocationsByReceivableItem: (itemId: string) => ReceiptAllocation[];
+
+  // Financial aggregates
   getLeaseOutstanding: (leaseId: string) => { outstanding: number; overdue: number };
   getTenantOutstanding: (tenantId: string) => { outstanding: number; overdue: number };
-  getGuaranteeByLease: (leaseId: string) => Guarantee | undefined;
+  getTenantUnappliedCredit: (tenantId: string) => number;
+  getReceiptMatchingStatus: (receiptId: string) => CashReceipt["status"];
+
+  // Maintenance queries
   getTicketsByUnit: (unitId: string) => MaintenanceTicket[];
   getTicketsByProperty: (propertyId: string) => MaintenanceTicket[];
   getTicketsByVendor: (vendorId: string) => MaintenanceTicket[];
@@ -67,7 +109,7 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
-let counter = 200;
+let counter = 500;
 const genId = (prefix: string) => `${prefix}${++counter}`;
 const now = () => new Date().toISOString().split("T")[0];
 
@@ -76,12 +118,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [units, setUnits] = useState<Unit[]>(initialUnits);
   const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
   const [leases, setLeases] = useState<Lease[]>(initialLeases);
-  const [ledgerLines, setLedgerLines] = useState<LedgerLine[]>(initialLedgerLines);
-  const [payments, setPayments] = useState<Payment[]>(initialPayments);
   const [guarantees, setGuarantees] = useState<Guarantee[]>(initialGuarantees);
+  const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
+  const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
+  const [allocations, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialTickets);
   const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
 
+  // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
     setProperties(prev => [...prev, { ...p, id: genId("p"), createdAt: ts, updatedAt: ts }]);
@@ -94,6 +138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUnits(prev => prev.filter(x => x.propertyId !== id));
   }, []);
 
+  // ===== Unit CRUD =====
   const addUnit = useCallback((u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
     setUnits(prev => [...prev, { ...u, id: genId("u"), createdAt: ts, updatedAt: ts }]);
@@ -105,6 +150,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUnits(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  // ===== Tenant CRUD =====
   const addTenant = useCallback((t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
     setTenants(prev => [...prev, { ...t, id: genId("t"), createdAt: ts, updatedAt: ts }]);
@@ -116,6 +162,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTenants(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  // ===== Lease CRUD =====
   const addLease = useCallback((l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
     setLeases(prev => [...prev, { ...l, id: genId("l"), createdAt: ts, updatedAt: ts }]);
@@ -133,35 +180,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: ts, updatedAt: ts } : x));
   }, []);
 
-  const addPayment = useCallback((p: Omit<Payment, "id">) => {
-    const newPayment = { ...p, id: genId("pay") };
-    setPayments(prev => [...prev, newPayment]);
-    setLedgerLines(prev => {
-      const updated = [...prev];
-      let remaining = p.amount;
-      const today = now();
-      const openIndices = updated
-        .map((ll, i) => ({ ll, i }))
-        .filter(({ ll }) => ll.leaseId === p.leaseId && ll.remainingBalance > 0)
-        .sort((a, b) => a.ll.dueDate.localeCompare(b.ll.dueDate));
-      for (const { i } of openIndices) {
-        if (remaining <= 0) break;
-        const line = { ...updated[i] };
-        const allocate = Math.min(remaining, line.remainingBalance);
-        line.amountPaid += allocate;
-        line.remainingBalance -= allocate;
-        remaining -= allocate;
-        if (line.remainingBalance === 0) {
-          line.status = "paid";
-        } else if (line.amountPaid > 0) {
-          line.status = line.dueDate < today ? "overdue" : "partially-paid";
-        }
-        updated[i] = line;
-      }
-      return updated;
-    });
-  }, []);
-
+  // ===== Guarantee =====
   const addGuarantee = useCallback((g: Omit<Guarantee, "id">) => {
     setGuarantees(prev => [...prev, { ...g, id: genId("g") }]);
   }, []);
@@ -172,7 +191,129 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setGuarantees(prev => prev.filter(x => x.id !== id));
   }, []);
 
-  // Maintenance
+  // ===== Receivable Items =====
+  const createReceivableItem = useCallback((r: Omit<ReceivableItem, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    setReceivableItems(prev => [...prev, { ...r, id: genId("ri"), createdAt: ts, updatedAt: ts }]);
+  }, []);
+  const updateReceivableItem = useCallback((r: ReceivableItem) => {
+    setReceivableItems(prev => prev.map(x => x.id === r.id ? { ...r, updatedAt: now() } : x));
+  }, []);
+  const deleteReceivableItem = useCallback((id: string) => {
+    setReceivableItems(prev => prev.filter(x => x.id !== id));
+  }, []);
+
+  // ===== Cash Receipts =====
+  const createCashReceipt = useCallback((r: Omit<CashReceipt, "id" | "createdAt" | "updatedAt">, autoAllocateFlag = false) => {
+    const ts = now();
+    const newReceipt: CashReceipt = { ...r, id: genId("cr"), createdAt: ts, updatedAt: ts };
+
+    if (autoAllocateFlag) {
+      // Find open receivables for this tenant/lease/property
+      const openItems = receivableItems.filter(ri => {
+        if (ri.outstandingAmount <= 0) return false;
+        if (newReceipt.leaseId && ri.leaseId === newReceipt.leaseId) return true;
+        if (newReceipt.tenantId && ri.tenantId === newReceipt.tenantId) return true;
+        if (newReceipt.propertyId && ri.propertyId === newReceipt.propertyId) return true;
+        return false;
+      });
+
+      const result = autoAllocate(newReceipt, openItems);
+      
+      setCashReceipts(prev => [...prev, result.updatedReceipt]);
+      setReceivableItems(prev => prev.map(ri => {
+        const updated = result.updatedReceivables.find(u => u.id === ri.id);
+        return updated ?? ri;
+      }));
+      setAllocations(prev => [
+        ...prev,
+        ...result.allocations.map(a => ({ ...a, id: genId("al"), createdAt: ts, updatedAt: ts })),
+      ]);
+    } else {
+      setCashReceipts(prev => [...prev, newReceipt]);
+    }
+  }, [receivableItems]);
+
+  // ===== Manual Allocation =====
+  const allocateCashReceipt = useCallback((receiptId: string, manualAllocations: { receivableItemId: string; amount: number; notes?: string }[]) => {
+    const ts = now();
+    const receipt = cashReceipts.find(r => r.id === receiptId);
+    if (!receipt) return;
+
+    let remainingUnmatched = receipt.unmatchedAmount;
+    const newAllocations: ReceiptAllocation[] = [];
+    const riUpdates = new Map<string, ReceivableItem>();
+
+    for (const ma of manualAllocations) {
+      const ri = receivableItems.find(r => r.id === ma.receivableItemId);
+      if (!ri) continue;
+
+      const allocAmount = Math.min(ma.amount, remainingUnmatched, ri.outstandingAmount);
+      if (allocAmount <= 0) continue;
+
+      remainingUnmatched -= allocAmount;
+      const updatedRi: ReceivableItem = {
+        ...ri,
+        allocatedAmount: ri.allocatedAmount + allocAmount,
+        outstandingAmount: ri.outstandingAmount - allocAmount,
+        updatedAt: ts,
+      };
+      updatedRi.status = computeReceivableStatus(updatedRi);
+      riUpdates.set(ri.id, updatedRi);
+
+      newAllocations.push({
+        id: genId("al"),
+        cashReceiptId: receiptId,
+        receivableItemId: ma.receivableItemId,
+        allocatedAmount: allocAmount,
+        allocationType: "manual",
+        allocationDate: ts,
+        notes: ma.notes ?? "",
+        createdAt: ts,
+        updatedAt: ts,
+      });
+    }
+
+    const updatedReceipt: CashReceipt = {
+      ...receipt,
+      unmatchedAmount: Math.round(remainingUnmatched * 100) / 100,
+      updatedAt: ts,
+    };
+    updatedReceipt.status = computeReceiptStatus(updatedReceipt);
+
+    setCashReceipts(prev => prev.map(r => r.id === receiptId ? updatedReceipt : r));
+    setReceivableItems(prev => prev.map(ri => riUpdates.get(ri.id) ?? ri));
+    setAllocations(prev => [...prev, ...newAllocations]);
+  }, [cashReceipts, receivableItems]);
+
+  // ===== Auto-Allocation =====
+  const autoAllocateCashReceipt = useCallback((receiptId: string) => {
+    const receipt = cashReceipts.find(r => r.id === receiptId);
+    if (!receipt || receipt.unmatchedAmount <= 0) return;
+
+    const openItems = receivableItems.filter(ri => {
+      if (ri.outstandingAmount <= 0) return false;
+      if (receipt.leaseId && ri.leaseId === receipt.leaseId) return true;
+      if (receipt.tenantId && ri.tenantId === receipt.tenantId) return true;
+      if (receipt.propertyId && ri.propertyId === receipt.propertyId) return true;
+      return false;
+    });
+
+    const ts = now();
+    const result = autoAllocate(receipt, openItems);
+
+    setCashReceipts(prev => prev.map(r => r.id === receiptId ? result.updatedReceipt : r));
+    setReceivableItems(prev => prev.map(ri => {
+      const updated = result.updatedReceivables.find(u => u.id === ri.id);
+      return updated ?? ri;
+    }));
+    setAllocations(prev => [
+      ...prev,
+      ...result.allocations.map(a => ({ ...a, id: genId("al"), createdAt: ts, updatedAt: ts })),
+    ]);
+  }, [cashReceipts, receivableItems]);
+
+  // ===== Maintenance =====
   const addTicket = useCallback((t: Omit<MaintenanceTicket, "id">) => {
     setTickets(prev => [...prev, { ...t, id: genId("mt") }]);
   }, []);
@@ -183,7 +324,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTickets(prev => prev.filter(x => x.id !== id));
   }, []);
 
-  // Vendors
+  // ===== Vendors =====
   const addVendor = useCallback((v: Omit<Vendor, "id">) => {
     setVendors(prev => [...prev, { ...v, id: genId("v") }]);
   }, []);
@@ -194,6 +335,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVendors(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  // ===== Queries =====
   const getPropertyStats = useCallback((propertyId: string): PropertyStats => {
     const propUnits = units.filter(u => u.propertyId === propertyId);
     const total = propUnits.length;
@@ -208,59 +350,101 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getActiveLease = useCallback((unitId: string) => leases.find(l => l.unitId === unitId && l.leaseStatus === "active"), [leases]);
   const getLeasesByTenant = useCallback((tenantId: string) => leases.filter(l => l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId)), [leases]);
   const getLeasesByProperty = useCallback((propertyId: string) => leases.filter(l => l.propertyId === propertyId), [leases]);
-  const getLedgerByLease = useCallback((leaseId: string) => ledgerLines.filter(ll => ll.leaseId === leaseId), [ledgerLines]);
-  const getPaymentsByLease = useCallback((leaseId: string) => payments.filter(p => p.leaseId === leaseId), [payments]);
-  const getPaymentsByTenant = useCallback((tenantId: string) => payments.filter(p => p.tenantId === tenantId), [payments]);
   const getGuaranteeByLease = useCallback((leaseId: string) => guarantees.find(g => g.leaseId === leaseId), [guarantees]);
+
+  // ===== Receivables Queries =====
+  const getReceivableItemsByLease = useCallback((leaseId: string) => receivableItems.filter(ri => ri.leaseId === leaseId), [receivableItems]);
+  const getReceivableItemsByTenant = useCallback((tenantId: string) => receivableItems.filter(ri => ri.tenantId === tenantId), [receivableItems]);
+  const getCashReceiptsByLease = useCallback((leaseId: string) => cashReceipts.filter(cr => cr.leaseId === leaseId), [cashReceipts]);
+  const getCashReceiptsByTenant = useCallback((tenantId: string) => cashReceipts.filter(cr => cr.tenantId === tenantId), [cashReceipts]);
+  const getAllocationsByReceipt = useCallback((receiptId: string) => allocations.filter(a => a.cashReceiptId === receiptId), [allocations]);
+  const getAllocationsByReceivableItem = useCallback((itemId: string) => allocations.filter(a => a.receivableItemId === itemId), [allocations]);
+
+  // ===== Financial Aggregates =====
+  const getLeaseOutstanding = useCallback((leaseId: string) => {
+    const items = receivableItems.filter(ri => ri.leaseId === leaseId);
+    const today = now();
+    let outstanding = 0;
+    let overdue = 0;
+    for (const ri of items) {
+      outstanding += ri.outstandingAmount;
+      if (ri.outstandingAmount > 0 && ri.dueDate < today) overdue += ri.outstandingAmount;
+    }
+    return { outstanding, overdue };
+  }, [receivableItems]);
+
+  const getTenantOutstanding = useCallback((tenantId: string) => {
+    const items = receivableItems.filter(ri => ri.tenantId === tenantId);
+    const today = now();
+    let outstanding = 0;
+    let overdue = 0;
+    for (const ri of items) {
+      outstanding += ri.outstandingAmount;
+      if (ri.outstandingAmount > 0 && ri.dueDate < today) overdue += ri.outstandingAmount;
+    }
+    return { outstanding, overdue };
+  }, [receivableItems]);
+
+  const getTenantUnappliedCredit = useCallback((tenantId: string) => {
+    return cashReceipts
+      .filter(cr => cr.tenantId === tenantId && cr.unmatchedAmount > 0)
+      .reduce((sum, cr) => sum + cr.unmatchedAmount, 0);
+  }, [cashReceipts]);
+
+  const getReceiptMatchingStatus = useCallback((receiptId: string) => {
+    const receipt = cashReceipts.find(r => r.id === receiptId);
+    if (!receipt) return "unmatched" as const;
+    return computeReceiptStatus(receipt);
+  }, [cashReceipts]);
 
   const getTicketsByUnit = useCallback((unitId: string) => tickets.filter(t => t.unitId === unitId), [tickets]);
   const getTicketsByProperty = useCallback((propertyId: string) => tickets.filter(t => t.propertyId === propertyId), [tickets]);
   const getTicketsByVendor = useCallback((vendorId: string) => tickets.filter(t => t.assignedVendorId === vendorId), [tickets]);
   const getVendorById = useCallback((id: string) => vendors.find(v => v.id === id), [vendors]);
 
-  const getLeaseOutstanding = useCallback((leaseId: string) => {
-    const lines = ledgerLines.filter(ll => ll.leaseId === leaseId);
-    const today = now();
-    let outstanding = 0;
-    let overdue = 0;
-    for (const ll of lines) {
-      outstanding += ll.remainingBalance;
-      if (ll.remainingBalance > 0 && ll.dueDate < today) overdue += ll.remainingBalance;
-    }
-    return { outstanding, overdue };
-  }, [ledgerLines]);
-
-  const getTenantOutstanding = useCallback((tenantId: string) => {
-    const tenantLeases = leases.filter(l => l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId));
-    let outstanding = 0;
-    let overdue = 0;
-    const today = now();
-    for (const lease of tenantLeases) {
-      const lines = ledgerLines.filter(ll => ll.leaseId === lease.id);
-      for (const ll of lines) {
-        outstanding += ll.remainingBalance;
-        if (ll.remainingBalance > 0 && ll.dueDate < today) overdue += ll.remainingBalance;
-      }
-    }
-    return { outstanding, overdue };
-  }, [leases, ledgerLines]);
-
   const value = useMemo(() => ({
-    properties, units, tenants, leases, ledgerLines, payments, guarantees, tickets, vendors,
+    properties, units, tenants, leases, guarantees,
+    receivableItems, cashReceipts, allocations,
+    tickets, vendors,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
     addLease, updateLease, deleteLease, confirmMoveOut,
-    addPayment,
     addGuarantee, updateGuarantee, deleteGuarantee,
+    createReceivableItem, updateReceivableItem, deleteReceivableItem,
+    createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
     addTicket, updateTicket, deleteTicket,
     addVendor, updateVendor, deleteVendor,
     getPropertyStats, getPropertyById, getUnitById, getTenantById,
-    getActiveLease, getLeasesByTenant, getLeasesByProperty,
-    getLedgerByLease, getPaymentsByLease, getPaymentsByTenant,
-    getLeaseOutstanding, getTenantOutstanding, getGuaranteeByLease,
+    getActiveLease, getLeasesByTenant, getLeasesByProperty, getGuaranteeByLease,
+    getReceivableItemsByLease, getReceivableItemsByTenant,
+    getCashReceiptsByLease, getCashReceiptsByTenant,
+    getAllocationsByReceipt, getAllocationsByReceivableItem,
+    getLeaseOutstanding, getTenantOutstanding, getTenantUnappliedCredit,
+    getReceiptMatchingStatus,
     getTicketsByUnit, getTicketsByProperty, getTicketsByVendor, getVendorById,
-  }), [properties, units, tenants, leases, ledgerLines, payments, guarantees, tickets, vendors, addProperty, updateProperty, deleteProperty, addUnit, updateUnit, deleteUnit, addTenant, updateTenant, deleteTenant, addLease, updateLease, deleteLease, confirmMoveOut, addPayment, addGuarantee, updateGuarantee, deleteGuarantee, addTicket, updateTicket, deleteTicket, addVendor, updateVendor, deleteVendor, getPropertyStats, getPropertyById, getUnitById, getTenantById, getActiveLease, getLeasesByTenant, getLeasesByProperty, getLedgerByLease, getPaymentsByLease, getPaymentsByTenant, getLeaseOutstanding, getTenantOutstanding, getGuaranteeByLease, getTicketsByUnit, getTicketsByProperty, getTicketsByVendor, getVendorById]);
+  }), [
+    properties, units, tenants, leases, guarantees,
+    receivableItems, cashReceipts, allocations,
+    tickets, vendors,
+    addProperty, updateProperty, deleteProperty,
+    addUnit, updateUnit, deleteUnit,
+    addTenant, updateTenant, deleteTenant,
+    addLease, updateLease, deleteLease, confirmMoveOut,
+    addGuarantee, updateGuarantee, deleteGuarantee,
+    createReceivableItem, updateReceivableItem, deleteReceivableItem,
+    createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
+    addTicket, updateTicket, deleteTicket,
+    addVendor, updateVendor, deleteVendor,
+    getPropertyStats, getPropertyById, getUnitById, getTenantById,
+    getActiveLease, getLeasesByTenant, getLeasesByProperty, getGuaranteeByLease,
+    getReceivableItemsByLease, getReceivableItemsByTenant,
+    getCashReceiptsByLease, getCashReceiptsByTenant,
+    getAllocationsByReceipt, getAllocationsByReceivableItem,
+    getLeaseOutstanding, getTenantOutstanding, getTenantUnappliedCredit,
+    getReceiptMatchingStatus,
+    getTicketsByUnit, getTicketsByProperty, getTicketsByVendor, getVendorById,
+  ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
