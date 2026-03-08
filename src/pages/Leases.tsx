@@ -155,16 +155,16 @@ export default function Leases() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Guarantee</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("leases.reference")}</TableHead>
+                <TableHead>{t("leases.tenant")}</TableHead>
+                <TableHead>{t("leases.property")}</TableHead>
+                <TableHead>{t("leases.unit")}</TableHead>
+                <TableHead>{t("leases.status")}</TableHead>
+                <TableHead>{t("leases.guarantee")}</TableHead>
+                <TableHead>{t("leases.start")}</TableHead>
+                <TableHead>{t("leases.end")}</TableHead>
+                <TableHead className="text-right">{t("leases.total")}</TableHead>
+                <TableHead className="text-right">{t("leases.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
