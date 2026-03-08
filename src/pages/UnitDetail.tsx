@@ -95,7 +95,7 @@ export default function UnitDetail() {
 
       {/* Financial Defaults */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Defaults</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialDefaults")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-6">
             <div>
