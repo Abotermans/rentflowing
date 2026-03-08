@@ -161,6 +161,16 @@ export interface Lease {
   returnStatus: ReturnStatus | null;
   returnNotes: string;
 
+  // Advance payment
+  hasAdvancePayment: boolean;
+  advancePaymentAmount: number | null;
+  advancePaymentDate: string | null;
+  advanceAllocationMethod: AdvanceAllocationMethod | null;
+  advanceAppliedTo: AdvanceAppliedTo | null;
+  advanceAllocationStartDate: string | null;
+  advanceAllocationDurationMonths: number | null;
+  fixedMonthlyReductionAmount: number | null;
+
   createdAt: string;
   updatedAt: string;
 }
