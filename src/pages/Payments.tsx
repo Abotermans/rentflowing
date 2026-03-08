@@ -129,7 +129,7 @@ export default function Payments() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("payments.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("payments.title")}</p>
+          <p className="text-sm text-muted-foreground">{t("payments.subtitle")}</p>
         </div>
         <Button onClick={() => setSheetOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.record")}</Button>
       </div>
