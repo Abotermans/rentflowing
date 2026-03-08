@@ -54,7 +54,7 @@ export default function MaintenanceDetail() {
               <StatusBadge status={ticket.status} />
               <StatusBadge status={ticket.priority} />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{MAINTENANCE_CATEGORY_LABELS[ticket.category]} · Created {formatDate(ticket.createdDate)}</p>
+            <p className="text-sm text-muted-foreground mt-1">{MAINTENANCE_CATEGORY_LABELS[ticket.category]} · {formatDate(ticket.createdDate, property?.locale)}</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
@@ -139,18 +139,18 @@ export default function MaintenanceDetail() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Created</p>
-              <p className="text-sm font-medium text-foreground">{formatDate(ticket.createdDate)}</p>
+              <p className="text-sm font-medium text-foreground">{formatDate(ticket.createdDate, property?.locale)}</p>
             </div>
             {ticket.scheduledDate && (
               <div>
                 <p className="text-xs text-muted-foreground">Scheduled</p>
-                <p className="text-sm font-medium text-foreground">{formatDate(ticket.scheduledDate)}</p>
+                <p className="text-sm font-medium text-foreground">{formatDate(ticket.scheduledDate, property?.locale)}</p>
               </div>
             )}
             {ticket.completedDate && (
               <div>
                 <p className="text-xs text-muted-foreground">Completed</p>
-                <p className="text-sm font-medium text-success">{formatDate(ticket.completedDate)}</p>
+                <p className="text-sm font-medium text-success">{formatDate(ticket.completedDate, property?.locale)}</p>
               </div>
             )}
           </div>
@@ -186,8 +186,8 @@ export default function MaintenanceDetail() {
 
       {/* Timestamps */}
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(ticket.createdDate)}</span>
-        {ticket.scheduledDate && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />Scheduled: {formatDate(ticket.scheduledDate)}</span>}
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(ticket.createdDate, property?.locale)}</span>
+        {ticket.scheduledDate && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />Scheduled: {formatDate(ticket.scheduledDate, property?.locale)}</span>}
       </div>
 
       {/* Edit Sheet */}

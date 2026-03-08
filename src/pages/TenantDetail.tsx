@@ -225,7 +225,7 @@ export default function TenantDetail() {
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{unit?.unitCode ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate)} — {formatDate(l.endDate)}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)} — {formatDate(l.endDate, prop?.locale)}</TableCell>
                       <TableCell><StatusBadge status={l.leaseStatus} /></TableCell>
                     </TableRow>
                   );
@@ -245,8 +245,8 @@ export default function TenantDetail() {
       )}
 
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(tenant.createdAt)}</span>
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Updated: {formatDate(tenant.updatedAt)}</span>
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(tenant.createdAt, activeProperty?.locale)}</span>
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Updated: {formatDate(tenant.updatedAt, activeProperty?.locale)}</span>
       </div>
     </div>
   );

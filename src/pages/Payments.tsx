@@ -109,11 +109,19 @@ export default function Payments() {
     other: "Other",
   };
 
+  // Determine dominant currency for KPI display
+  const activeCurrencies = [...new Set(leases.filter(l => l.leaseStatus === "active").map(l => {
+    const prop = properties.find(p => p.id === l.propertyId);
+    return prop?.currencyCode ?? "EUR";
+  }))];
+  const kpiCurrency = activeCurrencies.length === 1 ? activeCurrencies[0] : undefined;
+  const kpiLocale = activeCurrencies.length === 1 ? properties.find(p => p.currencyCode === activeCurrencies[0])?.locale : undefined;
+
   const kpis = [
-    { label: "Due This Month", value: totalDueThisMonth, icon: Clock, color: "text-primary", isCurrency: true },
-    { label: "Collected This Month", value: totalCollectedThisMonth, icon: CheckCircle2, color: "text-success", isCurrency: true },
-    { label: "Total Overdue", value: totalOverdue, icon: AlertTriangle, color: "text-destructive", isCurrency: true },
-    { label: "Partially Paid", value: partiallyPaidCount, icon: CreditCard, color: "text-warning", isCurrency: false },
+    { label: t("payments.dueThisMonth"), value: totalDueThisMonth, icon: Clock, color: "text-primary", isCurrency: true },
+    { label: t("payments.collectedThisMonth"), value: totalCollectedThisMonth, icon: CheckCircle2, color: "text-success", isCurrency: true },
+    { label: t("payments.totalOverdue"), value: totalOverdue, icon: AlertTriangle, color: "text-destructive", isCurrency: true },
+    { label: t("payments.partiallyPaid"), value: partiallyPaidCount, icon: CreditCard, color: "text-warning", isCurrency: false },
   ];
 
   return (
@@ -121,7 +129,7 @@ export default function Payments() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("payments.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("payments.title")}</p>
+          <p className="text-sm text-muted-foreground">{t("payments.subtitle")}</p>
         </div>
         <Button onClick={() => setSheetOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.record")}</Button>
       </div>
@@ -135,7 +143,7 @@ export default function Payments() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
                   <p className="text-2xl font-bold text-foreground mt-1">
-                    {k.isCurrency ? formatCurrency(k.value as number) : k.value}
+                    {k.isCurrency ? formatCurrency(k.value as number, kpiCurrency, kpiLocale) : k.value}
                   </p>
                 </div>
                 <k.icon className={`h-5 w-5 ${k.color}`} />

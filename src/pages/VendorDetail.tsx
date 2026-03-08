@@ -129,7 +129,7 @@ export default function VendorDetail() {
                       <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[t.category]}</TableCell>
                       <TableCell><StatusBadge status={t.priority} /></TableCell>
                       <TableCell><StatusBadge status={t.status} /></TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{formatDate(t.createdDate)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDate(t.createdDate, prop?.locale)}</TableCell>
                     </TableRow>
                   );
                 })}
