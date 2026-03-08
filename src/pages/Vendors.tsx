@@ -87,9 +87,9 @@ export default function Vendors() {
       </div>
 
       {vendors.length === 0 ? (
-        <EmptyState icon={HardHat} title="No vendors yet" description="Add your first vendor." actionLabel="Add Vendor" onAction={openAdd} />
+        <EmptyState icon={HardHat} title={t("vendors.empty")} description={t("vendors.emptyDesc")} actionLabel={t("vendors.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>

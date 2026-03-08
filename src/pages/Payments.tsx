@@ -120,10 +120,10 @@ export default function Payments() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Payments</h1>
-          <p className="text-sm text-muted-foreground">Rent collection & arrears follow-up</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("payments.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("payments.title")}</p>
         </div>
-        <Button onClick={() => setSheetOpen(true)}><Plus className="h-4 w-4 mr-1" />Add Payment</Button>
+        <Button onClick={() => setSheetOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.record")}</Button>
       </div>
 
       {/* KPI Cards */}

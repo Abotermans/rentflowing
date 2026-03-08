@@ -9,7 +9,7 @@ import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOut
 import { useSettings } from "@/context/SettingsContext";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees, tickets } = useAppData();
+  const { t } = useSettings();
 
   // Maintenance KPIs
   const openTicketsCount = tickets.filter(t => t.status !== "completed" && t.status !== "cancelled").length;

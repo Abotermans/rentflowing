@@ -147,9 +147,9 @@ export default function Leases() {
       </div>
 
       {leases.length === 0 ? (
-        <EmptyState icon={FileText} title="No leases yet" description="Create your first lease." actionLabel="Add Lease" onAction={openAdd} />
+        <EmptyState icon={FileText} title={t("leases.empty")} description={t("leases.emptyDesc")} actionLabel={t("leases.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>

@@ -138,9 +138,9 @@ export default function Maintenance() {
       </div>
 
       {tickets.length === 0 ? (
-        <EmptyState icon={Wrench} title="No maintenance tickets" description="Create your first ticket." actionLabel="New Ticket" onAction={openAdd} />
+        <EmptyState icon={Wrench} title={t("maintenance.empty")} description={t("maintenance.emptyDesc")} actionLabel={t("maintenance.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>
