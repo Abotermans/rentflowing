@@ -258,7 +258,7 @@ export default function PropertyDetail() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>{editingUnit ? "Edit Unit" : "Add Unit"}</SheetTitle>
+            <SheetTitle>{editingUnit ? t("units.edit") : t("units.add")}</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-6">
             <div className="grid grid-cols-2 gap-4">

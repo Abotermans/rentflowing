@@ -168,7 +168,7 @@ export default function MaintenanceDetail() {
       {/* Notes */}
       {(ticket.internalNotes || ticket.residentVisibleNotes) && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />Notes</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {ticket.internalNotes && (
               <div>
