@@ -12,7 +12,7 @@ import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit } = useAppData();
+  const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
   const { t } = useSettings();
 
   const unit = units.find(u => u.id === id);
@@ -227,6 +227,72 @@ export default function UnitDetail() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* Costs & Taxes */}
+      {(() => {
+        const directEntries = getCostEntriesByUnit(unit.id);
+        const allocResults = getAllocationResultsByUnit(unit.id);
+        const directTotal = directEntries.reduce((s, e) => s + e.amount, 0);
+        const allocTotal = allocResults.reduce((s, r) => s + r.allocatedAmount, 0);
+        const totalBurden = directTotal + allocTotal;
+        const ownerBorne = directEntries.filter(e => e.recoveryType === "owner-only").reduce((s, e) => s + e.amount, 0)
+          + allocResults.reduce((s, r) => s + r.ownerBurdenAmount, 0);
+        const recoverable = directEntries.filter(e => e.recoveryType === "tenant-recoverable").reduce((s, e) => s + e.amount, 0)
+          + allocResults.reduce((s, r) => s + r.recoverableAmount, 0);
+
+        if (totalBurden === 0) return null;
+
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <Banknote className="h-4 w-4" />Costs & Taxes Burden
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div><p className="text-xs text-muted-foreground">Total Burden</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalBurden, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Direct Costs</p><p className="text-sm font-medium text-foreground">{formatCurrency(directTotal, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Allocated</p><p className="text-sm font-medium text-foreground">{formatCurrency(allocTotal, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Entries</p><p className="text-sm font-medium text-foreground">{directEntries.length} direct + {allocResults.length} alloc.</p></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-md bg-muted/50 border">
+                  <p className="text-xs text-muted-foreground">Owner-Borne</p>
+                  <p className="text-lg font-bold text-destructive">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</p>
+                </div>
+                <div className="p-3 rounded-md bg-muted/50 border">
+                  <p className="text-xs text-muted-foreground">Recoverable</p>
+                  <p className="text-lg font-bold text-success">{formatCurrency(recoverable, property.currencyCode, property.locale)}</p>
+                </div>
+              </div>
+              {directEntries.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Direct Entries</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Label</TableHead>
+                        <TableHead className="text-xs">Recovery</TableHead>
+                        <TableHead className="text-xs text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {directEntries.map(e => (
+                        <TableRow key={e.id}>
+                          <TableCell className="text-sm text-foreground">{e.label}</TableCell>
+                          <TableCell><StatusBadge status={e.recoveryType} /></TableCell>
+                          <TableCell className="text-right text-sm font-medium text-foreground">{formatCurrency(e.amount, property.currencyCode, property.locale)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>

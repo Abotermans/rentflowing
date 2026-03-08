@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -33,7 +33,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants } = useAppData();
+  const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
 
@@ -262,6 +262,91 @@ export default function PropertyDetail() {
           </Card>
         )}
       </div>
+
+      {/* Costs & Taxes */}
+      {(() => {
+        const propEntries = getCostEntriesByProperty(property.id);
+        const propAllocResults = getAllocationResultsByProperty(property.id);
+        const directEntries = propEntries.filter(e => e.unitId);
+        const propertyLevelEntries = propEntries.filter(e => !e.unitId);
+
+        const totalCharges = propEntries.filter(e => !e.isTax).reduce((s, e) => s + e.amount, 0);
+        const totalTaxes = propEntries.filter(e => e.isTax).reduce((s, e) => s + e.amount, 0);
+        const ownerBorne = propEntries.filter(e => e.recoveryType === "owner-only").reduce((s, e) => s + e.amount, 0)
+          + propAllocResults.filter(r => r.recoveryType === "owner-only" || r.recoveryType === "partially-recoverable").reduce((s, r) => s + r.ownerBurdenAmount, 0)
+          - propEntries.filter(e => !e.unitId && (e.recoveryType === "owner-only" || e.recoveryType === "partially-recoverable")).reduce((s, e) => s + e.amount, 0);
+        const recoverable = propAllocResults.reduce((s, r) => s + r.recoverableAmount, 0)
+          + directEntries.filter(e => e.recoveryType === "tenant-recoverable").reduce((s, e) => s + e.amount, 0);
+        const totalCosts = totalCharges + totalTaxes;
+
+        // Unit burden summary
+        const unitBurden = propertyUnits.map(u => {
+          const directCosts = propEntries.filter(e => e.unitId === u.id);
+          const allocResults = propAllocResults.filter(r => r.unitId === u.id);
+          const directTotal = directCosts.reduce((s, e) => s + e.amount, 0);
+          const allocTotal = allocResults.reduce((s, r) => s + r.allocatedAmount, 0);
+          return { unit: u, directTotal, allocTotal, total: directTotal + allocTotal };
+        }).filter(x => x.total > 0);
+
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <Banknote className="h-4 w-4" />Costs & Taxes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div><p className="text-xs text-muted-foreground">Total Costs</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCosts, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Charges</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCharges, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Taxes</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalTaxes, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Entries</p><p className="text-lg font-bold text-foreground">{propEntries.length}</p></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-md bg-muted/50 border">
+                  <p className="text-xs text-muted-foreground">Owner-Borne</p>
+                  <p className="text-lg font-bold text-destructive">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</p>
+                </div>
+                <div className="p-3 rounded-md bg-muted/50 border">
+                  <p className="text-xs text-muted-foreground">Recoverable</p>
+                  <p className="text-lg font-bold text-success">{formatCurrency(recoverable, property.currencyCode, property.locale)}</p>
+                </div>
+              </div>
+              {unitBurden.length > 0 && (
+                <>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-2">Unit Burden</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Unit</TableHead>
+                        <TableHead className="text-xs text-right">Direct</TableHead>
+                        <TableHead className="text-xs text-right">Allocated</TableHead>
+                        <TableHead className="text-xs text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {unitBurden.map(({ unit: u, directTotal, allocTotal, total }) => (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-medium text-sm"><Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link></TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(directTotal, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(allocTotal, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right text-sm font-bold text-foreground">{formatCurrency(total, property.currencyCode, property.locale)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+              {propEntries.length === 0 && <p className="text-sm text-muted-foreground">No cost entries for this property.</p>}
+              {propEntries.length > 0 && (
+                <Button variant="link" size="sm" asChild className="p-0 h-auto">
+                  <Link to="/costs/entries">View all cost entries →</Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Unit Form Sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>

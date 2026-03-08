@@ -2,7 +2,7 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench, ArrowRightLeft } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench, ArrowRightLeft, Banknote, Receipt } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
@@ -10,7 +10,7 @@ import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets } = useAppData();
+  const { properties, units, leases, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets, costEntries, costAllocationResults } = useAppData();
   const { t } = useSettings();
 
   // Maintenance KPIs
@@ -67,6 +67,13 @@ export default function Dashboard() {
   // Unmatched receipts for dashboard table
   const unmatchedReceipts = cashReceipts.filter(cr => cr.unmatchedAmount > 0).slice(0, 5);
 
+  // Costs & Taxes KPIs
+  const activeCostEntries = costEntries.filter(e => e.status === "active");
+  const totalCostsAmount = activeCostEntries.reduce((s, e) => s + e.amount, 0);
+  const totalChargesAmount = activeCostEntries.filter(e => !e.isTax).reduce((s, e) => s + e.amount, 0);
+  const totalTaxesAmount = activeCostEntries.filter(e => e.isTax).reduce((s, e) => s + e.amount, 0);
+  const ownerBorneTotal = activeCostEntries.filter(e => e.recoveryType === "owner-only").reduce((s, e) => s + e.amount, 0);
+
   const kpiSections = [
     {
       title: t("dashboard.portfolio"),
@@ -102,6 +109,15 @@ export default function Dashboard() {
         { label: t("dashboard.urgentTickets"), value: urgentTicketsCount, icon: Wrench, color: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
         { label: t("dashboard.pendingMoveIns"), value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
         { label: t("dashboard.pendingMoveOuts"), value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
+      ],
+    },
+    {
+      title: "Costs & Taxes",
+      items: [
+        { label: "Total Costs", value: formatCurrency(totalCostsAmount), icon: Banknote, color: "text-foreground", isText: true },
+        { label: "Charges", value: formatCurrency(totalChargesAmount), icon: Receipt, color: "text-primary", isText: true },
+        { label: "Taxes", value: formatCurrency(totalTaxesAmount), icon: Landmark, color: "text-warning", isText: true },
+        { label: "Owner-Borne", value: formatCurrency(ownerBorneTotal), icon: AlertTriangle, color: ownerBorneTotal > 0 ? "text-destructive" : "text-foreground", isText: true },
       ],
     },
   ];

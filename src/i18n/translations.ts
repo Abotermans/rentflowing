@@ -639,6 +639,10 @@ const en = {
   "status.reversed": "Reversed",
   "status.refunded": "Refunded",
   "status.closed": "Closed",
+  "status.ownerOnly": "Owner Only",
+  "status.tenantRecoverable": "Tenant Recoverable",
+  "status.partiallyRecoverable": "Partially Recoverable",
+  "status.informational": "Informational",
 
   // Costs & Taxes
   "nav.costs": "Costs & Taxes",
@@ -1347,6 +1351,10 @@ const fr: TranslationKeys = {
   "status.reversed": "Annulé",
   "status.refunded": "Remboursé",
   "status.closed": "Clôturé",
+  "status.ownerOnly": "Propriétaire",
+  "status.tenantRecoverable": "Récupérable",
+  "status.partiallyRecoverable": "Partiellement récupérable",
+  "status.informational": "Informatif",
 
   // Costs & Taxes
   "nav.costs": "Charges & Taxes",
