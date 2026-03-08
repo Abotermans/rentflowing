@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3, Settings, Coins } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
