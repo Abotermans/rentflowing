@@ -16,6 +16,7 @@ import { Property } from "@/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
+import { useSettings } from "@/context/SettingsContext";
 
 const EUROPEAN_COUNTRIES = [
   { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
