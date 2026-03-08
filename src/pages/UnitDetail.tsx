@@ -273,7 +273,7 @@ export default function UnitDetail() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Wrench className="h-4 w-4" />Maintenance ({unitTickets.length})
+                <Wrench className="h-4 w-4" />{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
               </CardTitle>
             </CardHeader>
             <CardContent>
