@@ -243,7 +243,7 @@ export default function Properties() {
               </div>
             </div>
             <div>
-              <Label htmlFor="owner">Owner Name</Label>
+              <Label htmlFor="owner">{t("properties.ownerName")}</Label>
               <Input id="owner" value={form.ownerName} onChange={e => setForm(f => ({ ...f, ownerName: e.target.value }))} placeholder="e.g. SCI Rivoli Patrimoine" />
             </div>
             <div>
