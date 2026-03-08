@@ -164,6 +164,15 @@ export default function PropertyDetail() {
         </Card>
       </div>
 
+      {/* Integrity Summary */}
+      {id && (
+        <IntegritySummaryPanel
+          title="Property Dependencies"
+          deleteValidation={canDeleteProperty(id, integrityState)}
+          additionalWarnings={canArchiveProperty(id, integrityState).warnings}
+        />
+      )}
+
       {/* KPI cards */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {kpis.map(k => (

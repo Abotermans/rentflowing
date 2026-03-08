@@ -20,8 +20,10 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canChangeLeaseStatus, canActivateLease } from "@/lib/integrity/leaseIntegrity";
+import { canChangeLeaseStatus, canActivateLease, canDeleteLease } from "@/lib/integrity/leaseIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();

@@ -96,6 +96,15 @@ export default function UnitDetail() {
         </Alert>
       )}
 
+      {/* Integrity Summary */}
+      {id && (
+        <IntegritySummaryPanel
+          title="Unit Dependencies"
+          deleteValidation={canDeleteUnit(id, integrityState)}
+          additionalWarnings={getUnitIntegrityWarnings(id, integrityState)}
+        />
+      )}
+
       {/* Main Info */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.unitInformation")}</CardTitle></CardHeader>
