@@ -138,7 +138,7 @@ export default function Maintenance() {
       {tickets.length === 0 ? (
         <EmptyState icon={Wrench} title="No maintenance tickets" description="Create your first ticket." actionLabel="New Ticket" onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No tickets match your filters.</p></CardContent></Card>
+        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
       ) : (
         <Card>
           <Table>
