@@ -53,10 +53,22 @@ export default function Tenants() {
     setSheetOpen(true);
   };
 
+  const tenantStatusValidation = (() => {
+    if (!editingTenant || form.status === editingTenant.status) return null;
+    return canChangeTenantStatus(editingTenant.id, form.status, integrityState);
+  })();
+
   const handleSave = () => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
       toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
       return;
+    }
+    if (editingTenant && form.status !== editingTenant.status) {
+      const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
+      if (!validation.allowed) {
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
     }
     if (editingTenant) {
       updateTenant({ ...editingTenant, ...form });
