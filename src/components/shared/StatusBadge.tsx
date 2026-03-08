@@ -41,6 +41,15 @@ const statusStyles: Record<StatusType, string> = {
   urgent: "bg-destructive/15 text-destructive border-destructive/30",
   "fully-consumed": "bg-success/15 text-success border-success/30",
   none: "bg-muted text-muted-foreground border-border",
+  disputed: "bg-destructive/15 text-destructive border-destructive/30",
+  "written-off": "bg-muted text-muted-foreground border-border",
+  imported: "bg-primary/15 text-primary border-primary/30",
+  unmatched: "bg-warning/15 text-warning border-warning/30",
+  "partially-matched": "bg-warning/15 text-warning border-warning/30",
+  matched: "bg-success/15 text-success border-success/30",
+  exception: "bg-destructive/15 text-destructive border-destructive/30",
+  reversed: "bg-muted text-muted-foreground border-border",
+  refunded: "bg-muted text-muted-foreground border-border",
 };
 
 const STATUS_KEYS: Record<StatusType, TranslationKey> = {
