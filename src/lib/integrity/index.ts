@@ -31,6 +31,7 @@ export function getDeletionImpact(entityType: IntegrityEntityType, entityId: str
     case "cash-receipt": return canDeleteCashReceipt(entityId, s);
     case "cost-entry": return canDeleteCostEntry(entityId, s);
     case "allocation-rule": return canDeleteAllocationRule(entityId, s);
+    case "cost-category": return canDeleteCostCategory(entityId, s);
     default: return { allowed: true, blockers: [], warnings: [], overrideAllowed: false };
   }
 }

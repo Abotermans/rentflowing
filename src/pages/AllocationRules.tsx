@@ -154,21 +154,12 @@ export default function AllocationRules() {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>{t("costs.deleteRule")}?</AlertDialogTitle>
-                                <AlertDialogDescription>{t("costs.deleteRuleDesc")}</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(r.id)}>{t("action.delete")}</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <DeleteDialog
+                            entityType="allocation-rule"
+                            entityId={r.id}
+                            entityLabel={r.name}
+                            onDelete={handleDelete}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

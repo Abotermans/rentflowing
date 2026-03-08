@@ -1,6 +1,16 @@
 import { CostEntry, AllocationRuleUnitShare } from "@/types/costs";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 
+export function canDeleteCostCategory(categoryId: string, s: IntegrityState): ValidationResult {
+  const blockers: IntegrityBlocker[] = [];
+
+  const entryCount = s.costEntries.filter(e => e.categoryId === categoryId).length;
+  if (entryCount > 0) blockers.push({ code: "CATEGORY_HAS_ENTRIES", message: `Category is used by ${entryCount} cost entry(ies) — remove or reassign them first`, entityType: "cost-entry", count: entryCount });
+
+  if (blockers.length > 0) return blocked(blockers, [], "Deactivate the category instead of deleting it");
+  return ok();
+}
+
 export function canDeleteCostEntry(costEntryId: string, s: IntegrityState): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
 

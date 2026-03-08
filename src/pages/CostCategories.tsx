@@ -143,21 +143,12 @@ export default function CostCategories() {
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>{t("costs.deleteCategory")}?</AlertDialogTitle>
-                              <AlertDialogDescription>{t("costs.deleteCategoryDesc")}</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(c.id)}>{t("action.delete")}</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <DeleteDialog
+                          entityType="cost-category"
+                          entityId={c.id}
+                          entityLabel={c.name}
+                          onDelete={handleDelete}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>

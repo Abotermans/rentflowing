@@ -197,11 +197,12 @@ export default function LeaseDetail() {
       toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
-    if (validation.warnings.length > 0) {
-      toast({ title: "Warnings", description: validation.warnings.map(w => w.message).join(". ") });
-    }
     updateLease({ ...lease, leaseStatus: "ended" });
-    toast({ title: "Lease marked as ended" });
+    if (validation.warnings.length > 0) {
+      toast({ title: "Lease ended with warnings", description: validation.warnings.map(w => w.message).join(". ") });
+    } else {
+      toast({ title: "Lease marked as ended" });
+    }
   };
 
   const handleMarkTerminated = () => {
