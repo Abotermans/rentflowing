@@ -10,7 +10,7 @@ import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets } = useAppData();
+  const { properties, units, leases, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets, costEntries, costAllocationResults } = useAppData();
   const { t } = useSettings();
 
   // Maintenance KPIs
