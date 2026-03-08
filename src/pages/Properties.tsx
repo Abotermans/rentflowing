@@ -283,23 +283,23 @@ export default function Properties() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Property Type *</Label>
+                <Label>{t("properties.propertyType")} *</Label>
                 <Select value={form.propertyType} onValueChange={v => setForm(f => ({ ...f, propertyType: v as Property["propertyType"] }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="residential">Residential</SelectItem>
-                    <SelectItem value="commercial">Commercial</SelectItem>
-                    <SelectItem value="mixed-use">Mixed Use</SelectItem>
+                    <SelectItem value="residential">{t("properties.residential")}</SelectItem>
+                    <SelectItem value="commercial">{t("properties.commercial")}</SelectItem>
+                    <SelectItem value="mixed-use">{t("properties.mixedUse")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>{t("filter.status")}</Label>
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as "active" | "inactive" }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="active">{t("properties.active")}</SelectItem>
+                    <SelectItem value="inactive">{t("properties.inactive")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
