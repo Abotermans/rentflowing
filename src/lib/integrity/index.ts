@@ -9,7 +9,7 @@ export { canDeleteUnit, canChangeUnitStatus, getUnitIntegrityWarnings } from "./
 export { canDeleteTenant, canChangeTenantStatus } from "./tenantIntegrity";
 export { canDeleteLease, canActivateLease, canChangeLeaseStatus } from "./leaseIntegrity";
 export { canDeleteReceivable, canDeleteCashReceipt, canCreateAllocation } from "./financialIntegrity";
-export { canDeleteCostEntry, canDeleteAllocationRule, validateCostEntry, validateManualPercentageShares } from "./costIntegrity";
+export { canDeleteCostCategory, canDeleteCostEntry, canDeleteAllocationRule, validateCostEntry, validateManualPercentageShares } from "./costIntegrity";
 
 // ===== Generic Dispatchers =====
 
