@@ -104,3 +104,42 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11px;
+  }
+
+  .print\:hidden,
+  [data-sidebar],
+  nav,
+  header {
+    display: none !important;
+  }
+
+  .shadow-sm,
+  .shadow {
+    box-shadow: none !important;
+  }
+
+  .border {
+    border-color: #ddd !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 4px 8px !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  @page {
+    margin: 1cm;
+    size: landscape;
+  }
+}
