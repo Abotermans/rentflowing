@@ -100,7 +100,7 @@ export default function MaintenanceDetail() {
             <div className="flex items-start gap-2">
               <DoorOpen className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Unit</p>
+                <p className="text-xs text-muted-foreground">{t("table.unit")}</p>
                 {unit ? <Link to={`/units/${unit.id}`} className="text-sm font-medium text-primary hover:underline">{unit.unitCode}</Link> : <p className="text-sm text-foreground">—</p>}
               </div>
             </div>
