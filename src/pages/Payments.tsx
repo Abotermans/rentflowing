@@ -143,7 +143,7 @@ export default function Payments() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
                   <p className="text-2xl font-bold text-foreground mt-1">
-                    {k.isCurrency ? formatCurrency(k.value as number) : k.value}
+                    {k.isCurrency ? formatCurrency(k.value as number, kpiCurrency, kpiLocale) : k.value}
                   </p>
                 </div>
                 <k.icon className={`h-5 w-5 ${k.color}`} />

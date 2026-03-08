@@ -189,7 +189,7 @@ function OccupancyReport() {
                 <TableCell><StatusBadge status={d.u.currentStatus} /></TableCell>
                 <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
                 <TableCell className="text-right text-sm">{d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "—"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{d.u.availableFrom ? formatDate(d.u.availableFrom) : "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{d.u.availableFrom ? formatDate(d.u.availableFrom, d.prop?.locale) : "—"}</TableCell>
               </TableRow>
             ))}
           </TableBody>

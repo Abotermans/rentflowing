@@ -1,5 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/context/SettingsContext";
+import type { TranslationKey } from "@/i18n/translations";
 
 type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none";
 
@@ -29,12 +31,10 @@ const statusStyles: Record<StatusType, string> = {
   completed: "bg-success/15 text-success border-success/30",
   scheduled: "bg-primary/15 text-primary border-primary/30",
   "not-scheduled": "bg-muted text-muted-foreground border-border",
-  // Maintenance statuses
   open: "bg-warning/15 text-warning border-warning/30",
   assigned: "bg-primary/15 text-primary border-primary/30",
   "in-progress": "bg-warning/15 text-warning border-warning/30",
   cancelled: "bg-muted text-muted-foreground border-border",
-  // Priority badges
   low: "bg-muted text-muted-foreground border-border",
   medium: "bg-primary/15 text-primary border-primary/30",
   high: "bg-warning/15 text-warning border-warning/30",
@@ -42,10 +42,48 @@ const statusStyles: Record<StatusType, string> = {
   none: "bg-muted text-muted-foreground border-border",
 };
 
+const STATUS_KEYS: Record<StatusType, TranslationKey> = {
+  active: "status.active",
+  inactive: "status.inactive",
+  occupied: "status.occupied",
+  vacant: "status.vacant",
+  reserved: "status.reserved",
+  unavailable: "status.unavailable",
+  draft: "status.draft",
+  ended: "status.ended",
+  terminated: "status.terminated",
+  former: "status.former",
+  applicant: "status.applicant",
+  due: "status.due",
+  paid: "status.paid",
+  "partially-paid": "status.partiallyPaid",
+  overdue: "status.overdue",
+  pending: "status.pending",
+  incomplete: "status.incomplete",
+  released: "status.released",
+  "partially-retained": "status.partiallyRetained",
+  "under-notice": "status.underNotice",
+  "ending-soon": "status.endingSoon",
+  "in-review": "status.inReview",
+  completed: "status.completed",
+  scheduled: "status.scheduled",
+  "not-scheduled": "status.notScheduled",
+  open: "status.open",
+  assigned: "status.assigned",
+  "in-progress": "status.inProgress",
+  cancelled: "status.cancelled",
+  low: "status.low",
+  medium: "status.medium",
+  high: "status.high",
+  urgent: "status.urgent",
+  none: "status.none",
+};
+
 export function StatusBadge({ status }: { status: StatusType }) {
+  const { t } = useSettings();
   return (
-    <Badge variant="outline" className={cn("capitalize font-medium text-xs", statusStyles[status])}>
-      {status}
+    <Badge variant="outline" className={cn("font-medium text-xs", statusStyles[status])}>
+      {t(STATUS_KEYS[status])}
     </Badge>
   );
 }

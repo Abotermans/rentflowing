@@ -7,16 +7,17 @@ import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
+import type { TranslationKey } from "@/i18n/translations";
 
 export default function Dashboard() {
   const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees, tickets } = useAppData();
   const { t } = useSettings();
 
   // Maintenance KPIs
-  const openTicketsCount = tickets.filter(t => t.status !== "completed" && t.status !== "cancelled").length;
-  const urgentTicketsCount = tickets.filter(t => (t.priority === "urgent" || t.priority === "high") && t.status !== "completed" && t.status !== "cancelled").length;
+  const openTicketsCount = tickets.filter(tk => tk.status !== "completed" && tk.status !== "cancelled").length;
+  const urgentTicketsCount = tickets.filter(tk => (tk.priority === "urgent" || tk.priority === "high") && tk.status !== "completed" && tk.status !== "cancelled").length;
   const thisMonth = new Date().toISOString().slice(0, 7);
-  const completedThisMonth = tickets.filter(t => t.status === "completed" && t.completedDate?.startsWith(thisMonth)).length;
+  const completedThisMonth = tickets.filter(tk => tk.status === "completed" && tk.completedDate?.startsWith(thisMonth)).length;
 
   const totalUnits = units.length;
   const occupied = units.filter(u => u.currentStatus === "occupied").length;
@@ -52,49 +53,49 @@ export default function Dashboard() {
   const activeTenantIds = [...new Set(activeLeases.map(l => l.primaryTenantId))];
   const overdueTenants = activeTenantIds
     .map(tid => {
-      const t = tenants.find(x => x.id === tid);
+      const tenant = tenants.find(x => x.id === tid);
       const { outstanding, overdue } = getTenantOutstanding(tid);
       const lease = activeLeases.find(l => l.primaryTenantId === tid);
       const prop = lease ? properties.find(p => p.id === lease.propertyId) : undefined;
-      return { tenant: t, outstanding, overdue, lease, prop };
+      return { tenant, outstanding, overdue, lease, prop };
     })
     .filter(x => x.overdue > 0 && x.tenant);
 
   const kpiSections = [
     {
-      title: "Portfolio",
+      title: t("dashboard.portfolio"),
       items: [
-        { label: "Properties", value: properties.length, icon: Building2, color: "text-primary" },
-        { label: "Total Units", value: totalUnits, icon: DoorOpen, color: "text-foreground" },
-        { label: "Occupied", value: occupied, icon: CheckCircle2, color: "text-success" },
-        { label: "Occupancy Rate", value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
+        { label: t("dashboard.totalProperties"), value: properties.length, icon: Building2, color: "text-primary" },
+        { label: t("dashboard.totalUnits"), value: totalUnits, icon: DoorOpen, color: "text-foreground" },
+        { label: t("dashboard.occupied"), value: occupied, icon: CheckCircle2, color: "text-success" },
+        { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
       ],
     },
     {
-      title: "Leases",
+      title: t("dashboard.leasesSection"),
       items: [
-        { label: "Active Leases", value: activeLeases.length, icon: FileText, color: "text-primary" },
-        { label: "Ending Soon", value: leasesEndingSoon.length, icon: CalendarClock, color: leasesEndingSoon.length > 0 ? "text-destructive" : "text-foreground" },
-        { label: "Under Notice", value: leasesUnderNotice.length, icon: Bell, color: leasesUnderNotice.length > 0 ? "text-warning" : "text-foreground" },
-        { label: "Vacant", value: vacant, icon: XCircle, color: "text-warning" },
+        { label: t("dashboard.activeLeases"), value: activeLeases.length, icon: FileText, color: "text-primary" },
+        { label: t("dashboard.endingSoon"), value: leasesEndingSoon.length, icon: CalendarClock, color: leasesEndingSoon.length > 0 ? "text-destructive" : "text-foreground" },
+        { label: t("dashboard.underNotice"), value: leasesUnderNotice.length, icon: Bell, color: leasesUnderNotice.length > 0 ? "text-warning" : "text-foreground" },
+        { label: t("dashboard.vacantUnits"), value: vacant, icon: XCircle, color: "text-warning" },
       ],
     },
     {
-      title: "Financial",
+      title: t("dashboard.financial"),
       items: [
-        { label: "Expected Monthly", value: formatCurrency(totalExpectedMonthlyRent), icon: CreditCard, color: "text-primary", isText: true },
-        { label: "Total Overdue", value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
-        { label: "Pending Guarantees", value: pendingGuarantees.length, icon: Shield, color: pendingGuarantees.length > 0 ? "text-warning" : "text-foreground" },
-        { label: "Returns Pending", value: returnsPending.length, icon: Truck, color: returnsPending.length > 0 ? "text-warning" : "text-foreground" },
+        { label: t("dashboard.expectedMonthly"), value: formatCurrency(totalExpectedMonthlyRent), icon: CreditCard, color: "text-primary", isText: true },
+        { label: t("dashboard.totalOverdue"), value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
+        { label: t("dashboard.pendingGuarantees"), value: pendingGuarantees.length, icon: Shield, color: pendingGuarantees.length > 0 ? "text-warning" : "text-foreground" },
+        { label: t("dashboard.returnsPending"), value: returnsPending.length, icon: Truck, color: returnsPending.length > 0 ? "text-warning" : "text-foreground" },
       ],
     },
     {
-      title: "Operations",
+      title: t("dashboard.operations"),
       items: [
-        { label: "Open Tickets", value: openTicketsCount, icon: Wrench, color: openTicketsCount > 0 ? "text-warning" : "text-foreground" },
-        { label: "Urgent Tickets", value: urgentTicketsCount, icon: Wrench, color: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
-        { label: "Move-Ins", value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
-        { label: "Move-Outs", value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
+        { label: t("dashboard.openTickets"), value: openTicketsCount, icon: Wrench, color: openTicketsCount > 0 ? "text-warning" : "text-foreground" },
+        { label: t("dashboard.urgentTickets"), value: urgentTicketsCount, icon: Wrench, color: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
+        { label: t("dashboard.pendingMoveIns"), value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
+        { label: t("dashboard.pendingMoveOuts"), value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
       ],
     },
   ];
@@ -113,15 +114,15 @@ export default function Dashboard() {
 
   // Upcoming operations (next 30 days)
   const upcomingOps = [
-    ...upcomingMoveIns.filter(l => l.moveInScheduledDate! <= in30Str).map(l => ({ type: "Move-In" as const, lease: l, date: l.moveInScheduledDate! })),
-    ...upcomingMoveOuts.filter(l => l.moveOutScheduledDate! <= in30Str).map(l => ({ type: "Move-Out" as const, lease: l, date: l.moveOutScheduledDate! })),
+    ...upcomingMoveIns.filter(l => l.moveInScheduledDate! <= in30Str).map(l => ({ type: "move-in" as const, lease: l, date: l.moveInScheduledDate! })),
+    ...upcomingMoveOuts.filter(l => l.moveOutScheduledDate! <= in30Str).map(l => ({ type: "move-out" as const, lease: l, date: l.moveOutScheduledDate! })),
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">{t("dashboard.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("dashboard.portfolio")}</p>
+        <p className="text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
       </div>
 
       {kpiSections.map(section => (
@@ -146,7 +147,7 @@ export default function Dashboard() {
       ))}
 
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Units by Status</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("dashboard.unitsByStatus")}</CardTitle></CardHeader>
         <CardContent>
           {totalUnits > 0 ? (
             <>
@@ -159,14 +160,14 @@ export default function Dashboard() {
                 {statusSegments.map(s => (
                   <div key={s.status} className="flex items-center gap-1.5 text-xs">
                     <div className={`h-2.5 w-2.5 rounded-full ${s.className}`} />
-                    <span className="text-muted-foreground capitalize">{s.status}</span>
+                    <span className="text-muted-foreground">{t(`status.${s.status}` as TranslationKey)}</span>
                     <span className="font-medium text-foreground">{s.count}</span>
                   </div>
                 ))}
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">No units yet.</p>
+            <p className="text-sm text-muted-foreground">{t("dashboard.noUnits")}</p>
           )}
         </CardContent>
       </Card>
@@ -176,28 +177,28 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-              <Truck className="h-4 w-4 text-primary" />Upcoming Operations (30 days)
+              <Truck className="h-4 w-4 text-primary" />{t("dashboard.upcomingOps")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Tenant</TableHead>
-                  <TableHead className="text-xs">Property</TableHead>
-                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">{t("table.type")}</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.tenant")}</TableHead>
+                  <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.date")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {upcomingOps.map(op => {
-                  const tenant = tenants.find(t => t.id === op.lease.primaryTenantId);
+                  const tenant = tenants.find(tn => tn.id === op.lease.primaryTenantId);
                   const prop = properties.find(p => p.id === op.lease.propertyId);
                   return (
                     <TableRow key={`${op.type}-${op.lease.id}`}>
                       <TableCell>
-                        <StatusBadge status={op.type === "Move-In" ? "scheduled" : "pending"} />
+                        <StatusBadge status={op.type === "move-in" ? "scheduled" : "pending"} />
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         <Link to={`/leases/${op.lease.id}`} className="hover:underline text-foreground">{op.lease.leaseReference}</Link>
@@ -219,24 +220,24 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-              <AlertTriangle className="h-4 w-4 text-destructive" />Overdue Tenants
+              <AlertTriangle className="h-4 w-4 text-destructive" />{t("dashboard.overdueTenants")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Tenant</TableHead>
-                  <TableHead className="text-xs">Lease</TableHead>
-                  <TableHead className="text-xs">Property</TableHead>
-                  <TableHead className="text-xs text-right">Overdue</TableHead>
-                  <TableHead className="text-xs text-right">Outstanding</TableHead>
+                  <TableHead className="text-xs">{t("table.tenant")}</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("table.overdue")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("table.outstanding")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {overdueTenants.map(({ tenant: t, overdue, outstanding, lease: l, prop }) => (
-                  <TableRow key={t!.id}>
-                    <TableCell className="text-sm font-medium"><Link to={`/tenants/${t!.id}`} className="hover:underline text-foreground">{getTenantFullName(t!)}</Link></TableCell>
+                {overdueTenants.map(({ tenant: tn, overdue, outstanding, lease: l, prop }) => (
+                  <TableRow key={tn!.id}>
+                    <TableCell className="text-sm font-medium"><Link to={`/tenants/${tn!.id}`} className="hover:underline text-foreground">{getTenantFullName(tn!)}</Link></TableCell>
                     <TableCell className="font-mono text-xs">{l ? <Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link> : "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                     <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(overdue, prop?.currencyCode, prop?.locale)}</TableCell>
@@ -254,23 +255,23 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-              <Bell className="h-4 w-4 text-warning" />Leases Under Notice
+              <Bell className="h-4 w-4 text-warning" />{t("dashboard.leasesUnderNotice")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Tenant</TableHead>
-                  <TableHead className="text-xs">Property</TableHead>
-                  <TableHead className="text-xs">Notice Date</TableHead>
-                  <TableHead className="text-xs">Intended Move-Out</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.tenant")}</TableHead>
+                  <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.noticeDate")}</TableHead>
+                  <TableHead className="text-xs">{t("table.intendedMoveOut")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leasesUnderNotice.map(l => {
-                  const tenant = tenants.find(t => t.id === l.primaryTenantId);
+                  const tenant = tenants.find(tn => tn.id === l.primaryTenantId);
                   const prop = properties.find(p => p.id === l.propertyId);
                   return (
                     <TableRow key={l.id}>
@@ -293,22 +294,22 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-              <Truck className="h-4 w-4 text-warning" />Returns Pending
+              <Truck className="h-4 w-4 text-warning" />{t("dashboard.returnsPending")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Tenant</TableHead>
-                  <TableHead className="text-xs">Property</TableHead>
-                  <TableHead className="text-xs">Return Status</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.tenant")}</TableHead>
+                  <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.returnStatus")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {returnsPending.map(l => {
-                  const tenant = tenants.find(t => t.id === l.primaryTenantId);
+                  const tenant = tenants.find(tn => tn.id === l.primaryTenantId);
                   const prop = properties.find(p => p.id === l.propertyId);
                   return (
                     <TableRow key={l.id}>
@@ -330,25 +331,25 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-              <Shield className="h-4 w-4 text-warning" />Guarantee Issues
+              <Shield className="h-4 w-4 text-warning" />{t("dashboard.guaranteeIssues")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Lease</TableHead>
-                  <TableHead className="text-xs">Tenant</TableHead>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs text-right">Expected</TableHead>
-                  <TableHead className="text-xs text-right">Received</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.tenant")}</TableHead>
+                  <TableHead className="text-xs">{t("table.type")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("table.expected")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("table.received")}</TableHead>
+                  <TableHead className="text-xs">{t("filter.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {[...pendingGuarantees, ...incompleteGuarantees].map(g => {
                   const lease = leases.find(l => l.id === g.leaseId);
-                  const tenant = lease ? tenants.find(t => t.id === lease.primaryTenantId) : undefined;
+                  const tenant = lease ? tenants.find(tn => tn.id === lease.primaryTenantId) : undefined;
                   const prop = lease ? properties.find(p => p.id === lease.propertyId) : undefined;
                   return (
                     <TableRow key={g.id}>
@@ -369,25 +370,25 @@ export default function Dashboard() {
 
       {/* Active Leases */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Active Leases</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("dashboard.activeLeases")}</CardTitle></CardHeader>
         <CardContent>
           {activeLeases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active leases.</p>
+            <p className="text-sm text-muted-foreground">{t("dashboard.noActiveLeases")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Tenant</TableHead>
-                  <TableHead className="text-xs">Property</TableHead>
-                  <TableHead className="text-xs">Unit</TableHead>
-                  <TableHead className="text-xs">End Date</TableHead>
-                  <TableHead className="text-xs text-right">Monthly Total</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.tenant")}</TableHead>
+                  <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.unit")}</TableHead>
+                  <TableHead className="text-xs">{t("table.endDate")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("table.monthlyTotal")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {activeLeases.map(l => {
-                  const tenant = tenants.find(t => t.id === l.primaryTenantId);
+                  const tenant = tenants.find(tn => tn.id === l.primaryTenantId);
                   const prop = properties.find(p => p.id === l.propertyId);
                   const unit = units.find(u => u.id === l.unitId);
                   return (
@@ -410,20 +411,20 @@ export default function Dashboard() {
       {/* Leases Ending Soon */}
       {leasesEndingSoon.length > 0 && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><CalendarClock className="h-4 w-4 text-destructive" />Leases Ending Soon (90 days)</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><CalendarClock className="h-4 w-4 text-destructive" />{t("dashboard.leasesEndingSoon90")}</CardTitle></CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Tenant</TableHead>
-                  <TableHead className="text-xs">Property</TableHead>
-                  <TableHead className="text-xs">End Date</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.tenant")}</TableHead>
+                  <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.endDate")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leasesEndingSoon.map(l => {
-                  const tenant = tenants.find(t => t.id === l.primaryTenantId);
+                  const tenant = tenants.find(tn => tn.id === l.primaryTenantId);
                   const prop = properties.find(p => p.id === l.propertyId);
                   return (
                     <TableRow key={l.id}>
@@ -442,16 +443,16 @@ export default function Dashboard() {
 
       {/* Vacancy Overview by Property */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Vacancy Overview by Property</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("dashboard.vacancyOverview")}</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Property</TableHead>
-                <TableHead className="text-xs text-center">Total</TableHead>
-                <TableHead className="text-xs text-center">Occupied</TableHead>
-                <TableHead className="text-xs text-center">Vacant</TableHead>
-                <TableHead className="text-xs text-right">Occupancy</TableHead>
+                <TableHead className="text-xs">{t("table.property")}</TableHead>
+                <TableHead className="text-xs text-center">{t("table.total")}</TableHead>
+                <TableHead className="text-xs text-center">{t("table.occupied")}</TableHead>
+                <TableHead className="text-xs text-center">{t("table.vacant")}</TableHead>
+                <TableHead className="text-xs text-right">{t("properties.occupancy")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -476,7 +477,7 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-sm font-medium">Portfolio by Country</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.portfolioByCountry")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -498,7 +499,7 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Landmark className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-sm font-medium">Properties by Type</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.propertiesByType")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -517,14 +518,14 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-sm font-medium">Portfolio Configuration</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.portfolioConfig")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Currencies</span><span className="text-sm font-medium text-foreground">{[...new Set(properties.map(p => p.currencyCode))].join(", ") || "—"}</span></div>
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Locales</span><span className="text-sm font-medium text-foreground">{[...new Set(properties.map(p => p.locale))].join(", ") || "—"}</span></div>
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Measurement</span><span className="text-sm font-medium text-foreground capitalize">{[...new Set(properties.map(p => p.measurementSystem))].join(", ") || "—"}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{t("dashboard.currencies")}</span><span className="text-sm font-medium text-foreground">{[...new Set(properties.map(p => p.currencyCode))].join(", ") || "—"}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{t("dashboard.locales")}</span><span className="text-sm font-medium text-foreground">{[...new Set(properties.map(p => p.locale))].join(", ") || "—"}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{t("dashboard.measurementLabel")}</span><span className="text-sm font-medium text-foreground capitalize">{[...new Set(properties.map(p => p.measurementSystem))].join(", ") || "—"}</span></div>
             </div>
           </CardContent>
         </Card>

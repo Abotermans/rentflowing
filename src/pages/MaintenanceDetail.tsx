@@ -186,8 +186,8 @@ export default function MaintenanceDetail() {
 
       {/* Timestamps */}
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(ticket.createdDate)}</span>
-        {ticket.scheduledDate && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />Scheduled: {formatDate(ticket.scheduledDate)}</span>}
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(ticket.createdDate, property?.locale)}</span>
+        {ticket.scheduledDate && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />Scheduled: {formatDate(ticket.scheduledDate, property?.locale)}</span>}
       </div>
 
       {/* Edit Sheet */}
