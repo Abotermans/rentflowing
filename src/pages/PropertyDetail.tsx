@@ -228,30 +228,7 @@ export default function PropertyDetail() {
                             <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                            </AlertDialogTrigger>
-                          <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>{t("detail.deleteUnitTitle")}</AlertDialogTitle>
-                                <AlertDialogDescription className="space-y-2">
-                                  <span>{t("units.deleteDesc")}</span>
-                                  {(() => {
-                                    const unitLease = getActiveLease(u.id);
-                                    if (unitLease) {
-                                      return <span className="block text-sm font-medium text-destructive">{t("detail.deleteUnitWarningLease").replace("{ref}", unitLease.leaseReference)}</span>;
-                                    }
-                                    return <span className="block text-sm text-muted-foreground">{t("detail.deleteUnitSafe")}</span>;
-                                  })()}
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>{t("action.delete")}</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDeleteUnit} />
                         </div>
                       </TableCell>
                     </TableRow>

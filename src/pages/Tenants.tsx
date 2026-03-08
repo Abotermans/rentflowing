@@ -143,13 +143,7 @@ export default function Tenants() {
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/tenants/${tenant.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(tenant)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
-                          <AlertDialogContent>
-                             <AlertDialogHeader><AlertDialogTitle>{t("tenants.deleteTitle")}</AlertDialogTitle><AlertDialogDescription>{t("tenants.deleteItemDesc")}</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(tenant.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <DeleteDialog entityType="tenant" entityId={tenant.id} entityLabel="tenant" onDelete={handleDelete} />
                       </div>
                     </TableCell>
                   </TableRow>

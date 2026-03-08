@@ -217,13 +217,7 @@ export default function Leases() {
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/leases/${l.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(l)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
-                          <AlertDialogContent>
-                             <AlertDialogHeader><AlertDialogTitle>{t("leases.deleteTitle")}</AlertDialogTitle><AlertDialogDescription>{t("leases.deleteItemDesc")}</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(l.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <DeleteDialog entityType="lease" entityId={l.id} entityLabel="lease" onDelete={handleDelete} />
                       </div>
                     </TableCell>
                   </TableRow>

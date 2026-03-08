@@ -200,40 +200,7 @@ export default function Properties() {
                           <Link to={`/properties/${p.id}`}><Eye className="h-3.5 w-3.5" /></Link>
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>{t("properties.deleteTitle")}</AlertDialogTitle>
-                              <AlertDialogDescription className="space-y-2">
-                                <span>{t("properties.deleteItemDesc")}</span>
-                                {(() => {
-                                  const propUnits = units.filter(u => u.propertyId === p.id);
-                                  const activeLeases = leases.filter(l => l.propertyId === p.id && l.leaseStatus === "active");
-                                  if (propUnits.length === 0 && activeLeases.length === 0) {
-                                    return <span className="block text-sm text-muted-foreground">{t("properties.deleteSafe")}</span>;
-                                  }
-                                  return (
-                                    <>
-                                      {propUnits.length > 0 && (
-                                        <span className="block text-sm font-medium text-warning">{t("properties.deleteWarningUnits").replace("{units}", String(propUnits.length))}</span>
-                                      )}
-                                      {activeLeases.length > 0 && (
-                                        <span className="block text-sm font-medium text-destructive">{t("properties.deleteWarningLeases").replace("{leases}", String(activeLeases.length))}</span>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(p.id)}>{t("action.delete")}</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <DeleteDialog entityType="property" entityId={p.id} entityLabel="property" onDelete={handleDelete} />
                       </div>
                     </TableCell>
                   </TableRow>
