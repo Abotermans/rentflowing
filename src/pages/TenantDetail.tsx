@@ -17,6 +17,7 @@ export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
   const { tenants, leases, units, properties, getTenantOutstanding, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
 
   const tenant = tenants.find(tn => tn.id === id);
   if (!tenant) {
