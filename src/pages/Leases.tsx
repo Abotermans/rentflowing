@@ -77,10 +77,30 @@ export default function Leases() {
     setSheetOpen(true);
   };
 
+  // Status transition validation for the form
+  const statusValidation = useMemo(() => {
+    if (!editingLease || form.leaseStatus === editingLease.leaseStatus) return null;
+    return canChangeLeaseStatus(editingLease.id, form.leaseStatus, integrityState);
+  }, [editingLease, form.leaseStatus, integrityState]);
+
+  const availableStatuses = useMemo(() => {
+    if (!editingLease) return LEASE_STATUSES; // new lease: all statuses
+    const allowed = ALLOWED_TRANSITIONS[editingLease.leaseStatus] || [editingLease.leaseStatus];
+    return LEASE_STATUSES.filter(s => allowed.includes(s.value));
+  }, [editingLease]);
+
   const handleSave = () => {
     if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.primaryTenantId || !form.startDate || !form.endDate) {
       toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
       return;
+    }
+    // Validate status transition
+    if (editingLease && form.leaseStatus !== editingLease.leaseStatus) {
+      const validation = canChangeLeaseStatus(editingLease.id, form.leaseStatus, integrityState);
+      if (!validation.allowed) {
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
     }
     if (form.leaseStatus === "active") {
       const existing = getActiveLease(form.unitId);
