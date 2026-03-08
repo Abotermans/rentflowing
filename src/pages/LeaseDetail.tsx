@@ -491,7 +491,7 @@ export default function LeaseDetail() {
       {/* Tenant & Unit */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Tenant</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leases.tenant")}</CardTitle></CardHeader>
           <CardContent>
             {tenant ? (
               <div className="space-y-2">
