@@ -75,7 +75,7 @@ export default function TenantDetail() {
             {tenant.currentAddress && (
               <div className="flex items-start gap-2 col-span-2">
                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div><p className="text-xs text-muted-foreground">Current Address</p><p className="text-sm font-medium text-foreground">{tenant.currentAddress}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("tenants.currentAddress")}</p><p className="text-sm font-medium text-foreground">{tenant.currentAddress}</p></div>
               </div>
             )}
           </div>
