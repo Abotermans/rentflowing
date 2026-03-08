@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppData } from "@/context/AppContext";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -33,15 +34,29 @@ const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function Units() {
-  const { properties, units, addUnit, updateUnit, deleteUnit } = useAppData();
+  const { properties, units, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, leases } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+
+  // Auto-open edit sheet from query param
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId) {
+      const unitToEdit = units.find(u => u.id === editId);
+      if (unitToEdit) {
+        openEdit(unitToEdit);
+      }
+      searchParams.delete("edit");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
 
   const emptyForm: UnitFormData = {
     propertyId: properties[0]?.id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
@@ -176,7 +191,25 @@ export default function Units() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
-                             <AlertDialogHeader><AlertDialogTitle>{t("units.deleteTitle")}</AlertDialogTitle><AlertDialogDescription>{t("units.deleteDesc")}</AlertDialogDescription></AlertDialogHeader>
+                             <AlertDialogHeader>
+                               <AlertDialogTitle>{t("units.deleteTitle")}</AlertDialogTitle>
+                               <AlertDialogDescription>
+                                 {t("units.deleteDesc")}
+                                 {(() => {
+                                   const unitLease = getActiveLease(u.id);
+                                   if (unitLease) {
+                                     const leaseTenant = tenants.find(tt => tt.id === unitLease.primaryTenantId);
+                                     const tenantName = leaseTenant ? `${leaseTenant.firstName} ${leaseTenant.lastName}` : "—";
+                                     return (
+                                       <span className="block mt-2 text-destructive font-medium">
+                                         {t("units.deleteWarningLease").replace("{ref}", unitLease.leaseReference).replace("{tenant}", tenantName)}
+                                       </span>
+                                     );
+                                   }
+                                   return <span className="block mt-2 text-muted-foreground">{t("units.deleteSafe")}</span>;
+                                 })()}
+                               </AlertDialogDescription>
+                             </AlertDialogHeader>
                             <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(u.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

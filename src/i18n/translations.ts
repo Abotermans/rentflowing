@@ -125,6 +125,8 @@ const en = {
   "units.selectProperty": "Select property",
   "units.deleteTitle": "Delete unit?",
   "units.deleteDesc": "This will permanently delete this unit.",
+  "units.deleteWarningLease": "This unit has an active lease ({ref}) with tenant {tenant}. Deleting it will orphan lease data.",
+  "units.deleteSafe": "This unit has no active leases. It can be safely deleted.",
   "units.apartment": "Apartment",
   "units.studio": "Studio",
   "units.office": "Office",
@@ -562,6 +564,13 @@ const en = {
   "detail.noGuaranteeDesc": "No guarantee record. Click \"Add Guarantee\" to create one.",
   "detail.noReturnDesc": "No return status set. This is relevant after move-out to track unit readiness.",
   "detail.moveOutLabel": "Move-out",
+  "detail.maintenanceCount": "Maintenance ({count})",
+  "table.title": "Title",
+  "table.category": "Category",
+  "table.priority": "Priority",
+  "table.status": "Status",
+  "table.created": "Created",
+  "table.updated": "Updated",
 };
 
 type TranslationKeys = typeof en;
@@ -686,6 +695,8 @@ const fr: TranslationKeys = {
   "units.selectProperty": "Sélectionner un bien",
   "units.deleteTitle": "Supprimer le lot ?",
   "units.deleteDesc": "Ce lot sera définitivement supprimé.",
+  "units.deleteWarningLease": "Ce lot a un bail actif ({ref}) avec le locataire {tenant}. Le supprimer rendra les données orphelines.",
+  "units.deleteSafe": "Ce lot n'a pas de bail actif. Il peut être supprimé en toute sécurité.",
   "units.apartment": "Appartement",
   "units.studio": "Studio",
   "units.office": "Bureau",
@@ -1123,6 +1134,13 @@ const fr: TranslationKeys = {
   "detail.noGuaranteeDesc": "Aucun enregistrement de garantie. Cliquez sur « Ajouter une garantie » pour en créer un.",
   "detail.noReturnDesc": "Aucun statut de restitution défini. Pertinent après la sortie pour suivre la remise en état.",
   "detail.moveOutLabel": "Sortie",
+  "detail.maintenanceCount": "Maintenance ({count})",
+  "table.title": "Titre",
+  "table.category": "Catégorie",
+  "table.priority": "Priorité",
+  "table.status": "Statut",
+  "table.created": "Créé",
+  "table.updated": "Mis à jour",
 };
 
 export type TranslationKey = keyof typeof en;

@@ -70,7 +70,7 @@ export default function UnitDetail() {
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/units"><Pencil className="h-3.5 w-3.5 mr-1.5" />{t("action.edit")}</Link>
+            <Link to={`/units?edit=${unit.id}`}><Pencil className="h-3.5 w-3.5 mr-1.5" />{t("action.edit")}</Link>
           </Button>
         </div>
       </div>
@@ -273,7 +273,7 @@ export default function UnitDetail() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Wrench className="h-4 w-4" />Maintenance ({unitTickets.length})
+                <Wrench className="h-4 w-4" />{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -283,11 +283,11 @@ export default function UnitDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Title</TableHead>
-                      <TableHead className="text-xs">Category</TableHead>
-                      <TableHead className="text-xs">Priority</TableHead>
-                      <TableHead className="text-xs">Status</TableHead>
-                      <TableHead className="text-xs">Created</TableHead>
+                      <TableHead className="text-xs">{t("table.title")}</TableHead>
+                      <TableHead className="text-xs">{t("table.category")}</TableHead>
+                      <TableHead className="text-xs">{t("table.priority")}</TableHead>
+                      <TableHead className="text-xs">{t("table.status")}</TableHead>
+                      <TableHead className="text-xs">{t("table.created")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -318,8 +318,8 @@ export default function UnitDetail() {
 
       {/* Timestamps */}
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(unit.createdAt, property.locale)}</span>
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Updated: {formatDate(unit.updatedAt, property.locale)}</span>
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.created")}: {formatDate(unit.createdAt, property.locale)}</span>
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.updated")}: {formatDate(unit.updatedAt, property.locale)}</span>
       </div>
     </div>
   );
