@@ -225,7 +225,7 @@ export default function TenantDetail() {
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{unit?.unitCode ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate)} — {formatDate(l.endDate)}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)} — {formatDate(l.endDate, prop?.locale)}</TableCell>
                       <TableCell><StatusBadge status={l.leaseStatus} /></TableCell>
                     </TableRow>
                   );
