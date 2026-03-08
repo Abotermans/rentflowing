@@ -137,17 +137,17 @@ export default function Units() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-center">Floor</TableHead>
-                <TableHead className="text-right">Surface</TableHead>
-                <TableHead className="text-right">Rent</TableHead>
-                <TableHead className="text-right">Charges</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Available From</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("units.code")}</TableHead>
+                <TableHead>{t("units.label")}</TableHead>
+                <TableHead>{t("units.property")}</TableHead>
+                <TableHead>{t("units.type")}</TableHead>
+                <TableHead className="text-center">{t("units.floor")}</TableHead>
+                <TableHead className="text-right">{t("units.surface")}</TableHead>
+                <TableHead className="text-right">{t("units.rent")}</TableHead>
+                <TableHead className="text-right">{t("units.charges")}</TableHead>
+                <TableHead>{t("units.status")}</TableHead>
+                <TableHead>{t("units.availableFrom")}</TableHead>
+                <TableHead className="text-right">{t("units.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
