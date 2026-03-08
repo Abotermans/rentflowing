@@ -278,7 +278,7 @@ export default function UnitDetail() {
             </CardHeader>
             <CardContent>
               {unitTickets.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No maintenance tickets for this unit.</p>
+                <p className="text-sm text-muted-foreground">{t("detail.noMaintenanceTickets")}</p>
               ) : (
                 <Table>
                   <TableHeader>
