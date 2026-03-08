@@ -397,6 +397,84 @@ export default function LeaseDetail() {
         </CardContent>
       </Card>
 
+
+      {/* Advance Payment Card */}
+      {hasAdvance && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />Advance Payment</CardTitle>
+              <StatusBadge status={advancePricing.advanceStatus} />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div><p className="text-xs text-muted-foreground">Advance Amount</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.advancePaymentAmount!, currency, locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Method</p><p className="text-sm font-medium text-foreground">{ADVANCE_METHOD_LABELS[lease.advanceAllocationMethod!]}</p></div>
+              <div><p className="text-xs text-muted-foreground">Applied To</p><p className="text-sm font-medium text-foreground">{ADVANCE_APPLIED_LABELS[lease.advanceAppliedTo || 'rent']}</p></div>
+              <div><p className="text-xs text-muted-foreground">Reduction / Month</p><p className="text-sm font-medium text-foreground">{formatCurrency(advancePricing.pricingAdjustmentPerMonth, currency, locale)}</p></div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Consumed: {formatCurrency(advancePricing.advanceConsumed, currency, locale)}</span>
+                <span>Remaining: {formatCurrency(advancePricing.advanceRemaining, currency, locale)}</span>
+              </div>
+              <Progress value={lease.advancePaymentAmount! > 0 ? (advancePricing.advanceConsumed / lease.advancePaymentAmount!) * 100 : 0} className="h-2" />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+              <div><p className="text-xs text-muted-foreground">Allocation Start</p><p className="font-medium text-foreground">{lease.advanceAllocationStartDate ? formatDate(lease.advanceAllocationStartDate + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
+              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">Allocation End</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
+              <div><p className="text-xs text-muted-foreground">Duration</p><p className="font-medium text-foreground">{advancePricing.durationMonths} months</p></div>
+            </div>
+
+            {/* Collapsible Monthly Schedule */}
+            {advancePricing.monthlySchedule.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground hover:text-foreground">
+                    Monthly Allocation Schedule
+                    <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-2 border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Month</TableHead>
+                          <TableHead className="text-xs text-right">Base Due</TableHead>
+                          <TableHead className="text-xs text-right">Adjustment</TableHead>
+                          <TableHead className="text-xs text-right">Effective Due</TableHead>
+                          <TableHead className="text-xs text-right">Remaining</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {advancePricing.monthlySchedule.map((row) => {
+                          const now = new Date();
+                          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                          const isCurrent = row.month === currentMonth;
+                          return (
+                            <TableRow key={row.month} className={isCurrent ? "bg-primary/5 font-medium" : ""}>
+                              <TableCell className="text-xs">{row.month}{isCurrent && <span className="ml-1 text-primary text-[10px]">●</span>}</TableCell>
+                              <TableCell className="text-xs text-right">{formatCurrency(row.baseDue, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right text-success">-{formatCurrency(row.adjustment, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right font-medium">{formatCurrency(row.effectiveDue, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right text-muted-foreground">{formatCurrency(row.advanceRemaining, currency, locale)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Deposit / Guarantee Card */}
       <Card>
         <CardHeader className="pb-3">
