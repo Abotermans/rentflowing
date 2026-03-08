@@ -564,6 +564,13 @@ const en = {
   "detail.noGuaranteeDesc": "No guarantee record. Click \"Add Guarantee\" to create one.",
   "detail.noReturnDesc": "No return status set. This is relevant after move-out to track unit readiness.",
   "detail.moveOutLabel": "Move-out",
+  "detail.maintenanceCount": "Maintenance ({count})",
+  "table.title": "Title",
+  "table.category": "Category",
+  "table.priority": "Priority",
+  "table.status": "Status",
+  "table.created": "Created",
+  "table.updated": "Updated",
 };
 
 type TranslationKeys = typeof en;
