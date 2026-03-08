@@ -1,51 +1,44 @@
 export interface Property {
   id: string;
   name: string;
-  address: string;
-  type: "residential" | "commercial" | "mixed";
+  referenceCode: string;
+  address1: string;
+  address2: string;
+  city: string;
+  postalCode: string;
+  countryCode: string;
+  locale: string;
+  currencyCode: string;
+  measurementSystem: "metric" | "imperial";
+  propertyType: "residential" | "commercial" | "mixed-use";
+  description: string;
+  status: "active" | "inactive";
   createdAt: string;
+  updatedAt: string;
 }
+
+export type PropertyStatus = "active" | "inactive";
+export type PropertyType = "residential" | "commercial" | "mixed-use";
+
+export type UnitType = "apartment" | "studio" | "office" | "parking" | "storage" | "house" | "commercial-unit";
+export type UnitStatus = "vacant" | "occupied" | "reserved" | "unavailable";
 
 export interface Unit {
   id: string;
   propertyId: string;
-  unitNumber: string;
+  unitCode: string;
+  unitLabel: string;
+  unitType: UnitType;
+  floor: number | null;
+  surfaceArea: number | null;
   bedrooms: number;
   bathrooms: number;
-  sqft: number;
-  rentAmount: number;
-}
-
-export interface Tenant {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  emergencyContact: string;
+  furnished: boolean;
+  currentStatus: UnitStatus;
+  baseRent: number | null;
+  baseCharges: number | null;
+  availableFrom: string | null;
+  notes: string;
   createdAt: string;
+  updatedAt: string;
 }
-
-export interface Lease {
-  id: string;
-  unitId: string;
-  tenantId: string;
-  startDate: string;
-  endDate: string;
-  monthlyRent: number;
-  deposit: number;
-  terms: string;
-}
-
-export type LeaseStatus = "active" | "expired" | "upcoming";
-
-export interface Payment {
-  id: string;
-  leaseId: string;
-  amount: number;
-  dueDate: string;
-  paidDate: string | null;
-  method: "cash" | "check" | "transfer" | "card" | null;
-}
-
-export type PaymentStatus = "paid" | "pending" | "overdue";

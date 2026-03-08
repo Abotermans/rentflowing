@@ -1,186 +1,167 @@
-import { useMemo } from "react";
 import { useAppData } from "@/context/AppContext";
-import { getLeaseStatus, getPaymentStatus, formatCurrency, formatDate } from "@/lib/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, Home, DoorOpen, AlertTriangle } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatDate } from "@/lib/formatters";
 
 export default function Dashboard() {
-  const { properties, units, tenants, leases, payments } = useAppData();
+  const { properties, units, getPropertyStats } = useAppData();
 
-  const stats = useMemo(() => {
-    const activeLeaseUnitIds = leases
-      .filter(l => getLeaseStatus(l.startDate, l.endDate) === "active")
-      .map(l => l.unitId);
-    const occupied = new Set(activeLeaseUnitIds).size;
-    const total = units.length;
-    const vacant = total - occupied;
+  const totalUnits = units.length;
+  const occupied = units.filter(u => u.currentStatus === "occupied").length;
+  const vacant = units.filter(u => u.currentStatus === "vacant").length;
+  const reserved = units.filter(u => u.currentStatus === "reserved").length;
+  const unavailable = units.filter(u => u.currentStatus === "unavailable").length;
+  const occupancyRate = totalUnits > 0 ? Math.round((occupied / totalUnits) * 100) : 0;
 
-    const overduePayments = payments.filter(p => getPaymentStatus(p.dueDate, p.paidDate) === "overdue");
-    const overdueAmount = overduePayments.reduce((s, p) => s + p.amount, 0);
+  const now = new Date();
+  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const availableSoon = units.filter(u => {
+    if (!u.availableFrom) return false;
+    const d = new Date(u.availableFrom);
+    return d >= now && d <= in30Days;
+  }).length;
 
-    return { total, occupied, vacant, overdueCount: overduePayments.length, overdueAmount };
-  }, [units, leases, payments]);
+  const recentUnits = [...units]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 8);
 
-  const occupancyByProperty = useMemo(() => {
-    return properties.map(prop => {
-      const propUnits = units.filter(u => u.propertyId === prop.id);
-      const activeLeaseUnitIds = new Set(
-        leases
-          .filter(l => getLeaseStatus(l.startDate, l.endDate) === "active" && propUnits.some(u => u.id === l.unitId))
-          .map(l => l.unitId)
-      );
-      return {
-        name: prop.name.length > 18 ? prop.name.slice(0, 18) + "…" : prop.name,
-        occupied: activeLeaseUnitIds.size,
-        vacant: propUnits.length - activeLeaseUnitIds.size,
-      };
-    });
-  }, [properties, units, leases]);
+  const kpis = [
+    { label: "Properties", value: properties.length, icon: Building2, color: "text-primary" },
+    { label: "Total Units", value: totalUnits, icon: DoorOpen, color: "text-foreground" },
+    { label: "Occupied", value: occupied, icon: CheckCircle2, color: "text-success" },
+    { label: "Vacant", value: vacant, icon: XCircle, color: "text-warning" },
+    { label: "Reserved", value: reserved, icon: Clock, color: "text-primary" },
+    { label: "Unavailable", value: unavailable, icon: Ban, color: "text-muted-foreground" },
+    { label: "Occupancy Rate", value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
+    { label: "Available Soon", value: availableSoon, icon: CalendarClock, color: "text-warning" },
+  ];
 
-  const recentPayments = useMemo(() => {
-    return [...payments]
-      .filter(p => p.paidDate)
-      .sort((a, b) => new Date(b.paidDate!).getTime() - new Date(a.paidDate!).getTime())
-      .slice(0, 8)
-      .map(p => {
-        const lease = leases.find(l => l.id === p.leaseId);
-        const tenant = tenants.find(t => t.id === lease?.tenantId);
-        const unit = units.find(u => u.id === lease?.unitId);
-        const property = properties.find(pr => pr.id === unit?.propertyId);
-        return { ...p, tenant, unit, property };
-      });
-  }, [payments, leases, tenants, units, properties]);
-
-  const upcomingRent = useMemo(() => {
-    return payments
-      .filter(p => getPaymentStatus(p.dueDate, p.paidDate) === "pending")
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-      .slice(0, 8)
-      .map(p => {
-        const lease = leases.find(l => l.id === p.leaseId);
-        const tenant = tenants.find(t => t.id === lease?.tenantId);
-        const unit = units.find(u => u.id === lease?.unitId);
-        return { ...p, tenant, unit };
-      });
-  }, [payments, leases, tenants, units]);
-
-  const summaryCards = [
-    { label: "Total Units", value: stats.total, icon: Building2, color: "text-primary" },
-    { label: "Occupied", value: stats.occupied, icon: Home, color: "text-success" },
-    { label: "Vacant", value: stats.vacant, icon: DoorOpen, color: "text-muted-foreground" },
-    { label: "Overdue", value: `${stats.overdueCount} (${formatCurrency(stats.overdueAmount)})`, icon: AlertTriangle, color: "text-destructive" },
+  const statusSegments = [
+    { status: "occupied" as const, count: occupied, className: "bg-success" },
+    { status: "reserved" as const, count: reserved, className: "bg-primary" },
+    { status: "vacant" as const, count: vacant, className: "bg-warning" },
+    { status: "unavailable" as const, count: unavailable, className: "bg-muted-foreground" },
   ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Overview of your property portfolio</p>
+        <p className="text-sm text-muted-foreground">Portfolio overview</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {summaryCards.map(card => (
-          <Card key={card.label}>
-            <CardContent className="pt-6">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        {kpis.map(k => (
+          <Card key={k.label}>
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{card.label}</p>
-                  <p className="text-2xl font-bold text-foreground">{card.value}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{k.value}</p>
                 </div>
-                <card.icon className={`h-8 w-8 ${card.color}`} />
+                <k.icon className={`h-5 w-5 ${k.color}`} />
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Units by Status</CardTitle></CardHeader>
+        <CardContent>
+          {totalUnits > 0 ? (
+            <>
+              <div className="h-4 rounded-full overflow-hidden flex bg-muted">
+                {statusSegments.map(s => s.count > 0 && (
+                  <div key={s.status} className={`h-full ${s.className} transition-all`} style={{ width: `${(s.count / totalUnits) * 100}%` }} />
+                ))}
+              </div>
+              <div className="flex gap-4 mt-3 flex-wrap">
+                {statusSegments.map(s => (
+                  <div key={s.status} className="flex items-center gap-1.5 text-xs">
+                    <div className={`h-2.5 w-2.5 rounded-full ${s.className}`} />
+                    <span className="text-muted-foreground capitalize">{s.status}</span>
+                    <span className="font-medium text-foreground">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">No units yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Occupancy by Property</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Vacancy by Property</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={occupancyByProperty}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} className="fill-muted-foreground" />
-                <Tooltip />
-                <Bar dataKey="occupied" name="Occupied" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="vacant" name="Vacant" fill="hsl(215, 16%, 80%)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {properties.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No properties yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Property</TableHead>
+                    <TableHead className="text-xs text-right">Units</TableHead>
+                    <TableHead className="text-xs text-right">Vacant</TableHead>
+                    <TableHead className="text-xs text-right">Occupancy</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {properties.filter(p => p.status === "active").map(p => {
+                    const stats = getPropertyStats(p.id);
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium"><Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link></TableCell>
+                        <TableCell className="text-right text-muted-foreground">{stats.total}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{stats.vacant}</TableCell>
+                        <TableCell className="text-right font-medium">{stats.occupancyRate}%</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Upcoming Rent Due</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {upcomingRent.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No upcoming payments</TableCell></TableRow>
-                ) : upcomingRent.map(p => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.tenant ? `${p.tenant.firstName} ${p.tenant.lastName}` : "—"}</TableCell>
-                    <TableCell>{formatDate(p.dueDate)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(p.amount)}</TableCell>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recently Updated Units</CardTitle></CardHeader>
+          <CardContent>
+            {recentUnits.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No units yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Unit</TableHead>
+                    <TableHead className="text-xs">Property</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs text-right">Updated</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {recentUnits.map(u => {
+                    const prop = properties.find(p => p.id === u.propertyId);
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell><Link to={`/units/${u.id}`} className="hover:underline font-medium text-foreground">{u.unitCode}</Link></TableCell>
+                        <TableCell className="text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                        <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
+                        <TableCell className="text-right text-muted-foreground text-xs">{formatDate(u.updatedAt)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Recent Payments</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Paid Date</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentPayments.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No payments recorded</TableCell></TableRow>
-              ) : recentPayments.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.tenant ? `${p.tenant.firstName} ${p.tenant.lastName}` : "—"}</TableCell>
-                  <TableCell>{p.property?.name ?? "—"}</TableCell>
-                  <TableCell>{p.unit?.unitNumber ?? "—"}</TableCell>
-                  <TableCell>{p.paidDate ? formatDate(p.paidDate) : "—"}</TableCell>
-                  <TableCell className="capitalize">{p.method ?? "—"}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(p.amount)}</TableCell>
-                  <TableCell><StatusBadge status={getPaymentStatus(p.dueDate, p.paidDate)} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }

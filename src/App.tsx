@@ -8,10 +8,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
-import Tenants from "./pages/Tenants";
-import TenantDetail from "./pages/TenantDetail";
-import Leases from "./pages/Leases";
-import Payments from "./pages/Payments";
+import Units from "./pages/Units";
+import UnitDetail from "./pages/UnitDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,10 +26,8 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/properties" element={<Properties />} />
               <Route path="/properties/:id" element={<PropertyDetail />} />
-              <Route path="/tenants" element={<Tenants />} />
-              <Route path="/tenants/:id" element={<TenantDetail />} />
-              <Route path="/leases" element={<Leases />} />
-              <Route path="/payments" element={<Payments />} />
+              <Route path="/units" element={<Units />} />
+              <Route path="/units/:id" element={<UnitDetail />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

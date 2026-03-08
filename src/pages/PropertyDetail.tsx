@@ -1,54 +1,74 @@
-import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
-import { getLeaseStatus, formatCurrency, formatDate } from "@/lib/formatters";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ArrowLeft, Pencil, Trash2, Plus, Eye, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen } from "lucide-react";
+import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, ArrowLeft, MapPin, Building2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Unit } from "@/types";
+import { Unit, UnitType, UnitStatus } from "@/types";
+
+const UNIT_TYPES: { value: UnitType; label: string }[] = [
+  { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
+  { value: "office", label: "Office" }, { value: "parking", label: "Parking" },
+  { value: "storage", label: "Storage" }, { value: "house", label: "House" },
+  { value: "commercial-unit", label: "Commercial Unit" },
+];
+
+const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
+  { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
+  { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
+];
+
+type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, leases, tenants, addUnit, updateUnit, deleteUnit } = useAppData();
+  const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit } = useAppData();
   const { toast } = useToast();
 
   const property = properties.find(p => p.id === id);
-  const propUnits = units.filter(u => u.propertyId === id);
+  const propertyUnits = units.filter(u => u.propertyId === id);
+  const stats = id ? getPropertyStats(id) : null;
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
-  const [form, setForm] = useState({ unitNumber: "", bedrooms: 0, bathrooms: 1, sqft: 0, rentAmount: 0 });
 
-  if (!property) {
-    return (
-      <div className="text-center py-16">
-        <p className="text-muted-foreground">Property not found.</p>
-        <Link to="/properties" className="text-primary hover:underline text-sm">Back to Properties</Link>
-      </div>
-    );
-  }
+  const emptyUnitForm: UnitFormData = {
+    propertyId: id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
+    floor: null, surfaceArea: null, bedrooms: 0, bathrooms: 0, furnished: false,
+    currentStatus: "vacant", baseRent: null, baseCharges: null, availableFrom: null, notes: "",
+  };
 
-  const openAdd = () => { setEditingUnit(null); setForm({ unitNumber: "", bedrooms: 0, bathrooms: 1, sqft: 0, rentAmount: 0 }); setSheetOpen(true); };
-  const openEdit = (u: Unit) => { setEditingUnit(u); setForm({ unitNumber: u.unitNumber, bedrooms: u.bedrooms, bathrooms: u.bathrooms, sqft: u.sqft, rentAmount: u.rentAmount }); setSheetOpen(true); };
+  const [unitForm, setUnitForm] = useState<UnitFormData>({ ...emptyUnitForm });
 
-  const handleSave = () => {
-    if (!form.unitNumber.trim()) {
-      toast({ title: "Validation Error", description: "Unit number is required.", variant: "destructive" });
+  const openAddUnit = () => { setEditingUnit(null); setUnitForm({ ...emptyUnitForm }); setSheetOpen(true); };
+  const openEditUnit = (u: Unit) => {
+    setEditingUnit(u);
+    const { id: _id, createdAt, updatedAt, ...rest } = u;
+    setUnitForm(rest);
+    setSheetOpen(true);
+  };
+
+  const handleSaveUnit = () => {
+    if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
+      toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
       return;
     }
     if (editingUnit) {
-      updateUnit({ ...editingUnit, ...form });
+      updateUnit({ ...editingUnit, ...unitForm });
       toast({ title: "Unit updated" });
     } else {
-      addUnit({ ...form, propertyId: property.id });
+      addUnit(unitForm);
       toast({ title: "Unit added" });
     }
     setSheetOpen(false);
@@ -59,114 +79,167 @@ export default function PropertyDetail() {
     toast({ title: "Unit deleted" });
   };
 
-  const getUnitInfo = (unit: Unit) => {
-    const activeLease = leases.find(l => l.unitId === unit.id && getLeaseStatus(l.startDate, l.endDate) === "active");
-    const tenant = activeLease ? tenants.find(t => t.id === activeLease.tenantId) : null;
-    const isOccupied = !!activeLease;
-    return { activeLease, tenant, isOccupied };
-  };
+  if (!property) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Property not found.</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/properties">← Back to Properties</Link></Button>
+      </div>
+    );
+  }
+
+  const kpis = [
+    { label: "Total", value: stats?.total ?? 0, icon: DoorOpen, color: "text-foreground" },
+    { label: "Occupied", value: stats?.occupied ?? 0, icon: CheckCircle2, color: "text-success" },
+    { label: "Vacant", value: stats?.vacant ?? 0, icon: XCircle, color: "text-warning" },
+    { label: "Reserved", value: stats?.reserved ?? 0, icon: Clock, color: "text-primary" },
+    { label: "Unavailable", value: stats?.unavailable ?? 0, icon: Ban, color: "text-muted-foreground" },
+    { label: "Occupancy", value: `${stats?.occupancyRate ?? 0}%`, icon: TrendingUp, color: "text-success" },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Link to="/properties">
-          <Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-4 w-4" /></Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{property.name}</h1>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5" />
-            <span>{property.address}</span>
-            <Badge variant="outline" className="ml-2 capitalize">{property.type}</Badge>
+      <div>
+        <Button variant="ghost" size="sm" asChild className="mb-2">
+          <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" />Properties</Link>
+        </Button>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-foreground">{property.name}</h1>
+              <StatusBadge status={property.status} />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1 font-mono">{property.referenceCode}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {property.address1}{property.address2 ? `, ${property.address2}` : ""} — {property.postalCode} {property.city}, {getCountryName(property.countryCode)}
+            </p>
+            <div className="flex gap-2 mt-2">
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{getPropertyTypeLabel(property.propertyType)}</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{property.currencyCode}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Units ({propUnits.length})</h2>
-        <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />Add Unit</Button>
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        {kpis.map(k => (
+          <Card key={k.label}>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{k.label}</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">{k.value}</p>
+                </div>
+                <k.icon className={`h-4 w-4 ${k.color}`} />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card>
-        <CardContent className="p-0">
+      {property.description && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Description</CardTitle></CardHeader>
+          <CardContent><p className="text-sm text-muted-foreground">{property.description}</p></CardContent>
+        </Card>
+      )}
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground">Units</h2>
+        <Button size="sm" onClick={openAddUnit}><Plus className="h-4 w-4 mr-1" />Add Unit</Button>
+      </div>
+
+      {propertyUnits.length === 0 ? (
+        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No units in this property yet.</p><Button variant="link" onClick={openAddUnit} className="mt-2">Add your first unit</Button></CardContent></Card>
+      ) : (
+        <Card>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Unit #</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Current Tenant</TableHead>
-                <TableHead>Bed / Bath</TableHead>
-                <TableHead>Sq Ft</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Label</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-center">Floor</TableHead>
+                <TableHead className="text-right">Surface</TableHead>
                 <TableHead className="text-right">Rent</TableHead>
-                <TableHead>Lease End</TableHead>
-                <TableHead className="w-[80px]"></TableHead>
+                <TableHead className="text-right">Charges</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {propUnits.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No units. Add your first unit.</TableCell></TableRow>
-              ) : propUnits.map(u => {
-                const { activeLease, tenant, isOccupied } = getUnitInfo(u);
-                return (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.unitNumber}</TableCell>
-                    <TableCell><StatusBadge status={isOccupied ? "occupied" : "vacant"} /></TableCell>
-                    <TableCell>
-                      {tenant ? (
-                        <Link to={`/tenants/${tenant.id}`} className="text-primary hover:underline">
-                          {tenant.firstName} {tenant.lastName}
-                        </Link>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell>{u.bedrooms} / {u.bathrooms}</TableCell>
-                    <TableCell>{u.sqft.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(u.rentAmount)}</TableCell>
-                    <TableCell>{activeLease ? formatDate(activeLease.endDate) : "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(u)}><Pencil className="h-3 w-3" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete unit {u.unitNumber}?</AlertDialogTitle>
-                              <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {propertyUnits.map(u => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-mono text-xs font-medium"><Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link></TableCell>
+                  <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
+                  <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
+                  <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
+                  <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" asChild><Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader><AlertDialogTitle>Delete unit?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{u.unitCode}".</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </Card>
+      )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editingUnit ? "Edit Unit" : "Add Unit"}</SheetTitle>
-          </SheetHeader>
-          <div className="space-y-4 py-4">
-            <div><Label>Unit Number</Label><Input value={form.unitNumber} onChange={e => setForm(f => ({ ...f, unitNumber: e.target.value }))} placeholder="e.g. 101" /></div>
+        <SheetContent className="overflow-y-auto">
+          <SheetHeader><SheetTitle>{editingUnit ? "Edit Unit" : "Add Unit"}</SheetTitle></SheetHeader>
+          <div className="space-y-4 mt-6">
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Bedrooms</Label><Input type="number" min={0} value={form.bedrooms} onChange={e => setForm(f => ({ ...f, bedrooms: +e.target.value }))} /></div>
-              <div><Label>Bathrooms</Label><Input type="number" min={0} value={form.bathrooms} onChange={e => setForm(f => ({ ...f, bathrooms: +e.target.value }))} /></div>
+              <div><Label>Unit Code *</Label><Input value={unitForm.unitCode} onChange={e => setUnitForm(f => ({ ...f, unitCode: e.target.value }))} placeholder="e.g. PAR-A01" /></div>
+              <div><Label>Label *</Label><Input value={unitForm.unitLabel} onChange={e => setUnitForm(f => ({ ...f, unitLabel: e.target.value }))} placeholder="e.g. Appt 1er" /></div>
             </div>
-            <div><Label>Square Footage</Label><Input type="number" min={0} value={form.sqft} onChange={e => setForm(f => ({ ...f, sqft: +e.target.value }))} /></div>
-            <div><Label>Rent Amount ($)</Label><Input type="number" min={0} value={form.rentAmount} onChange={e => setForm(f => ({ ...f, rentAmount: +e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Type *</Label>
+                <Select value={unitForm.unitType} onValueChange={v => setUnitForm(f => ({ ...f, unitType: v as UnitType }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{UNIT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div><Label>Status *</Label>
+                <Select value={unitForm.currentStatus} onValueChange={v => setUnitForm(f => ({ ...f, currentStatus: v as UnitStatus }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div><Label>Floor</Label><Input type="number" value={unitForm.floor ?? ""} onChange={e => setUnitForm(f => ({ ...f, floor: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>Surface ({property.measurementSystem === "imperial" ? "sq ft" : "m²"})</Label><Input type="number" value={unitForm.surfaceArea ?? ""} onChange={e => setUnitForm(f => ({ ...f, surfaceArea: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>Bedrooms</Label><Input type="number" min={0} value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: Number(e.target.value) }))} /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div><Label>Bathrooms</Label><Input type="number" min={0} value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: Number(e.target.value) }))} /></div>
+              <div><Label>Rent ({property.currencyCode})</Label><Input type="number" value={unitForm.baseRent ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>Charges ({property.currencyCode})</Label><Input type="number" value={unitForm.baseCharges ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={unitForm.furnished} onCheckedChange={v => setUnitForm(f => ({ ...f, furnished: v }))} />
+              <Label>Furnished</Label>
+            </div>
+            <div><Label>Available From</Label><Input type="date" value={unitForm.availableFrom ?? ""} onChange={e => setUnitForm(f => ({ ...f, availableFrom: e.target.value || null }))} /></div>
+            <div><Label>Notes</Label><Textarea value={unitForm.notes} onChange={e => setUnitForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
-          <SheetFooter>
+          <SheetFooter className="mt-6">
             <Button variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editingUnit ? "Save" : "Add"}</Button>
+            <Button onClick={handleSaveUnit}>{editingUnit ? "Save" : "Add Unit"}</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
