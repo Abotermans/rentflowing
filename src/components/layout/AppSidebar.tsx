@@ -16,6 +16,7 @@ import {
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Properties", url: "/properties", icon: Building2 },
+  { title: "Units", url: "/units", icon: DoorOpen },
 ];
 
 export function AppSidebar() {
