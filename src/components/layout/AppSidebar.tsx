@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, DoorOpen, Users, FileText } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
