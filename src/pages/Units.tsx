@@ -35,6 +35,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 export default function Units() {
   const { properties, units, addUnit, updateUnit, deleteUnit } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterType, setFilterType] = useState("all");
