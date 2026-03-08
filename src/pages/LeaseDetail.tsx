@@ -432,7 +432,7 @@ export default function LeaseDetail() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Keys Handed Over</p>
+                  <p className="text-xs text-muted-foreground">{t("detail.keysHandedOver")}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyHandoverCount} onChange={e => handleUpdateKeys(parseInt(e.target.value) || 0, lease.keyReturnCount)} />
                   </div>
