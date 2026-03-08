@@ -132,7 +132,7 @@ export default function MaintenanceDetail() {
               <p className="text-sm font-medium text-foreground">{MAINTENANCE_CATEGORY_LABELS[ticket.category]}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Priority</p>
+              <p className="text-xs text-muted-foreground">{t("maintenance.priority")}</p>
               <StatusBadge status={ticket.priority} />
             </div>
             <div>
