@@ -145,7 +145,7 @@ export default function MaintenanceDetail() {
             </div>
             {ticket.scheduledDate && (
               <div>
-                <p className="text-xs text-muted-foreground">Scheduled</p>
+                <p className="text-xs text-muted-foreground">{t("maintenance.scheduled")}</p>
                 <p className="text-sm font-medium text-foreground">{formatDate(ticket.scheduledDate, property?.locale)}</p>
               </div>
             )}
