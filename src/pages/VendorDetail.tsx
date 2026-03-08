@@ -88,7 +88,7 @@ export default function VendorDetail() {
         </Card>
         <Card>
           <CardContent className="pt-5 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Open</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("detail.open")}</p>
             <p className="text-2xl font-bold text-warning mt-1">{openTickets.length}</p>
           </CardContent>
         </Card>
