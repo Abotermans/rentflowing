@@ -62,7 +62,10 @@ export default function UnitDetail() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{unit.unitCode}</h1>
-              <StatusBadge status={unit.currentStatus} />
+              <StatusBadge status={occupancy.derived} />
+              {occupancy.derived !== unit.currentStatus && (
+                <span className="text-xs text-muted-foreground">({unit.currentStatus})</span>
+              )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">{unit.unitLabel}</p>
             <p className="text-sm text-muted-foreground mt-0.5">
