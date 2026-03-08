@@ -151,7 +151,7 @@ export default function UnitDetail() {
                 <p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Total Monthly</p>
+                <p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p>
                 <p className="text-sm font-bold text-primary">{formatCurrency(activeLease.monthlyRent + activeLease.monthlyCharges, property.currencyCode, property.locale)}</p>
               </div>
 
