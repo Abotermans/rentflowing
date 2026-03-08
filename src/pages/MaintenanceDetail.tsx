@@ -124,7 +124,7 @@ export default function MaintenanceDetail() {
 
       {/* Details */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Ticket Details</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.ticketDetails")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
