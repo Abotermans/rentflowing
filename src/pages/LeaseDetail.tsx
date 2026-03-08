@@ -288,7 +288,7 @@ export default function LeaseDetail() {
 
       {/* Financial Summary */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Summary</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><p className="text-xs text-muted-foreground">This Month Due</p><p className="text-lg font-bold text-foreground">{formatCurrency(thisMonthDue, currency, locale)}</p></div>
