@@ -70,16 +70,16 @@ export default function MaintenanceDetail() {
         <CardContent>
           <div className="flex gap-2 flex-wrap">
             {ticket.status !== "assigned" && ticket.status !== "completed" && ticket.status !== "cancelled" && (
-              <Button size="sm" variant="outline" onClick={() => quickStatusChange("assigned")}>Mark Assigned</Button>
+              <Button size="sm" variant="outline" onClick={() => quickStatusChange("assigned")}>{t("detail.markAssigned")}</Button>
             )}
             {ticket.status !== "in-progress" && ticket.status !== "completed" && ticket.status !== "cancelled" && (
-              <Button size="sm" variant="outline" onClick={() => quickStatusChange("in-progress")}>Mark In Progress</Button>
+              <Button size="sm" variant="outline" onClick={() => quickStatusChange("in-progress")}>{t("detail.markInProgress")}</Button>
             )}
             {ticket.status !== "completed" && (
-              <Button size="sm" onClick={() => quickStatusChange("completed")}>Mark Completed</Button>
+              <Button size="sm" onClick={() => quickStatusChange("completed")}>{t("detail.markCompleted")}</Button>
             )}
             {ticket.status !== "cancelled" && ticket.status !== "completed" && (
-              <Button size="sm" variant="destructive" onClick={() => quickStatusChange("cancelled")}>Cancel</Button>
+              <Button size="sm" variant="destructive" onClick={() => quickStatusChange("cancelled")}>{t("action.cancel")}</Button>
             )}
           </div>
         </CardContent>
