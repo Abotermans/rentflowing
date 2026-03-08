@@ -457,6 +457,17 @@ export default function PropertyDetail() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Override Confirm Dialog */}
+      {pendingOverrideValidation && (
+        <OverrideConfirmDialog
+          open={overrideDialogOpen}
+          onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) setPendingOverrideValidation(null); }}
+          validation={pendingOverrideValidation}
+          actionLabel="Override and Save"
+          onOverride={handleUnitOverrideConfirm}
+        />
+      )}
     </div>
   );
 }

@@ -187,6 +187,12 @@ export default function LeaseDetail() {
   const handleMarkEnded = () => {
     const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
     if (!validation.allowed) {
+      if (validation.overrideAllowed) {
+        setPendingOverrideValidation(validation);
+        setPendingOverrideAction("ended");
+        setOverrideDialogOpen(true);
+        return;
+      }
       toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
@@ -200,11 +206,35 @@ export default function LeaseDetail() {
   const handleMarkTerminated = () => {
     const validation = canChangeLeaseStatus(lease.id, "terminated", integrityState);
     if (!validation.allowed) {
+      if (validation.overrideAllowed) {
+        setPendingOverrideValidation(validation);
+        setPendingOverrideAction("terminated");
+        setOverrideDialogOpen(true);
+        return;
+      }
       toast({ title: "Cannot terminate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
     updateLease({ ...lease, leaseStatus: "terminated" });
     toast({ title: "Lease marked as terminated" });
+  };
+
+  const handleLeaseOverrideConfirm = (reason: string) => {
+    if (!pendingOverrideValidation || !pendingOverrideAction) return;
+    addOverride({
+      entityType: "lease",
+      entityId: lease.id,
+      action: `status_change:${pendingOverrideAction}`,
+      blockerCodes: [
+        ...pendingOverrideValidation.blockers.map(b => b.code),
+        ...pendingOverrideValidation.warnings.map(w => w.code),
+      ],
+      reason,
+    });
+    updateLease({ ...lease, leaseStatus: pendingOverrideAction as any });
+    toast({ title: `Lease marked as ${pendingOverrideAction} (overridden)`, description: `Override reason: ${reason}` });
+    setPendingOverrideValidation(null);
+    setPendingOverrideAction("");
   };
 
   const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
