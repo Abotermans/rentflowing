@@ -191,7 +191,25 @@ export default function Units() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
-                             <AlertDialogHeader><AlertDialogTitle>{t("units.deleteTitle")}</AlertDialogTitle><AlertDialogDescription>{t("units.deleteDesc")}</AlertDialogDescription></AlertDialogHeader>
+                             <AlertDialogHeader>
+                               <AlertDialogTitle>{t("units.deleteTitle")}</AlertDialogTitle>
+                               <AlertDialogDescription>
+                                 {t("units.deleteDesc")}
+                                 {(() => {
+                                   const unitLease = getActiveLease(u.id);
+                                   if (unitLease) {
+                                     const leaseTenant = tenants.find(tt => tt.id === unitLease.primaryTenantId);
+                                     const tenantName = leaseTenant ? `${leaseTenant.firstName} ${leaseTenant.lastName}` : "—";
+                                     return (
+                                       <span className="block mt-2 text-destructive font-medium">
+                                         {t("units.deleteWarningLease").replace("{ref}", unitLease.leaseReference).replace("{tenant}", tenantName)}
+                                       </span>
+                                     );
+                                   }
+                                   return <span className="block mt-2 text-muted-foreground">{t("units.deleteSafe")}</span>;
+                                 })()}
+                               </AlertDialogDescription>
+                             </AlertDialogHeader>
                             <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(u.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
