@@ -427,7 +427,7 @@ export default function LeaseDetail() {
           {/* Keys & Meters Panel */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Key className="h-4 w-4" />Keys & Meters</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Key className="h-4 w-4" />{t("detail.keysMeters")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
