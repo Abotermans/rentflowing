@@ -5,14 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
+import { getDerivedOccupancy } from "@/lib/occupancy";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
+  const { units, properties, leases, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
   const { t } = useSettings();
 
   const unit = units.find(u => u.id === id);
@@ -28,6 +30,7 @@ export default function UnitDetail() {
   }
 
   const activeLease = getActiveLease(unit.id);
+  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases);
   const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
   const lifecycle = activeLease ? getLeaseLifecycleStatus(activeLease) : null;
   const moveIn = activeLease ? getMoveInStatus(activeLease) : null;
@@ -59,7 +62,10 @@ export default function UnitDetail() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{unit.unitCode}</h1>
-              <StatusBadge status={unit.currentStatus} />
+              <StatusBadge status={occupancy.derived} />
+              {occupancy.derived !== unit.currentStatus && (
+                <span className="text-xs text-muted-foreground">({unit.currentStatus})</span>
+              )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">{unit.unitLabel}</p>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -75,6 +81,16 @@ export default function UnitDetail() {
           </Button>
         </div>
       </div>
+
+      {/* Inconsistency Warning */}
+      {occupancy.inconsistent && occupancy.inconsistencyMessage && (
+        <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            <strong>{t("occupancy.inconsistencyWarning")}:</strong> {occupancy.inconsistencyMessage}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Main Info */}
       <Card>
@@ -108,9 +124,10 @@ export default function UnitDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.occupancySection")}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <StatusBadge status={unit.currentStatus} />
-            {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && <StatusBadge status={lifecycle} />}
-            {activeLease && moveIn === "scheduled" && <StatusBadge status="scheduled" />}
+            <StatusBadge status={occupancy.derived} />
+            {occupancy.derived !== unit.currentStatus && <StatusBadge status={unit.currentStatus} />}
+            {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && lifecycle !== occupancy.derived && <StatusBadge status={lifecycle} />}
+            {activeLease && moveIn === "scheduled" && occupancy.derived !== "move-in-pending" && <StatusBadge status="scheduled" />}
             {activeLease && activeLease.returnStatus && activeLease.returnStatus !== "completed" && <StatusBadge status={activeLease.returnStatus} />}
           </div>
           {activeLease && tenant ? (

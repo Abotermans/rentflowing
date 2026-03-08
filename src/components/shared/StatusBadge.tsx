@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational" | "move-in-pending" | "move-out-scheduled" | "available-soon";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -54,6 +54,9 @@ const statusStyles: Record<StatusType, string> = {
   "tenant-recoverable": "bg-success/15 text-success border-success/30",
   "partially-recoverable": "bg-warning/15 text-warning border-warning/30",
   informational: "bg-muted text-muted-foreground border-border",
+  "move-in-pending": "bg-primary/15 text-primary border-primary/30",
+  "move-out-scheduled": "bg-warning/15 text-warning border-warning/30",
+  "available-soon": "bg-success/15 text-success border-success/30",
 };
 
 const STATUS_KEYS: Record<StatusType, TranslationKey> = {
@@ -105,6 +108,9 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   "tenant-recoverable": "status.tenantRecoverable",
   "partially-recoverable": "status.partiallyRecoverable",
   informational: "status.informational",
+  "move-in-pending": "status.moveInPending",
+  "move-out-scheduled": "status.moveOutScheduled",
+  "available-soon": "status.availableSoon",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {

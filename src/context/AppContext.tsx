@@ -472,10 +472,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getPropertyStats = useCallback((propertyId: string): PropertyStats => {
     const propUnits = units.filter(u => u.propertyId === propertyId);
     const total = propUnits.length;
-    const counts: Record<UnitStatus, number> = { occupied: 0, vacant: 0, reserved: 0, unavailable: 0 };
-    propUnits.forEach(u => { counts[u.currentStatus]++; });
+    const counts = { occupied: 0, vacant: 0, reserved: 0, unavailable: 0 };
+    propUnits.forEach(u => {
+      // Use derived occupancy: if unit has an active lease, count as occupied regardless of manual status
+      const hasActiveLease = leases.some(l => l.unitId === u.id && l.leaseStatus === "active");
+      if (hasActiveLease) {
+        counts.occupied++;
+      } else if (u.currentStatus === "reserved") {
+        counts.reserved++;
+      } else if (u.currentStatus === "unavailable") {
+        counts.unavailable++;
+      } else {
+        counts.vacant++;
+      }
+    });
     return { total, ...counts, occupancyRate: total > 0 ? Math.round((counts.occupied / total) * 100) : 0 };
-  }, [units]);
+  }, [units, leases]);
 
   const getPropertyById = useCallback((id: string) => properties.find(p => p.id === id), [properties]);
   const getUnitById = useCallback((id: string) => units.find(u => u.id === id), [units]);
