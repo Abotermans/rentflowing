@@ -122,27 +122,27 @@ export default function Leases() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search reference, tenant, property…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input placeholder={t("leases.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
             {LEASE_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterProperty} onValueChange={setFilterProperty}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Property" /></SelectTrigger>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("filter.property")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Properties</SelectItem>
+            <SelectItem value="all">{t("filter.allProperties")}</SelectItem>
             {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Button variant={filterEndingSoon ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterEndingSoon(!filterEndingSoon)}>
-          Ending Soon
+          {t("filter.endingSoon")}
         </Button>
         <Button variant={filterUnderNotice ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterUnderNotice(!filterUnderNotice)}>
-          <Bell className="h-3.5 w-3.5 mr-1" />Under Notice
+          <Bell className="h-3.5 w-3.5 mr-1" />{t("filter.underNotice")}
         </Button>
       </div>
 
@@ -155,16 +155,16 @@ export default function Leases() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Guarantee</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("leases.reference")}</TableHead>
+                <TableHead>{t("leases.tenant")}</TableHead>
+                <TableHead>{t("leases.property")}</TableHead>
+                <TableHead>{t("leases.unit")}</TableHead>
+                <TableHead>{t("leases.status")}</TableHead>
+                <TableHead>{t("leases.guarantee")}</TableHead>
+                <TableHead>{t("leases.start")}</TableHead>
+                <TableHead>{t("leases.end")}</TableHead>
+                <TableHead className="text-right">{t("leases.total")}</TableHead>
+                <TableHead className="text-right">{t("leases.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -217,8 +217,8 @@ export default function Leases() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>Delete lease?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{l.leaseReference}".</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(l.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                             <AlertDialogHeader><AlertDialogTitle>{t("leases.deleteTitle")}</AlertDialogTitle><AlertDialogDescription>{t("leases.deleteItemDesc")}</AlertDialogDescription></AlertDialogHeader>
+                            <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(l.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
@@ -233,26 +233,26 @@ export default function Leases() {
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
-          <SheetHeader><SheetTitle>{editingLease ? "Edit Lease" : "Add Lease"}</SheetTitle></SheetHeader>
+          <SheetHeader><SheetTitle>{editingLease ? t("leases.edit") : t("leases.add")}</SheetTitle></SheetHeader>
           <div className="space-y-4 mt-6">
-            <div><Label>Lease Reference *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
+            <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Property *</Label>
+              <div><Label>{t("leases.property")} *</Label>
                 <Select value={form.propertyId} onValueChange={v => setForm(f => ({ ...f, propertyId: v, unitId: "" }))}>
-                  <SelectTrigger><SelectValue placeholder="Select property" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
                   <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Unit *</Label>
+              <div><Label>{t("leases.unit")} *</Label>
                 <Select value={form.unitId} onValueChange={v => setForm(f => ({ ...f, unitId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                   <SelectContent>
                     {formUnits.map(u => {
                       const existing = getActiveLease(u.id);
                       const blocked = existing && existing.id !== editingLease?.id;
                       return (
                         <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                          {u.unitCode} — {u.unitLabel}{blocked ? " (active lease)" : ""}
+                          {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
                         </SelectItem>
                       );
                     })}
@@ -261,13 +261,13 @@ export default function Leases() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Primary Tenant *</Label>
+              <div><Label>{t("leases.primaryTenant")} *</Label>
                 <Select value={form.primaryTenantId} onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select tenant" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("leases.selectTenant")} /></SelectTrigger>
                   <SelectContent>{tenants.map(t => <SelectItem key={t.id} value={t.id}>{getTenantFullName(t)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Status *</Label>
+              <div><Label>{t("leases.status")} *</Label>
                 <Select value={form.leaseStatus} onValueChange={v => setForm(f => ({ ...f, leaseStatus: v as LeaseStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{LEASE_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
@@ -275,24 +275,24 @@ export default function Leases() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Start Date *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
-              <div><Label>End Date *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+              <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
+              <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <div><Label>Monthly Rent *</Label><Input type="number" min={0} value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: Number(e.target.value) || 0 }))} /></div>
-              <div><Label>Monthly Charges *</Label><Input type="number" min={0} value={form.monthlyCharges} onChange={e => setForm(f => ({ ...f, monthlyCharges: Number(e.target.value) || 0 }))} /></div>
-              <div><Label>Due Day</Label><Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} /></div>
+              <div><Label>{t("leases.monthlyRent")} *</Label><Input type="number" min={0} value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: Number(e.target.value) || 0 }))} /></div>
+              <div><Label>{t("leases.monthlyCharges")} *</Label><Input type="number" min={0} value={form.monthlyCharges} onChange={e => setForm(f => ({ ...f, monthlyCharges: Number(e.target.value) || 0 }))} /></div>
+              <div><Label>{t("leases.dueDay")}</Label><Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Deposit / Guarantee</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>Notice Period</Label><Input value={form.noticePeriodText} onChange={e => setForm(f => ({ ...f, noticePeriodText: e.target.value }))} placeholder="e.g. 3 months" /></div>
+              <div><Label>{t("leases.deposit")}</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>{t("leases.noticePeriod")}</Label><Input value={form.noticePeriodText} onChange={e => setForm(f => ({ ...f, noticePeriodText: e.target.value }))} /></div>
             </div>
-            <div><Label>Signed Date</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
-            <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
+            <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editingLease ? "Save" : "Add Lease"}</Button>
+            <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleSave}>{editingLease ? t("action.save") : t("leases.add")}</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>

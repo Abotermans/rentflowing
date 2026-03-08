@@ -80,22 +80,22 @@ export default function Properties() {
 
   const handleSave = () => {
     if (!form.name.trim() || !form.referenceCode.trim() || !form.address1.trim() || !form.city.trim() || !form.countryCode) {
-      toast({ title: "Validation Error", description: "Please fill in all required fields.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
     if (editing) {
       updateProperty({ ...editing, ...form });
-      toast({ title: "Property updated" });
+      toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
     } else {
       addProperty(form);
-      toast({ title: "Property added" });
+      toast({ title: `${t("properties.title")} ${t("common.added").toLowerCase()}` });
     }
     setOpen(false);
   };
 
   const handleDelete = (id: string) => {
     deleteProperty(id);
-    toast({ title: "Property deleted" });
+    toast({ title: `${t("properties.title")} ${t("common.deleted").toLowerCase()}` });
   };
 
   const filtered = properties.filter(p => {
@@ -124,32 +124,32 @@ export default function Properties() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search name, reference, city, owner…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input placeholder={t("properties.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
         <Select value={filterCountry} onValueChange={setFilterCountry}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Country" /></SelectTrigger>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder={t("properties.country")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Countries</SelectItem>
+            <SelectItem value="all">{t("filter.allCountries")}</SelectItem>
             {usedCountries.map(code => (
               <SelectItem key={code} value={code}>{getCountryName(code)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder={t("filter.type")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="residential">Residential</SelectItem>
-            <SelectItem value="commercial">Commercial</SelectItem>
-            <SelectItem value="mixed-use">Mixed Use</SelectItem>
+            <SelectItem value="all">{t("filter.allTypes")}</SelectItem>
+            <SelectItem value="residential">{t("properties.residential")}</SelectItem>
+            <SelectItem value="commercial">{t("properties.commercial")}</SelectItem>
+            <SelectItem value="mixed-use">{t("properties.mixedUse")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
+            <SelectItem value="active">{t("properties.active")}</SelectItem>
+            <SelectItem value="inactive">{t("properties.inactive")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -164,11 +164,11 @@ export default function Properties() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("properties.name")}</TableHead>
-                <TableHead>Reference</TableHead>
+                <TableHead>{t("properties.reference")}</TableHead>
                 <TableHead>{t("properties.city")}</TableHead>
                 <TableHead>{t("properties.country")}</TableHead>
                 <TableHead>{t("properties.type")}</TableHead>
-                <TableHead>Owner</TableHead>
+                <TableHead>{t("properties.owner")}</TableHead>
                 <TableHead className="text-center">{t("properties.units")}</TableHead>
                 <TableHead className="text-center">{t("properties.occupancy")}</TableHead>
                 <TableHead>{t("filter.status")}</TableHead>
@@ -206,12 +206,12 @@ export default function Properties() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete property?</AlertDialogTitle>
-                              <AlertDialogDescription>This will permanently delete "{p.name}" and all its units.</AlertDialogDescription>
+                              <AlertDialogTitle>{t("properties.deleteTitle")}</AlertDialogTitle>
+                              <AlertDialogDescription>{t("properties.deleteItemDesc")}</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(p.id)}>Delete</AlertDialogAction>
+                              <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(p.id)}>{t("action.delete")}</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -229,48 +229,48 @@ export default function Properties() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Property" : "Add Property"}</DialogTitle>
+            <DialogTitle>{editing ? t("properties.edit") : t("properties.add")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">{t("properties.name")} *</Label>
                 <Input id="name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Property name" />
               </div>
               <div>
-                <Label htmlFor="ref">Reference Code *</Label>
+                <Label htmlFor="ref">{t("properties.reference")} *</Label>
                 <Input id="ref" value={form.referenceCode} onChange={e => setForm(f => ({ ...f, referenceCode: e.target.value }))} placeholder="e.g. PAR-001" />
               </div>
             </div>
             <div>
-              <Label htmlFor="owner">Owner Name</Label>
+              <Label htmlFor="owner">{t("properties.ownerName")}</Label>
               <Input id="owner" value={form.ownerName} onChange={e => setForm(f => ({ ...f, ownerName: e.target.value }))} placeholder="e.g. SCI Rivoli Patrimoine" />
             </div>
             <div>
-              <Label htmlFor="addr1">Address Line 1 *</Label>
+              <Label htmlFor="addr1">{t("properties.addressLine1")} *</Label>
               <Input id="addr1" value={form.address1} onChange={e => setForm(f => ({ ...f, address1: e.target.value }))} placeholder="Street address" />
             </div>
             <div>
-              <Label htmlFor="addr2">Address Line 2</Label>
+              <Label htmlFor="addr2">{t("properties.addressLine2")}</Label>
               <Input id="addr2" value={form.address2} onChange={e => setForm(f => ({ ...f, address2: e.target.value }))} placeholder="Building, floor, etc." />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="city">City *</Label>
+                <Label htmlFor="city">{t("properties.city")} *</Label>
                 <Input id="city" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder="City" />
               </div>
               <div>
-                <Label htmlFor="postal">Postal Code</Label>
+                <Label htmlFor="postal">{t("properties.postalCode")}</Label>
                 <Input id="postal" value={form.postalCode} onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))} placeholder="Postal code" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="region">Region / State</Label>
-                <Input id="region" value={form.regionOrState} onChange={e => setForm(f => ({ ...f, regionOrState: e.target.value }))} placeholder="e.g. Île-de-France" />
+                <Label htmlFor="region">{t("properties.region")}</Label>
+                <Input id="region" value={form.regionOrState} onChange={e => setForm(f => ({ ...f, regionOrState: e.target.value }))} />
               </div>
               <div>
-                <Label>Country *</Label>
+                <Label>{t("properties.country")} *</Label>
                 <Select value={form.countryCode} onValueChange={handleCountryChange}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -283,30 +283,30 @@ export default function Properties() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Property Type *</Label>
+                <Label>{t("properties.propertyType")} *</Label>
                 <Select value={form.propertyType} onValueChange={v => setForm(f => ({ ...f, propertyType: v as Property["propertyType"] }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="residential">Residential</SelectItem>
-                    <SelectItem value="commercial">Commercial</SelectItem>
-                    <SelectItem value="mixed-use">Mixed Use</SelectItem>
+                    <SelectItem value="residential">{t("properties.residential")}</SelectItem>
+                    <SelectItem value="commercial">{t("properties.commercial")}</SelectItem>
+                    <SelectItem value="mixed-use">{t("properties.mixedUse")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>{t("filter.status")}</Label>
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as "active" | "inactive" }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="active">{t("properties.active")}</SelectItem>
+                    <SelectItem value="inactive">{t("properties.inactive")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label>Currency *</Label>
+                <Label>{t("properties.currency")} *</Label>
                 <Select value={form.currencyCode} onValueChange={v => setForm(f => ({ ...f, currencyCode: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -315,28 +315,28 @@ export default function Properties() {
                 </Select>
               </div>
               <div>
-                <Label>Locale</Label>
+                <Label>{t("properties.locale")}</Label>
                 <Input value={form.locale} onChange={e => setForm(f => ({ ...f, locale: e.target.value }))} placeholder="e.g. fr-FR" />
               </div>
               <div>
-                <Label>Measurement</Label>
+                <Label>{t("properties.measurement")}</Label>
                 <Select value={form.measurementSystem} onValueChange={v => setForm(f => ({ ...f, measurementSystem: v as "metric" | "imperial" }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="metric">Metric (m²)</SelectItem>
-                    <SelectItem value="imperial">Imperial (sq ft)</SelectItem>
+                    <SelectItem value="metric">{t("properties.metric")}</SelectItem>
+                    <SelectItem value="imperial">{t("properties.imperial")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
-              <Label htmlFor="desc">Description</Label>
-              <Textarea id="desc" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Property description…" rows={3} />
+              <Label htmlFor="desc">{t("properties.description")}</Label>
+              <Textarea id="desc" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editing ? "Save Changes" : "Add Property"}</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleSave}>{editing ? t("action.saveChanges") : t("properties.add")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

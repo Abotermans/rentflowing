@@ -92,12 +92,12 @@ export default function Tenants() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search name, email…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input placeholder={t("tenants.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
             {TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -146,8 +146,8 @@ export default function Tenants() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>Delete tenant?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{getTenantFullName(t)}".</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(t.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                             <AlertDialogHeader><AlertDialogTitle>{t("tenants.deleteTitle")}</AlertDialogTitle><AlertDialogDescription>{t("tenants.deleteItemDesc")}</AlertDialogDescription></AlertDialogHeader>
+                            <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(t.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
@@ -162,30 +162,30 @@ export default function Tenants() {
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
-          <SheetHeader><SheetTitle>{editingTenant ? "Edit Tenant" : "Add Tenant"}</SheetTitle></SheetHeader>
+           <SheetHeader><SheetTitle>{editingTenant ? t("tenants.edit") : t("tenants.add")}</SheetTitle></SheetHeader>
           <div className="space-y-4 mt-6">
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>First Name *</Label><Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} /></div>
-              <div><Label>Last Name *</Label><Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} /></div>
+              <div><Label>{t("tenants.firstName")} *</Label><Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} /></div>
+              <div><Label>{t("tenants.lastName")} *</Label><Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} /></div>
             </div>
-            <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-            <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+            <div><Label>{t("tenants.email")} *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+            <div><Label>{t("tenants.phone")}</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Date of Birth</Label><Input type="date" value={form.dateOfBirth ?? ""} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value || null }))} /></div>
-              <div><Label>Status *</Label>
+              <div><Label>{t("tenants.dateOfBirth")}</Label><Input type="date" value={form.dateOfBirth ?? ""} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value || null }))} /></div>
+              <div><Label>{t("filter.status")} *</Label>
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as TenantStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
-            <div><Label>Identification Number</Label><Input value={form.identificationNumber ?? ""} onChange={e => setForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>
-            <div><Label>Current Address</Label><Textarea value={form.currentAddress ?? ""} onChange={e => setForm(f => ({ ...f, currentAddress: e.target.value || null }))} rows={2} /></div>
-            <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
+            <div><Label>{t("tenants.identificationNumber")}</Label><Input value={form.identificationNumber ?? ""} onChange={e => setForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>
+            <div><Label>{t("tenants.currentAddress")}</Label><Textarea value={form.currentAddress ?? ""} onChange={e => setForm(f => ({ ...f, currentAddress: e.target.value || null }))} rows={2} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editingTenant ? "Save" : "Add Tenant"}</Button>
+            <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleSave}>{editingTenant ? t("action.save") : t("tenants.add")}</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
