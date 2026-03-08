@@ -228,7 +228,7 @@ export default function UnitDetail() {
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No active lease. Tenant and lease management available via the Leases module.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noActiveLeaseDesc")}</p>
           )}
         </CardContent>
       </Card>
