@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
 import { Property, Unit, UnitStatus, Tenant, Lease, LedgerLine, Payment, Guarantee } from "@/types";
+import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { initialProperties, initialUnits, initialTenants, initialLeases, initialLedgerLines, initialPayments, initialGuarantees } from "@/data/mockData";
+import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 
 interface PropertyStats {
   total: number;
@@ -19,6 +21,8 @@ interface AppState {
   ledgerLines: LedgerLine[];
   payments: Payment[];
   guarantees: Guarantee[];
+  tickets: MaintenanceTicket[];
+  vendors: Vendor[];
   addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => void;
   updateProperty: (p: Property) => void;
   deleteProperty: (id: string) => void;
@@ -36,6 +40,12 @@ interface AppState {
   addGuarantee: (g: Omit<Guarantee, "id">) => void;
   updateGuarantee: (g: Guarantee) => void;
   deleteGuarantee: (id: string) => void;
+  addTicket: (t: Omit<MaintenanceTicket, "id">) => void;
+  updateTicket: (t: MaintenanceTicket) => void;
+  deleteTicket: (id: string) => void;
+  addVendor: (v: Omit<Vendor, "id">) => void;
+  updateVendor: (v: Vendor) => void;
+  deleteVendor: (id: string) => void;
   getPropertyStats: (propertyId: string) => PropertyStats;
   getPropertyById: (id: string) => Property | undefined;
   getUnitById: (id: string) => Unit | undefined;
@@ -49,6 +59,10 @@ interface AppState {
   getLeaseOutstanding: (leaseId: string) => { outstanding: number; overdue: number };
   getTenantOutstanding: (tenantId: string) => { outstanding: number; overdue: number };
   getGuaranteeByLease: (leaseId: string) => Guarantee | undefined;
+  getTicketsByUnit: (unitId: string) => MaintenanceTicket[];
+  getTicketsByProperty: (propertyId: string) => MaintenanceTicket[];
+  getTicketsByVendor: (vendorId: string) => MaintenanceTicket[];
+  getVendorById: (id: string) => Vendor | undefined;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -65,6 +79,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [ledgerLines, setLedgerLines] = useState<LedgerLine[]>(initialLedgerLines);
   const [payments, setPayments] = useState<Payment[]>(initialPayments);
   const [guarantees, setGuarantees] = useState<Guarantee[]>(initialGuarantees);
+  const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialTickets);
+  const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
 
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
@@ -111,7 +127,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLeases(prev => prev.filter(x => x.id !== id));
   }, []);
 
-  // Confirm move-out: sets lease to ended + unit to vacant
   const confirmMoveOut = useCallback((lease: Lease) => {
     const ts = now();
     setLeases(prev => prev.map(x => x.id === lease.id ? { ...lease, leaseStatus: "ended" as const, moveOutActualDate: ts, updatedAt: ts } : x));
@@ -157,6 +172,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setGuarantees(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  // Maintenance
+  const addTicket = useCallback((t: Omit<MaintenanceTicket, "id">) => {
+    setTickets(prev => [...prev, { ...t, id: genId("mt") }]);
+  }, []);
+  const updateTicket = useCallback((t: MaintenanceTicket) => {
+    setTickets(prev => prev.map(x => x.id === t.id ? t : x));
+  }, []);
+  const deleteTicket = useCallback((id: string) => {
+    setTickets(prev => prev.filter(x => x.id !== id));
+  }, []);
+
+  // Vendors
+  const addVendor = useCallback((v: Omit<Vendor, "id">) => {
+    setVendors(prev => [...prev, { ...v, id: genId("v") }]);
+  }, []);
+  const updateVendor = useCallback((v: Vendor) => {
+    setVendors(prev => prev.map(x => x.id === v.id ? v : x));
+  }, []);
+  const deleteVendor = useCallback((id: string) => {
+    setVendors(prev => prev.filter(x => x.id !== id));
+  }, []);
+
   const getPropertyStats = useCallback((propertyId: string): PropertyStats => {
     const propUnits = units.filter(u => u.propertyId === propertyId);
     const total = propUnits.length;
@@ -175,6 +212,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getPaymentsByLease = useCallback((leaseId: string) => payments.filter(p => p.leaseId === leaseId), [payments]);
   const getPaymentsByTenant = useCallback((tenantId: string) => payments.filter(p => p.tenantId === tenantId), [payments]);
   const getGuaranteeByLease = useCallback((leaseId: string) => guarantees.find(g => g.leaseId === leaseId), [guarantees]);
+
+  const getTicketsByUnit = useCallback((unitId: string) => tickets.filter(t => t.unitId === unitId), [tickets]);
+  const getTicketsByProperty = useCallback((propertyId: string) => tickets.filter(t => t.propertyId === propertyId), [tickets]);
+  const getTicketsByVendor = useCallback((vendorId: string) => tickets.filter(t => t.assignedVendorId === vendorId), [tickets]);
+  const getVendorById = useCallback((id: string) => vendors.find(v => v.id === id), [vendors]);
 
   const getLeaseOutstanding = useCallback((leaseId: string) => {
     const lines = ledgerLines.filter(ll => ll.leaseId === leaseId);
@@ -204,18 +246,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [leases, ledgerLines]);
 
   const value = useMemo(() => ({
-    properties, units, tenants, leases, ledgerLines, payments, guarantees,
+    properties, units, tenants, leases, ledgerLines, payments, guarantees, tickets, vendors,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
     addLease, updateLease, deleteLease, confirmMoveOut,
     addPayment,
     addGuarantee, updateGuarantee, deleteGuarantee,
+    addTicket, updateTicket, deleteTicket,
+    addVendor, updateVendor, deleteVendor,
     getPropertyStats, getPropertyById, getUnitById, getTenantById,
     getActiveLease, getLeasesByTenant, getLeasesByProperty,
     getLedgerByLease, getPaymentsByLease, getPaymentsByTenant,
     getLeaseOutstanding, getTenantOutstanding, getGuaranteeByLease,
-  }), [properties, units, tenants, leases, ledgerLines, payments, guarantees, addProperty, updateProperty, deleteProperty, addUnit, updateUnit, deleteUnit, addTenant, updateTenant, deleteTenant, addLease, updateLease, deleteLease, confirmMoveOut, addPayment, addGuarantee, updateGuarantee, deleteGuarantee, getPropertyStats, getPropertyById, getUnitById, getTenantById, getActiveLease, getLeasesByTenant, getLeasesByProperty, getLedgerByLease, getPaymentsByLease, getPaymentsByTenant, getLeaseOutstanding, getTenantOutstanding, getGuaranteeByLease]);
+    getTicketsByUnit, getTicketsByProperty, getTicketsByVendor, getVendorById,
+  }), [properties, units, tenants, leases, ledgerLines, payments, guarantees, tickets, vendors, addProperty, updateProperty, deleteProperty, addUnit, updateUnit, deleteUnit, addTenant, updateTenant, deleteTenant, addLease, updateLease, deleteLease, confirmMoveOut, addPayment, addGuarantee, updateGuarantee, deleteGuarantee, addTicket, updateTicket, deleteTicket, addVendor, updateVendor, deleteVendor, getPropertyStats, getPropertyById, getUnitById, getTenantById, getActiveLease, getLeasesByTenant, getLeasesByProperty, getLedgerByLease, getPaymentsByLease, getPaymentsByTenant, getLeaseOutstanding, getTenantOutstanding, getGuaranteeByLease, getTicketsByUnit, getTicketsByProperty, getTicketsByVendor, getVendorById]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

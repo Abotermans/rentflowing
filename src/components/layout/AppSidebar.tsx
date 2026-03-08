@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -20,6 +20,9 @@ const items = [
   { title: "Tenants", url: "/tenants", icon: Users },
   { title: "Leases", url: "/leases", icon: FileText },
   { title: "Payments", url: "/payments", icon: CreditCard },
+  { title: "Maintenance", url: "/maintenance", icon: Wrench },
+  { title: "Vendors", url: "/vendors", icon: HardHat },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
 ];
 
 export function AppSidebar() {
