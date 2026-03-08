@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAppData } from "@/context/AppContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
