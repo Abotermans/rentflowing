@@ -52,6 +52,9 @@ export default function Leases() {
     moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null,
     moveOutChecklist: { noticeConfirmed: false, moveOutDateConfirmed: false, keysReturned: false, moveOutMeterReadingCaptured: false, balanceReviewed: false, guaranteeReviewCompleted: false },
     moveOutNotes: "", keyHandoverCount: 0, keyReturnCount: 0, returnStatus: null, returnNotes: "",
+    hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+    advanceAllocationMethod: null, advanceAppliedTo: null, advanceAllocationStartDate: null,
+    advanceAllocationDurationMonths: null, fixedMonthlyReductionAmount: null,
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
 
