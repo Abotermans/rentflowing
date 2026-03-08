@@ -25,7 +25,7 @@ export default function Payments() {
   const {
     receivableItems, cashReceipts, allocations,
     leases, tenants, properties, units,
-    createCashReceipt, allocateCashReceipt,
+    createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
     getReceivableItemsByLease, getReceivableItemsByTenant,
   } = useAppData();
 
