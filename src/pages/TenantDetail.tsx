@@ -107,7 +107,7 @@ export default function TenantDetail() {
       {/* Current Lease Summary */}
       {activeLease && activeProperty && activeUnit && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Current Lease</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.currentLease")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
