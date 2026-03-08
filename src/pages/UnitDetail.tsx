@@ -204,7 +204,7 @@ export default function UnitDetail() {
               {leaseFinancials && leaseFinancials.outstanding > 0 && (
                 <>
                   <div>
-                    <p className="text-xs text-muted-foreground">Outstanding Balance</p>
+                    <p className="text-xs text-muted-foreground">{t("detail.outstandingBalance")}</p>
                     <p className="text-sm font-bold text-foreground">{formatCurrency(leaseFinancials.outstanding, property.currencyCode, property.locale)}</p>
                   </div>
                   {leaseFinancials.overdue > 0 && (
