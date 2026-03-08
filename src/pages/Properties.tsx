@@ -88,7 +88,7 @@ export default function Properties() {
       toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
     } else {
       addProperty(form);
-      toast({ title: "Property added" });
+      toast({ title: `${t("properties.title")} ${t("common.added").toLowerCase()}` });
     }
     setOpen(false);
   };
