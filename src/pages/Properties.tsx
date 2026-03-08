@@ -330,13 +330,13 @@ export default function Properties() {
               </div>
             </div>
             <div>
-              <Label htmlFor="desc">Description</Label>
-              <Textarea id="desc" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Property description…" rows={3} />
+              <Label htmlFor="desc">{t("properties.description")}</Label>
+              <Textarea id="desc" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editing ? "Save Changes" : "Add Property"}</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleSave}>{editing ? t("action.saveChanges") : t("properties.add")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
