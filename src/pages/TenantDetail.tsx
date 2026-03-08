@@ -89,7 +89,7 @@ export default function TenantDetail() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Total Outstanding</p>
+                <p className="text-xs text-muted-foreground">{t("detail.totalOutstanding")}</p>
                 <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, activeProperty?.currencyCode, activeProperty?.locale)}</p>
               </div>
               <div>
