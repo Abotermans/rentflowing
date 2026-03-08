@@ -523,7 +523,7 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.ledger")}</CardTitle></CardHeader>
         <CardContent>
           {enrichedLedger.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No ledger lines.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noLedgerLines")}</p>
           ) : (
             <Table>
               <TableHeader>
