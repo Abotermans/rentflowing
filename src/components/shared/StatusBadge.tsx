@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
