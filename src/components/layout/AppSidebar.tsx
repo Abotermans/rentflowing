@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2 } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,

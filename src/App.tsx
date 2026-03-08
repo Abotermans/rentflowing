@@ -8,6 +8,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
+import Units from "./pages/Units";
+import UnitDetail from "./pages/UnitDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
