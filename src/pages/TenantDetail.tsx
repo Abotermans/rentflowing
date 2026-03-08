@@ -56,7 +56,7 @@ export default function TenantDetail() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex items-start gap-2">
               <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <div><p className="text-xs text-muted-foreground">Email</p><p className="text-sm font-medium text-foreground">{tenant.email}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("tenants.email")}</p><p className="text-sm font-medium text-foreground">{tenant.email}</p></div>
             </div>
             <div className="flex items-start gap-2">
               <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
