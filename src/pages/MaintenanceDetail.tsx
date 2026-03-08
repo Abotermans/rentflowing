@@ -136,7 +136,7 @@ export default function MaintenanceDetail() {
               <StatusBadge status={ticket.priority} />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-xs text-muted-foreground">{t("maintenance.status")}</p>
               <StatusBadge status={ticket.status} />
             </div>
             <div>
