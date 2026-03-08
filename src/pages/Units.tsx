@@ -58,6 +58,7 @@ export default function Units() {
   const { addOverride } = useOverrideHistory();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterType, setFilterType] = useState("all");
