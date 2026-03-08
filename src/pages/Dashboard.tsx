@@ -6,6 +6,7 @@ import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, Cal
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function Dashboard() {
   const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees, tickets } = useAppData();
