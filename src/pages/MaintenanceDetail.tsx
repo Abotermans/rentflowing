@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -19,14 +20,15 @@ export default function MaintenanceDetail() {
   const { id } = useParams<{ id: string }>();
   const { tickets, properties, units, tenants, vendors, updateTicket } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [editOpen, setEditOpen] = useState(false);
 
   const ticket = tickets.find(t => t.id === id);
   if (!ticket) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Ticket not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/maintenance">← Back to Maintenance</Link></Button>
+        <p className="text-muted-foreground">{t("detail.ticketNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/maintenance">← {t("nav.maintenance")}</Link></Button>
       </div>
     );
   }
@@ -45,7 +47,7 @@ export default function MaintenanceDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/maintenance"><ArrowLeft className="h-4 w-4 mr-1" />Maintenance</Link>
+          <Link to="/maintenance"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.maintenance")}</Link>
         </Button>
         <div className="flex items-start justify-between">
           <div>
@@ -64,7 +66,7 @@ export default function MaintenanceDetail() {
 
       {/* Quick Actions */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Quick Actions</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.quickActions")}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex gap-2 flex-wrap">
             {ticket.status !== "assigned" && ticket.status !== "completed" && ticket.status !== "cancelled" && (
@@ -85,7 +87,7 @@ export default function MaintenanceDetail() {
 
       {/* Context */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Context</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.contextSection")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="flex items-start gap-2">
@@ -122,7 +124,7 @@ export default function MaintenanceDetail() {
 
       {/* Details */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Ticket Details</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.ticketDetails")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
@@ -166,7 +168,7 @@ export default function MaintenanceDetail() {
       {/* Notes */}
       {(ticket.internalNotes || ticket.residentVisibleNotes) && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />Notes</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {ticket.internalNotes && (
               <div>

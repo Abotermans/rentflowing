@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,13 +12,14 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
   const { tenants, leases, units, properties, getTenantOutstanding, getPaymentsByTenant, getGuaranteeByLease } = useAppData();
+  const { t } = useSettings();
 
   const tenant = tenants.find(t => t.id === id);
   if (!tenant) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Tenant not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/tenants">← Back to Tenants</Link></Button>
+        <p className="text-muted-foreground">{t("detail.tenantNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/tenants">← {t("nav.tenants")}</Link></Button>
       </div>
     );
   }
@@ -39,7 +41,7 @@ export default function TenantDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" />Tenants</Link>
+          <Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.tenants")}</Link>
         </Button>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">{getTenantFullName(tenant)}</h1>
@@ -49,7 +51,7 @@ export default function TenantDetail() {
 
       {/* Contact Info */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Contact Information</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.contactInfo")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex items-start gap-2">
@@ -83,7 +85,7 @@ export default function TenantDetail() {
       {/* Financial Overview */}
       {(outstanding > 0 || overdue > 0) && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Overview</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialOverview")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -105,7 +107,7 @@ export default function TenantDetail() {
       {/* Current Lease Summary */}
       {activeLease && activeProperty && activeUnit && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Current Lease</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.currentLease")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
@@ -165,7 +167,7 @@ export default function TenantDetail() {
       {/* Recent Payments */}
       {recentPayments.length > 0 && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Payments</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.recentPayments")}</CardTitle></CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
@@ -199,10 +201,10 @@ export default function TenantDetail() {
 
       {/* Lease History */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Lease History</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.leaseHistory")}</CardTitle></CardHeader>
         <CardContent>
           {tenantLeases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No leases for this tenant.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noLeases")}</p>
           ) : (
             <Table>
               <TableHeader>
@@ -239,7 +241,7 @@ export default function TenantDetail() {
       {/* Notes */}
       {tenant.notes && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />Notes</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{tenant.notes}</p></CardContent>
         </Card>
       )}

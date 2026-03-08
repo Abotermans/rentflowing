@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -11,13 +12,14 @@ import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 export default function VendorDetail() {
   const { id } = useParams<{ id: string }>();
   const { vendors, tickets, properties, units } = useAppData();
+  const { t } = useSettings();
 
   const vendor = vendors.find(v => v.id === id);
   if (!vendor) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Vendor not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/vendors">← Back to Vendors</Link></Button>
+        <p className="text-muted-foreground">{t("detail.vendorNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/vendors">← {t("nav.vendors")}</Link></Button>
       </div>
     );
   }
@@ -30,7 +32,7 @@ export default function VendorDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/vendors"><ArrowLeft className="h-4 w-4 mr-1" />Vendors</Link>
+          <Link to="/vendors"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.vendors")}</Link>
         </Button>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">{vendor.vendorName}</h1>
@@ -41,7 +43,7 @@ export default function VendorDetail() {
 
       {/* Contact Info */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Contact Information</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.contactInfo")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="flex items-start gap-2">
@@ -100,10 +102,10 @@ export default function VendorDetail() {
 
       {/* Linked Tickets */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Linked Tickets</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.linkedTickets")}</CardTitle></CardHeader>
         <CardContent>
           {vendorTickets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tickets assigned to this vendor.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noTicketsForVendor")}</p>
           ) : (
             <Table>
               <TableHeader>
@@ -142,7 +144,7 @@ export default function VendorDetail() {
       {/* Notes */}
       {vendor.notes && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />Notes</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{vendor.notes}</p></CardContent>
         </Card>
       )}

@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +13,7 @@ import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
   const { units, properties, getActiveLease, tenants, getLeaseOutstanding, getLedgerByLease, getTicketsByUnit } = useAppData();
+  const { t } = useSettings();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
@@ -19,8 +21,8 @@ export default function UnitDetail() {
   if (!unit || !property) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Unit not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/units">← Back to Units</Link></Button>
+        <p className="text-muted-foreground">{t("detail.unitNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/units">← {t("nav.units")}</Link></Button>
       </div>
     );
   }
@@ -50,7 +52,7 @@ export default function UnitDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/units"><ArrowLeft className="h-4 w-4 mr-1" />Units</Link>
+          <Link to="/units"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.units")}</Link>
         </Button>
         <div className="flex items-start justify-between">
           <div>
@@ -75,7 +77,7 @@ export default function UnitDetail() {
 
       {/* Main Info */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Unit Information</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.unitInformation")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {infoItems.map(item => (
@@ -93,7 +95,7 @@ export default function UnitDetail() {
 
       {/* Financial Defaults */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Defaults</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialDefaults")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-6">
             <div>
@@ -118,7 +120,7 @@ export default function UnitDetail() {
 
       {/* Occupancy */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Occupancy</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.occupancySection")}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusBadge status={unit.currentStatus} />
@@ -234,7 +236,7 @@ export default function UnitDetail() {
       {/* Property Context */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Building2 className="h-4 w-4" />Property Context</CardTitle>
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Building2 className="h-4 w-4" />{t("detail.propertyContext")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -276,7 +278,7 @@ export default function UnitDetail() {
             </CardHeader>
             <CardContent>
               {unitTickets.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No maintenance tickets for this unit.</p>
+                <p className="text-sm text-muted-foreground">{t("detail.noMaintenanceTickets")}</p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -309,7 +311,7 @@ export default function UnitDetail() {
       {/* Notes */}
       {unit.notes && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />Notes</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{unit.notes}</p></CardContent>
         </Card>
       )}

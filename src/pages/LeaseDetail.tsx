@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
   const { leases, tenants, units, properties, getLedgerByLease, getPaymentsByLease, getLeaseOutstanding, addPayment, getGuaranteeByLease, addGuarantee, updateGuarantee, updateLease, confirmMoveOut } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
 
   // Payment form
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
@@ -67,8 +69,8 @@ export default function LeaseDetail() {
   if (!lease) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Lease not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/leases">← Back to Leases</Link></Button>
+        <p className="text-muted-foreground">{t("detail.leaseNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/leases">← {t("nav.leases")}</Link></Button>
       </div>
     );
   }
@@ -216,7 +218,7 @@ export default function LeaseDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/leases"><ArrowLeft className="h-4 w-4 mr-1" />Leases</Link>
+          <Link to="/leases"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.leases")}</Link>
         </Button>
         <div className="flex items-center justify-between">
           <div>
@@ -268,7 +270,7 @@ export default function LeaseDetail() {
 
       {/* Lease Summary */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Lease Summary</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.leaseSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div><p className="text-xs text-muted-foreground">Start Date</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
@@ -286,7 +288,7 @@ export default function LeaseDetail() {
 
       {/* Financial Summary */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Summary</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><p className="text-xs text-muted-foreground">This Month Due</p><p className="text-lg font-bold text-foreground">{formatCurrency(thisMonthDue, currency, locale)}</p></div>
@@ -307,7 +309,7 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Shield className="h-4 w-4" />Deposit / Guarantee</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Shield className="h-4 w-4" />{t("detail.depositGuarantee")}</CardTitle>
             <Button variant="outline" size="sm" onClick={openGuaranteeForm}>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</Button>
           </div>
         </CardHeader>
@@ -335,7 +337,7 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />Notice / Lease End</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? "Edit Notice" : "Register Notice"}</Button>
               {lease.leaseStatus === "active" && (
@@ -361,13 +363,13 @@ export default function LeaseDetail() {
 
       {/* ==================== OCCUPANCY OPERATIONS ==================== */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2"><Truck className="h-5 w-5" />Occupancy Operations</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2"><Truck className="h-5 w-5" />{t("detail.occupancyOps")}</h2>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Move-In Panel */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Home className="h-4 w-4" />Move-In</CardTitle>
+                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Home className="h-4 w-4" />{t("detail.moveIn")}</CardTitle>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={moveInStatus === "completed" ? "completed" : moveInStatus === "scheduled" ? "scheduled" : "not-scheduled"} />
                   {moveInStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveInForm}>{moveInStatus === "not-scheduled" ? "Schedule" : "Edit"}</Button>}
@@ -396,7 +398,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><PackageCheck className="h-4 w-4" />Move-Out</CardTitle>
+                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><PackageCheck className="h-4 w-4" />{t("detail.moveOut")}</CardTitle>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={moveOutStatus === "completed" ? "completed" : moveOutStatus === "scheduled" ? "scheduled" : "not-scheduled"} />
                   {moveOutStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveOutForm}>{moveOutStatus === "not-scheduled" ? "Schedule" : "Edit"}</Button>}
@@ -425,7 +427,7 @@ export default function LeaseDetail() {
           {/* Keys & Meters Panel */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Key className="h-4 w-4" />Keys & Meters</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Key className="h-4 w-4" />{t("detail.keysMeters")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
@@ -463,7 +465,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Gauge className="h-4 w-4" />Return Status</CardTitle>
+                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Gauge className="h-4 w-4" />{t("detail.returnStatus")}</CardTitle>
                 <div className="flex items-center gap-2">
                   {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
                   <Button variant="outline" size="sm" onClick={openReturnForm}>
@@ -489,7 +491,7 @@ export default function LeaseDetail() {
       {/* Tenant & Unit */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Tenant</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leases.tenant")}</CardTitle></CardHeader>
           <CardContent>
             {tenant ? (
               <div className="space-y-2">
@@ -501,7 +503,7 @@ export default function LeaseDetail() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Unit & Property</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.unitProperty")}</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {unit && <div><p className="text-xs text-muted-foreground">Unit</p><Link to={`/units/${unit.id}`} className="text-sm font-medium text-primary hover:underline">{unit.unitCode} — {unit.unitLabel}</Link></div>}
@@ -518,10 +520,10 @@ export default function LeaseDetail() {
 
       {/* Ledger */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Ledger</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.ledger")}</CardTitle></CardHeader>
         <CardContent>
           {enrichedLedger.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No ledger lines.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noLedgerLines")}</p>
           ) : (
             <Table>
               <TableHeader>
@@ -555,10 +557,10 @@ export default function LeaseDetail() {
 
       {/* Payment History */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Payment History</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.paymentHistory")}</CardTitle></CardHeader>
         <CardContent>
           {paymentHistory.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No payments recorded.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noPaymentsRecorded")}</p>
           ) : (
             <Table>
               <TableHeader>
@@ -589,7 +591,7 @@ export default function LeaseDetail() {
       {/* Notes */}
       {lease.notes && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />Notes</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{lease.notes}</p></CardContent>
         </Card>
       )}

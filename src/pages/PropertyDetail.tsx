@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const { properties, units, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
 
   const property = properties.find(p => p.id === id);
   const propertyUnits = units.filter(u => u.propertyId === id);
@@ -77,8 +79,8 @@ export default function PropertyDetail() {
   if (!property) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Property not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/properties">← Back to Properties</Link></Button>
+        <p className="text-muted-foreground">{t("detail.propertyNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/properties">← {t("nav.properties")}</Link></Button>
       </div>
     );
   }
@@ -103,7 +105,7 @@ export default function PropertyDetail() {
       {/* Header */}
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" />Properties</Link>
+          <Link to="/properties"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.properties")}</Link>
         </Button>
         <div className="flex items-start justify-between">
           <div>
@@ -123,7 +125,7 @@ export default function PropertyDetail() {
       {/* Overview & Local Settings */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Overview</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.overview")}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">Address</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">Owner</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
@@ -133,7 +135,7 @@ export default function PropertyDetail() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Local Settings</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.localSettings")}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">Locale</span><span className="text-sm font-medium text-foreground font-mono">{property.locale}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">Currency</span><span className="text-sm font-medium text-foreground">{property.currencyCode}</span></div>
@@ -162,7 +164,7 @@ export default function PropertyDetail() {
       {/* Description */}
       {property.description && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Description</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("common.description")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{property.description}</p></CardContent>
         </Card>
       )}
@@ -170,14 +172,14 @@ export default function PropertyDetail() {
       {/* Units */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-foreground">Units</h2>
-          <Button size="sm" onClick={openAddUnit}><Plus className="h-4 w-4 mr-1.5" />Add Unit</Button>
+          <h2 className="text-lg font-semibold text-foreground">{t("nav.units")}</h2>
+          <Button size="sm" onClick={openAddUnit}><Plus className="h-4 w-4 mr-1.5" />{t("units.add")}</Button>
         </div>
         {propertyUnits.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">No units in this property yet.</p>
-              <Button variant="link" className="mt-2" onClick={openAddUnit}>Add your first unit</Button>
+              <p className="text-muted-foreground">{t("detail.noUnitsInProperty")}</p>
+              <Button variant="link" className="mt-2" onClick={openAddUnit}>{t("detail.addFirstUnit")}</Button>
             </CardContent>
           </Card>
         ) : (
@@ -256,7 +258,7 @@ export default function PropertyDetail() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>{editingUnit ? "Edit Unit" : "Add Unit"}</SheetTitle>
+            <SheetTitle>{editingUnit ? t("units.edit") : t("units.add")}</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-6">
             <div className="grid grid-cols-2 gap-4">
