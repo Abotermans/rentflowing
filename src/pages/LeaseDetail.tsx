@@ -481,7 +481,7 @@ export default function LeaseDetail() {
                   {lease.returnNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.returnNotes}</p></div>}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No return status set. This is relevant after move-out to track unit readiness.</p>
+                <p className="text-sm text-muted-foreground">{t("detail.noReturnDesc")}</p>
               )}
             </CardContent>
           </Card>
