@@ -105,7 +105,7 @@ export default function VendorDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.linkedTickets")}</CardTitle></CardHeader>
         <CardContent>
           {vendorTickets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tickets assigned to this vendor.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noTicketsForVendor")}</p>
           ) : (
             <Table>
               <TableHeader>
