@@ -3,8 +3,11 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Search, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useSettings } from "@/context/SettingsContext";
 
 export function AppLayout() {
+  const { t } = useSettings();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -16,7 +19,7 @@ export function AppLayout() {
               <div className="relative w-full">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search properties, units…"
+                  placeholder={t("common.searchPlaceholder")}
                   className="pl-9 h-9 bg-muted/50 border-none focus-visible:bg-background focus-visible:ring-1"
                   readOnly
                 />

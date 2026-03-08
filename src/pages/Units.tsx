@@ -8,6 +8,7 @@ import { DoorOpen, Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel } from "@/lib/formatters";
+import { useSettings } from "@/context/SettingsContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 export default function Units() {
   const { properties, units, addUnit, updateUnit, deleteUnit } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -92,10 +94,10 @@ export default function Units() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Units</h1>
-          <p className="text-sm text-muted-foreground">{units.length} units across all properties</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("units.title")}</h1>
+          <p className="text-sm text-muted-foreground">{units.length} {t("units.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Unit</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("units.add")}</Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -127,9 +129,9 @@ export default function Units() {
       </div>
 
       {units.length === 0 ? (
-        <EmptyState icon={DoorOpen} title="No units yet" description="Add units to your properties." actionLabel="Add Unit" onAction={openAdd} />
+        <EmptyState icon={DoorOpen} title={t("units.empty")} description={t("units.emptyDesc")} actionLabel={t("units.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>

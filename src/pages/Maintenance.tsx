@@ -17,12 +17,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { getTenantFullName } from "@/types";
 import { MaintenanceTicket, MaintenanceCategory, MaintenancePriority, MaintenanceStatus, MAINTENANCE_CATEGORY_LABELS, MAINTENANCE_PRIORITY_LABELS, MAINTENANCE_STATUS_LABELS } from "@/types/maintenance";
+import { useSettings } from "@/context/SettingsContext";
 
 type TicketFormData = Omit<MaintenanceTicket, "id">;
 
 export default function Maintenance() {
   const { tickets, properties, units, tenants, vendors, addTicket, updateTicket, deleteTicket } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -87,10 +89,10 @@ export default function Maintenance() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Maintenance</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("maintenance.title")}</h1>
           <p className="text-sm text-muted-foreground">{tickets.length} tickets</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />New Ticket</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("maintenance.add")}</Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -136,9 +138,9 @@ export default function Maintenance() {
       </div>
 
       {tickets.length === 0 ? (
-        <EmptyState icon={Wrench} title="No maintenance tickets" description="Create your first ticket." actionLabel="New Ticket" onAction={openAdd} />
+        <EmptyState icon={Wrench} title={t("maintenance.empty")} description={t("maintenance.emptyDesc")} actionLabel={t("maintenance.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>

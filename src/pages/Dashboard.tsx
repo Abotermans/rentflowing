@@ -6,9 +6,11 @@ import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, Cal
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function Dashboard() {
   const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees, tickets } = useAppData();
+  const { t } = useSettings();
 
   // Maintenance KPIs
   const openTicketsCount = tickets.filter(t => t.status !== "completed" && t.status !== "cancelled").length;
@@ -118,8 +120,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Portfolio overview</p>
+        <h1 className="text-2xl font-bold text-foreground">{t("dashboard.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("dashboard.portfolio")}</p>
       </div>
 
       {kpiSections.map(section => (

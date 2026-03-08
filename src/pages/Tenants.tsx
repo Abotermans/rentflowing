@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tenant, TenantStatus, getTenantFullName } from "@/types";
+import { useSettings } from "@/context/SettingsContext";
 
 const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -27,6 +28,7 @@ type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
 export default function Tenants() {
   const { tenants, leases, units, properties, addTenant, updateTenant, deleteTenant } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -81,10 +83,10 @@ export default function Tenants() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Tenants</h1>
-          <p className="text-sm text-muted-foreground">{tenants.length} tenants</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("tenants.title")}</h1>
+          <p className="text-sm text-muted-foreground">{tenants.length} {t("tenants.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Tenant</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("tenants.add")}</Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -102,21 +104,21 @@ export default function Tenants() {
       </div>
 
       {tenants.length === 0 ? (
-        <EmptyState icon={Users} title="No tenants yet" description="Add your first tenant." actionLabel="Add Tenant" onAction={openAdd} />
+        <EmptyState icon={Users} title={t("tenants.empty")} description={t("tenants.emptyDesc")} actionLabel={t("tenants.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Current Unit</TableHead>
-                <TableHead>Current Lease</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("tenants.name")}</TableHead>
+                <TableHead>{t("tenants.email")}</TableHead>
+                <TableHead>{t("tenants.phone")}</TableHead>
+                <TableHead>{t("filter.status")}</TableHead>
+                <TableHead>{t("leases.unit")}</TableHead>
+                <TableHead>{t("leases.title")}</TableHead>
+                <TableHead className="text-right">{t("tenants.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

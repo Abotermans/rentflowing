@@ -16,6 +16,7 @@ import { Property } from "@/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
+import { useSettings } from "@/context/SettingsContext";
 
 const EUROPEAN_COUNTRIES = [
   { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
@@ -51,6 +52,7 @@ const emptyForm: PropertyFormData = {
 export default function Properties() {
   const { properties, units, addProperty, updateProperty, deleteProperty, getPropertyStats } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<PropertyFormData>({ ...emptyForm });
@@ -112,10 +114,10 @@ export default function Properties() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Properties</h1>
-          <p className="text-sm text-muted-foreground">{properties.length} properties in portfolio</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("properties.title")}</h1>
+          <p className="text-sm text-muted-foreground">{properties.length} {t("properties.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Property</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("properties.add")}</Button>
       </div>
 
       {/* Filters */}
@@ -153,24 +155,24 @@ export default function Properties() {
       </div>
 
       {properties.length === 0 ? (
-        <EmptyState icon={Building2} title="No properties yet" description="Add your first property to get started." actionLabel="Add Property" onAction={openAdd} />
+        <EmptyState icon={Building2} title={t("properties.empty")} description={t("properties.emptyDesc")} actionLabel={t("properties.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>{t("properties.name")}</TableHead>
                 <TableHead>Reference</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>{t("properties.city")}</TableHead>
+                <TableHead>{t("properties.country")}</TableHead>
+                <TableHead>{t("properties.type")}</TableHead>
                 <TableHead>Owner</TableHead>
-                <TableHead className="text-center">Units</TableHead>
-                <TableHead className="text-center">Occupancy</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-center">{t("properties.units")}</TableHead>
+                <TableHead className="text-center">{t("properties.occupancy")}</TableHead>
+                <TableHead>{t("filter.status")}</TableHead>
+                <TableHead className="text-right">{t("properties.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

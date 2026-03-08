@@ -15,8 +15,10 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getTenantFullName, type PaymentMethod } from "@/types";
 import { Plus, CreditCard, AlertTriangle, CheckCircle2, Clock, Search } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function Payments() {
+  const { t } = useSettings();
   const { ledgerLines, payments, leases, tenants, properties, units, addPayment } = useAppData();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
@@ -118,10 +120,10 @@ export default function Payments() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Payments</h1>
-          <p className="text-sm text-muted-foreground">Rent collection & arrears follow-up</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("payments.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("payments.title")}</p>
         </div>
-        <Button onClick={() => setSheetOpen(true)}><Plus className="h-4 w-4 mr-1" />Add Payment</Button>
+        <Button onClick={() => setSheetOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.record")}</Button>
       </div>
 
       {/* KPI Cards */}

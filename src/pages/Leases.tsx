@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { useSettings } from "@/context/SettingsContext";
 
 const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -30,6 +31,7 @@ type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 export default function Leases() {
   const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease, getGuaranteeByLease } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterProperty, setFilterProperty] = useState("all");
@@ -111,10 +113,10 @@ export default function Leases() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Leases</h1>
-          <p className="text-sm text-muted-foreground">{leases.length} leases</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("leases.title")}</h1>
+          <p className="text-sm text-muted-foreground">{leases.length} {t("leases.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Lease</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("leases.add")}</Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -145,9 +147,9 @@ export default function Leases() {
       </div>
 
       {leases.length === 0 ? (
-        <EmptyState icon={FileText} title="No leases yet" description="Create your first lease." actionLabel="Add Lease" onAction={openAdd} />
+        <EmptyState icon={FileText} title={t("leases.empty")} description={t("leases.emptyDesc")} actionLabel={t("leases.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>

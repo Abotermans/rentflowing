@@ -15,12 +15,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Vendor, VendorStatus, TRADE_CATEGORIES } from "@/types/maintenance";
+import { useSettings } from "@/context/SettingsContext";
 
 type VendorFormData = Omit<Vendor, "id">;
 
 export default function Vendors() {
   const { vendors, addVendor, updateVendor, deleteVendor } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -63,10 +65,10 @@ export default function Vendors() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Vendors</h1>
-          <p className="text-sm text-muted-foreground">{vendors.length} vendors</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("vendors.title")}</h1>
+          <p className="text-sm text-muted-foreground">{vendors.length} {t("vendors.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Vendor</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("vendors.add")}</Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -85,9 +87,9 @@ export default function Vendors() {
       </div>
 
       {vendors.length === 0 ? (
-        <EmptyState icon={HardHat} title="No vendors yet" description="Add your first vendor." actionLabel="Add Vendor" onAction={openAdd} />
+        <EmptyState icon={HardHat} title={t("vendors.empty")} description={t("vendors.emptyDesc")} actionLabel={t("vendors.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>
