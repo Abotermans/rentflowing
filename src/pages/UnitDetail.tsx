@@ -62,7 +62,7 @@ export default function UnitDetail() {
             </div>
             <p className="text-sm text-muted-foreground mt-1">{unit.unitLabel}</p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Property: <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>
+              {t("table.property")}: <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>
               <span className="mx-1 text-muted-foreground">·</span>
               <span className="font-mono text-xs">{property.referenceCode}</span>
               <span className="mx-1 text-muted-foreground">·</span>
