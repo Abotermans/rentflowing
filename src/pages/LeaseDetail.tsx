@@ -328,7 +328,7 @@ export default function LeaseDetail() {
               {guarantee.notes && <div className="col-span-full"><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{guarantee.notes}</p></div>}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No guarantee record. Click "Add Guarantee" to create one.</p>
+            <p className="text-sm text-muted-foreground">{t("detail.noGuaranteeDesc")}</p>
           )}
         </CardContent>
       </Card>
