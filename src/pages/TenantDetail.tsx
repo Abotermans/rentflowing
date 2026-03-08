@@ -9,6 +9,9 @@ import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock
 import { getTenantFullName, getLeaseLifecycleStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canDeleteTenant, canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
+import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
