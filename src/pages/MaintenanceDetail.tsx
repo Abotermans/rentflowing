@@ -87,7 +87,7 @@ export default function MaintenanceDetail() {
 
       {/* Context */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Context</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.contextSection")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="flex items-start gap-2">
