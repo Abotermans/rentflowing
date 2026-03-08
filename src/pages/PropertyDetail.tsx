@@ -15,8 +15,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { DeleteDialog } from "@/components/shared/DeleteDialog";
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
@@ -228,30 +228,7 @@ export default function PropertyDetail() {
                             <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                            </AlertDialogTrigger>
-                          <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>{t("detail.deleteUnitTitle")}</AlertDialogTitle>
-                                <AlertDialogDescription className="space-y-2">
-                                  <span>{t("units.deleteDesc")}</span>
-                                  {(() => {
-                                    const unitLease = getActiveLease(u.id);
-                                    if (unitLease) {
-                                      return <span className="block text-sm font-medium text-destructive">{t("detail.deleteUnitWarningLease").replace("{ref}", unitLease.leaseReference)}</span>;
-                                    }
-                                    return <span className="block text-sm text-muted-foreground">{t("detail.deleteUnitSafe")}</span>;
-                                  })()}
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUnit(u.id)}>{t("action.delete")}</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDeleteUnit} />
                         </div>
                       </TableCell>
                     </TableRow>
