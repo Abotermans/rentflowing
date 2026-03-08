@@ -88,3 +88,32 @@ export interface Lease {
   createdAt: string;
   updatedAt: string;
 }
+
+export type LedgerLineType = "rent" | "charges" | "adjustment";
+export type LedgerLineStatus = "due" | "paid" | "partially-paid" | "overdue";
+
+export interface LedgerLine {
+  id: string;
+  leaseId: string;
+  type: LedgerLineType;
+  label: string;
+  periodMonth: string; // YYYY-MM
+  dueDate: string;
+  amountDue: number;
+  amountPaid: number;
+  remainingBalance: number;
+  status: LedgerLineStatus;
+}
+
+export type PaymentMethod = "bank-transfer" | "cash" | "card" | "direct-debit" | "other";
+
+export interface Payment {
+  id: string;
+  leaseId: string;
+  tenantId: string;
+  paymentDate: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  reference: string;
+  notes: string;
+}
