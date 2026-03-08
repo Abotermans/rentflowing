@@ -95,7 +95,7 @@ export default function Properties() {
 
   const handleDelete = (id: string) => {
     deleteProperty(id);
-    toast({ title: "Property deleted" });
+    toast({ title: `${t("properties.title")} ${t("common.deleted").toLowerCase()}` });
   };
 
   const filtered = properties.filter(p => {
