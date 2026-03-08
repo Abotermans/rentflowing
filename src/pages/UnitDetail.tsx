@@ -262,6 +262,50 @@ export default function UnitDetail() {
         </CardContent>
       </Card>
 
+      {/* Maintenance */}
+      {(() => {
+        const unitTickets = getTicketsByUnit(unit.id);
+        const openMaintenance = unitTickets.filter(t => t.status !== "completed" && t.status !== "cancelled");
+        const historyMaintenance = unitTickets.filter(t => t.status === "completed" || t.status === "cancelled");
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <Wrench className="h-4 w-4" />Maintenance ({unitTickets.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {unitTickets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No maintenance tickets for this unit.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Title</TableHead>
+                      <TableHead className="text-xs">Category</TableHead>
+                      <TableHead className="text-xs">Priority</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                      <TableHead className="text-xs">Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unitTickets.map(t => (
+                      <TableRow key={t.id}>
+                        <TableCell className="font-medium"><Link to={`/maintenance/${t.id}`} className="hover:underline text-foreground">{t.title}</Link></TableCell>
+                        <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[t.category]}</TableCell>
+                        <TableCell><StatusBadge status={t.priority} /></TableCell>
+                        <TableCell><StatusBadge status={t.status} /></TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{formatDate(t.createdDate, property.locale)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Notes */}
       {unit.notes && (
         <Card>
