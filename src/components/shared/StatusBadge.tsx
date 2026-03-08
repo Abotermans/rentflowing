@@ -108,6 +108,9 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   "tenant-recoverable": "status.tenantRecoverable",
   "partially-recoverable": "status.partiallyRecoverable",
   informational: "status.informational",
+  "move-in-pending": "status.moveInPending",
+  "move-out-scheduled": "status.moveOutScheduled",
+  "available-soon": "status.availableSoon",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {

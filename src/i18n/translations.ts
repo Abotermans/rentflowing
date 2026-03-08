@@ -889,6 +889,11 @@ const fr: TranslationKeys = {
   "status.high": "Élevé",
   "status.urgent": "Urgent",
   "status.none": "Aucun",
+  "status.moveInPending": "Emménagement en attente",
+  "status.moveOutScheduled": "Déménagement planifié",
+  "status.availableSoon": "Bientôt disponible",
+  "occupancy.derivedLabel": "Occupation",
+  "occupancy.inconsistencyWarning": "Incohérence de statut",
 
   // Tenants
   "tenants.title": "Locataires",
