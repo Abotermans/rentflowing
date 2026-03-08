@@ -15,8 +15,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { DeleteDialog } from "@/components/shared/DeleteDialog";
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
