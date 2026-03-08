@@ -120,8 +120,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Portfolio overview</p>
+        <h1 className="text-2xl font-bold text-foreground">{t("dashboard.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("dashboard.portfolio")}</p>
       </div>
 
       {kpiSections.map(section => (
