@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Vendor, VendorStatus, TRADE_CATEGORIES } from "@/types/maintenance";
+import { useSettings } from "@/context/SettingsContext";
 
 type VendorFormData = Omit<Vendor, "id">;
 
