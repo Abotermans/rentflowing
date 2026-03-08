@@ -147,7 +147,7 @@ export default function Leases() {
       {leases.length === 0 ? (
         <EmptyState icon={FileText} title="No leases yet" description="Create your first lease." actionLabel="Add Lease" onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No leases match your filters.</p></CardContent></Card>
+        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
       ) : (
         <Card>
           <Table>
