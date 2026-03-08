@@ -16,6 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Tenant, TenantStatus, getTenantFullName } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
   { value: "active", label: "Active" },
