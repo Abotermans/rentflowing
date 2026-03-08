@@ -316,16 +316,16 @@ export default function LeaseDetail() {
         <CardContent>
           {guarantee ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div><p className="text-xs text-muted-foreground">Type</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[guarantee.type]}</p></div>
-              <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={guarantee.status} /></div>
-              <div><p className="text-xs text-muted-foreground">Expected</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.expectedAmount, currency, locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">Received</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.receivedAmount, currency, locale)}</p></div>
-              {guarantee.receivedDate && <div><p className="text-xs text-muted-foreground">Received Date</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.receivedDate, locale)}</p></div>}
-              {guarantee.releaseDate && <div><p className="text-xs text-muted-foreground">Release Date</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.releaseDate, locale)}</p></div>}
+              <div><p className="text-xs text-muted-foreground">{t("units.type")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[guarantee.type]}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("filter.status")}</p><StatusBadge status={guarantee.status} /></div>
+              <div><p className="text-xs text-muted-foreground">{t("table.expected")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.expectedAmount, currency, locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("table.received")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.receivedAmount, currency, locale)}</p></div>
+              {guarantee.receivedDate && <div><p className="text-xs text-muted-foreground">{t("detail.receivedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.receivedDate, locale)}</p></div>}
+              {guarantee.releaseDate && <div><p className="text-xs text-muted-foreground">{t("detail.releaseDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.releaseDate, locale)}</p></div>}
               {guarantee.retentionAmount != null && guarantee.retentionAmount > 0 && (
-                <div><p className="text-xs text-muted-foreground">Retention</p><p className="text-sm font-medium text-destructive">{formatCurrency(guarantee.retentionAmount, currency, locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("detail.retention")}</p><p className="text-sm font-medium text-destructive">{formatCurrency(guarantee.retentionAmount, currency, locale)}</p></div>
               )}
-              {guarantee.notes && <div className="col-span-full"><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm text-foreground">{guarantee.notes}</p></div>}
+              {guarantee.notes && <div className="col-span-full"><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{guarantee.notes}</p></div>}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No guarantee record. Click "Add Guarantee" to create one.</p>
