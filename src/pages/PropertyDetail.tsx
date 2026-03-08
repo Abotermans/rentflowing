@@ -137,9 +137,9 @@ export default function PropertyDetail() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.localSettings")}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Locale</span><span className="text-sm font-medium text-foreground font-mono">{property.locale}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Currency</span><span className="text-sm font-medium text-foreground">{property.currencyCode}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Measurement</span><span className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.locale")}</span><span className="text-sm font-medium text-foreground font-mono">{property.locale}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.currency")}</span><span className="text-sm font-medium text-foreground">{property.currencyCode}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.measurement")}</span><span className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</span></div>
           </CardContent>
         </Card>
       </div>

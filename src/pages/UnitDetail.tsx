@@ -257,7 +257,7 @@ export default function UnitDetail() {
               <p className="text-sm font-medium text-foreground font-mono">{property.locale}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Measurement</p>
+              <p className="text-xs text-muted-foreground">{t("properties.measurement")}</p>
               <p className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</p>
             </div>
           </div>
