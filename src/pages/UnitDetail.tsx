@@ -21,8 +21,8 @@ export default function UnitDetail() {
   if (!unit || !property) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Unit not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/units">← Back to Units</Link></Button>
+        <p className="text-muted-foreground">{t("detail.unitNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/units">← {t("nav.units")}</Link></Button>
       </div>
     );
   }
