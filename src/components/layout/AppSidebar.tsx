@@ -1,6 +1,5 @@
-import { LayoutDashboard, Building2, Users, FileText, CreditCard } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -17,15 +16,12 @@ import {
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Properties", url: "/properties", icon: Building2 },
-  { title: "Tenants", url: "/tenants", icon: Users },
-  { title: "Leases", url: "/leases", icon: FileText },
-  { title: "Payments", url: "/payments", icon: CreditCard },
+  { title: "Units", url: "/units", icon: DoorOpen },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
 
   return (
     <Sidebar collapsible="icon">
