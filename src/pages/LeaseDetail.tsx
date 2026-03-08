@@ -420,7 +420,7 @@ export default function LeaseDetail() {
                   </div>
                 ))}
               </div>
-              {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
+              {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
             </CardContent>
           </Card>
 
