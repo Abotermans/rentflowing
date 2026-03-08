@@ -2,10 +2,13 @@ import React, { createContext, useContext, useState, useCallback, useMemo } from
 import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
+import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
 import { initialProperties, initialUnits, initialTenants, initialLeases, initialGuarantees } from "@/data/mockData";
 import { initialReceivableItems, initialCashReceipts, initialAllocations } from "@/data/receivablesMockData";
 import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
+import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
 import { autoAllocate } from "@/lib/reconciliation";
+import { computeAllocations } from "@/lib/costAllocation";
 
 interface PropertyStats {
   total: number;
@@ -27,6 +30,13 @@ interface AppState {
   allocations: ReceiptAllocation[];
   tickets: MaintenanceTicket[];
   vendors: Vendor[];
+
+  // Costs & Taxes
+  costCategories: CostCategory[];
+  costEntries: CostEntry[];
+  allocationRules: AllocationRule[];
+  allocationRuleUnitShares: AllocationRuleUnitShare[];
+  costAllocationResults: CostAllocationResult[];
 
   // Property CRUD
   addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => void;
@@ -76,6 +86,27 @@ interface AppState {
   updateVendor: (v: Vendor) => void;
   deleteVendor: (id: string) => void;
 
+  // Cost Categories CRUD
+  addCostCategory: (c: Omit<CostCategory, "id" | "createdAt" | "updatedAt">) => void;
+  updateCostCategory: (c: CostCategory) => void;
+  deleteCostCategory: (id: string) => void;
+
+  // Cost Entries CRUD
+  addCostEntry: (e: Omit<CostEntry, "id" | "createdAt" | "updatedAt">) => void;
+  updateCostEntry: (e: CostEntry) => void;
+  deleteCostEntry: (id: string) => void;
+
+  // Allocation Rules CRUD
+  addAllocationRule: (r: Omit<AllocationRule, "id" | "createdAt" | "updatedAt">) => void;
+  updateAllocationRule: (r: AllocationRule) => void;
+  deleteAllocationRule: (id: string) => void;
+
+  // Allocation Rule Unit Shares
+  setAllocationRuleUnitShares: (ruleId: string, shares: Omit<AllocationRuleUnitShare, "id">[]) => void;
+
+  // Run allocation
+  runAllocation: (costEntryId: string) => void;
+
   // Queries
   getPropertyStats: (propertyId: string) => PropertyStats;
   getPropertyById: (id: string) => Property | undefined;
@@ -105,6 +136,15 @@ interface AppState {
   getTicketsByProperty: (propertyId: string) => MaintenanceTicket[];
   getTicketsByVendor: (vendorId: string) => MaintenanceTicket[];
   getVendorById: (id: string) => Vendor | undefined;
+
+  // Cost queries
+  getCostEntriesByProperty: (propertyId: string) => CostEntry[];
+  getCostEntriesByUnit: (unitId: string) => CostEntry[];
+  getAllocationResultsByUnit: (unitId: string) => CostAllocationResult[];
+  getAllocationResultsByProperty: (propertyId: string) => CostAllocationResult[];
+  getCostCategoryById: (id: string) => CostCategory | undefined;
+  getAllocationRuleById: (id: string) => AllocationRule | undefined;
+  getUnitSharesByRule: (ruleId: string) => AllocationRuleUnitShare[];
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -121,9 +161,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [guarantees, setGuarantees] = useState<Guarantee[]>(initialGuarantees);
   const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
   const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
-  const [allocations, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
+  const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialTickets);
   const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
+
+  // Costs & Taxes state
+  const [costCategories, setCostCategories] = useState<CostCategory[]>(initialCostCategories);
+  const [costEntries, setCostEntries] = useState<CostEntry[]>(initialCostEntries);
+  const [allocationRules, setAllocationRules] = useState<AllocationRule[]>(initialAllocationRules);
+  const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>(initialAllocationRuleUnitShares);
+  const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>(initialCostAllocationResults);
 
   // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
@@ -209,7 +256,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const newReceipt: CashReceipt = { ...r, id: genId("cr"), createdAt: ts, updatedAt: ts };
 
     if (autoAllocateFlag) {
-      // Find open receivables for this tenant/lease/property
       const openItems = receivableItems.filter(ri => {
         if (ri.outstandingAmount <= 0) return false;
         if (newReceipt.leaseId && ri.leaseId === newReceipt.leaseId) return true;
@@ -335,6 +381,93 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVendors(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  // ===== Cost Categories CRUD =====
+  const addCostCategory = useCallback((c: Omit<CostCategory, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    setCostCategories(prev => [...prev, { ...c, id: genId("cc"), createdAt: ts, updatedAt: ts }]);
+  }, []);
+  const updateCostCategory = useCallback((c: CostCategory) => {
+    setCostCategories(prev => prev.map(x => x.id === c.id ? { ...c, updatedAt: now() } : x));
+  }, []);
+  const deleteCostCategory = useCallback((id: string) => {
+    setCostCategories(prev => prev.filter(x => x.id !== id));
+  }, []);
+
+  // ===== Cost Entries CRUD =====
+  const addCostEntry = useCallback((e: Omit<CostEntry, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    const newEntry: CostEntry = { ...e, id: genId("ce"), createdAt: ts, updatedAt: ts };
+    setCostEntries(prev => [...prev, newEntry]);
+    // Auto-run allocation if property-level with a rule
+    if (!newEntry.unitId && newEntry.allocationRuleId) {
+      const rule = allocationRules.find(r => r.id === newEntry.allocationRuleId);
+      if (rule) {
+        const results = computeAllocations(newEntry, rule, units, allocationRuleUnitShares);
+        setCostAllocationResults(prev => [
+          ...prev,
+          ...results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts })),
+        ]);
+      }
+    }
+  }, [allocationRules, units, allocationRuleUnitShares]);
+
+  const updateCostEntry = useCallback((e: CostEntry) => {
+    const ts = now();
+    setCostEntries(prev => prev.map(x => x.id === e.id ? { ...e, updatedAt: ts } : x));
+    // Re-run allocation
+    setCostAllocationResults(prev => prev.filter(r => r.costEntryId !== e.id));
+    if (!e.unitId && e.allocationRuleId) {
+      const rule = allocationRules.find(r => r.id === e.allocationRuleId);
+      if (rule) {
+        const results = computeAllocations(e, rule, units, allocationRuleUnitShares);
+        setCostAllocationResults(prev => [
+          ...prev,
+          ...results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts })),
+        ]);
+      }
+    }
+  }, [allocationRules, units, allocationRuleUnitShares]);
+
+  const deleteCostEntry = useCallback((id: string) => {
+    setCostEntries(prev => prev.filter(x => x.id !== id));
+    setCostAllocationResults(prev => prev.filter(r => r.costEntryId !== id));
+  }, []);
+
+  // ===== Allocation Rules CRUD =====
+  const addAllocationRule = useCallback((r: Omit<AllocationRule, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    setAllocationRules(prev => [...prev, { ...r, id: genId("ar"), createdAt: ts, updatedAt: ts }]);
+  }, []);
+  const updateAllocationRule = useCallback((r: AllocationRule) => {
+    setAllocationRules(prev => prev.map(x => x.id === r.id ? { ...r, updatedAt: now() } : x));
+  }, []);
+  const deleteAllocationRule = useCallback((id: string) => {
+    setAllocationRules(prev => prev.filter(x => x.id !== id));
+    setAllocationRuleUnitShares(prev => prev.filter(s => s.allocationRuleId !== id));
+  }, []);
+
+  // ===== Allocation Rule Unit Shares =====
+  const setAllocationRuleUnitSharesFn = useCallback((ruleId: string, shares: Omit<AllocationRuleUnitShare, "id">[]) => {
+    setAllocationRuleUnitShares(prev => [
+      ...prev.filter(s => s.allocationRuleId !== ruleId),
+      ...shares.map(s => ({ ...s, id: genId("arus") })),
+    ]);
+  }, []);
+
+  // ===== Run Allocation =====
+  const runAllocation = useCallback((costEntryId: string) => {
+    const entry = costEntries.find(e => e.id === costEntryId);
+    if (!entry || entry.unitId || !entry.allocationRuleId) return;
+    const rule = allocationRules.find(r => r.id === entry.allocationRuleId);
+    if (!rule) return;
+    const ts = now();
+    const results = computeAllocations(entry, rule, units, allocationRuleUnitShares);
+    setCostAllocationResults(prev => [
+      ...prev.filter(r => r.costEntryId !== costEntryId),
+      ...results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts })),
+    ]);
+  }, [costEntries, allocationRules, units, allocationRuleUnitShares]);
+
   // ===== Queries =====
   const getPropertyStats = useCallback((propertyId: string): PropertyStats => {
     const propUnits = units.filter(u => u.propertyId === propertyId);
@@ -357,8 +490,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getReceivableItemsByTenant = useCallback((tenantId: string) => receivableItems.filter(ri => ri.tenantId === tenantId), [receivableItems]);
   const getCashReceiptsByLease = useCallback((leaseId: string) => cashReceipts.filter(cr => cr.leaseId === leaseId), [cashReceipts]);
   const getCashReceiptsByTenant = useCallback((tenantId: string) => cashReceipts.filter(cr => cr.tenantId === tenantId), [cashReceipts]);
-  const getAllocationsByReceipt = useCallback((receiptId: string) => allocations.filter(a => a.cashReceiptId === receiptId), [allocations]);
-  const getAllocationsByReceivableItem = useCallback((itemId: string) => allocations.filter(a => a.receivableItemId === itemId), [allocations]);
+  const getAllocationsByReceipt = useCallback((receiptId: string) => allocationsState.filter(a => a.cashReceiptId === receiptId), [allocationsState]);
+  const getAllocationsByReceivableItem = useCallback((itemId: string) => allocationsState.filter(a => a.receivableItemId === itemId), [allocationsState]);
 
   // ===== Financial Aggregates =====
   const getLeaseOutstanding = useCallback((leaseId: string) => {
@@ -402,10 +535,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getTicketsByVendor = useCallback((vendorId: string) => tickets.filter(t => t.assignedVendorId === vendorId), [tickets]);
   const getVendorById = useCallback((id: string) => vendors.find(v => v.id === id), [vendors]);
 
+  // ===== Cost Queries =====
+  const getCostEntriesByProperty = useCallback((propertyId: string) => costEntries.filter(e => e.propertyId === propertyId), [costEntries]);
+  const getCostEntriesByUnit = useCallback((unitId: string) => costEntries.filter(e => e.unitId === unitId), [costEntries]);
+  const getAllocationResultsByUnit = useCallback((unitId: string) => costAllocationResults.filter(r => r.unitId === unitId), [costAllocationResults]);
+  const getAllocationResultsByProperty = useCallback((propertyId: string) => costAllocationResults.filter(r => r.propertyId === propertyId), [costAllocationResults]);
+  const getCostCategoryById = useCallback((id: string) => costCategories.find(c => c.id === id), [costCategories]);
+  const getAllocationRuleById = useCallback((id: string) => allocationRules.find(r => r.id === id), [allocationRules]);
+  const getUnitSharesByRule = useCallback((ruleId: string) => allocationRuleUnitShares.filter(s => s.allocationRuleId === ruleId), [allocationRuleUnitShares]);
+
   const value = useMemo(() => ({
     properties, units, tenants, leases, guarantees,
-    receivableItems, cashReceipts, allocations,
+    receivableItems, cashReceipts, allocations: allocationsState,
     tickets, vendors,
+    costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
@@ -415,6 +558,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
     addTicket, updateTicket, deleteTicket,
     addVendor, updateVendor, deleteVendor,
+    addCostCategory, updateCostCategory, deleteCostCategory,
+    addCostEntry, updateCostEntry, deleteCostEntry,
+    addAllocationRule, updateAllocationRule, deleteAllocationRule,
+    setAllocationRuleUnitShares: setAllocationRuleUnitSharesFn,
+    runAllocation,
     getPropertyStats, getPropertyById, getUnitById, getTenantById,
     getActiveLease, getLeasesByTenant, getLeasesByProperty, getGuaranteeByLease,
     getReceivableItemsByLease, getReceivableItemsByTenant,
@@ -423,10 +571,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getLeaseOutstanding, getTenantOutstanding, getTenantUnappliedCredit,
     getReceiptMatchingStatus,
     getTicketsByUnit, getTicketsByProperty, getTicketsByVendor, getVendorById,
+    getCostEntriesByProperty, getCostEntriesByUnit,
+    getAllocationResultsByUnit, getAllocationResultsByProperty,
+    getCostCategoryById, getAllocationRuleById, getUnitSharesByRule,
   }), [
     properties, units, tenants, leases, guarantees,
-    receivableItems, cashReceipts, allocations,
+    receivableItems, cashReceipts, allocationsState,
     tickets, vendors,
+    costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
@@ -436,6 +588,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
     addTicket, updateTicket, deleteTicket,
     addVendor, updateVendor, deleteVendor,
+    addCostCategory, updateCostCategory, deleteCostCategory,
+    addCostEntry, updateCostEntry, deleteCostEntry,
+    addAllocationRule, updateAllocationRule, deleteAllocationRule,
+    setAllocationRuleUnitSharesFn,
+    runAllocation,
     getPropertyStats, getPropertyById, getUnitById, getTenantById,
     getActiveLease, getLeasesByTenant, getLeasesByProperty, getGuaranteeByLease,
     getReceivableItemsByLease, getReceivableItemsByTenant,
@@ -444,6 +601,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getLeaseOutstanding, getTenantOutstanding, getTenantUnappliedCredit,
     getReceiptMatchingStatus,
     getTicketsByUnit, getTicketsByProperty, getTicketsByVendor, getVendorById,
+    getCostEntriesByProperty, getCostEntriesByUnit,
+    getAllocationResultsByUnit, getAllocationResultsByProperty,
+    getCostCategoryById, getAllocationRuleById, getUnitSharesByRule,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
