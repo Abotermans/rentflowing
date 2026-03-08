@@ -155,9 +155,9 @@ export default function Properties() {
       </div>
 
       {properties.length === 0 ? (
-        <EmptyState icon={Building2} title="No properties yet" description="Add your first property to get started." actionLabel="Add Property" onAction={openAdd} />
+        <EmptyState icon={Building2} title={t("properties.empty")} description={t("properties.emptyDesc")} actionLabel={t("properties.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>
