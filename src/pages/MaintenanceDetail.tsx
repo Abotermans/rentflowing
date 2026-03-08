@@ -47,7 +47,7 @@ export default function MaintenanceDetail() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
-          <Link to="/maintenance"><ArrowLeft className="h-4 w-4 mr-1" />Maintenance</Link>
+          <Link to="/maintenance"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.maintenance")}</Link>
         </Button>
         <div className="flex items-start justify-between">
           <div>
