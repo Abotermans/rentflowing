@@ -151,7 +151,7 @@ export default function MaintenanceDetail() {
             )}
             {ticket.completedDate && (
               <div>
-                <p className="text-xs text-muted-foreground">Completed</p>
+                <p className="text-xs text-muted-foreground">{t("status.completed")}</p>
                 <p className="text-sm font-medium text-success">{formatDate(ticket.completedDate, property?.locale)}</p>
               </div>
             )}
