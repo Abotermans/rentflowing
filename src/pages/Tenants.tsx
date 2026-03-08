@@ -63,18 +63,7 @@ export default function Tenants() {
     return canChangeTenantStatus(editingTenant.id, form.status, integrityState);
   })();
 
-  const handleSave = () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
-      toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
-      return;
-    }
-    if (editingTenant && form.status !== editingTenant.status) {
-      const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
-      if (!validation.allowed) {
-        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
-        return;
-      }
-    }
+  const executeTenantSave = () => {
     if (editingTenant) {
       updateTenant({ ...editingTenant, ...form });
       toast({ title: "Tenant updated" });
@@ -85,9 +74,38 @@ export default function Tenants() {
     setSheetOpen(false);
   };
 
-  const handleDelete = (tid: string) => {
-    deleteTenant(tid);
-    toast({ title: "Tenant deleted" });
+  const handleSave = () => {
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
+      toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+      return;
+    }
+    if (editingTenant && form.status !== editingTenant.status) {
+      const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
+      if (!validation.allowed) {
+        if (validation.overrideAllowed) {
+          setPendingOverrideValidation(validation);
+          setOverrideDialogOpen(true);
+          return;
+        }
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
+    }
+    executeTenantSave();
+  };
+
+  const handleTenantOverrideConfirm = (reason: string) => {
+    if (!editingTenant || !pendingOverrideValidation) return;
+    addOverride({
+      entityType: "tenant",
+      entityId: editingTenant.id,
+      action: `status_change:${form.status}`,
+      blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
+      reason,
+    });
+    executeTenantSave();
+    toast({ title: "Tenant updated (overridden)", description: `Override reason: ${reason}` });
+    setPendingOverrideValidation(null);
   };
 
   const filtered = tenants.filter(t => {
