@@ -639,6 +639,10 @@ const en = {
   "status.reversed": "Reversed",
   "status.refunded": "Refunded",
   "status.closed": "Closed",
+  "status.ownerOnly": "Owner Only",
+  "status.tenantRecoverable": "Tenant Recoverable",
+  "status.partiallyRecoverable": "Partially Recoverable",
+  "status.informational": "Informational",
 
   // Costs & Taxes
   "nav.costs": "Costs & Taxes",
