@@ -39,6 +39,7 @@ export default function Tenants() {
   const { addOverride } = useOverrideHistory();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
+  const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
