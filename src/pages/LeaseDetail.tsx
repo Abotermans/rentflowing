@@ -258,6 +258,20 @@ export default function LeaseDetail() {
         </div>
       </div>
 
+      {/* Activation Blocker Panel (draft leases) */}
+      {lease.leaseStatus === "draft" && (() => {
+        const activationCheck = canActivateLease(lease.id, integrityState);
+        return (activationCheck.blockers.length > 0 || activationCheck.warnings.length > 0) ? (
+          <StatusTransitionAlert validation={activationCheck} />
+        ) : null;
+      })()}
+
+      {/* Integrity Summary — delete blockers */}
+      <IntegritySummaryPanel
+        title="Lease Dependencies"
+        deleteValidation={canDeleteLease(lease.id, integrityState)}
+      />
+
       {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
         <Alert variant="destructive">
