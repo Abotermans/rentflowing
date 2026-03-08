@@ -17,6 +17,9 @@ import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyType
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
