@@ -266,11 +266,11 @@ export default function Properties() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="region">Region / State</Label>
-                <Input id="region" value={form.regionOrState} onChange={e => setForm(f => ({ ...f, regionOrState: e.target.value }))} placeholder="e.g. Île-de-France" />
+                <Label htmlFor="region">{t("properties.region")}</Label>
+                <Input id="region" value={form.regionOrState} onChange={e => setForm(f => ({ ...f, regionOrState: e.target.value }))} />
               </div>
               <div>
-                <Label>Country *</Label>
+                <Label>{t("properties.country")} *</Label>
                 <Select value={form.countryCode} onValueChange={handleCountryChange}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
