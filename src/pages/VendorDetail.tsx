@@ -56,7 +56,7 @@ export default function VendorDetail() {
             <div className="flex items-start gap-2">
               <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-xs text-muted-foreground">{t("vendors.email")}</p>
                 <p className="text-sm font-medium text-foreground">{vendor.email || "—"}</p>
               </div>
             </div>
