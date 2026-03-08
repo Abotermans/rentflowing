@@ -306,7 +306,7 @@ export default function Properties() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label>Currency *</Label>
+                <Label>{t("properties.currency")} *</Label>
                 <Select value={form.currencyCode} onValueChange={v => setForm(f => ({ ...f, currencyCode: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -315,16 +315,16 @@ export default function Properties() {
                 </Select>
               </div>
               <div>
-                <Label>Locale</Label>
+                <Label>{t("properties.locale")}</Label>
                 <Input value={form.locale} onChange={e => setForm(f => ({ ...f, locale: e.target.value }))} placeholder="e.g. fr-FR" />
               </div>
               <div>
-                <Label>Measurement</Label>
+                <Label>{t("properties.measurement")}</Label>
                 <Select value={form.measurementSystem} onValueChange={v => setForm(f => ({ ...f, measurementSystem: v as "metric" | "imperial" }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="metric">Metric (m²)</SelectItem>
-                    <SelectItem value="imperial">Imperial (sq ft)</SelectItem>
+                    <SelectItem value="metric">{t("properties.metric")}</SelectItem>
+                    <SelectItem value="imperial">{t("properties.imperial")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
