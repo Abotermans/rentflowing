@@ -193,8 +193,8 @@ export default function UnitDetail() {
                   <div className="flex items-center gap-2 p-3 rounded-md bg-primary/10 border border-primary/30">
                     <Truck className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-sm font-medium text-foreground">Move-out scheduled</p>
-                      <p className="text-xs text-muted-foreground">Available from {formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
+                      <p className="text-sm font-medium text-foreground">{t("detail.moveOutScheduledLabel")}</p>
+                      <p className="text-xs text-muted-foreground">{t("detail.availableFromLabel")} {formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
                     </div>
                   </div>
                 </div>
