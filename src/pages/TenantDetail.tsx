@@ -93,7 +93,7 @@ export default function TenantDetail() {
                 <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, activeProperty?.currencyCode, activeProperty?.locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Overdue</p>
+                <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
                 <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
                   {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
                   {formatCurrency(overdue, activeProperty?.currencyCode, activeProperty?.locale)}
