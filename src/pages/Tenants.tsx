@@ -104,9 +104,9 @@ export default function Tenants() {
       </div>
 
       {tenants.length === 0 ? (
-        <EmptyState icon={Users} title="No tenants yet" description="Add your first tenant." actionLabel="Add Tenant" onAction={openAdd} />
+        <EmptyState icon={Users} title={t("tenants.empty")} description={t("tenants.emptyDesc")} actionLabel={t("tenants.add")} onAction={openAdd} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title="No results found" description="Try adjusting your filters or search terms." />
+        <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
           <Table>
