@@ -77,10 +77,22 @@ export default function Units() {
     setSheetOpen(true);
   };
 
+  const unitStatusValidation = (() => {
+    if (!editingUnit || form.currentStatus === editingUnit.currentStatus) return null;
+    return canChangeUnitStatus(editingUnit.id, form.currentStatus, integrityState);
+  })();
+
   const handleSave = () => {
     if (!form.unitCode.trim() || !form.unitLabel.trim() || !form.propertyId) {
       toast({ title: "Validation Error", description: "Property, unit code, and label are required.", variant: "destructive" });
       return;
+    }
+    if (editingUnit && form.currentStatus !== editingUnit.currentStatus) {
+      const validation = canChangeUnitStatus(editingUnit.id, form.currentStatus, integrityState);
+      if (!validation.allowed) {
+        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        return;
+      }
     }
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...form });
