@@ -1,39 +1,26 @@
-`.
 
-Wait, should I check `src/pages/Units.tsx` and `src/pages/UnitDetail.tsx` to see where the fields would go?
-Yes, in `Units.tsx` there's a sheet for creating/editing units.
-Lines 60-75 in `Units.tsx`:
-`baseRent: number | null;`
-`baseCharges: number | null;`
-I will add the inputs for 6-months and yearly base rents.
+# Detailed Implementation Plan: Advance Pricing Structure
 
-In `Leases.tsx` there's a sheet for creating/editing leases.
-I will add the "Rent Formula" dropdown.
+Since the high-level plan was approved, here is the detailed technical breakdown of the changes we will implement for the Advance Pricing Structure.
 
-Let's write the plan.
-I will structure the plan as requested:
+## 1. Data Model Updates (`src/types/index.ts`)
+- **Unit Interface**: Add `baseRentSixMonths: number | null` and `baseRentYearly: number | null` to the `Unit` interface.
+- **Lease Interface**: Add `rentFormula: 'monthly' | 'six-months' | 'yearly'` to the `Lease` interface.
+- **Mock Data**: Update `src/data/mockData.ts` to populate these new fields for existing units and leases.
 
-```markdown
-<lov-plan>
-# Advance Pricing Structure Integration Plan
+## 2. Unit Management UI (`src/pages/Units.tsx` & `src/pages/UnitDetail.tsx`)
+- **Units List/Sheet**: In the `Units.tsx` Add/Edit sheet, add two new input fields below "Base Rent (Monthly)":
+  - "Base Rent (6-Month Advance)"
+  - "Base Rent (1-Year Advance)"
+- **Unit Detail**: In `UnitDetail.tsx`, update the Financial Information card to display all three base rent tiers if they are set.
 
-## 1. Unit Model & UI Updates
-- **Data Model**: Extend the `Unit` interface to include three distinct rent pricing tiers: `baseRent` (Monthly), `baseRentSixMonths` (6-Month Advance equivalent), and `baseRentYearly` (1-Year Advance equivalent).
-- **Unit Form & Detail**: Update the `Units.tsx` edit sheet and `UnitDetail.tsx` page to allow property managers to define and view these three pricing options for each unit.
+## 3. Lease Management UI (`src/pages/Leases.tsx`)
+- **Rent Formula Selector**: In the Add/Edit Lease sheet, add a `Select` component for "Rent Formula" with options for Monthly, 6-Month Advance, and 1-Year Advance.
+- **Auto-computation Logic**: 
+  - When "6-Month Advance" is selected: Fetch the unit's `baseRentSixMonths`, set it as the lease's `monthlyRent`, check `hasAdvancePayment`, set `advancePaymentAmount` to `6 * monthlyRent`, set `advanceAllocationDurationMonths` to `6`, and `advanceAllocationMethod` to `spread-evenly`.
+  - When "1-Year Advance" is selected: Fetch the unit's `baseRentYearly`, set it as the lease's `monthlyRent`, check `hasAdvancePayment`, set `advancePaymentAmount` to `12 * monthlyRent`, set `advanceAllocationDurationMonths` to `12`, and `advanceAllocationMethod` to `spread-evenly`.
+  - When "Monthly" is selected: Reset advance payment fields and set `monthlyRent` to the unit's standard `baseRent`.
 
-## 2. Lease Form Integration (Rent Formula)
-- **Rent Formula Selector**: Add a "Rent Formula" dropdown (`monthly`, `six-months`, `yearly`) to the Lease creation/editing form.
-- **Auto-Computation**: 
-  - Selecting a formula automatically fetches the corresponding base rent from the unit and sets it as the lease's `monthlyRent`.
-  - It automatically configures the Advance Payment settings. For example, selecting "1 Year Advance" will automatically check `hasAdvancePayment`, calculate `advancePaymentAmount` as 12 × the selected monthly rent, set allocation method to `spread-evenly` over `12` months, and apply it to `rent`.
-
-## 3. Financials: Marking Future Months as Paid
-- **UI Representation**: In the `LeaseDetail` Advance Payment schedule, months fully covered by the advance payment will be explicitly badged as "Paid via Advance".
-- **Receivables Architecture Alignment**: The upfront payment of the advance creates an "Advance Payment" receivable. When paid, it generates an unapplied credit. As the system generates the future monthly rent receivables, they will automatically consume this credit (due to auto-allocation priorities), resulting in those months being marked as "paid" without requiring further action from the tenant.
-
-## Files to Modify
-- `src/types/index.ts`: Update `Unit` and `Lease` interfaces.
-- `src/data/mockData.ts`: Add placeholder values for the new unit pricing tiers and lease formulas.
-- `src/pages/Units.tsx` & `src/pages/UnitDetail.tsx`: Add the new pricing fields.
-- `src/pages/Leases.tsx`: Add the "Rent Formula" selector and dynamic computation logic.
-- `src/pages/LeaseDetail.tsx`: Enhance the schedule UI to mark covered months as "Paid via Advance".
+## 4. Ledger & Schedule Updates (`src/pages/LeaseDetail.tsx` & `src/lib/advancePricing.ts`)
+- **Advance Payment Schedule**: Modify the schedule UI in `LeaseDetail.tsx` to explicitly indicate when a month is "Paid via Advance". We will badge the rows in the Advance Payment card where `effectiveDue === 0` (or `adjustment === baseDue`) with a green "Paid" indicator.
+- **Receivables Architecture**: The advance payment logic currently calculates `effectiveDue`. By ensuring the base rent and advance amount are properly linked to the formula, the existing ledger will show zero effective due for those covered months, naturally reflecting them as paid.
