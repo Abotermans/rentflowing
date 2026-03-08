@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -19,6 +19,14 @@ const statusStyles: Record<StatusType, string> = {
   paid: "bg-success/15 text-success border-success/30",
   "partially-paid": "bg-warning/15 text-warning border-warning/30",
   overdue: "bg-destructive/15 text-destructive border-destructive/30",
+  // Guarantee statuses
+  pending: "bg-warning/15 text-warning border-warning/30",
+  incomplete: "bg-warning/15 text-warning border-warning/30",
+  released: "bg-muted text-muted-foreground border-border",
+  "partially-retained": "bg-destructive/15 text-destructive border-destructive/30",
+  // Lifecycle statuses
+  "under-notice": "bg-warning/15 text-warning border-warning/30",
+  "ending-soon": "bg-destructive/15 text-destructive border-destructive/30",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {
