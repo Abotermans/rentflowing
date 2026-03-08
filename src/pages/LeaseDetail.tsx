@@ -310,7 +310,7 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Shield className="h-4 w-4" />{t("detail.depositGuarantee")}</CardTitle>
-            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</Button>
+            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>{guarantee ? t("detail.editGuarantee") : t("detail.addGuarantee")}</Button>
           </div>
         </CardHeader>
         <CardContent>
