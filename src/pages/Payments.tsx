@@ -25,7 +25,7 @@ export default function Payments() {
   const {
     receivableItems, cashReceipts, allocations,
     leases, tenants, properties, units,
-    createCashReceipt, allocateCashReceipt,
+    createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
     getReceivableItemsByLease, getReceivableItemsByTenant,
   } = useAppData();
 
@@ -490,27 +490,52 @@ export default function Payments() {
               {allocOpenItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No open receivable items found for this tenant/lease.</p>
               ) : (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase">Open Receivable Items</p>
-                  {allocOpenItems.map(ri => (
-                    <div key={ri.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{ri.label}</p>
-                        <p className="text-xs text-muted-foreground">{ITEM_TYPE_LABELS[ri.itemType]} · Due {formatDate(ri.dueDate)} · Outstanding {formatCurrency(ri.outstandingAmount, ri.currencyCode)}</p>
+                <>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Open Receivable Items</p>
+                    {allocOpenItems.map(ri => (
+                      <div key={ri.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{ri.label}</p>
+                          <p className="text-xs text-muted-foreground">{ITEM_TYPE_LABELS[ri.itemType]} · Due {formatDate(ri.dueDate)} · Outstanding {formatCurrency(ri.outstandingAmount, ri.currencyCode)}</p>
+                        </div>
+                        <Input
+                          type="number" step="0.01" min="0"
+                          max={Math.min(ri.outstandingAmount, allocReceipt.unmatchedAmount)}
+                          className="w-24 h-8 text-sm"
+                          value={allocAmounts[ri.id] ?? ""}
+                          onChange={e => setAllocAmounts(prev => ({ ...prev, [ri.id]: e.target.value }))}
+                          placeholder="0.00"
+                        />
                       </div>
-                      <Input
-                        type="number" step="0.01" min="0"
-                        max={Math.min(ri.outstandingAmount, allocReceipt.unmatchedAmount)}
-                        className="w-24 h-8 text-sm"
-                        value={allocAmounts[ri.id] ?? ""}
-                        onChange={e => setAllocAmounts(prev => ({ ...prev, [ri.id]: e.target.value }))}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+
+                  {/* Allocation summary */}
+                  {(() => {
+                    const totalAllocating = Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+                    const remaining = Math.round((allocReceipt.unmatchedAmount - totalAllocating) * 100) / 100;
+                    return (
+                      <div className="p-3 bg-muted/50 rounded-md space-y-1 border">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Total allocating</span>
+                          <span className="font-medium text-foreground">{formatCurrency(totalAllocating, allocReceipt.currencyCode)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Remaining unmatched</span>
+                          <span className={`font-medium ${remaining < 0 ? "text-destructive" : "text-foreground"}`}>{formatCurrency(remaining, allocReceipt.currencyCode)}</span>
+                        </div>
+                        {remaining < 0 && <p className="text-xs text-destructive">Total exceeds available unmatched amount.</p>}
+                      </div>
+                    );
+                  })()}
+                </>
               )}
-              <Button onClick={handleManualAllocate} disabled={allocOpenItems.length === 0} className="w-full">Apply Allocation</Button>
+
+              <div className="flex gap-2">
+                <Button onClick={handleManualAllocate} disabled={allocOpenItems.length === 0 || Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0) <= 0 || Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0) > allocReceipt.unmatchedAmount} className="flex-1">Apply Manual Allocation</Button>
+                <Button variant="outline" onClick={() => { autoAllocateCashReceipt(allocateReceiptId!); setAllocateReceiptId(null); setAllocAmounts({}); }} disabled={allocOpenItems.length === 0}>Auto-Allocate</Button>
+              </div>
             </div>
           )}
         </SheetContent>
