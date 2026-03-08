@@ -120,7 +120,7 @@ export default function UnitDetail() {
 
       {/* Occupancy */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Occupancy</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.occupancySection")}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusBadge status={unit.currentStatus} />
