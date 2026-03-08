@@ -162,8 +162,41 @@ export default function LeaseDetail() {
 
   const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
   const handleSaveNotice = () => { updateLease({ ...lease, noticeGiven: true, noticeDate: nDate || null, intendedMoveOutDate: nMoveOut || null, terminationReason: nReason || null }); toast({ title: "Notice registered" }); setNoticeSheetOpen(false); };
-  const handleMarkEnded = () => { updateLease({ ...lease, leaseStatus: "ended" }); toast({ title: "Lease marked as ended" }); };
-  const handleMarkTerminated = () => { updateLease({ ...lease, leaseStatus: "terminated" }); toast({ title: "Lease marked as terminated" }); };
+  const handleActivateLease = () => {
+    const validation = canActivateLease(lease.id, integrityState);
+    if (!validation.allowed) {
+      toast({ title: "Cannot activate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      toast({ title: "Lease activated with warnings", description: validation.warnings.map(w => w.message).join(". ") });
+    }
+    updateLease({ ...lease, leaseStatus: "active" });
+    toast({ title: "Lease activated" });
+  };
+
+  const handleMarkEnded = () => {
+    const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
+    if (!validation.allowed) {
+      toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      toast({ title: "Warnings", description: validation.warnings.map(w => w.message).join(". ") });
+    }
+    updateLease({ ...lease, leaseStatus: "ended" });
+    toast({ title: "Lease marked as ended" });
+  };
+
+  const handleMarkTerminated = () => {
+    const validation = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+    if (!validation.allowed) {
+      toast({ title: "Cannot terminate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      return;
+    }
+    updateLease({ ...lease, leaseStatus: "terminated" });
+    toast({ title: "Lease marked as terminated" });
+  };
 
   const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
   const handleScheduleMoveIn = () => { updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, keyHandoverCount: parseInt(miKeys) || 0 }); toast({ title: "Move-in scheduled" }); setMoveInSheetOpen(false); };
