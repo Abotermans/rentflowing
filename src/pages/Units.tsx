@@ -19,6 +19,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Unit, UnitType, UnitStatus } from "@/types";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
