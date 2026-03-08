@@ -201,60 +201,77 @@ export default function PropertyDetail() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Label</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-center">Floor</TableHead>
-                  <TableHead className="text-right">Surface</TableHead>
-                  <TableHead className="text-right">Rent</TableHead>
-                  <TableHead className="text-right">Charges</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Lease</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {propertyUnits.map(u => {
-                  const activeLease = getActiveLease(u.id);
-                  const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
-                  return (
-                    <TableRow key={u.id}>
-                      <TableCell className="font-mono text-xs font-medium text-foreground">
-                        <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
-                      <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
-                      <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
-                      <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline">{activeLease.leaseReference}</Link> : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                            <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDeleteUnit} />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Card>
+          <TooltipProvider>
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Label</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-center">Floor</TableHead>
+                    <TableHead className="text-right">Surface</TableHead>
+                    <TableHead className="text-right">Rent</TableHead>
+                    <TableHead className="text-right">Charges</TableHead>
+                    <TableHead>{t("occupancy.derivedLabel")}</TableHead>
+                    <TableHead>Tenant</TableHead>
+                    <TableHead>Lease</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {propertyUnits.map(u => {
+                    const activeLease = getActiveLease(u.id);
+                    const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
+                    const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases);
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-mono text-xs font-medium text-foreground">
+                          <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
+                        <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
+                        <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <StatusBadge status={occupancy.derived} />
+                            {occupancy.inconsistent && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[250px]">
+                                  <p className="text-xs">{occupancy.inconsistencyMessage}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline">{activeLease.leaseReference}</Link> : "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                              <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
+                            <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDeleteUnit} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          </TooltipProvider>
         )}
       </div>
 
