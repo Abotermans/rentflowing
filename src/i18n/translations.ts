@@ -285,6 +285,12 @@ const en = {
   "payments.cash": "Cash",
   "payments.other": "Other",
   "payments.selectLease": "Select lease",
+  "payments.property": "Property",
+  "payments.unit": "Unit",
+  "payments.status": "Status",
+  "payments.paymentReferencePlaceholder": "Payment reference",
+  "payments.rent": "Rent",
+  "payments.charges": "Charges",
 
   // Maintenance
   "maintenance.title": "Maintenance",
@@ -907,6 +913,12 @@ const fr: TranslationKeys = {
   "payments.cash": "Espèces",
   "payments.other": "Autre",
   "payments.selectLease": "Sélectionner un bail",
+  "payments.property": "Propriété",
+  "payments.unit": "Lot",
+  "payments.status": "Statut",
+  "payments.paymentReferencePlaceholder": "Référence de paiement",
+  "payments.rent": "Loyer",
+  "payments.charges": "Charges",
 
   // Maintenance
   "maintenance.title": "Maintenance",
