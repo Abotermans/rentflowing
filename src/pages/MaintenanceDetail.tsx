@@ -114,8 +114,8 @@ export default function MaintenanceDetail() {
             <div className="flex items-start gap-2">
               <HardHat className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Vendor</p>
-                {vendor ? <Link to={`/vendors/${vendor.id}`} className="text-sm font-medium text-primary hover:underline">{vendor.vendorName}</Link> : <p className="text-sm text-muted-foreground">Unassigned</p>}
+                <p className="text-xs text-muted-foreground">{t("maintenance.vendor")}</p>
+                {vendor ? <Link to={`/vendors/${vendor.id}`} className="text-sm font-medium text-primary hover:underline">{vendor.vendorName}</Link> : <p className="text-sm text-muted-foreground">{t("maintenance.unassigned")}</p>}
               </div>
             </div>
           </div>
