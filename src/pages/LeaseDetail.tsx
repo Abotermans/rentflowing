@@ -9,16 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle } from "lucide-react";
-import { getTenantFullName, type PaymentMethod, type GuaranteeType, type GuaranteeStatus, type Guarantee, getLeaseLifecycleStatus, GUARANTEE_TYPE_LABELS, computeGuaranteeStatus } from "@/types";
+import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home } from "lucide-react";
+import { getTenantFullName, type PaymentMethod, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
-  const { leases, tenants, units, properties, getLedgerByLease, getPaymentsByLease, getLeaseOutstanding, addPayment, getGuaranteeByLease, addGuarantee, updateGuarantee, updateLease } = useAppData();
+  const { leases, tenants, units, properties, getLedgerByLease, getPaymentsByLease, getLeaseOutstanding, addPayment, getGuaranteeByLease, addGuarantee, updateGuarantee, updateLease, confirmMoveOut } = useAppData();
   const { toast } = useToast();
 
   // Payment form
@@ -45,6 +46,23 @@ export default function LeaseDetail() {
   const [nMoveOut, setNMoveOut] = useState("");
   const [nReason, setNReason] = useState("");
 
+  // Move-in form
+  const [moveInSheetOpen, setMoveInSheetOpen] = useState(false);
+  const [miScheduled, setMiScheduled] = useState("");
+  const [miMeter, setMiMeter] = useState("");
+  const [miKeys, setMiKeys] = useState("");
+
+  // Move-out form
+  const [moveOutSheetOpen, setMoveOutSheetOpen] = useState(false);
+  const [moScheduled, setMoScheduled] = useState("");
+  const [moMeter, setMoMeter] = useState("");
+  const [moNotes, setMoNotes] = useState("");
+
+  // Return form
+  const [returnSheetOpen, setReturnSheetOpen] = useState(false);
+  const [retStatus, setRetStatus] = useState<ReturnStatus>("pending");
+  const [retNotes, setRetNotes] = useState("");
+
   const lease = leases.find(l => l.id === id);
   if (!lease) {
     return (
@@ -62,6 +80,8 @@ export default function LeaseDetail() {
   const currency = property?.currencyCode ?? "EUR";
   const lifecycle = getLeaseLifecycleStatus(lease);
   const guarantee = getGuaranteeByLease(lease.id);
+  const moveInStatus = getMoveInStatus(lease);
+  const moveOutStatus = getMoveOutStatus(lease);
 
   const totalMonthly = lease.monthlyRent + lease.monthlyCharges;
   const ledger = getLedgerByLease(lease.id).sort((a, b) => b.dueDate.localeCompare(a.dueDate));
@@ -89,16 +109,11 @@ export default function LeaseDetail() {
 
   const openGuaranteeForm = () => {
     if (guarantee) {
-      setGType(guarantee.type);
-      setGExpected(String(guarantee.expectedAmount));
-      setGReceived(String(guarantee.receivedAmount));
-      setGReceivedDate(guarantee.receivedDate ?? "");
-      setGReleaseDate(guarantee.releaseDate ?? "");
-      setGRetention(guarantee.retentionAmount != null ? String(guarantee.retentionAmount) : "");
-      setGNotes(guarantee.notes);
+      setGType(guarantee.type); setGExpected(String(guarantee.expectedAmount)); setGReceived(String(guarantee.receivedAmount));
+      setGReceivedDate(guarantee.receivedDate ?? ""); setGReleaseDate(guarantee.releaseDate ?? "");
+      setGRetention(guarantee.retentionAmount != null ? String(guarantee.retentionAmount) : ""); setGNotes(guarantee.notes);
     } else {
-      setGType("cash-deposit");
-      setGExpected(lease.depositOrGuaranteeAmount != null ? String(lease.depositOrGuaranteeAmount) : "");
+      setGType("cash-deposit"); setGExpected(lease.depositOrGuaranteeAmount != null ? String(lease.depositOrGuaranteeAmount) : "");
       setGReceived(""); setGReceivedDate(""); setGReleaseDate(""); setGRetention(""); setGNotes("");
     }
     setGuaranteeSheetOpen(true);
@@ -120,26 +135,70 @@ export default function LeaseDetail() {
   };
 
   const openNoticeForm = () => {
-    setNDate(lease.noticeDate ?? "");
-    setNMoveOut(lease.intendedMoveOutDate ?? "");
-    setNReason(lease.terminationReason ?? "");
+    setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? "");
     setNoticeSheetOpen(true);
   };
 
   const handleSaveNotice = () => {
     updateLease({ ...lease, noticeGiven: true, noticeDate: nDate || null, intendedMoveOutDate: nMoveOut || null, terminationReason: nReason || null });
-    toast({ title: "Notice registered" });
-    setNoticeSheetOpen(false);
+    toast({ title: "Notice registered" }); setNoticeSheetOpen(false);
   };
 
-  const handleMarkEnded = () => {
-    updateLease({ ...lease, leaseStatus: "ended" });
-    toast({ title: "Lease marked as ended" });
+  const handleMarkEnded = () => { updateLease({ ...lease, leaseStatus: "ended" }); toast({ title: "Lease marked as ended" }); };
+  const handleMarkTerminated = () => { updateLease({ ...lease, leaseStatus: "terminated" }); toast({ title: "Lease marked as terminated" }); };
+
+  // Move-in handlers
+  const openMoveInForm = () => {
+    setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount));
+    setMoveInSheetOpen(true);
+  };
+  const handleScheduleMoveIn = () => {
+    updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, keyHandoverCount: parseInt(miKeys) || 0 });
+    toast({ title: "Move-in scheduled" }); setMoveInSheetOpen(false);
+  };
+  const handleConfirmMoveIn = () => {
+    updateLease({ ...lease, moveInActualDate: today, moveInScheduledDate: lease.moveInScheduledDate || today, moveInMeterReading: miMeter || lease.moveInMeterReading, keyHandoverCount: parseInt(miKeys) || lease.keyHandoverCount,
+      moveInChecklist: { leaseSigned: true, firstPaymentReceived: true, guaranteeConfirmed: true, keysHandedOver: true, meterReadingCaptured: true, tenantDocumentsComplete: true } });
+    toast({ title: "Move-in confirmed" }); setMoveInSheetOpen(false);
   };
 
-  const handleMarkTerminated = () => {
-    updateLease({ ...lease, leaseStatus: "terminated" });
-    toast({ title: "Lease marked as terminated" });
+  // Move-out handlers
+  const openMoveOutForm = () => {
+    setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? ""); setMoMeter(lease.moveOutMeterReading ?? ""); setMoNotes(lease.moveOutNotes);
+    setMoveOutSheetOpen(true);
+  };
+  const handleScheduleMoveOut = () => {
+    updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutNotes: moNotes });
+    toast({ title: "Move-out scheduled" }); setMoveOutSheetOpen(false);
+  };
+  const handleConfirmMoveOut = () => {
+    confirmMoveOut({ ...lease, moveOutScheduledDate: lease.moveOutScheduledDate || today, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
+      moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
+      returnStatus: lease.returnStatus || "pending" });
+    toast({ title: "Move-out confirmed. Unit set to vacant." }); setMoveOutSheetOpen(false);
+  };
+
+  // Checklist toggle
+  const toggleMoveInChecklist = (key: keyof MoveInChecklist) => {
+    updateLease({ ...lease, moveInChecklist: { ...lease.moveInChecklist, [key]: !lease.moveInChecklist[key] } });
+  };
+  const toggleMoveOutChecklist = (key: keyof MoveOutChecklist) => {
+    updateLease({ ...lease, moveOutChecklist: { ...lease.moveOutChecklist, [key]: !lease.moveOutChecklist[key] } });
+  };
+
+  // Return handlers
+  const openReturnForm = () => {
+    setRetStatus(lease.returnStatus || "pending"); setRetNotes(lease.returnNotes);
+    setReturnSheetOpen(true);
+  };
+  const handleSaveReturn = () => {
+    updateLease({ ...lease, returnStatus: retStatus, returnNotes: retNotes });
+    toast({ title: "Return status updated" }); setReturnSheetOpen(false);
+  };
+
+  // Keys/meters inline update
+  const handleUpdateKeys = (keyHandover: number, keyReturn: number) => {
+    updateLease({ ...lease, keyHandoverCount: keyHandover, keyReturnCount: keyReturn });
   };
 
   const enrichedLedger = ledger.map(ll => {
@@ -149,6 +208,9 @@ export default function LeaseDetail() {
     }
     return { ...ll, effectiveStatus };
   });
+
+  const moveInComplete = Object.values(lease.moveInChecklist).every(Boolean);
+  const moveOutComplete = Object.values(lease.moveOutChecklist).every(Boolean);
 
   return (
     <div className="space-y-6">
@@ -200,7 +262,6 @@ export default function LeaseDetail() {
             This lease is <strong>under notice</strong>.
             {lease.noticeDate && <> Notice given on {formatDate(lease.noticeDate, locale)}.</>}
             {lease.intendedMoveOutDate && <> Intended move-out: {formatDate(lease.intendedMoveOutDate, locale)}.</>}
-            {lease.terminationReason && <> Reason: {lease.terminationReason}.</>}
           </AlertDescription>
         </Alert>
       )}
@@ -228,18 +289,9 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Summary</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">This Month Due</p>
-              <p className="text-lg font-bold text-foreground">{formatCurrency(thisMonthDue, currency, locale)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total Paid</p>
-              <p className="text-lg font-bold text-success">{formatCurrency(totalPaid, currency, locale)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Outstanding</p>
-              <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p>
-            </div>
+            <div><p className="text-xs text-muted-foreground">This Month Due</p><p className="text-lg font-bold text-foreground">{formatCurrency(thisMonthDue, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Total Paid</p><p className="text-lg font-bold text-success">{formatCurrency(totalPaid, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Outstanding</p><p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p></div>
             <div>
               <p className="text-xs text-muted-foreground">Overdue</p>
               <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
@@ -256,9 +308,7 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Shield className="h-4 w-4" />Deposit / Guarantee</CardTitle>
-            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
-              {guarantee ? "Edit Guarantee" : "Add Guarantee"}
-            </Button>
+            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -287,9 +337,7 @@ export default function LeaseDetail() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />Notice / Lease End</CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={openNoticeForm}>
-                {lease.noticeGiven ? "Edit Notice" : "Register Notice"}
-              </Button>
+              <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? "Edit Notice" : "Register Notice"}</Button>
               {lease.leaseStatus === "active" && (
                 <>
                   <Button variant="outline" size="sm" onClick={handleMarkEnded}>Mark Ended</Button>
@@ -310,6 +358,133 @@ export default function LeaseDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ==================== OCCUPANCY OPERATIONS ==================== */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2"><Truck className="h-5 w-5" />Occupancy Operations</h2>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Move-In Panel */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Home className="h-4 w-4" />Move-In</CardTitle>
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={moveInStatus === "completed" ? "completed" : moveInStatus === "scheduled" ? "scheduled" : "not-scheduled"} />
+                  {moveInStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveInForm}>{moveInStatus === "not-scheduled" ? "Schedule" : "Edit"}</Button>}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><p className="text-xs text-muted-foreground">Scheduled</p><p className="text-sm font-medium text-foreground">{lease.moveInScheduledDate ? formatDate(lease.moveInScheduledDate, locale) : "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">Actual</p><p className="text-sm font-medium text-foreground">{lease.moveInActualDate ? formatDate(lease.moveInActualDate, locale) : "—"}</p></div>
+              </div>
+              {/* Checklist */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checklist</p>
+                {(Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[]).map(key => (
+                  <div key={key} className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">{MOVE_IN_CHECKLIST_LABELS[key]}</span>
+                    <Switch checked={lease.moveInChecklist[key]} onCheckedChange={() => toggleMoveInChecklist(key)} disabled={moveInStatus === "completed"} />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Move-Out Panel */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><PackageCheck className="h-4 w-4" />Move-Out</CardTitle>
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={moveOutStatus === "completed" ? "completed" : moveOutStatus === "scheduled" ? "scheduled" : "not-scheduled"} />
+                  {moveOutStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveOutForm}>{moveOutStatus === "not-scheduled" ? "Schedule" : "Edit"}</Button>}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><p className="text-xs text-muted-foreground">Scheduled</p><p className="text-sm font-medium text-foreground">{lease.moveOutScheduledDate ? formatDate(lease.moveOutScheduledDate, locale) : "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">Actual</p><p className="text-sm font-medium text-foreground">{lease.moveOutActualDate ? formatDate(lease.moveOutActualDate, locale) : "—"}</p></div>
+              </div>
+              {/* Checklist */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checklist</p>
+                {(Object.keys(lease.moveOutChecklist) as (keyof MoveOutChecklist)[]).map(key => (
+                  <div key={key} className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">{MOVE_OUT_CHECKLIST_LABELS[key]}</span>
+                    <Switch checked={lease.moveOutChecklist[key]} onCheckedChange={() => toggleMoveOutChecklist(key)} disabled={moveOutStatus === "completed"} />
+                  </div>
+                ))}
+              </div>
+              {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
+            </CardContent>
+          </Card>
+
+          {/* Keys & Meters Panel */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Key className="h-4 w-4" />Keys & Meters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Keys Handed Over</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyHandoverCount} onChange={e => handleUpdateKeys(parseInt(e.target.value) || 0, lease.keyReturnCount)} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Keys Returned</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyReturnCount} onChange={e => handleUpdateKeys(lease.keyHandoverCount, parseInt(e.target.value) || 0)} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Move-In Meter</p>
+                  <p className="text-sm font-medium text-foreground">{lease.moveInMeterReading || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Move-Out Meter</p>
+                  <p className="text-sm font-medium text-foreground">{lease.moveOutMeterReading || "—"}</p>
+                </div>
+                {lease.moveInMeterReading && lease.moveOutMeterReading && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-muted-foreground">Consumption</p>
+                    <p className="text-sm font-bold text-foreground">{(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading)).toLocaleString()} units</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Return Panel */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Gauge className="h-4 w-4" />Return Status</CardTitle>
+                <div className="flex items-center gap-2">
+                  {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
+                  <Button variant="outline" size="sm" onClick={openReturnForm}>
+                    {lease.returnStatus ? "Update" : "Set Status"}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {lease.returnStatus ? (
+                <div className="space-y-2">
+                  <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={lease.returnStatus} /></div>
+                  {lease.returnNotes && <div><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm text-foreground">{lease.returnNotes}</p></div>}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No return status set. This is relevant after move-out to track unit readiness.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Tenant & Unit */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -424,6 +599,8 @@ export default function LeaseDetail() {
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Updated: {formatDate(lease.updatedAt, locale)}</span>
       </div>
 
+      {/* ==================== SHEETS ==================== */}
+
       {/* Add Payment Sheet */}
       <Sheet open={paymentSheetOpen} onOpenChange={setPaymentSheetOpen}>
         <SheetContent className="sm:max-w-md overflow-y-auto">
@@ -470,12 +647,12 @@ export default function LeaseDetail() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Expected Amount ({currency})</Label><Input type="number" step="0.01" min="0" value={gExpected} onChange={e => setGExpected(e.target.value)} /></div>
-              <div><Label>Received Amount ({currency})</Label><Input type="number" step="0.01" min="0" value={gReceived} onChange={e => setGReceived(e.target.value)} /></div>
+              <div><Label>Expected ({currency})</Label><Input type="number" step="0.01" min="0" value={gExpected} onChange={e => setGExpected(e.target.value)} /></div>
+              <div><Label>Received ({currency})</Label><Input type="number" step="0.01" min="0" value={gReceived} onChange={e => setGReceived(e.target.value)} /></div>
             </div>
             <div><Label>Received Date</Label><Input type="date" value={gReceivedDate} onChange={e => setGReceivedDate(e.target.value)} /></div>
             <div><Label>Release Date</Label><Input type="date" value={gReleaseDate} onChange={e => setGReleaseDate(e.target.value)} /></div>
-            <div><Label>Retention Amount ({currency})</Label><Input type="number" step="0.01" min="0" value={gRetention} onChange={e => setGRetention(e.target.value)} placeholder="0.00" /></div>
+            <div><Label>Retention ({currency})</Label><Input type="number" step="0.01" min="0" value={gRetention} onChange={e => setGRetention(e.target.value)} placeholder="0.00" /></div>
             <div><Label>Notes</Label><Textarea value={gNotes} onChange={e => setGNotes(e.target.value)} rows={3} /></div>
             <Button onClick={handleSaveGuarantee} className="w-full">{guarantee ? "Update Guarantee" : "Add Guarantee"}</Button>
           </div>
@@ -491,6 +668,61 @@ export default function LeaseDetail() {
             <div><Label>Intended Move-Out Date</Label><Input type="date" value={nMoveOut} onChange={e => setNMoveOut(e.target.value)} /></div>
             <div><Label>Termination Reason</Label><Textarea value={nReason} onChange={e => setNReason(e.target.value)} rows={3} placeholder="e.g. Relocating, end of contract…" /></div>
             <Button onClick={handleSaveNotice} className="w-full">{lease.noticeGiven ? "Update Notice" : "Register Notice"}</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Move-In Sheet */}
+      <Sheet open={moveInSheetOpen} onOpenChange={setMoveInSheetOpen}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          <SheetHeader><SheetTitle>{moveInStatus === "not-scheduled" ? "Schedule" : "Edit"} Move-In — {lease.leaseReference}</SheetTitle></SheetHeader>
+          <div className="space-y-4 mt-4">
+            <div><Label>Scheduled Date</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
+            <div><Label>Meter Reading</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} placeholder="e.g. 12450" /></div>
+            <div><Label>Keys to Hand Over</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
+            <div className="flex gap-2">
+              <Button onClick={handleScheduleMoveIn} variant="outline" className="flex-1">Save Schedule</Button>
+              <Button onClick={handleConfirmMoveIn} className="flex-1">Confirm Move-In</Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Move-Out Sheet */}
+      <Sheet open={moveOutSheetOpen} onOpenChange={setMoveOutSheetOpen}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          <SheetHeader><SheetTitle>{moveOutStatus === "not-scheduled" ? "Schedule" : "Edit"} Move-Out — {lease.leaseReference}</SheetTitle></SheetHeader>
+          <div className="space-y-4 mt-4">
+            <div><Label>Scheduled Date</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
+            <div><Label>Move-Out Meter Reading</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="e.g. 14800" /></div>
+            <div><Label>Notes</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={3} /></div>
+            <div className="flex gap-2">
+              <Button onClick={handleScheduleMoveOut} variant="outline" className="flex-1">Save Schedule</Button>
+              <Button onClick={handleConfirmMoveOut} variant="destructive" className="flex-1">Confirm Move-Out</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Confirming move-out will set the unit to vacant and the lease to ended.</p>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Return Sheet */}
+      <Sheet open={returnSheetOpen} onOpenChange={setReturnSheetOpen}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          <SheetHeader><SheetTitle>Return Status — {lease.leaseReference}</SheetTitle></SheetHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>Return Status</Label>
+              <Select value={retStatus} onValueChange={v => setRetStatus(v as ReturnStatus)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in-review">In Review</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Notes</Label><Textarea value={retNotes} onChange={e => setRetNotes(e.target.value)} rows={3} placeholder="Inspection notes, repair requirements…" /></div>
+            <Button onClick={handleSaveReturn} className="w-full">Update Return Status</Button>
           </div>
         </SheetContent>
       </Sheet>

@@ -2,10 +2,10 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell } from "lucide-react";
+import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
-import { getTenantFullName, getLeaseLifecycleStatus } from "@/types";
+import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 
 export default function Dashboard() {
   const { properties, units, leases, tenants, getPropertyStats, ledgerLines, getTenantOutstanding, guarantees } = useAppData();
@@ -20,6 +20,8 @@ export default function Dashboard() {
   const now = new Date();
   const today = now.toISOString().split("T")[0];
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const in30Str = in30Days.toISOString().split("T")[0];
 
   const activeLeases = leases.filter(l => l.leaseStatus === "active");
   const leasesEndingSoon = activeLeases.filter(l => new Date(l.endDate) <= in90Days && !l.noticeGiven);
@@ -32,6 +34,11 @@ export default function Dashboard() {
   // Guarantee KPIs
   const pendingGuarantees = guarantees.filter(g => g.status === "pending");
   const incompleteGuarantees = guarantees.filter(g => g.status === "incomplete");
+
+  // Move-in/out/return KPIs
+  const upcomingMoveIns = leases.filter(l => l.moveInScheduledDate && !l.moveInActualDate && l.moveInScheduledDate >= today);
+  const upcomingMoveOuts = leases.filter(l => l.moveOutScheduledDate && !l.moveOutActualDate && l.moveOutScheduledDate >= today);
+  const returnsPending = leases.filter(l => l.returnStatus === "pending" || l.returnStatus === "in-review");
 
   // Overdue tenants
   const activeTenantIds = [...new Set(activeLeases.map(l => l.primaryTenantId))];
@@ -56,8 +63,10 @@ export default function Dashboard() {
     { label: "Under Notice", value: leasesUnderNotice.length, icon: Bell, color: leasesUnderNotice.length > 0 ? "text-warning" : "text-foreground" },
     { label: "Expected Monthly", value: formatCurrency(totalExpectedMonthlyRent), icon: CreditCard, color: "text-primary", isText: true },
     { label: "Total Overdue", value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
-    { label: "Overdue Tenants", value: overdueTenants.length, icon: Users, color: overdueTenants.length > 0 ? "text-destructive" : "text-foreground" },
     { label: "Pending Guarantees", value: pendingGuarantees.length, icon: Shield, color: pendingGuarantees.length > 0 ? "text-warning" : "text-foreground" },
+    { label: "Upcoming Move-Ins", value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
+    { label: "Upcoming Move-Outs", value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
+    { label: "Returns Pending", value: returnsPending.length, icon: Truck, color: returnsPending.length > 0 ? "text-warning" : "text-foreground" },
   ];
 
   const statusSegments = [
@@ -72,6 +81,12 @@ export default function Dashboard() {
     return { ...p, ...stats };
   });
 
+  // Upcoming operations (next 30 days)
+  const upcomingOps = [
+    ...upcomingMoveIns.filter(l => l.moveInScheduledDate! <= in30Str).map(l => ({ type: "Move-In" as const, lease: l, date: l.moveInScheduledDate! })),
+    ...upcomingMoveOuts.filter(l => l.moveOutScheduledDate! <= in30Str).map(l => ({ type: "Move-Out" as const, lease: l, date: l.moveOutScheduledDate! })),
+  ].sort((a, b) => a.date.localeCompare(b.date));
+
   return (
     <div className="space-y-6">
       <div>
@@ -79,7 +94,7 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">Portfolio overview</p>
       </div>
 
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
         {kpis.map(k => (
           <Card key={k.label}>
             <CardContent className="pt-5 pb-4">
@@ -120,6 +135,49 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Upcoming Operations */}
+      {upcomingOps.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              <Truck className="h-4 w-4 text-primary" />Upcoming Operations (30 days)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Type</TableHead>
+                  <TableHead className="text-xs">Reference</TableHead>
+                  <TableHead className="text-xs">Tenant</TableHead>
+                  <TableHead className="text-xs">Property</TableHead>
+                  <TableHead className="text-xs">Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {upcomingOps.map(op => {
+                  const tenant = tenants.find(t => t.id === op.lease.primaryTenantId);
+                  const prop = properties.find(p => p.id === op.lease.propertyId);
+                  return (
+                    <TableRow key={`${op.type}-${op.lease.id}`}>
+                      <TableCell>
+                        <StatusBadge status={op.type === "Move-In" ? "scheduled" : "pending"} />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <Link to={`/leases/${op.lease.id}`} className="hover:underline text-foreground">{op.lease.leaseReference}</Link>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-xs font-medium text-foreground">{formatDate(op.date, prop?.locale)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Overdue Tenants */}
       {overdueTenants.length > 0 && (
@@ -186,6 +244,43 @@ export default function Dashboard() {
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{l.noticeDate ? formatDate(l.noticeDate, prop?.locale) : "—"}</TableCell>
                       <TableCell className="text-xs text-warning font-medium">{l.intendedMoveOutDate ? formatDate(l.intendedMoveOutDate, prop?.locale) : "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Returns Pending */}
+      {returnsPending.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              <Truck className="h-4 w-4 text-warning" />Returns Pending
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Reference</TableHead>
+                  <TableHead className="text-xs">Tenant</TableHead>
+                  <TableHead className="text-xs">Property</TableHead>
+                  <TableHead className="text-xs">Return Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {returnsPending.map(l => {
+                  const tenant = tenants.find(t => t.id === l.primaryTenantId);
+                  const prop = properties.find(p => p.id === l.propertyId);
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell><StatusBadge status={l.returnStatus!} /></TableCell>
                     </TableRow>
                   );
                 })}

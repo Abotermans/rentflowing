@@ -31,6 +31,7 @@ interface AppState {
   addLease: (l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => void;
   updateLease: (l: Lease) => void;
   deleteLease: (id: string) => void;
+  confirmMoveOut: (lease: Lease) => void;
   addPayment: (p: Omit<Payment, "id">) => void;
   addGuarantee: (g: Omit<Guarantee, "id">) => void;
   updateGuarantee: (g: Guarantee) => void;
@@ -110,6 +111,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLeases(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  // Confirm move-out: sets lease to ended + unit to vacant
+  const confirmMoveOut = useCallback((lease: Lease) => {
+    const ts = now();
+    setLeases(prev => prev.map(x => x.id === lease.id ? { ...lease, leaseStatus: "ended" as const, moveOutActualDate: ts, updatedAt: ts } : x));
+    setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: ts, updatedAt: ts } : x));
+  }, []);
+
   const addPayment = useCallback((p: Omit<Payment, "id">) => {
     const newPayment = { ...p, id: genId("pay") };
     setPayments(prev => [...prev, newPayment]);
@@ -139,7 +147,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Guarantee CRUD
   const addGuarantee = useCallback((g: Omit<Guarantee, "id">) => {
     setGuarantees(prev => [...prev, { ...g, id: genId("g") }]);
   }, []);
@@ -201,14 +208,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
-    addLease, updateLease, deleteLease,
+    addLease, updateLease, deleteLease, confirmMoveOut,
     addPayment,
     addGuarantee, updateGuarantee, deleteGuarantee,
     getPropertyStats, getPropertyById, getUnitById, getTenantById,
     getActiveLease, getLeasesByTenant, getLeasesByProperty,
     getLedgerByLease, getPaymentsByLease, getPaymentsByTenant,
     getLeaseOutstanding, getTenantOutstanding, getGuaranteeByLease,
-  }), [properties, units, tenants, leases, ledgerLines, payments, guarantees, addProperty, updateProperty, deleteProperty, addUnit, updateUnit, deleteUnit, addTenant, updateTenant, deleteTenant, addLease, updateLease, deleteLease, addPayment, addGuarantee, updateGuarantee, deleteGuarantee, getPropertyStats, getPropertyById, getUnitById, getTenantById, getActiveLease, getLeasesByTenant, getLeasesByProperty, getLedgerByLease, getPaymentsByLease, getPaymentsByTenant, getLeaseOutstanding, getTenantOutstanding, getGuaranteeByLease]);
+  }), [properties, units, tenants, leases, ledgerLines, payments, guarantees, addProperty, updateProperty, deleteProperty, addUnit, updateUnit, deleteUnit, addTenant, updateTenant, deleteTenant, addLease, updateLease, deleteLease, confirmMoveOut, addPayment, addGuarantee, updateGuarantee, deleteGuarantee, getPropertyStats, getPropertyById, getUnitById, getTenantById, getActiveLease, getLeasesByTenant, getLeasesByProperty, getLedgerByLease, getPaymentsByLease, getPaymentsByTenant, getLeaseOutstanding, getTenantOutstanding, getGuaranteeByLease]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

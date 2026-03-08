@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
 
 const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
@@ -45,6 +45,11 @@ export default function Leases() {
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
     signedDate: null, notes: "",
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
+    moveInScheduledDate: null, moveInActualDate: null, moveInMeterReading: null,
+    moveInChecklist: { leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false, keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: false },
+    moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null,
+    moveOutChecklist: { noticeConfirmed: false, moveOutDateConfirmed: false, keysReturned: false, moveOutMeterReadingCaptured: false, balanceReviewed: false, guaranteeReviewCompleted: false },
+    moveOutNotes: "", keyHandoverCount: 0, keyReturnCount: 0, returnStatus: null, returnNotes: "",
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
 
@@ -185,7 +190,14 @@ export default function Leases() {
                     <TableCell className="text-muted-foreground">
                       {unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}
                     </TableCell>
-                    <TableCell><StatusBadge status={l.leaseStatus} /></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <StatusBadge status={l.leaseStatus} />
+                        {getMoveInStatus(l) === "scheduled" && <StatusBadge status="scheduled" />}
+                        {getMoveOutStatus(l) === "scheduled" && !l.moveOutActualDate && <StatusBadge status="scheduled" />}
+                        {l.returnStatus && l.returnStatus !== "completed" && <StatusBadge status={l.returnStatus} />}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {guarantee ? (
                         <StatusBadge status={guarantee.status} />
