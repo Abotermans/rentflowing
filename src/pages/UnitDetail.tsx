@@ -82,6 +82,16 @@ export default function UnitDetail() {
         </div>
       </div>
 
+      {/* Inconsistency Warning */}
+      {occupancy.inconsistent && occupancy.inconsistencyMessage && (
+        <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            <strong>{t("occupancy.inconsistencyWarning")}:</strong> {occupancy.inconsistencyMessage}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Main Info */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.unitInformation")}</CardTitle></CardHeader>
