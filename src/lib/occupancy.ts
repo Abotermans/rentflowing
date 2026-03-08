@@ -76,7 +76,7 @@ export function getDerivedOccupancy(
   let inconsistent = false;
   let inconsistencyMessage: string | undefined;
 
-  if (manualStatus === "vacant" && derived !== "vacant") {
+  if (manualStatus === "vacant") {
     inconsistent = true;
     inconsistencyMessage =
       "Unit is marked as vacant but has an active lease — occupancy should reflect the lease state.";
