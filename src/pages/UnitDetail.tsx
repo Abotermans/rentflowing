@@ -11,6 +11,9 @@ import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryNam
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canDeleteUnit, getUnitIntegrityWarnings } from "@/lib/integrity/unitIntegrity";
+import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
