@@ -154,7 +154,7 @@ export default function TenantDetail() {
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <StatusBadge status="under-notice" />
                     {activeLease.intendedMoveOutDate && (
-                      <span className="text-xs text-muted-foreground">Move-out: {formatDate(activeLease.intendedMoveOutDate, activeProperty.locale)}</span>
+                      <span className="text-xs text-muted-foreground">{t("detail.moveOutLabel")}: {formatDate(activeLease.intendedMoveOutDate, activeProperty.locale)}</span>
                     )}
                   </div>
                 </div>

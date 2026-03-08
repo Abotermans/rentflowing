@@ -94,7 +94,7 @@ export default function VendorDetail() {
         </Card>
         <Card>
           <CardContent className="pt-5 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Completed</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("status.completed")}</p>
             <p className="text-2xl font-bold text-success mt-1">{completedTickets.length}</p>
           </CardContent>
         </Card>

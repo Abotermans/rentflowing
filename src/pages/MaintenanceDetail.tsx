@@ -178,7 +178,7 @@ export default function MaintenanceDetail() {
             )}
             {ticket.residentVisibleNotes && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Resident Visible Notes</p>
+                <p className="text-xs text-muted-foreground mb-1">{t("maintenance.residentNotes")}</p>
                 <p className="text-sm text-foreground">{ticket.residentVisibleNotes}</p>
               </div>
             )}
