@@ -128,7 +128,7 @@ export default function MaintenanceDetail() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
-              <p className="text-xs text-muted-foreground">Category</p>
+              <p className="text-xs text-muted-foreground">{t("maintenance.category")}</p>
               <p className="text-sm font-medium text-foreground">{MAINTENANCE_CATEGORY_LABELS[ticket.category]}</p>
             </div>
             <div>
