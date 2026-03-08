@@ -383,7 +383,7 @@ export default function LeaseDetail() {
               </div>
               {/* Checklist */}
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checklist</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("detail.checklist")}</p>
                 {(Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[]).map(key => (
                   <div key={key} className="flex items-center justify-between">
                     <span className="text-sm text-foreground">{MOVE_IN_CHECKLIST_LABELS[key]}</span>
