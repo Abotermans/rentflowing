@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational" | "move-in-pending" | "move-out-scheduled" | "available-soon";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
