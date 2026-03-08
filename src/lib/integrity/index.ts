@@ -19,7 +19,7 @@ import { canDeleteUnit, canChangeUnitStatus, getUnitIntegrityWarnings } from "./
 import { canDeleteTenant, canChangeTenantStatus } from "./tenantIntegrity";
 import { canDeleteLease, canChangeLeaseStatus } from "./leaseIntegrity";
 import { canDeleteReceivable, canDeleteCashReceipt } from "./financialIntegrity";
-import { canDeleteCostEntry, canDeleteAllocationRule } from "./costIntegrity";
+import { canDeleteCostCategory, canDeleteCostEntry, canDeleteAllocationRule } from "./costIntegrity";
 
 export function getDeletionImpact(entityType: IntegrityEntityType, entityId: string, s: IntegrityState): ValidationResult {
   switch (entityType) {
