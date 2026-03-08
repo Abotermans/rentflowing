@@ -439,15 +439,17 @@ export default function LeaseDetail() {
                 {lease.leaseStatus === "active" && (() => {
                   const endCheck = canChangeLeaseStatus(lease.id, "ended", integrityState);
                   const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  const endDisabled = !endCheck.allowed && !endCheck.overrideAllowed;
+                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
                   return (
                     <>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
-                            <Button variant="outline" size="sm" onClick={handleMarkEnded} disabled={!endCheck.allowed}>{t("detail.markEnded")}</Button>
+                            <Button variant="outline" size="sm" onClick={handleMarkEnded} disabled={endDisabled}>{t("detail.markEnded")}</Button>
                           </span>
                         </TooltipTrigger>
-                        {!endCheck.allowed && (
+                        {endDisabled && (
                           <TooltipContent className="max-w-[300px]">
                             <p className="text-xs">{endCheck.blockers.map(b => b.message).join(". ")}</p>
                           </TooltipContent>
@@ -456,10 +458,10 @@ export default function LeaseDetail() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
-                            <Button variant="destructive" size="sm" onClick={handleMarkTerminated} disabled={!termCheck.allowed}>{t("detail.terminate")}</Button>
+                            <Button variant="destructive" size="sm" onClick={handleMarkTerminated} disabled={termDisabled}>{t("detail.terminate")}</Button>
                           </span>
                         </TooltipTrigger>
-                        {!termCheck.allowed && (
+                        {termDisabled && (
                           <TooltipContent className="max-w-[300px]">
                             <p className="text-xs">{termCheck.blockers.map(b => b.message).join(". ")}</p>
                           </TooltipContent>
