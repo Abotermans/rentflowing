@@ -19,7 +19,9 @@ import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
+import { canDeleteProperty, canArchiveProperty } from "@/lib/integrity/propertyIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
@@ -161,6 +163,15 @@ export default function PropertyDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Integrity Summary */}
+      {id && (
+        <IntegritySummaryPanel
+          title="Property Dependencies"
+          deleteValidation={canDeleteProperty(id, integrityState)}
+          additionalWarnings={canArchiveProperty(id, integrityState).warnings}
+        />
+      )}
 
       {/* KPI cards */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">

@@ -20,8 +20,10 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canChangeLeaseStatus, canActivateLease } from "@/lib/integrity/leaseIntegrity";
+import { canChangeLeaseStatus, canActivateLease, canDeleteLease } from "@/lib/integrity/leaseIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -256,6 +258,20 @@ export default function LeaseDetail() {
         </div>
       </div>
 
+      {/* Activation Blocker Panel (draft leases) */}
+      {lease.leaseStatus === "draft" && (() => {
+        const activationCheck = canActivateLease(lease.id, integrityState);
+        return (activationCheck.blockers.length > 0 || activationCheck.warnings.length > 0) ? (
+          <StatusTransitionAlert validation={activationCheck} />
+        ) : null;
+      })()}
+
+      {/* Integrity Summary — delete blockers */}
+      <IntegritySummaryPanel
+        title="Lease Dependencies"
+        deleteValidation={canDeleteLease(lease.id, integrityState)}
+      />
+
       {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
         <Alert variant="destructive">
@@ -363,18 +379,60 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}</Button>
-              {lease.leaseStatus === "draft" && (
-                <Button variant="default" size="sm" onClick={handleActivateLease}>Activate Lease</Button>
-              )}
-              {lease.leaseStatus === "active" && (
-                <>
-                  <Button variant="outline" size="sm" onClick={handleMarkEnded}>{t("detail.markEnded")}</Button>
-                  <Button variant="destructive" size="sm" onClick={handleMarkTerminated}>{t("detail.terminate")}</Button>
-                </>
-              )}
-            </div>
+            <TooltipProvider>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}</Button>
+                {lease.leaseStatus === "draft" && (() => {
+                  const activationCheck = canActivateLease(lease.id, integrityState);
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button variant="default" size="sm" onClick={handleActivateLease} disabled={!activationCheck.allowed}>Activate Lease</Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!activationCheck.allowed && (
+                        <TooltipContent className="max-w-[300px]">
+                          <p className="text-xs">{activationCheck.blockers.map(b => b.message).join(". ")}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  );
+                })()}
+                {lease.leaseStatus === "active" && (() => {
+                  const endCheck = canChangeLeaseStatus(lease.id, "ended", integrityState);
+                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  return (
+                    <>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button variant="outline" size="sm" onClick={handleMarkEnded} disabled={!endCheck.allowed}>{t("detail.markEnded")}</Button>
+                          </span>
+                        </TooltipTrigger>
+                        {!endCheck.allowed && (
+                          <TooltipContent className="max-w-[300px]">
+                            <p className="text-xs">{endCheck.blockers.map(b => b.message).join(". ")}</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button variant="destructive" size="sm" onClick={handleMarkTerminated} disabled={!termCheck.allowed}>{t("detail.terminate")}</Button>
+                          </span>
+                        </TooltipTrigger>
+                        {!termCheck.allowed && (
+                          <TooltipContent className="max-w-[300px]">
+                            <p className="text-xs">{termCheck.blockers.map(b => b.message).join(". ")}</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </>
+                  );
+                })()}
+              </div>
+            </TooltipProvider>
           </div>
         </CardHeader>
         <CardContent>

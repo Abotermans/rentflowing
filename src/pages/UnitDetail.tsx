@@ -11,11 +11,15 @@ import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryNam
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
+import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { canDeleteUnit, getUnitIntegrityWarnings } from "@/lib/integrity/unitIntegrity";
+import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
   const { units, properties, leases, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
@@ -90,6 +94,15 @@ export default function UnitDetail() {
             <strong>{t("occupancy.inconsistencyWarning")}:</strong> {occupancy.inconsistencyMessage}
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Integrity Summary */}
+      {id && (
+        <IntegritySummaryPanel
+          title="Unit Dependencies"
+          deleteValidation={canDeleteUnit(id, integrityState)}
+          additionalWarnings={getUnitIntegrityWarnings(id, integrityState)}
+        />
       )}
 
       {/* Main Info */}
