@@ -32,6 +32,7 @@ export default function Tenants() {
   const { tenants, leases, units, properties, addTenant, updateTenant, deleteTenant } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const integrityState = useIntegrityState();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
