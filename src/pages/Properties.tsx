@@ -80,7 +80,7 @@ export default function Properties() {
 
   const handleSave = () => {
     if (!form.name.trim() || !form.referenceCode.trim() || !form.address1.trim() || !form.city.trim() || !form.countryCode) {
-      toast({ title: "Validation Error", description: "Please fill in all required fields.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
     if (editing) {
