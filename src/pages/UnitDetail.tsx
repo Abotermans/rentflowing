@@ -249,7 +249,7 @@ export default function UnitDetail() {
               <p className="text-sm font-medium text-foreground">{property.city}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Country</p>
+              <p className="text-xs text-muted-foreground">{t("properties.country")}</p>
               <p className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</p>
             </div>
             <div>
