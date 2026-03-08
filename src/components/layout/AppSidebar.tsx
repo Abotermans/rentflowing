@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2 } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -16,6 +16,7 @@ import {
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Properties", url: "/properties", icon: Building2 },
+  { title: "Units", url: "/units", icon: DoorOpen },
 ];
 
 export function AppSidebar() {
