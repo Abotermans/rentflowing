@@ -63,7 +63,7 @@ export default function VendorDetail() {
             <div className="flex items-start gap-2">
               <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Phone</p>
+                <p className="text-xs text-muted-foreground">{t("vendors.phone")}</p>
                 <p className="text-sm font-medium text-foreground">{vendor.phone || "—"}</p>
               </div>
             </div>
