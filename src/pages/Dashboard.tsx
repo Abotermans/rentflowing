@@ -24,7 +24,7 @@ export default function Dashboard() {
   let occupied = 0, unavailable = 0, reserved = 0;
   units.forEach(u => {
     const hasActiveLease = leases.some(l => l.unitId === u.id && l.leaseStatus === "active");
-    if (hasActiveLease || u.currentStatus === "occupied") { occupied++; }
+    if (hasActiveLease) { occupied++; }
     else if (u.currentStatus === "unavailable") { unavailable++; }
     else if (u.currentStatus === "reserved") { reserved++; }
   });
