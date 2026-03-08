@@ -109,11 +109,19 @@ export default function Payments() {
     other: "Other",
   };
 
+  // Determine dominant currency for KPI display
+  const activeCurrencies = [...new Set(leases.filter(l => l.leaseStatus === "active").map(l => {
+    const prop = properties.find(p => p.id === l.propertyId);
+    return prop?.currencyCode ?? "EUR";
+  }))];
+  const kpiCurrency = activeCurrencies.length === 1 ? activeCurrencies[0] : undefined;
+  const kpiLocale = activeCurrencies.length === 1 ? properties.find(p => p.currencyCode === activeCurrencies[0])?.locale : undefined;
+
   const kpis = [
-    { label: "Due This Month", value: totalDueThisMonth, icon: Clock, color: "text-primary", isCurrency: true },
-    { label: "Collected This Month", value: totalCollectedThisMonth, icon: CheckCircle2, color: "text-success", isCurrency: true },
-    { label: "Total Overdue", value: totalOverdue, icon: AlertTriangle, color: "text-destructive", isCurrency: true },
-    { label: "Partially Paid", value: partiallyPaidCount, icon: CreditCard, color: "text-warning", isCurrency: false },
+    { label: t("payments.dueThisMonth"), value: totalDueThisMonth, icon: Clock, color: "text-primary", isCurrency: true },
+    { label: t("payments.collectedThisMonth"), value: totalCollectedThisMonth, icon: CheckCircle2, color: "text-success", isCurrency: true },
+    { label: t("payments.totalOverdue"), value: totalOverdue, icon: AlertTriangle, color: "text-destructive", isCurrency: true },
+    { label: t("payments.partiallyPaid"), value: partiallyPaidCount, icon: CreditCard, color: "text-warning", isCurrency: false },
   ];
 
   return (
