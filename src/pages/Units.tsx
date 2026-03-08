@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { DoorOpen, Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
+import { DoorOpen, Plus, Search, Eye, Pencil, AlertTriangle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel } from "@/lib/formatters";
@@ -22,6 +22,8 @@ import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { getDerivedOccupancy, type DerivedOccupancy } from "@/lib/occupancy";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
@@ -34,10 +36,19 @@ const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
   { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
 ];
 
+const OCCUPANCY_FILTERS: { value: DerivedOccupancy | "all"; label: string }[] = [
+  { value: "all", label: "All Occupancy" },
+  { value: "vacant", label: "Vacant" },
+  { value: "occupied", label: "Occupied" },
+  { value: "under-notice", label: "Under Notice" },
+  { value: "move-in-pending", label: "Move-In Pending" },
+  { value: "move-out-scheduled", label: "Move-Out Scheduled" },
+];
+
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function Units() {
-  const { properties, units, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, leases } = useAppData();
+  const { properties, units, leases, addUnit, updateUnit, deleteUnit } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -45,18 +56,15 @@ export default function Units() {
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterType, setFilterType] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterOccupancy, setFilterOccupancy] = useState<DerivedOccupancy | "all">("all");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
 
-  // Auto-open edit sheet from query param
   useEffect(() => {
     const editId = searchParams.get("edit");
     if (editId) {
       const unitToEdit = units.find(u => u.id === editId);
-      if (unitToEdit) {
-        openEdit(unitToEdit);
-      }
+      if (unitToEdit) openEdit(unitToEdit);
       searchParams.delete("edit");
       setSearchParams(searchParams, { replace: true });
     }
@@ -109,14 +117,20 @@ export default function Units() {
     toast({ title: "Unit deleted" });
   };
 
-  const filtered = units.filter(u => {
+  // Compute derived occupancy for each unit
+  const unitsWithOccupancy = units.map(u => ({
+    unit: u,
+    occupancy: getDerivedOccupancy(u.id, u.currentStatus, leases),
+  }));
+
+  const filtered = unitsWithOccupancy.filter(({ unit: u, occupancy }) => {
     const prop = properties.find(p => p.id === u.propertyId);
     const q = search.toLowerCase();
     const matchSearch = !q || u.unitCode.toLowerCase().includes(q) || u.unitLabel.toLowerCase().includes(q) || (prop?.name.toLowerCase().includes(q) ?? false);
     const matchProp = filterProperty === "all" || u.propertyId === filterProperty;
     const matchType = filterType === "all" || u.unitType === filterType;
-    const matchStatus = filterStatus === "all" || u.currentStatus === filterStatus;
-    return matchSearch && matchProp && matchType && matchStatus;
+    const matchOccupancy = filterOccupancy === "all" || occupancy.derived === filterOccupancy;
+    return matchSearch && matchProp && matchType && matchOccupancy;
   });
 
   const selectedProperty = form.propertyId ? properties.find(p => p.id === form.propertyId) : null;
@@ -150,11 +164,10 @@ export default function Units() {
             {UNIT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
+        <Select value={filterOccupancy} onValueChange={v => setFilterOccupancy(v as DerivedOccupancy | "all")}>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("occupancy.derivedLabel")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
-            {UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+            {OCCUPANCY_FILTERS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -164,55 +177,77 @@ export default function Units() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("units.code")}</TableHead>
-                <TableHead>{t("units.label")}</TableHead>
-                <TableHead>{t("units.property")}</TableHead>
-                <TableHead>{t("units.type")}</TableHead>
-                <TableHead className="text-center">{t("units.floor")}</TableHead>
-                <TableHead className="text-right">{t("units.surface")}</TableHead>
-                <TableHead className="text-right">{t("units.rent")}</TableHead>
-                <TableHead className="text-right">{t("units.charges")}</TableHead>
-                <TableHead>{t("units.status")}</TableHead>
-                <TableHead>{t("units.availableFrom")}</TableHead>
-                <TableHead className="text-right">{t("units.actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map(u => {
-                const prop = properties.find(p => p.id === u.propertyId);
-                return (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-mono text-xs font-medium">
-                      <Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline">{prop.name}</Link> : "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null && prop ? formatArea(u.surfaceArea, prop.measurementSystem) : "—"}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{u.baseRent != null && prop ? formatCurrency(u.baseRent, prop.currencyCode, prop.locale) : "—"}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{u.baseCharges != null && prop ? formatCurrency(u.baseCharges, prop.currencyCode, prop.locale) : "—"}</TableCell>
-                    <TableCell><StatusBadge status={u.currentStatus} /></TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{u.availableFrom ? formatDate(u.availableFrom, prop?.locale) : "—"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDelete} />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </Card>
+        <TooltipProvider>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("units.code")}</TableHead>
+                  <TableHead>{t("units.label")}</TableHead>
+                  <TableHead>{t("units.property")}</TableHead>
+                  <TableHead>{t("units.type")}</TableHead>
+                  <TableHead className="text-center">{t("units.floor")}</TableHead>
+                  <TableHead className="text-right">{t("units.surface")}</TableHead>
+                  <TableHead className="text-right">{t("units.rent")}</TableHead>
+                  <TableHead className="text-right">{t("units.charges")}</TableHead>
+                  <TableHead>{t("occupancy.derivedLabel")}</TableHead>
+                  <TableHead>{t("units.availableFrom")}</TableHead>
+                  <TableHead className="text-right">{t("units.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map(({ unit: u, occupancy }) => {
+                  const prop = properties.find(p => p.id === u.propertyId);
+                  return (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-mono text-xs font-medium">
+                        <Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline">{prop.name}</Link> : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null && prop ? formatArea(u.surfaceArea, prop.measurementSystem) : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{u.baseRent != null && prop ? formatCurrency(u.baseRent, prop.currencyCode, prop.locale) : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{u.baseCharges != null && prop ? formatCurrency(u.baseCharges, prop.currencyCode, prop.locale) : "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge status={occupancy.derived} />
+                          {occupancy.inconsistent && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[250px]">
+                                <p className="text-xs">{occupancy.inconsistencyMessage}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {occupancy.availableFromDate
+                          ? formatDate(occupancy.availableFromDate, prop?.locale)
+                          : u.availableFrom
+                            ? formatDate(u.availableFrom, prop?.locale)
+                            : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDelete} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Card>
+        </TooltipProvider>
       )}
 
       {/* Unit Form Sheet */}
