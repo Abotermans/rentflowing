@@ -31,30 +31,33 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AppProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/properties" element={<Properties />} />
-              <Route path="/properties/:id" element={<PropertyDetail />} />
-              <Route path="/units" element={<Units />} />
-              <Route path="/units/:id" element={<UnitDetail />} />
-              <Route path="/tenants" element={<Tenants />} />
-              <Route path="/tenants/:id" element={<TenantDetail />} />
-              <Route path="/leases" element={<Leases />} />
-              <Route path="/leases/:id" element={<LeaseDetail />} />
-              <Route path="/payments" element={<Payments />} />
-              <Route path="/maintenance" element={<Maintenance />} />
-              <Route path="/maintenance/:id" element={<MaintenanceDetail />} />
-              <Route path="/vendors" element={<Vendors />} />
-              <Route path="/vendors/:id" element={<VendorDetail />} />
-              <Route path="/reports" element={<Reports />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AppProvider>
+      <SettingsProvider>
+        <AppProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/properties" element={<Properties />} />
+                <Route path="/properties/:id" element={<PropertyDetail />} />
+                <Route path="/units" element={<Units />} />
+                <Route path="/units/:id" element={<UnitDetail />} />
+                <Route path="/tenants" element={<Tenants />} />
+                <Route path="/tenants/:id" element={<TenantDetail />} />
+                <Route path="/leases" element={<Leases />} />
+                <Route path="/leases/:id" element={<LeaseDetail />} />
+                <Route path="/payments" element={<Payments />} />
+                <Route path="/maintenance" element={<Maintenance />} />
+                <Route path="/maintenance/:id" element={<MaintenanceDetail />} />
+                <Route path="/vendors" element={<Vendors />} />
+                <Route path="/vendors/:id" element={<VendorDetail />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AppProvider>
+      </SettingsProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
