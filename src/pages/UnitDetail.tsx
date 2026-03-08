@@ -131,7 +131,7 @@ export default function UnitDetail() {
           {activeLease && tenant ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Tenant</p>
+                <p className="text-xs text-muted-foreground">{t("table.tenant")}</p>
                 <Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link>
               </div>
               <div>
