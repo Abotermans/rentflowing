@@ -85,7 +85,7 @@ export default function Properties() {
     }
     if (editing) {
       updateProperty({ ...editing, ...form });
-      toast({ title: "Property updated" });
+      toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
     } else {
       addProperty(form);
       toast({ title: "Property added" });
