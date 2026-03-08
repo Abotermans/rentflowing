@@ -101,6 +101,14 @@ export function IntegritySummaryPanel({
             <span>{recommendedAction}</span>
           </div>
         )}
+
+        {/* Override available indicator */}
+        {!allowed && deleteValidation.overrideAllowed && (
+          <div className="flex items-start gap-1.5 text-xs text-warning font-medium pt-1 border-t border-border">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>Override available for exceptional cases</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

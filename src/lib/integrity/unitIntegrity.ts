@@ -35,6 +35,10 @@ export function canChangeUnitStatus(unitId: string, targetStatus: UnitStatus, s:
     case "occupied":
       if (activeLeases.length === 0) {
         blockers.push({ code: "UNIT_NO_ACTIVE_LEASE", message: "Unit cannot be occupied without an active lease" });
+        // Allow override for pre-import / legacy data scenarios
+        if (blockers.length === 1) {
+          return { allowed: false, blockers, warnings, overrideAllowed: true, recommendedAction: "Only override if lease data is pending import" };
+        }
       }
       if (activeLeases.length > 1) {
         blockers.push({ code: "UNIT_MULTIPLE_ACTIVE_LEASES", message: `Unit has ${activeLeases.length} active leases — resolve before occupying`, count: activeLeases.length });
