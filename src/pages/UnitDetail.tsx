@@ -30,6 +30,7 @@ export default function UnitDetail() {
   }
 
   const activeLease = getActiveLease(unit.id);
+  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases);
   const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
   const lifecycle = activeLease ? getLeaseLifecycleStatus(activeLease) : null;
   const moveIn = activeLease ? getMoveInStatus(activeLease) : null;
