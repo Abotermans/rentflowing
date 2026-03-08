@@ -125,7 +125,7 @@ export default function PropertyDetail() {
       {/* Overview & Local Settings */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Overview</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.overview")}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">Address</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">Owner</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
