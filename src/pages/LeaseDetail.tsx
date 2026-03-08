@@ -291,11 +291,11 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div><p className="text-xs text-muted-foreground">This Month Due</p><p className="text-lg font-bold text-foreground">{formatCurrency(thisMonthDue, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Total Paid</p><p className="text-lg font-bold text-success">{formatCurrency(totalPaid, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Outstanding</p><p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.thisMonthDue")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(thisMonthDue, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.totalPaid")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalPaid, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("table.outstanding")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p></div>
             <div>
-              <p className="text-xs text-muted-foreground">Overdue</p>
+              <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
               <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
                 {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
                 {formatCurrency(overdue, currency, locale)}
