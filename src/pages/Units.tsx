@@ -8,6 +8,7 @@ import { DoorOpen, Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatArea, formatDate, getUnitTypeLabel } from "@/lib/formatters";
+import { useSettings } from "@/context/SettingsContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
