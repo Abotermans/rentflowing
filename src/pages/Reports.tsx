@@ -387,27 +387,31 @@ function DepositsReport() {
         <KpiCard label="Pending / Incomplete" value={String(pending)} accent={pending > 0} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="guarantees" />
-      <Table>
-        <TableHeader><TableRow>
-          <TableHead className="text-xs">Lease</TableHead><TableHead className="text-xs">Tenant</TableHead>
-          <TableHead className="text-xs">Property</TableHead><TableHead className="text-xs">Type</TableHead>
-          <TableHead className="text-xs text-right">Expected</TableHead><TableHead className="text-xs text-right">Received</TableHead>
-          <TableHead className="text-xs">Status</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {data.map(d => (
-            <TableRow key={d.g.id}>
-              <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
-              <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-              <TableCell className="text-xs">{GUARANTEE_TYPE_LABELS[d.g.type]}</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(d.g.expectedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell className="text-right text-sm">{formatCurrency(d.g.receivedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-              <TableCell><StatusBadge status={d.g.status} /></TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead className="text-xs">Lease</TableHead><TableHead className="text-xs">Tenant</TableHead>
+            <TableHead className="text-xs">Property</TableHead><TableHead className="text-xs">Type</TableHead>
+            <TableHead className="text-xs text-right">Expected</TableHead><TableHead className="text-xs text-right">Received</TableHead>
+            <TableHead className="text-xs">Status</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No guarantees found.</TableCell></TableRow>
+            ) : data.map(d => (
+              <TableRow key={d.g.id}>
+                <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
+                <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
+                <TableCell className="text-xs">{GUARANTEE_TYPE_LABELS[d.g.type]}</TableCell>
+                <TableCell className="text-right text-sm">{formatCurrency(d.g.expectedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm">{formatCurrency(d.g.receivedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell><StatusBadge status={d.g.status} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
