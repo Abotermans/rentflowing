@@ -73,6 +73,9 @@ export default function Dashboard() {
     { label: "Upcoming Move-Ins", value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
     { label: "Upcoming Move-Outs", value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
     { label: "Returns Pending", value: returnsPending.length, icon: Truck, color: returnsPending.length > 0 ? "text-warning" : "text-foreground" },
+    { label: "Open Tickets", value: openTicketsCount, icon: Wrench, color: openTicketsCount > 0 ? "text-warning" : "text-foreground" },
+    { label: "Urgent Tickets", value: urgentTicketsCount, icon: Wrench, color: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
+    { label: "Completed (Month)", value: completedThisMonth, icon: Wrench, color: "text-success" },
   ];
 
   const statusSegments = [
