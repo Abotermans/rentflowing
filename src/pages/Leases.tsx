@@ -31,6 +31,7 @@ type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 export default function Leases() {
   const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease, getGuaranteeByLease } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterProperty, setFilterProperty] = useState("all");
