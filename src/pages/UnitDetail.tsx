@@ -209,7 +209,7 @@ export default function UnitDetail() {
                   </div>
                   {leaseFinancials.overdue > 0 && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Overdue</p>
+                      <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
                       <p className="text-sm font-bold text-destructive">
                         <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />
                         {formatCurrency(leaseFinancials.overdue, property.currencyCode, property.locale)}
