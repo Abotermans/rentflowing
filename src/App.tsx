@@ -14,6 +14,7 @@ import Tenants from "./pages/Tenants";
 import TenantDetail from "./pages/TenantDetail";
 import Leases from "./pages/Leases";
 import LeaseDetail from "./pages/LeaseDetail";
+import Payments from "./pages/Payments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
