@@ -57,6 +57,7 @@ const statusStyles: Record<StatusType, string> = {
   "move-in-pending": "bg-primary/15 text-primary border-primary/30",
   "move-out-scheduled": "bg-warning/15 text-warning border-warning/30",
   "available-soon": "bg-success/15 text-success border-success/30",
+  "not-applicable": "bg-muted text-muted-foreground border-border",
 };
 
 const STATUS_KEYS: Record<StatusType, TranslationKey> = {
