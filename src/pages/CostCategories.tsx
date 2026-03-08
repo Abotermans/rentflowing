@@ -76,6 +76,7 @@ export default function CostCategories() {
 
   return (
     <div className="space-y-6">
+      <CostsNav />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("costs.categories")}</h1>
