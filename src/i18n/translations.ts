@@ -285,6 +285,12 @@ const en = {
   "payments.cash": "Cash",
   "payments.other": "Other",
   "payments.selectLease": "Select lease",
+  "payments.property": "Property",
+  "payments.unit": "Unit",
+  "payments.status": "Status",
+  "payments.paymentReferencePlaceholder": "Payment reference",
+  "payments.rent": "Rent",
+  "payments.charges": "Charges",
 
   // Maintenance
   "maintenance.title": "Maintenance",
