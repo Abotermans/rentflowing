@@ -363,7 +363,7 @@ export default function LeaseDetail() {
 
       {/* ==================== OCCUPANCY OPERATIONS ==================== */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2"><Truck className="h-5 w-5" />Occupancy Operations</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2"><Truck className="h-5 w-5" />{t("detail.occupancyOps")}</h2>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Move-In Panel */}
           <Card>
