@@ -66,7 +66,7 @@ export default function MaintenanceDetail() {
 
       {/* Quick Actions */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Quick Actions</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.quickActions")}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex gap-2 flex-wrap">
             {ticket.status !== "assigned" && ticket.status !== "completed" && ticket.status !== "cancelled" && (
