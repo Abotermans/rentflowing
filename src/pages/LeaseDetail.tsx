@@ -25,7 +25,7 @@ export default function LeaseDetail() {
   const {
     leases, tenants, units, properties,
     getReceivableItemsByLease, getCashReceiptsByLease, getAllocationsByReceipt,
-    getLeaseOutstanding, getGuaranteeByLease,
+    getLeaseOutstanding, getGuaranteeByLease, allocations,
     addGuarantee, updateGuarantee, updateLease, confirmMoveOut,
     createCashReceipt, getTenantUnappliedCredit,
   } = useAppData();
