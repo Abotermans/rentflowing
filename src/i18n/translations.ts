@@ -695,6 +695,8 @@ const fr: TranslationKeys = {
   "units.selectProperty": "Sélectionner un bien",
   "units.deleteTitle": "Supprimer le lot ?",
   "units.deleteDesc": "Ce lot sera définitivement supprimé.",
+  "units.deleteWarningLease": "Ce lot a un bail actif ({ref}) avec le locataire {tenant}. Le supprimer rendra les données orphelines.",
+  "units.deleteSafe": "Ce lot n'a pas de bail actif. Il peut être supprimé en toute sécurité.",
   "units.apartment": "Appartement",
   "units.studio": "Studio",
   "units.office": "Bureau",
