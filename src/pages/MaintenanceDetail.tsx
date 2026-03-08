@@ -27,8 +27,8 @@ export default function MaintenanceDetail() {
   if (!ticket) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Ticket not found.</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/maintenance">← Back to Maintenance</Link></Button>
+        <p className="text-muted-foreground">{t("detail.ticketNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/maintenance">← {t("nav.maintenance")}</Link></Button>
       </div>
     );
   }
