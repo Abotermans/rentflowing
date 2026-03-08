@@ -85,7 +85,7 @@ export default function TenantDetail() {
       {/* Financial Overview */}
       {(outstanding > 0 || overdue > 0) && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Financial Overview</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialOverview")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div>
