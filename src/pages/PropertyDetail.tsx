@@ -178,8 +178,8 @@ export default function PropertyDetail() {
         {propertyUnits.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">No units in this property yet.</p>
-              <Button variant="link" className="mt-2" onClick={openAddUnit}>Add your first unit</Button>
+              <p className="text-muted-foreground">{t("detail.noUnitsInProperty")}</p>
+              <Button variant="link" className="mt-2" onClick={openAddUnit}>{t("detail.addFirstUnit")}</Button>
             </CardContent>
           </Card>
         ) : (
