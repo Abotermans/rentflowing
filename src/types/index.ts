@@ -38,6 +38,8 @@ export interface Unit {
   furnished: boolean;
   currentStatus: UnitStatus;
   baseRent: number | null;
+  baseRentSixMonths: number | null;
+  baseRentYearly: number | null;
   baseCharges: number | null;
   availableFrom: string | null;
   notes: string;
