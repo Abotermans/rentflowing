@@ -164,6 +164,9 @@ export interface Lease {
   returnStatus: ReturnStatus | null;
   returnNotes: string;
 
+  // Rent formula
+  rentFormula: RentFormula;
+
   // Advance payment
   hasAdvancePayment: boolean;
   advancePaymentAmount: number | null;
