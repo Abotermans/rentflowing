@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LeaseStatus, RentFormula, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
