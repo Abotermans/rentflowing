@@ -62,7 +62,7 @@ export default function Leases() {
     coTenantIds: [], leaseStatus: "draft", startDate: "", endDate: "",
     monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
-    signedDate: null, notes: "",
+    signedDate: null, notes: "", rentFormula: "monthly",
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
     moveInScheduledDate: null, moveInActualDate: null, moveInMeterReading: null,
     moveInChecklist: { leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false, keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: false },

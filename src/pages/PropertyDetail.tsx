@@ -60,7 +60,7 @@ export default function PropertyDetail() {
   const emptyUnitForm: UnitFormData = {
     propertyId: id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
     floor: null, surfaceArea: null, bedrooms: 0, bathrooms: 0, furnished: false,
-    currentStatus: "vacant", baseRent: null, baseCharges: null, availableFrom: null, notes: "",
+    currentStatus: "vacant", baseRent: null, baseRentSixMonths: null, baseRentYearly: null, baseCharges: null, availableFrom: null, notes: "",
   };
   const [unitForm, setUnitForm] = useState<UnitFormData>({ ...emptyUnitForm });
 
