@@ -38,6 +38,8 @@ export interface Unit {
   furnished: boolean;
   currentStatus: UnitStatus;
   baseRent: number | null;
+  baseRentSixMonths: number | null;
+  baseRentYearly: number | null;
   baseCharges: number | null;
   availableFrom: string | null;
   notes: string;
@@ -71,6 +73,7 @@ export type LeaseStatus = "draft" | "active" | "ended" | "terminated";
 export type AdvanceAllocationMethod = 'spread-evenly' | 'fixed-monthly-reduction';
 export type AdvanceAppliedTo = 'rent' | 'charges' | 'rent-and-charges';
 export type AdvanceStatus = 'not-applicable' | 'scheduled' | 'active' | 'fully-consumed';
+export type RentFormula = 'monthly' | 'six-months' | 'yearly';
 
 // Checklist types
 export interface MoveInChecklist {
@@ -160,6 +163,9 @@ export interface Lease {
   // Return
   returnStatus: ReturnStatus | null;
   returnNotes: string;
+
+  // Rent formula
+  rentFormula: RentFormula;
 
   // Advance payment
   hasAdvancePayment: boolean;

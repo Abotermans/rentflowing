@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { Lease, LeaseStatus, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LeaseStatus, RentFormula, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -62,7 +62,7 @@ export default function Leases() {
     coTenantIds: [], leaseStatus: "draft", startDate: "", endDate: "",
     monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
-    signedDate: null, notes: "",
+    signedDate: null, notes: "", rentFormula: "monthly",
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
     moveInScheduledDate: null, moveInActualDate: null, moveInMeterReading: null,
     moveInChecklist: { leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false, keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: false },
@@ -340,6 +340,52 @@ export default function Leases() {
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
               <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+            </div>
+            <div>
+              <Label>Rent Formula *</Label>
+              <Select value={form.rentFormula} onValueChange={(v: RentFormula) => {
+                const selectedUnit = units.find(u => u.id === form.unitId);
+                if (v === 'monthly') {
+                  setForm(f => ({
+                    ...f, rentFormula: v,
+                    monthlyRent: selectedUnit?.baseRent ?? f.monthlyRent,
+                    hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+                    advanceAllocationMethod: null, advanceAppliedTo: null,
+                    advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
+                    fixedMonthlyReductionAmount: null,
+                  }));
+                } else if (v === 'six-months') {
+                  const rent = selectedUnit?.baseRentSixMonths ?? selectedUnit?.baseRent ?? form.monthlyRent;
+                  setForm(f => ({
+                    ...f, rentFormula: v, monthlyRent: rent,
+                    hasAdvancePayment: true, advancePaymentAmount: rent * 6,
+                    advanceAllocationMethod: 'spread-evenly', advanceAppliedTo: 'rent',
+                    advanceAllocationStartDate: f.startDate || null,
+                    advanceAllocationDurationMonths: 6, fixedMonthlyReductionAmount: null,
+                  }));
+                } else {
+                  const rent = selectedUnit?.baseRentYearly ?? selectedUnit?.baseRent ?? form.monthlyRent;
+                  setForm(f => ({
+                    ...f, rentFormula: v, monthlyRent: rent,
+                    hasAdvancePayment: true, advancePaymentAmount: rent * 12,
+                    advanceAllocationMethod: 'spread-evenly', advanceAppliedTo: 'rent',
+                    advanceAllocationStartDate: f.startDate || null,
+                    advanceAllocationDurationMonths: 12, fixedMonthlyReductionAmount: null,
+                  }));
+                }
+              }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="six-months">6-Month Advance</SelectItem>
+                  <SelectItem value="yearly">1-Year Advance</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.rentFormula !== 'monthly' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Advance: {form.advancePaymentAmount != null ? `${form.advancePaymentAmount.toLocaleString()} (${form.advanceAllocationDurationMonths} months)` : '—'}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>{t("leases.monthlyRent")} *</Label><Input type="number" min={0} value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: Number(e.target.value) || 0 }))} /></div>

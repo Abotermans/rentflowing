@@ -124,8 +124,14 @@ export default function UnitDetail() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialDefaults")}</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-6">
-            <div><p className="text-xs text-muted-foreground">{t("detail.baseRent")}</p><p className="text-lg font-bold text-foreground">{unit.baseRent != null ? formatCurrency(unit.baseRent, property.currencyCode, property.locale) : "—"}</p></div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div><p className="text-xs text-muted-foreground">{t("detail.baseRent")} (Monthly)</p><p className="text-lg font-bold text-foreground">{unit.baseRent != null ? formatCurrency(unit.baseRent, property.currencyCode, property.locale) : "—"}</p></div>
+            {unit.baseRentSixMonths != null && (
+              <div><p className="text-xs text-muted-foreground">Rent (6-Month Advance)</p><p className="text-lg font-bold text-foreground">{formatCurrency(unit.baseRentSixMonths, property.currencyCode, property.locale)}</p></div>
+            )}
+            {unit.baseRentYearly != null && (
+              <div><p className="text-xs text-muted-foreground">Rent (1-Year Advance)</p><p className="text-lg font-bold text-foreground">{formatCurrency(unit.baseRentYearly, property.currencyCode, property.locale)}</p></div>
+            )}
             <div><p className="text-xs text-muted-foreground">{t("detail.baseCharges")}</p><p className="text-lg font-bold text-foreground">{unit.baseCharges != null ? formatCurrency(unit.baseCharges, property.currencyCode, property.locale) : "—"}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("properties.currency")}</p><p className="text-lg font-bold text-foreground">{property.currencyCode}</p></div>
           </div>

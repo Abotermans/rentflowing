@@ -79,7 +79,7 @@ export default function Units() {
   const emptyForm: UnitFormData = {
     propertyId: properties[0]?.id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
     floor: null, surfaceArea: null, bedrooms: 0, bathrooms: 0, furnished: false,
-    currentStatus: "vacant", baseRent: null, baseCharges: null, availableFrom: null, notes: "",
+    currentStatus: "vacant", baseRent: null, baseRentSixMonths: null, baseRentYearly: null, baseCharges: null, availableFrom: null, notes: "",
   };
   const [form, setForm] = useState<UnitFormData>({ ...emptyForm });
 
@@ -320,6 +320,10 @@ export default function Units() {
               <div><Label>{t("units.bathrooms")}</Label><Input type="number" min={0} value={form.bathrooms} onChange={e => setForm(f => ({ ...f, bathrooms: Number(e.target.value) }))} /></div>
               <div><Label>{t("units.rent")} ({selectedProperty?.currencyCode ?? "EUR"})</Label><Input type="number" value={form.baseRent ?? ""} onChange={e => setForm(f => ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
               <div><Label>{t("units.charges")} ({selectedProperty?.currencyCode ?? "EUR"})</Label><Input type="number" value={form.baseCharges ?? ""} onChange={e => setForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Rent (6-Month Advance)</Label><Input type="number" value={form.baseRentSixMonths ?? ""} onChange={e => setForm(f => ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
+              <div><Label>Rent (1-Year Advance)</Label><Input type="number" value={form.baseRentYearly ?? ""} onChange={e => setForm(f => ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
             </div>
             <div className="flex items-center gap-3">
               <Switch checked={form.furnished} onCheckedChange={v => setForm(f => ({ ...f, furnished: v }))} />
