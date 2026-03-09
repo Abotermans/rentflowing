@@ -143,7 +143,7 @@ export const initialLeases: Lease[] = [
     createdAt: "2024-09-15", updatedAt: "2025-12-01",
   },
   {
-    id: "l6", leaseReference: "BAIL-BRU-003", propertyId: "p2", unitId: "u5", primaryTenantId: "t2", coTenantIds: [], leaseStatus: "active", startDate: "2025-07-01", endDate: "2028-06-30", monthlyRent: 2200, monthlyCharges: 350, dueDayOfMonth: 1, depositOrGuaranteeAmount: 4400, noticePeriodText: "6 months", signedDate: "2025-06-15", notes: "Commercial lease with advance payment reducing rent over 12 months.",
+    id: "l6", leaseReference: "BAIL-BRU-003", propertyId: "p2", unitId: "u5", primaryTenantId: "t2", coTenantIds: [], leaseStatus: "active", startDate: "2025-07-01", endDate: "2028-06-30", monthlyRent: 2200, monthlyCharges: 350, dueDayOfMonth: 1, depositOrGuaranteeAmount: 4400, noticePeriodText: "6 months", signedDate: "2025-06-15", notes: "Commercial lease with advance payment reducing rent over 12 months.", rentFormula: "yearly",
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
     moveInScheduledDate: "2025-07-01", moveInActualDate: "2025-07-01", moveInMeterReading: "2100", moveInChecklist: { ...completedMoveInChecklist },
     moveOutScheduledDate: null, moveOutActualDate: null, moveOutMeterReading: null, moveOutChecklist: { ...DEFAULT_MOVE_OUT_CHECKLIST }, moveOutNotes: "",
