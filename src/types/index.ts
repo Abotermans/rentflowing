@@ -71,6 +71,7 @@ export type LeaseStatus = "draft" | "active" | "ended" | "terminated";
 export type AdvanceAllocationMethod = 'spread-evenly' | 'fixed-monthly-reduction';
 export type AdvanceAppliedTo = 'rent' | 'charges' | 'rent-and-charges';
 export type AdvanceStatus = 'not-applicable' | 'scheduled' | 'active' | 'fully-consumed';
+export type RentFormula = 'monthly' | 'six-months' | 'yearly';
 
 // Checklist types
 export interface MoveInChecklist {
