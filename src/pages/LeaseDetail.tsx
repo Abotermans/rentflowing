@@ -455,9 +455,21 @@ export default function LeaseDetail() {
                           const now = new Date();
                           const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                           const isCurrent = row.month === currentMonth;
+                          const isPaidViaAdvance = row.adjustment >= row.baseDue || row.effectiveDue === 0;
+                          const isPast = row.month < currentMonth;
                           return (
                             <TableRow key={row.month} className={isCurrent ? "bg-primary/5 font-medium" : ""}>
-                              <TableCell className="text-xs">{row.month}{isCurrent && <span className="ml-1 text-primary text-[10px]">●</span>}</TableCell>
+                              <TableCell className="text-xs">
+                                <span className="flex items-center gap-1.5">
+                                  {row.month}{isCurrent && <span className="text-primary text-[10px]">●</span>}
+                                  {isPaidViaAdvance && (isPast || isCurrent) && (
+                                    <span className="inline-flex items-center rounded-full bg-success/15 text-success px-1.5 py-0.5 text-[10px] font-semibold">Paid</span>
+                                  )}
+                                  {isPaidViaAdvance && !isPast && !isCurrent && (
+                                    <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">Covered</span>
+                                  )}
+                                </span>
+                              </TableCell>
                               <TableCell className="text-xs text-right">{formatCurrency(row.baseDue, currency, locale)}</TableCell>
                               <TableCell className="text-xs text-right text-success">-{formatCurrency(row.adjustment, currency, locale)}</TableCell>
                               <TableCell className="text-xs text-right font-medium">{formatCurrency(row.effectiveDue, currency, locale)}</TableCell>

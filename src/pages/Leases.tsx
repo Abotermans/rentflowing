@@ -341,6 +341,52 @@ export default function Leases() {
               <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
               <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
             </div>
+            <div>
+              <Label>Rent Formula *</Label>
+              <Select value={form.rentFormula} onValueChange={(v: RentFormula) => {
+                const selectedUnit = units.find(u => u.id === form.unitId);
+                if (v === 'monthly') {
+                  setForm(f => ({
+                    ...f, rentFormula: v,
+                    monthlyRent: selectedUnit?.baseRent ?? f.monthlyRent,
+                    hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+                    advanceAllocationMethod: null, advanceAppliedTo: null,
+                    advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
+                    fixedMonthlyReductionAmount: null,
+                  }));
+                } else if (v === 'six-months') {
+                  const rent = selectedUnit?.baseRentSixMonths ?? selectedUnit?.baseRent ?? form.monthlyRent;
+                  setForm(f => ({
+                    ...f, rentFormula: v, monthlyRent: rent,
+                    hasAdvancePayment: true, advancePaymentAmount: rent * 6,
+                    advanceAllocationMethod: 'spread-evenly', advanceAppliedTo: 'rent',
+                    advanceAllocationStartDate: f.startDate || null,
+                    advanceAllocationDurationMonths: 6, fixedMonthlyReductionAmount: null,
+                  }));
+                } else {
+                  const rent = selectedUnit?.baseRentYearly ?? selectedUnit?.baseRent ?? form.monthlyRent;
+                  setForm(f => ({
+                    ...f, rentFormula: v, monthlyRent: rent,
+                    hasAdvancePayment: true, advancePaymentAmount: rent * 12,
+                    advanceAllocationMethod: 'spread-evenly', advanceAppliedTo: 'rent',
+                    advanceAllocationStartDate: f.startDate || null,
+                    advanceAllocationDurationMonths: 12, fixedMonthlyReductionAmount: null,
+                  }));
+                }
+              }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="six-months">6-Month Advance</SelectItem>
+                  <SelectItem value="yearly">1-Year Advance</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.rentFormula !== 'monthly' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Advance: {form.advancePaymentAmount != null ? `${form.advancePaymentAmount.toLocaleString()} (${form.advanceAllocationDurationMonths} months)` : '—'}
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>{t("leases.monthlyRent")} *</Label><Input type="number" min={0} value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: Number(e.target.value) || 0 }))} /></div>
               <div><Label>{t("leases.monthlyCharges")} *</Label><Input type="number" min={0} value={form.monthlyCharges} onChange={e => setForm(f => ({ ...f, monthlyCharges: Number(e.target.value) || 0 }))} /></div>

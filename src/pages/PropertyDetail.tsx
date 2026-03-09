@@ -450,6 +450,10 @@ export default function PropertyDetail() {
               <div><Label>Base Rent</Label><Input type="number" min={0} value={unitForm.baseRent ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
               <div><Label>Base Charges</Label><Input type="number" min={0} value={unitForm.baseCharges ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Rent (6-Month Advance)</Label><Input type="number" min={0} value={unitForm.baseRentSixMonths ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
+              <div><Label>Rent (1-Year Advance)</Label><Input type="number" min={0} value={unitForm.baseRentYearly ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
+            </div>
             <div><Label>Notes</Label><Textarea value={unitForm.notes} onChange={e => setUnitForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
           <SheetFooter className="mt-6">
