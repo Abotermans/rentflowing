@@ -134,7 +134,7 @@ export const initialLeases: Lease[] = [
     createdAt: "2023-08-15", updatedAt: "2025-12-31",
   },
   {
-    id: "l5", leaseReference: "BAIL-LON-001", propertyId: "p4", unitId: "u13", primaryTenantId: "t6", coTenantIds: [], leaseStatus: "active", startDate: "2024-10-01", endDate: "2026-09-30", monthlyRent: 1800, monthlyCharges: 120, dueDayOfMonth: 1, depositOrGuaranteeAmount: 3600, noticePeriodText: "2 months", signedDate: "2024-09-15", notes: "",
+    id: "l5", leaseReference: "BAIL-LON-001", propertyId: "p4", unitId: "u13", primaryTenantId: "t6", coTenantIds: [], leaseStatus: "active", startDate: "2024-10-01", endDate: "2026-09-30", monthlyRent: 1800, monthlyCharges: 120, dueDayOfMonth: 1, depositOrGuaranteeAmount: 3600, noticePeriodText: "2 months", signedDate: "2024-09-15", notes: "", rentFormula: "monthly",
     noticeGiven: true, noticeDate: "2026-02-15", intendedMoveOutDate: "2026-04-30", terminationReason: "Relocating",
     moveInScheduledDate: "2024-10-01", moveInActualDate: "2024-10-01", moveInMeterReading: "3200", moveInChecklist: { ...completedMoveInChecklist },
     moveOutScheduledDate: "2026-04-30", moveOutActualDate: null, moveOutMeterReading: null, moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: false, moveOutMeterReadingCaptured: false, balanceReviewed: false, guaranteeReviewCompleted: false }, moveOutNotes: "",
