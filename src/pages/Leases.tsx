@@ -111,6 +111,15 @@ export default function Leases() {
       toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
       return;
     }
+    const unitForSave = units.find(u => u.id === form.unitId);
+    const tierValue =
+      form.rentFormula === 'monthly' ? unitForSave?.baseRent :
+      form.rentFormula === 'six-months' ? unitForSave?.baseRentSixMonths :
+      unitForSave?.baseRentYearly;
+    if (tierValue == null) {
+      toast({ title: "Validation Error", description: "Selected rent formula is not available for this unit.", variant: "destructive" });
+      return;
+    }
     // Validate status transition
     if (editingLease && form.leaseStatus !== editingLease.leaseStatus) {
       const validation = canChangeLeaseStatus(editingLease.id, form.leaseStatus, integrityState);
