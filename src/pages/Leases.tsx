@@ -416,9 +416,15 @@ export default function Leases() {
               }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="six-months">6-Month Advance</SelectItem>
-                  <SelectItem value="yearly">1-Year Advance</SelectItem>
+                  <SelectItem value="monthly" disabled={!formulaAvailability.monthly}>
+                    {t("leases.formula.monthly")}{!formulaAvailability.monthly && ` ${t("leases.formula.notAvailable")}`}
+                  </SelectItem>
+                  <SelectItem value="six-months" disabled={!formulaAvailability['six-months']}>
+                    {t("leases.formula.sixMonths")} Advance{!formulaAvailability['six-months'] && ` ${t("leases.formula.notAvailable")}`}
+                  </SelectItem>
+                  <SelectItem value="yearly" disabled={!formulaAvailability.yearly}>
+                    {t("leases.formula.yearly")} Advance{!formulaAvailability.yearly && ` ${t("leases.formula.notAvailable")}`}
+                  </SelectItem>
                 </SelectContent>
               </Select>
               {form.rentFormula !== 'monthly' && (
