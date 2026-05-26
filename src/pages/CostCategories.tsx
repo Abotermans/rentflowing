@@ -161,7 +161,7 @@ export default function CostCategories() {
 
       {/* Sheet */}
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="sm:max-w-md overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? t("costs.editCategory") : t("costs.addCategory")}</DialogTitle>
           </DialogHeader>

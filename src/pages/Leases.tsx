@@ -320,7 +320,7 @@ export default function Leases() {
       )}
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="overflow-y-auto w-full sm:max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-6">
             <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>

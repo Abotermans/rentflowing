@@ -222,7 +222,7 @@ export default function CostEntries() {
 
       {/* Sheet */}
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="sm:max-w-lg overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? t("costs.editEntry") : t("costs.addEntry")}</DialogTitle>
           </DialogHeader>

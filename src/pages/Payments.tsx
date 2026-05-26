@@ -399,7 +399,7 @@ export default function Payments() {
 
       {/* ===== ADD CASH RECEIPT SHEET ===== */}
       <Dialog open={addReceiptOpen} onOpenChange={setAddReceiptOpen}>
-        <DialogContent className="sm:max-w-md overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Record Cash Receipt</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
@@ -477,7 +477,7 @@ export default function Payments() {
 
       {/* ===== MANUAL ALLOCATION SHEET ===== */}
       <Dialog open={!!allocateReceiptId} onOpenChange={v => { if (!v) { setAllocateReceiptId(null); setAllocAmounts({}); } }}>
-        <DialogContent className="sm:max-w-lg overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Manual Allocation</DialogTitle></DialogHeader>
           {allocReceipt && (
             <div className="space-y-4 mt-4">

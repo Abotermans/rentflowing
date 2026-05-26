@@ -844,7 +844,7 @@ export default function LeaseDetail() {
 
       {/* Record Cash Receipt Sheet */}
       <Dialog open={receiptSheetOpen} onOpenChange={setReceiptSheetOpen}>
-        <DialogContent className="sm:max-w-md overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Record Cash Receipt</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
@@ -873,7 +873,7 @@ export default function LeaseDetail() {
 
       {/* Guarantee Sheet */}
       <Dialog open={guaranteeSheetOpen} onOpenChange={setGuaranteeSheetOpen}>
-        <DialogContent className="sm:max-w-md overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Type</Label>
@@ -897,7 +897,7 @@ export default function LeaseDetail() {
 
       {/* Notice Sheet */}
       <Dialog open={noticeSheetOpen} onOpenChange={setNoticeSheetOpen}>
-        <DialogContent className="sm:max-w-md overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Register Notice</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Notice Date</Label><Input type="date" value={nDate} onChange={e => setNDate(e.target.value)} /></div>
@@ -910,7 +910,7 @@ export default function LeaseDetail() {
 
       {/* Move-In Sheet */}
       <Dialog open={moveInSheetOpen} onOpenChange={setMoveInSheetOpen}>
-        <DialogContent className="sm:max-w-md overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Move-In</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Scheduled Date</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
@@ -926,7 +926,7 @@ export default function LeaseDetail() {
 
       {/* Move-Out Sheet */}
       <Dialog open={moveOutSheetOpen} onOpenChange={setMoveOutSheetOpen}>
-        <DialogContent className="sm:max-w-md overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Move-Out</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Scheduled Date</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
@@ -942,7 +942,7 @@ export default function LeaseDetail() {
 
       {/* Return Sheet */}
       <Dialog open={returnSheetOpen} onOpenChange={setReturnSheetOpen}>
-        <DialogContent className="sm:max-w-md overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Return Status</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Status</Label>

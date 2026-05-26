@@ -200,7 +200,7 @@ export default function Tenants() {
       )}
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
            <DialogHeader><DialogTitle>{editingTenant ? t("tenants.edit") : t("tenants.add")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-6">
             <div className="grid grid-cols-2 gap-4">

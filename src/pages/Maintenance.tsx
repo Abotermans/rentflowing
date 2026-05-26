@@ -201,7 +201,7 @@ export default function Maintenance() {
       )}
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="overflow-y-auto w-full sm:max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit Ticket" : "New Ticket"}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-6">
             <div><Label>Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Brief description of the issue" /></div>

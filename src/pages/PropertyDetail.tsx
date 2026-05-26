@@ -404,7 +404,7 @@ export default function PropertyDetail() {
 
       {/* Unit Form Sheet */}
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="w-full sm:max-w-lg overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingUnit ? t("units.edit") : t("units.add")}</DialogTitle>
           </DialogHeader>

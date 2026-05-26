@@ -214,7 +214,7 @@ function EditTicketSheet({ ticket, open, onOpenChange }: { ticket: MaintenanceTi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-y-auto w-full sm:max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Edit Ticket</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-6">
           <div><Label>Title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
