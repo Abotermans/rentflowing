@@ -1,60 +1,73 @@
-## Verification of Latest Implementation
+## Goal
 
-I inspected the relevant files and confirmed the last approved plan is fully implemented:
+Replace every right-side `Sheet` used for Add/Edit/record actions with a centered `Dialog` (shadcn `dialog.tsx`) so all "Add" modals open as popups in the middle of the screen. Keep behaviour, fields, and validation identical — this is a presentation-layer swap.
 
-- `src/types/index.ts` — `Unit.baseRentSixMonths`, `Unit.baseRentYearly`, `Lease.rentFormula` (`'monthly' | 'six-months' | 'yearly'`) are present.
-- `src/data/mockData.ts` — all 18 units carry the 3 tiers (storage/parking units intentionally have `null` for 6-month/yearly), and every lease has a `rentFormula`. Lease `l6` already showcases the advance-payment flow.
-- `src/pages/Leases.tsx` — Rent Formula selector auto-fills `monthlyRent` from the unit tier and configures `hasAdvancePayment`, `advancePaymentAmount`, `advanceAllocationMethod='spread-evenly'`, `advanceAppliedTo='rent'`, and `advanceAllocationDurationMonths` (6 or 12).
-- `src/pages/LeaseDetail.tsx` — schedule rows display a green **Paid** badge for past/current covered months and a **Covered** badge for future covered months.
-- `src/pages/Units.tsx`, `UnitDetail.tsx`, `PropertyDetail.tsx` — tier inputs/display in place.
+## Audit — Sheets to Convert
 
-Everything compiles and behaves as designed. Now planning the three open follow-ups.
+Twelve files, ~17 sheets total:
 
----
+**List pages (Add/Edit entity):**
+1. `src/pages/Properties.tsx` — uses Dialog already (only file that does). Use as reference.
+2. `src/pages/Units.tsx` — Add/Edit Unit
+3. `src/pages/Tenants.tsx` — Add/Edit Tenant
+4. `src/pages/Leases.tsx` — Add/Edit Lease (large form — needs `max-w-2xl`)
+5. `src/pages/Vendors.tsx` — Add/Edit Vendor
+6. `src/pages/Maintenance.tsx` — New/Edit Ticket
+7. `src/pages/Payments.tsx` — Record Cash Receipt + Manual Allocation
+8. `src/pages/CostCategories.tsx` — Add/Edit Category
+9. `src/pages/CostEntries.tsx` — Add/Edit Entry
+10. `src/pages/AllocationRules.tsx` — Add/Edit Rule
 
-## 1. End-to-end Verification in Preview
+**Detail pages (sub-entity actions):**
+11. `src/pages/PropertyDetail.tsx` — Add/Edit Unit
+12. `src/pages/LeaseDetail.tsx` — Record Receipt, Add/Edit Guarantee, Register Notice, Move-In, Move-Out
+13. `src/pages/MaintenanceDetail.tsx` — Edit Ticket
 
-Use the browser tool to walk through the full flow on the live preview:
+## Conversion Pattern
 
-1. Navigate to `/leases`, open **Add Lease**.
-2. Pick property `Paris`, unit `PAR-S01` (Studio 3e — has all 3 tiers), tenant, set start `2026-04-01` / end `2027-03-31`.
-3. Select **Rent Formula = 1-Year Advance** → confirm monthly rent auto-fills to `750`, helper text shows `Advance: 9000 (12 months)`.
-4. Save, open the new lease detail, scroll to the Advance Payment schedule and confirm 12 months show **Covered** badges with `effectiveDue = 0`.
-5. Repeat with **6-Month Advance** on another draft lease to confirm the 6-tier path.
-6. Capture a screenshot at the end summarising results. If any step fails, report findings; no code edits unless an actual bug surfaces.
+For every sheet, swap imports and JSX in a mechanical way:
 
-## 2. Rent Formula Column in Leases Table
+```diff
+- import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
++ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-File: `src/pages/Leases.tsx`.
+- <Sheet open={open} onOpenChange={setOpen}>
+-   <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
+-     <SheetHeader><SheetTitle>...</SheetTitle></SheetHeader>
++ <Dialog open={open} onOpenChange={setOpen}>
++   <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
++     <DialogHeader><DialogTitle>...</DialogTitle></DialogHeader>
+      ...
+-     <SheetFooter>...</SheetFooter>
+-   </SheetContent>
+- </Sheet>
++     <DialogFooter>...</DialogFooter>
++   </DialogContent>
++ </Dialog>
+```
 
-- Add a new `TableHead` labelled "Formula" between `leases.unit` and `leases.status` (keeps related lease setup info grouped).
-- Add matching `TableCell` rendering a small `Badge`:
-  - `monthly` → neutral/outline "Monthly"
-  - `six-months` → secondary "6-Month"
-  - `yearly` → primary "1-Year"
-- Add translation keys `leases.formula`, `leases.formula.monthly`, `leases.formula.sixMonths`, `leases.formula.yearly` in `src/i18n/translations.ts` (English + any other locales present) and use them.
-- No business-logic changes.
+### Width mapping
+- Sheets previously `sm:max-w-md` → `DialogContent max-w-md`
+- Sheets previously `sm:max-w-lg` → `DialogContent max-w-lg`
+- Large lease form → `max-w-2xl` (more horizontal room than the current narrow sheet, since center dialog handles wide forms better than a side panel)
 
-## 3. Tier-Availability Validation in Lease Form
+All `DialogContent` get `max-h-[90vh] overflow-y-auto` so long forms still scroll.
 
-File: `src/pages/Leases.tsx` (form sheet only).
+## Verification
 
-Goal: prevent selecting a `rentFormula` that the chosen unit does not price.
+1. `bunx vitest run` to confirm no test regression.
+2. Browser-navigate to each affected route and screenshot the open Add modal:
+   - `/units`, `/tenants`, `/leases`, `/vendors`, `/maintenance`, `/payments`, `/costs/categories`, `/costs/entries`, `/costs/allocations`
+   - `/properties/p1` (Add Unit), `/leases/l1` (Record Receipt + Add Guarantee), `/maintenance/<id>` (Edit Ticket)
+3. Confirm each opens centered, scrolls correctly, and the existing layout/fields render unchanged.
 
-- Derive `selectedUnit` from `form.unitId` in a `useMemo`.
-- Compute `formulaAvailability`:
-  - `monthly`: always available (requires `baseRent != null`, else disabled with reason "No base rent defined").
-  - `six-months`: `selectedUnit?.baseRentSixMonths != null`.
-  - `yearly`: `selectedUnit?.baseRentYearly != null`.
-- In the Rent Formula `Select`:
-  - Render all three `SelectItem`s but pass `disabled` when unavailable.
-  - Append a muted suffix "(not defined for this unit)" on disabled items.
-- When the user changes `unitId`, if the current `form.rentFormula` becomes unavailable for the new unit, auto-reset it to `'monthly'` and re-run the existing "monthly" branch logic (clear advance fields, set rent to new unit's `baseRent`). This avoids stale advance config.
-- In `handleSave`, add a guard: if the selected formula's tier value is `null`, show a destructive toast ("Selected formula is not available for this unit") and abort.
-- No changes to `src/lib/advancePricing.ts` or data model.
+## Memory Update
+
+The existing core rule `B2B UI: High-density, Sheet/Drawer for CRUD` directly contradicts this new direction. Update `mem://index.md` to replace "Sheet/Drawer" with "centered Dialog" for the CRUD pattern. Update `mem://style/operational-ui-design` body accordingly.
 
 ## Files Touched
 
-- `src/pages/Leases.tsx` — table column + validation logic.
-- `src/i18n/translations.ts` — new keys for the Formula column.
-- (Verification step only uses the browser; no edits unless a bug is found.)
+- `src/pages/Units.tsx`, `Tenants.tsx`, `Leases.tsx`, `Vendors.tsx`, `Maintenance.tsx`, `Payments.tsx`, `CostCategories.tsx`, `CostEntries.tsx`, `AllocationRules.tsx`, `PropertyDetail.tsx`, `LeaseDetail.tsx`, `MaintenanceDetail.tsx`
+- `mem://index.md` and `mem://style/operational-ui-design`
+
+No data-model, business-logic, or test changes.

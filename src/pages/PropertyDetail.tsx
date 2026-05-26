@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote, AlertTriangle } from "lucide-react";
@@ -403,11 +403,11 @@ export default function PropertyDetail() {
       })()}
 
       {/* Unit Form Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{editingUnit ? t("units.edit") : t("units.add")}</SheetTitle>
-          </SheetHeader>
+      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
+        <DialogContent className="w-full sm:max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingUnit ? t("units.edit") : t("units.add")}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 mt-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -456,12 +456,12 @@ export default function PropertyDetail() {
             </div>
             <div><Label>Notes</Label><Textarea value={unitForm.notes} onChange={e => setUnitForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
-          <SheetFooter className="mt-6">
+          <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveUnit}>{editingUnit ? "Save Changes" : "Add Unit"}</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Override Confirm Dialog */}
       {pendingOverrideValidation && (
