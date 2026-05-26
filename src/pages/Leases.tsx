@@ -234,6 +234,7 @@ export default function Leases() {
                 <TableHead>{t("leases.tenant")}</TableHead>
                 <TableHead>{t("leases.property")}</TableHead>
                 <TableHead>{t("leases.unit")}</TableHead>
+                <TableHead>{t("leases.formula")}</TableHead>
                 <TableHead>{t("leases.status")}</TableHead>
                 <TableHead>{t("leases.guarantee")}</TableHead>
                 <TableHead>{t("leases.start")}</TableHead>
@@ -266,6 +267,15 @@ export default function Leases() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {l.rentFormula === 'yearly' ? (
+                        <Badge>{t("leases.formula.yearly")}</Badge>
+                      ) : l.rentFormula === 'six-months' ? (
+                        <Badge variant="secondary">{t("leases.formula.sixMonths")}</Badge>
+                      ) : (
+                        <Badge variant="outline">{t("leases.formula.monthly")}</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 flex-wrap">
