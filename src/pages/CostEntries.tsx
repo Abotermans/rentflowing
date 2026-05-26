@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -221,11 +221,11 @@ export default function CostEntries() {
       </Card>
 
       {/* Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{editing ? t("costs.editEntry") : t("costs.addEntry")}</SheetTitle>
-          </SheetHeader>
+      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("costs.editEntry") : t("costs.addEntry")}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Category */}
             <div className="space-y-2">
@@ -365,12 +365,12 @@ export default function CostEntries() {
               <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
             </div>
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
             <Button onClick={handleSave}>{editing ? t("action.saveChanges") : t("action.create")}</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

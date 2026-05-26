@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Scale, Plus, Search, Pencil, Trash2 } from "lucide-react";
@@ -172,11 +172,11 @@ export default function AllocationRules() {
       </Card>
 
       {/* Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{editing ? t("costs.editRule") : t("costs.addRule")}</SheetTitle>
-          </SheetHeader>
+      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("costs.editRule") : t("costs.addRule")}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>{t("table.property")} *</Label>
@@ -246,12 +246,12 @@ export default function AllocationRules() {
               </div>
             )}
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
             <Button onClick={handleSave}>{editing ? t("action.saveChanges") : t("action.create")}</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

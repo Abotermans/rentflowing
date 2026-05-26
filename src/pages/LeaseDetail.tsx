@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -843,9 +843,9 @@ export default function LeaseDetail() {
       </div>
 
       {/* Record Cash Receipt Sheet */}
-      <Sheet open={receiptSheetOpen} onOpenChange={setReceiptSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>Record Cash Receipt</SheetTitle></SheetHeader>
+      <Dialog open={receiptSheetOpen} onOpenChange={setReceiptSheetOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Record Cash Receipt</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
               <Label>Source Type</Label>
@@ -868,13 +868,13 @@ export default function LeaseDetail() {
             </div>
             <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">Record Cash Receipt</Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Guarantee Sheet */}
-      <Sheet open={guaranteeSheetOpen} onOpenChange={setGuaranteeSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</SheetTitle></SheetHeader>
+      <Dialog open={guaranteeSheetOpen} onOpenChange={setGuaranteeSheetOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Type</Label>
               <Select value={gType} onValueChange={v => setGType(v as GuaranteeType)}>
@@ -892,26 +892,26 @@ export default function LeaseDetail() {
             <div><Label>Notes</Label><Textarea value={gNotes} onChange={e => setGNotes(e.target.value)} rows={2} /></div>
             <Button onClick={handleSaveGuarantee} className="w-full">Save Guarantee</Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Notice Sheet */}
-      <Sheet open={noticeSheetOpen} onOpenChange={setNoticeSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>Register Notice</SheetTitle></SheetHeader>
+      <Dialog open={noticeSheetOpen} onOpenChange={setNoticeSheetOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Register Notice</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Notice Date</Label><Input type="date" value={nDate} onChange={e => setNDate(e.target.value)} /></div>
             <div><Label>Intended Move-Out</Label><Input type="date" value={nMoveOut} onChange={e => setNMoveOut(e.target.value)} /></div>
             <div><Label>Reason</Label><Textarea value={nReason} onChange={e => setNReason(e.target.value)} rows={2} /></div>
             <Button onClick={handleSaveNotice} className="w-full">Save Notice</Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Move-In Sheet */}
-      <Sheet open={moveInSheetOpen} onOpenChange={setMoveInSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>Move-In</SheetTitle></SheetHeader>
+      <Dialog open={moveInSheetOpen} onOpenChange={setMoveInSheetOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Move-In</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Scheduled Date</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
             <div><Label>Meter Reading</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} /></div>
@@ -921,13 +921,13 @@ export default function LeaseDetail() {
               <Button onClick={handleConfirmMoveIn} className="flex-1">Confirm Move-In</Button>
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Move-Out Sheet */}
-      <Sheet open={moveOutSheetOpen} onOpenChange={setMoveOutSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>Move-Out</SheetTitle></SheetHeader>
+      <Dialog open={moveOutSheetOpen} onOpenChange={setMoveOutSheetOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Move-Out</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Scheduled Date</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
             <div><Label>Meter Reading</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} /></div>
@@ -937,13 +937,13 @@ export default function LeaseDetail() {
               <Button onClick={handleConfirmMoveOut} className="flex-1">Confirm Move-Out</Button>
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Return Sheet */}
-      <Sheet open={returnSheetOpen} onOpenChange={setReturnSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>Return Status</SheetTitle></SheetHeader>
+      <Dialog open={returnSheetOpen} onOpenChange={setReturnSheetOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Return Status</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Status</Label>
               <Select value={retStatus} onValueChange={v => setRetStatus(v as ReturnStatus)}>
@@ -958,8 +958,8 @@ export default function LeaseDetail() {
             <div><Label>Notes</Label><Textarea value={retNotes} onChange={e => setRetNotes(e.target.value)} rows={2} /></div>
             <Button onClick={handleSaveReturn} className="w-full">Save</Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Override Confirm Dialog */}
       {pendingOverrideValidation && (

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Lease, LeaseStatus, RentFormula, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
@@ -319,9 +319,9 @@ export default function Leases() {
         </Card>
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
-          <SheetHeader><SheetTitle>{editingLease ? t("leases.edit") : t("leases.add")}</SheetTitle></SheetHeader>
+      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-6">
             <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
             <div className="grid grid-cols-2 gap-4">
@@ -454,12 +454,12 @@ export default function Leases() {
             <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
-          <SheetFooter className="mt-6">
+          <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
             <Button onClick={handleSave}>{editingLease ? t("action.save") : t("leases.add")}</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Override Confirm Dialog */}
       {pendingOverrideValidation && (

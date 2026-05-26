@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -398,9 +398,9 @@ export default function Payments() {
       </Tabs>
 
       {/* ===== ADD CASH RECEIPT SHEET ===== */}
-      <Sheet open={addReceiptOpen} onOpenChange={setAddReceiptOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>Record Cash Receipt</SheetTitle></SheetHeader>
+      <Dialog open={addReceiptOpen} onOpenChange={setAddReceiptOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Record Cash Receipt</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
               <Label>Source Type</Label>
@@ -472,13 +472,13 @@ export default function Payments() {
             </div>
             <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">Record Cash Receipt</Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* ===== MANUAL ALLOCATION SHEET ===== */}
-      <Sheet open={!!allocateReceiptId} onOpenChange={v => { if (!v) { setAllocateReceiptId(null); setAllocAmounts({}); } }}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader><SheetTitle>Manual Allocation</SheetTitle></SheetHeader>
+      <Dialog open={!!allocateReceiptId} onOpenChange={v => { if (!v) { setAllocateReceiptId(null); setAllocAmounts({}); } }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Manual Allocation</DialogTitle></DialogHeader>
           {allocReceipt && (
             <div className="space-y-4 mt-4">
               <div className="p-3 bg-muted rounded-md space-y-1">
@@ -538,8 +538,8 @@ export default function Payments() {
               </div>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
