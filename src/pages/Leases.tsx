@@ -177,6 +177,13 @@ export default function Leases() {
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
+  const selectedUnit = useMemo(() => units.find(u => u.id === form.unitId), [units, form.unitId]);
+  const formulaAvailability = useMemo(() => ({
+    monthly: selectedUnit?.baseRent != null,
+    'six-months': selectedUnit?.baseRentSixMonths != null,
+    yearly: selectedUnit?.baseRentYearly != null,
+  }), [selectedUnit]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
