@@ -323,7 +323,30 @@ export default function Leases() {
                 </Select>
               </div>
               <div><Label>{t("leases.unit")} *</Label>
-                <Select value={form.unitId} onValueChange={v => setForm(f => ({ ...f, unitId: v }))}>
+                <Select value={form.unitId} onValueChange={v => {
+                  const newUnit = units.find(u => u.id === v);
+                  setForm(f => {
+                    let nextFormula = f.rentFormula;
+                    let next: LeaseFormData = { ...f, unitId: v };
+                    const stillAvailable =
+                      (f.rentFormula === 'monthly' && newUnit?.baseRent != null) ||
+                      (f.rentFormula === 'six-months' && newUnit?.baseRentSixMonths != null) ||
+                      (f.rentFormula === 'yearly' && newUnit?.baseRentYearly != null);
+                    if (!stillAvailable) {
+                      nextFormula = 'monthly';
+                      next = {
+                        ...next,
+                        rentFormula: 'monthly',
+                        monthlyRent: newUnit?.baseRent ?? f.monthlyRent,
+                        hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+                        advanceAllocationMethod: null, advanceAppliedTo: null,
+                        advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
+                        fixedMonthlyReductionAmount: null,
+                      };
+                    }
+                    return next;
+                  });
+                }}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                   <SelectContent>
                     {formUnits.map(u => {
