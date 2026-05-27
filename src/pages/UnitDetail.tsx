@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,17 +13,126 @@ import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOut
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canDeleteUnit, getUnitIntegrityWarnings } from "@/lib/integrity/unitIntegrity";
+import { canDeleteUnit, getUnitIntegrityWarnings, canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
 import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import type { Unit, UnitType, UnitStatus } from "@/types";
+import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
+import { useOverrideHistory } from "@/context/OverrideContext";
+import type { ValidationResult } from "@/lib/integrity/types";
+
+const UNIT_TYPES: { value: UnitType; label: string }[] = [
+  { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
+  { value: "office", label: "Office" }, { value: "parking", label: "Parking" },
+  { value: "storage", label: "Storage" }, { value: "house", label: "House" },
+  { value: "commercial-unit", label: "Commercial Unit" },
+];
+const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
+  { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
+  { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
+];
+
+type EditSection = "info" | "financials" | "property" | "notes" | null;
+type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
+  const { units, properties, leases, updateUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
   const { t } = useSettings();
+  const { toast } = useToast();
   const integrityState = useIntegrityState();
+  const { addOverride } = useOverrideHistory();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
+
+  const [editSection, setEditSection] = useState<EditSection>(null);
+  const [form, setForm] = useState<UnitFormData | null>(null);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [pendingOverride, setPendingOverride] = useState<ValidationResult | null>(null);
+
+  const openEdit = (section: Exclude<EditSection, null>) => {
+    if (!unit) return;
+    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = unit;
+    setForm(rest);
+    setEditSection(section);
+  };
+  const closeEdit = () => { setEditSection(null); setForm(null); };
+
+  const statusValidation = (() => {
+    if (!unit || !form || form.currentStatus === unit.currentStatus) return null;
+    return canChangeUnitStatus(unit.id, form.currentStatus, integrityState);
+  })();
+
+  const persist = (patch: Partial<UnitFormData>) => {
+    if (!unit) return;
+    updateUnit({ ...unit, ...patch });
+    toast({ title: t("units.edit") });
+    closeEdit();
+  };
+
+  const handleSave = () => {
+    if (!unit || !form) return;
+    if (editSection === "info") {
+      if (!form.unitCode.trim() || !form.unitLabel.trim()) {
+        toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
+        return;
+      }
+      if (form.currentStatus !== unit.currentStatus) {
+        const v = canChangeUnitStatus(unit.id, form.currentStatus, integrityState);
+        if (!v.allowed) {
+          if (v.overrideAllowed) { setPendingOverride(v); setOverrideOpen(true); return; }
+          toast({ title: "Status change blocked", description: v.blockers.map(b => b.message).join(". "), variant: "destructive" });
+          return;
+        }
+      }
+      persist({
+        unitCode: form.unitCode, unitLabel: form.unitLabel, unitType: form.unitType,
+        floor: form.floor, surfaceArea: form.surfaceArea, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
+        furnished: form.furnished, availableFrom: form.availableFrom, currentStatus: form.currentStatus,
+      });
+    } else if (editSection === "financials") {
+      persist({
+        baseRent: form.baseRent, baseRentSixMonths: form.baseRentSixMonths,
+        baseRentYearly: form.baseRentYearly, baseCharges: form.baseCharges,
+      });
+    } else if (editSection === "property") {
+      if (!form.propertyId) {
+        toast({ title: "Validation Error", description: "Property is required.", variant: "destructive" });
+        return;
+      }
+      persist({ propertyId: form.propertyId });
+    } else if (editSection === "notes") {
+      persist({ notes: form.notes });
+    }
+  };
+
+  const handleOverrideConfirm = (reason: string) => {
+    if (!unit || !form || !pendingOverride) return;
+    addOverride({
+      entityType: "unit", entityId: unit.id,
+      action: `status_change:${form.currentStatus}`,
+      blockerCodes: pendingOverride.blockers.map(b => b.code),
+      reason,
+    });
+    updateUnit({
+      ...unit,
+      unitCode: form.unitCode, unitLabel: form.unitLabel, unitType: form.unitType,
+      floor: form.floor, surfaceArea: form.surfaceArea, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
+      furnished: form.furnished, availableFrom: form.availableFrom, currentStatus: form.currentStatus,
+    });
+    toast({ title: "Unit updated (overridden)", description: `Override reason: ${reason}` });
+    setPendingOverride(null);
+    setOverrideOpen(false);
+    closeEdit();
+  };
 
   if (!unit || !property) {
     return (
@@ -80,9 +190,6 @@ export default function UnitDetail() {
               {property.city}, {getCountryName(property.countryCode)}
             </p>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/units?edit=${unit.id}`}><Pencil className="h-3.5 w-3.5 mr-1.5" />{t("action.edit")}</Link>
-          </Button>
         </div>
       </div>
 
