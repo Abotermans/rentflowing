@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -7,14 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canDeleteUnit, getUnitIntegrityWarnings, canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
-import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
+import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
+import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,11 +65,12 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, updateUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
+  const { units, properties, leases, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
+  const navigate = useNavigate();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
