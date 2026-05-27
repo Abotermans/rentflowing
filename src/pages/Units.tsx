@@ -171,7 +171,14 @@ export default function Units() {
     const matchSearch = !q || u.unitCode.toLowerCase().includes(q) || u.unitLabel.toLowerCase().includes(q) || (prop?.name.toLowerCase().includes(q) ?? false);
     const matchProp = filterProperty === "all" || u.propertyId === filterProperty;
     const matchType = filterType === "all" || u.unitType === filterType;
-    const matchOccupancy = filterOccupancy === "all" || occupancy.derived === filterOccupancy;
+    // Stored-status filters match unit.currentStatus (what's displayed); lifecycle-nuance filters match derived.
+    const storedStatusFilters: (DerivedOccupancy | "all")[] = ["vacant", "occupied", "reserved", "unavailable"];
+    const matchOccupancy =
+      filterOccupancy === "all"
+        ? true
+        : storedStatusFilters.includes(filterOccupancy)
+          ? u.currentStatus === filterOccupancy
+          : occupancy.derived === filterOccupancy;
     return matchSearch && matchProp && matchType && matchOccupancy;
   });
 
@@ -207,7 +214,7 @@ export default function Units() {
           </SelectContent>
         </Select>
         <Select value={filterOccupancy} onValueChange={v => setFilterOccupancy(v as DerivedOccupancy | "all")}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("occupancy.derivedLabel")} /></SelectTrigger>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("occupancy.statusFilterLabel")} /></SelectTrigger>
           <SelectContent>
             {OCCUPANCY_FILTERS.map(o => <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>)}
           </SelectContent>
@@ -256,7 +263,7 @@ export default function Units() {
                       <TableCell className="text-right text-muted-foreground">{u.baseCharges != null && prop ? formatCurrency(u.baseCharges, prop.currencyCode, prop.locale) : "—"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <StatusBadge status={occupancy.derived} />
+                          <StatusBadge status={u.currentStatus} />
                           {occupancy.inconsistent && (
                             <Tooltip>
                               <TooltipTrigger>
