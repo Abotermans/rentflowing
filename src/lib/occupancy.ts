@@ -6,7 +6,9 @@ export type DerivedOccupancy =
   | "occupied"
   | "under-notice"
   | "move-out-scheduled"
-  | "available-soon";
+  | "available-soon"
+  | "reserved"
+  | "unavailable";
 
 export interface OccupancyInfo {
   derived: DerivedOccupancy;
@@ -168,5 +170,7 @@ export function getDerivedOccupancyLabel(derived: DerivedOccupancy): string {
     case "under-notice": return "Under Notice";
     case "move-out-scheduled": return "Move-Out Scheduled";
     case "available-soon": return "Available Soon";
+    case "reserved": return "Reserved";
+    case "unavailable": return "Unavailable";
   }
 }
