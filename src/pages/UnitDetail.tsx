@@ -79,6 +79,8 @@ export default function UnitDetail() {
   const [form, setForm] = useState<UnitFormData | null>(null);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [pendingOverride, setPendingOverride] = useState<ValidationResult | null>(null);
+  const [vacateValidation, setVacateValidation] = useState<ValidationResult | null>(null);
+  const [vacateOverrideOpen, setVacateOverrideOpen] = useState(false);
 
   const openEdit = (section: Exclude<EditSection, null>) => {
     if (!unit) return;
@@ -154,6 +156,42 @@ export default function UnitDetail() {
     setPendingOverride(null);
     setOverrideOpen(false);
     closeEdit();
+  };
+
+  const handleMakeVacant = () => {
+    if (!unit) return;
+    const v = canChangeUnitStatus(unit.id, "vacant", integrityState);
+    if (v.allowed) {
+      updateUnit({ ...unit, currentStatus: "vacant" });
+      toast({ title: t("units.toastUpdated") });
+      return;
+    }
+    if (v.overrideAllowed) {
+      setVacateValidation(v);
+      setVacateOverrideOpen(true);
+      return;
+    }
+    toast({ title: t("units.statusChangeBlocked"), description: v.blockers.map(b => b.message).join(". "), variant: "destructive" });
+  };
+
+  const handleVacateOverride = (reason: string) => {
+    if (!unit || !vacateValidation) return;
+    addOverride({
+      entityType: "unit", entityId: unit.id,
+      action: "status_change:vacant",
+      blockerCodes: vacateValidation.blockers.map(b => b.code),
+      reason,
+    });
+    updateUnit({ ...unit, currentStatus: "vacant" });
+    toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
+    setVacateValidation(null);
+    setVacateOverrideOpen(false);
+  };
+
+  const handleDeleteUnit = (uid: string) => {
+    deleteUnit(uid);
+    toast({ title: t("units.toastDeleted") || "Unit deleted" });
+    navigate("/units");
   };
 
   if (!unit || !property) {
