@@ -670,6 +670,16 @@ export default function UnitDetail() {
           onOverride={handleOverrideConfirm}
         />
       )}
+
+      {vacateValidation && (
+        <OverrideConfirmDialog
+          open={vacateOverrideOpen}
+          onOpenChange={(v) => { setVacateOverrideOpen(v); if (!v) setVacateValidation(null); }}
+          validation={vacateValidation}
+          actionLabel="Override and Vacate"
+          onOverride={handleVacateOverride}
+        />
+      )}
     </div>
   );
 }
