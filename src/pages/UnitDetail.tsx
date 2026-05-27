@@ -232,7 +232,7 @@ export default function UnitDetail() {
         <Button variant="ghost" size="sm" asChild className="mb-2">
           <Link to="/units"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.units")}</Link>
         </Button>
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{unit.unitCode}</h1>
@@ -246,6 +246,29 @@ export default function UnitDetail() {
               <span className="mx-1 text-muted-foreground">·</span>
               {property.city}, {getCountryName(property.countryCode)}
             </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {!getActiveLease(unit.id) && (unit.currentStatus === "vacant" || unit.currentStatus === "reserved") && (
+              <Button size="sm" asChild>
+                <Link to={`/leases?new=1&unitId=${unit.id}`}><Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}</Link>
+              </Button>
+            )}
+            {unit.currentStatus !== "vacant" && !getActiveLease(unit.id) && (
+              <Button size="sm" variant="outline" onClick={handleMakeVacant}>
+                <DoorOpen className="h-4 w-4" />{t("units.makeVacant") || "Make vacant"}
+              </Button>
+            )}
+            <DeleteDialog
+              entityType="unit"
+              entityId={unit.id}
+              entityLabel={unit.unitCode}
+              onDelete={handleDeleteUnit}
+              trigger={
+                <Button size="sm" variant="destructive">
+                  <Trash2 className="h-4 w-4" />{t("common.delete") || "Delete"}
+                </Button>
+              }
+            />
           </div>
         </div>
       </div>
@@ -290,15 +313,6 @@ export default function UnitDetail() {
             )}
           </AlertDescription>
         </Alert>
-      )}
-
-      {/* Integrity Summary */}
-      {id && (
-        <IntegritySummaryPanel
-          title="Unit Dependencies"
-          deleteValidation={canDeleteUnit(id, integrityState)}
-          additionalWarnings={getUnitIntegrityWarnings(id, integrityState)}
-        />
       )}
 
       {/* Main Info */}
