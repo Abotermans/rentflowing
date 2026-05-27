@@ -1,73 +1,36 @@
 ## Goal
 
-Replace every right-side `Sheet` used for Add/Edit/record actions with a centered `Dialog` (shadcn `dialog.tsx`) so all "Add" modals open as popups in the middle of the screen. Keep behaviour, fields, and validation identical — this is a presentation-layer swap.
+On `/units/:id`, edit actions should stay on the page and open a centered Dialog scoped to the section being edited, instead of redirecting to `/units?edit=...` (which opens the full unit form on the list page).
 
-## Audit — Sheets to Convert
+## Sections & fields
 
-Twelve files, ~17 sheets total:
+Each section gets its own Edit button (pencil icon, top-right of the card) opening a dedicated Dialog:
 
-**List pages (Add/Edit entity):**
-1. `src/pages/Properties.tsx` — uses Dialog already (only file that does). Use as reference.
-2. `src/pages/Units.tsx` — Add/Edit Unit
-3. `src/pages/Tenants.tsx` — Add/Edit Tenant
-4. `src/pages/Leases.tsx` — Add/Edit Lease (large form — needs `max-w-2xl`)
-5. `src/pages/Vendors.tsx` — Add/Edit Vendor
-6. `src/pages/Maintenance.tsx` — New/Edit Ticket
-7. `src/pages/Payments.tsx` — Record Cash Receipt + Manual Allocation
-8. `src/pages/CostCategories.tsx` — Add/Edit Category
-9. `src/pages/CostEntries.tsx` — Add/Edit Entry
-10. `src/pages/AllocationRules.tsx` — Add/Edit Rule
+1. **Unit Information** — `unitCode`, `unitLabel`, `unitType`, `floor`, `surfaceArea`, `bedrooms`, `bathrooms`, `furnished`, `availableFrom`, `currentStatus` (with existing `StatusTransitionAlert` + override flow).
+2. **Financial Defaults** — `baseRent`, `baseRentSixMonths`, `baseRentYearly`, `baseCharges`. Currency label derived from parent property (read-only display).
+3. **Property Context** — `propertyId` only (re-parenting). Other fields shown there (city, country, locale, measurement) are property attributes, not unit-editable, so they stay read-only and the dialog explains that changing the property re-parents the unit.
+4. **Notes** — small pencil on the Notes card to edit `notes` inline (bonus, same pattern, low cost).
 
-**Detail pages (sub-entity actions):**
-11. `src/pages/PropertyDetail.tsx` — Add/Edit Unit
-12. `src/pages/LeaseDetail.tsx` — Record Receipt, Add/Edit Guarantee, Register Notice, Move-In, Move-Out
-13. `src/pages/MaintenanceDetail.tsx` — Edit Ticket
+## Implementation
 
-## Conversion Pattern
+- Replace the top-right `<Link to="/units?edit=...">` button with a removal — page-level edit no longer needed (sections cover it). Keep the back link.
+- Add local state in `src/pages/UnitDetail.tsx`:
+  - `editSection: "info" | "financials" | "property" | "notes" | null`
+  - `form` initialized from current unit when opening a section, reset on close.
+- Add one `<Dialog>` (centered, `max-w-lg max-h-[90vh] overflow-y-auto`) that switches its content based on `editSection`. Reuse field markup patterns from `src/pages/Units.tsx` (Select / Input / Switch / Label) so styling stays consistent.
+- Save handler:
+  - Validates required fields for the Information section (`unitCode`, `unitLabel`, `propertyId`).
+  - For status changes, reuses `canChangeUnitStatus` + `OverrideConfirmDialog` + `useOverrideHistory` exactly as `Units.tsx` does today.
+  - Calls `updateUnit({ ...unit, ...patch })` with only the touched fields merged in, then toasts and closes.
+- Remove the `/units?edit=...` round-trip from this page. The list page keeps its own behavior unchanged (other entry points still work).
 
-For every sheet, swap imports and JSX in a mechanical way:
+## Out of scope
 
-```diff
-- import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-+ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-
-- <Sheet open={open} onOpenChange={setOpen}>
--   <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
--     <SheetHeader><SheetTitle>...</SheetTitle></SheetHeader>
-+ <Dialog open={open} onOpenChange={setOpen}>
-+   <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-+     <DialogHeader><DialogTitle>...</DialogTitle></DialogHeader>
-      ...
--     <SheetFooter>...</SheetFooter>
--   </SheetContent>
-- </Sheet>
-+     <DialogFooter>...</DialogFooter>
-+   </DialogContent>
-+ </Dialog>
-```
-
-### Width mapping
-- Sheets previously `sm:max-w-md` → `DialogContent max-w-md`
-- Sheets previously `sm:max-w-lg` → `DialogContent max-w-lg`
-- Large lease form → `max-w-2xl` (more horizontal room than the current narrow sheet, since center dialog handles wide forms better than a side panel)
-
-All `DialogContent` get `max-h-[90vh] overflow-y-auto` so long forms still scroll.
+- No changes to `Units.tsx` list, data model, integrity rules, or translations beyond adding section titles (`detail.editUnitInformation`, `detail.editFinancialDefaults`, `detail.editPropertyContext`) in `src/i18n/translations.ts` EN/FR.
+- Property Context dialog re-parents only; it does not edit property-level fields.
 
 ## Verification
 
-1. `bunx vitest run` to confirm no test regression.
-2. Browser-navigate to each affected route and screenshot the open Add modal:
-   - `/units`, `/tenants`, `/leases`, `/vendors`, `/maintenance`, `/payments`, `/costs/categories`, `/costs/entries`, `/costs/allocations`
-   - `/properties/p1` (Add Unit), `/leases/l1` (Record Receipt + Add Guarantee), `/maintenance/<id>` (Edit Ticket)
-3. Confirm each opens centered, scrolls correctly, and the existing layout/fields render unchanged.
-
-## Memory Update
-
-The existing core rule `B2B UI: High-density, Sheet/Drawer for CRUD` directly contradicts this new direction. Update `mem://index.md` to replace "Sheet/Drawer" with "centered Dialog" for the CRUD pattern. Update `mem://style/operational-ui-design` body accordingly.
-
-## Files Touched
-
-- `src/pages/Units.tsx`, `Tenants.tsx`, `Leases.tsx`, `Vendors.tsx`, `Maintenance.tsx`, `Payments.tsx`, `CostCategories.tsx`, `CostEntries.tsx`, `AllocationRules.tsx`, `PropertyDetail.tsx`, `LeaseDetail.tsx`, `MaintenanceDetail.tsx`
-- `mem://index.md` and `mem://style/operational-ui-design`
-
-No data-model, business-logic, or test changes.
+- Open `/units/u1`, click each section's pencil → centered Dialog opens with the right fields, save persists, page stays on `/units/u1`.
+- Status change blocked by integrity → override dialog appears as on the list page.
+- `bunx vitest run` — no regressions (no test touches this page).
