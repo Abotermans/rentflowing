@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -7,14 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canDeleteUnit, getUnitIntegrityWarnings, canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
-import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
+import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
+import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,11 +65,12 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, updateUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
+  const { units, properties, leases, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
+  const navigate = useNavigate();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
@@ -78,6 +79,8 @@ export default function UnitDetail() {
   const [form, setForm] = useState<UnitFormData | null>(null);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [pendingOverride, setPendingOverride] = useState<ValidationResult | null>(null);
+  const [vacateValidation, setVacateValidation] = useState<ValidationResult | null>(null);
+  const [vacateOverrideOpen, setVacateOverrideOpen] = useState(false);
 
   const openEdit = (section: Exclude<EditSection, null>) => {
     if (!unit) return;
@@ -155,6 +158,42 @@ export default function UnitDetail() {
     closeEdit();
   };
 
+  const handleMakeVacant = () => {
+    if (!unit) return;
+    const v = canChangeUnitStatus(unit.id, "vacant", integrityState);
+    if (v.allowed) {
+      updateUnit({ ...unit, currentStatus: "vacant" });
+      toast({ title: t("units.toastUpdated") });
+      return;
+    }
+    if (v.overrideAllowed) {
+      setVacateValidation(v);
+      setVacateOverrideOpen(true);
+      return;
+    }
+    toast({ title: t("units.statusChangeBlocked"), description: v.blockers.map(b => b.message).join(". "), variant: "destructive" });
+  };
+
+  const handleVacateOverride = (reason: string) => {
+    if (!unit || !vacateValidation) return;
+    addOverride({
+      entityType: "unit", entityId: unit.id,
+      action: "status_change:vacant",
+      blockerCodes: vacateValidation.blockers.map(b => b.code),
+      reason,
+    });
+    updateUnit({ ...unit, currentStatus: "vacant" });
+    toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
+    setVacateValidation(null);
+    setVacateOverrideOpen(false);
+  };
+
+  const handleDeleteUnit = (uid: string) => {
+    deleteUnit(uid);
+    toast({ title: t("units.toastDeleted") || "Unit deleted" });
+    navigate("/units");
+  };
+
   if (!unit || !property) {
     return (
       <div className="text-center py-12">
@@ -193,7 +232,7 @@ export default function UnitDetail() {
         <Button variant="ghost" size="sm" asChild className="mb-2">
           <Link to="/units"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.units")}</Link>
         </Button>
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{unit.unitCode}</h1>
@@ -207,6 +246,29 @@ export default function UnitDetail() {
               <span className="mx-1 text-muted-foreground">·</span>
               {property.city}, {getCountryName(property.countryCode)}
             </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {!getActiveLease(unit.id) && (unit.currentStatus === "vacant" || unit.currentStatus === "reserved") && (
+              <Button size="sm" asChild>
+                <Link to={`/leases?new=1&unitId=${unit.id}`}><Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}</Link>
+              </Button>
+            )}
+            {unit.currentStatus !== "vacant" && !getActiveLease(unit.id) && (
+              <Button size="sm" variant="outline" onClick={handleMakeVacant}>
+                <DoorOpen className="h-4 w-4" />{t("occupancy.makeVacantAction")}
+              </Button>
+            )}
+            <DeleteDialog
+              entityType="unit"
+              entityId={unit.id}
+              entityLabel={unit.unitCode}
+              onDelete={handleDeleteUnit}
+              trigger={
+                <Button size="sm" variant="destructive">
+                  <Trash2 className="h-4 w-4" />{t("action.delete")}
+                </Button>
+              }
+            />
           </div>
         </div>
       </div>
@@ -251,15 +313,6 @@ export default function UnitDetail() {
             )}
           </AlertDescription>
         </Alert>
-      )}
-
-      {/* Integrity Summary */}
-      {id && (
-        <IntegritySummaryPanel
-          title="Unit Dependencies"
-          deleteValidation={canDeleteUnit(id, integrityState)}
-          additionalWarnings={getUnitIntegrityWarnings(id, integrityState)}
-        />
       )}
 
       {/* Main Info */}
@@ -615,6 +668,16 @@ export default function UnitDetail() {
           validation={pendingOverride}
           actionLabel="Override and Save"
           onOverride={handleOverrideConfirm}
+        />
+      )}
+
+      {vacateValidation && (
+        <OverrideConfirmDialog
+          open={vacateOverrideOpen}
+          onOpenChange={(v) => { setVacateOverrideOpen(v); if (!v) setVacateValidation(null); }}
+          validation={vacateValidation}
+          actionLabel="Override and Vacate"
+          onOverride={handleVacateOverride}
         />
       )}
     </div>
