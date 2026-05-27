@@ -452,17 +452,111 @@ export default function UnitDetail() {
       })()}
 
       {/* Notes */}
-      {unit.notes && (
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
-          <CardContent><p className="text-sm text-muted-foreground">{unit.notes}</p></CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("notes")}><Pencil className="h-3.5 w-3.5" /></Button>
+        </CardHeader>
+        <CardContent><p className="text-sm text-muted-foreground whitespace-pre-wrap">{unit.notes || "—"}</p></CardContent>
+      </Card>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.created")}: {formatDate(unit.createdAt, property.locale)}</span>
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.updated")}: {formatDate(unit.updatedAt, property.locale)}</span>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editSection !== null} onOpenChange={(v) => { if (!v) closeEdit(); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editSection === "info" && t("detail.unitInformation")}
+              {editSection === "financials" && t("detail.financialDefaults")}
+              {editSection === "property" && t("detail.propertyContext")}
+              {editSection === "notes" && t("common.notes")}
+            </DialogTitle>
+          </DialogHeader>
+          {form && editSection === "info" && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>{t("units.unitCode")} *</Label><Input value={form.unitCode} onChange={e => setForm(f => f && ({ ...f, unitCode: e.target.value }))} /></div>
+                <div><Label>{t("units.label")} *</Label><Input value={form.unitLabel} onChange={e => setForm(f => f && ({ ...f, unitLabel: e.target.value }))} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>{t("units.type")} *</Label>
+                  <Select value={form.unitType} onValueChange={v => setForm(f => f && ({ ...f, unitType: v as UnitType }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{ut.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>{t("units.status")} *</Label>
+                  <Select value={form.currentStatus} onValueChange={v => setForm(f => f && ({ ...f, currentStatus: v as UnitStatus }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <StatusTransitionAlert validation={statusValidation} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>{t("units.floor")}</Label><Input type="number" value={form.floor ?? ""} onChange={e => setForm(f => f && ({ ...f, floor: e.target.value ? Number(e.target.value) : null }))} /></div>
+                <div><Label>{t("units.surface")} ({property.measurementSystem === "imperial" ? "sq ft" : "m²"})</Label><Input type="number" value={form.surfaceArea ?? ""} onChange={e => setForm(f => f && ({ ...f, surfaceArea: e.target.value ? Number(e.target.value) : null }))} /></div>
+                <div><Label>{t("units.bedrooms")}</Label><Input type="number" min={0} value={form.bedrooms} onChange={e => setForm(f => f && ({ ...f, bedrooms: Number(e.target.value) }))} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>{t("units.bathrooms")}</Label><Input type="number" min={0} value={form.bathrooms} onChange={e => setForm(f => f && ({ ...f, bathrooms: Number(e.target.value) }))} /></div>
+                <div><Label>{t("units.availableFrom")}</Label><Input type="date" value={form.availableFrom ?? ""} onChange={e => setForm(f => f && ({ ...f, availableFrom: e.target.value || null }))} /></div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch checked={form.furnished} onCheckedChange={v => setForm(f => f && ({ ...f, furnished: v }))} />
+                <Label>{t("units.furnished")}</Label>
+              </div>
+            </div>
+          )}
+          {form && editSection === "financials" && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>{t("units.rent")} ({property.currencyCode})</Label><Input type="number" value={form.baseRent ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
+                <div><Label>{t("units.charges")} ({property.currencyCode})</Label><Input type="number" value={form.baseCharges ?? ""} onChange={e => setForm(f => f && ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Rent (6-Month Advance)</Label><Input type="number" value={form.baseRentSixMonths ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
+                <div><Label>Rent (1-Year Advance)</Label><Input type="number" value={form.baseRentYearly ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
+              </div>
+            </div>
+          )}
+          {form && editSection === "property" && (
+            <div className="space-y-4 mt-4">
+              <Alert><AlertDescription className="text-xs">Changing the property re-parents this unit. Property-level attributes (city, country, locale, currency) come from the selected property.</AlertDescription></Alert>
+              <div>
+                <Label>{t("table.property")} *</Label>
+                <Select value={form.propertyId} onValueChange={v => setForm(f => f && ({ ...f, propertyId: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          {form && editSection === "notes" && (
+            <div className="space-y-4 mt-4">
+              <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => f && ({ ...f, notes: e.target.value }))} rows={5} /></div>
+            </div>
+          )}
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={closeEdit}>{t("action.cancel")}</Button>
+            <Button onClick={handleSave}>{t("action.save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {pendingOverride && (
+        <OverrideConfirmDialog
+          open={overrideOpen}
+          onOpenChange={(v) => { setOverrideOpen(v); if (!v) setPendingOverride(null); }}
+          validation={pendingOverride}
+          actionLabel="Override and Save"
+          onOverride={handleOverrideConfirm}
+        />
+      )}
     </div>
   );
 }
