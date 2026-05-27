@@ -23,7 +23,7 @@ export type PropertyStatus = "active" | "inactive";
 export type PropertyType = "residential" | "commercial" | "mixed-use";
 
 export type UnitType = "apartment" | "studio" | "office" | "parking" | "storage" | "house" | "commercial-unit";
-export type UnitStatus = "vacant" | "occupied" | "reserved" | "unavailable";
+export type UnitStatus = "vacant" | "occupied" | "reserved" | "unavailable" | "archived";
 
 export interface Unit {
   id: string;
