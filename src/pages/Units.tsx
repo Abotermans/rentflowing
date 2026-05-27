@@ -27,6 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
+import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 
 import type { TranslationKey } from "@/i18n/translations";
 
