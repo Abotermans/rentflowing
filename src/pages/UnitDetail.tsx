@@ -214,7 +214,10 @@ export default function UnitDetail() {
 
       {/* Main Info */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.unitInformation")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-medium">{t("detail.unitInformation")}</CardTitle>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("info")}><Pencil className="h-3.5 w-3.5" /></Button>
+        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {infoItems.map(item => (
@@ -229,7 +232,10 @@ export default function UnitDetail() {
 
       {/* Financial Defaults */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialDefaults")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-medium">{t("detail.financialDefaults")}</CardTitle>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("financials")}><Pencil className="h-3.5 w-3.5" /></Button>
+        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
             <div><p className="text-xs text-muted-foreground">{t("detail.baseRent")} (Monthly)</p><p className="text-lg font-bold text-foreground">{unit.baseRent != null ? formatCurrency(unit.baseRent, property.currencyCode, property.locale) : "—"}</p></div>
@@ -322,7 +328,10 @@ export default function UnitDetail() {
 
       {/* Property Context */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><Building2 className="h-4 w-4" />{t("detail.propertyContext")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Building2 className="h-4 w-4" />{t("detail.propertyContext")}</CardTitle>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("property")}><Pencil className="h-3.5 w-3.5" /></Button>
+        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link></div>
