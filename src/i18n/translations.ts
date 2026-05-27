@@ -977,6 +977,7 @@ const fr: TranslationKeys = {
   "occupancy.needsAttention": "Statut à corriger",
   "occupancy.syncedToastTitle": "Statut de l'unité réconcilié",
   "occupancy.createLeaseAction": "Créer un bail",
+  "occupancy.makeVacantAction": "Libérer",
   "occupancy.statusLockedByLease": "Le statut est piloté par le bail actif. Terminez le bail ou enregistrez un préavis pour modifier l'occupation.",
   "occupancy.statusNoOccupiedWithoutLease": "Une unité ne peut pas être marquée occupée sans bail actif — créez un bail à la place.",
   "occupancy.inconsistencyOccupiedNoLease": "Le lot est marqué occupé mais n'a aucun bail actif.",
