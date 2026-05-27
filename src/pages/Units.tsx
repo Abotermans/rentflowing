@@ -171,7 +171,14 @@ export default function Units() {
     const matchSearch = !q || u.unitCode.toLowerCase().includes(q) || u.unitLabel.toLowerCase().includes(q) || (prop?.name.toLowerCase().includes(q) ?? false);
     const matchProp = filterProperty === "all" || u.propertyId === filterProperty;
     const matchType = filterType === "all" || u.unitType === filterType;
-    const matchOccupancy = filterOccupancy === "all" || occupancy.derived === filterOccupancy;
+    // Stored-status filters match unit.currentStatus (what's displayed); lifecycle-nuance filters match derived.
+    const storedStatusFilters: (DerivedOccupancy | "all")[] = ["vacant", "occupied", "reserved", "unavailable"];
+    const matchOccupancy =
+      filterOccupancy === "all"
+        ? true
+        : storedStatusFilters.includes(filterOccupancy)
+          ? u.currentStatus === filterOccupancy
+          : occupancy.derived === filterOccupancy;
     return matchSearch && matchProp && matchType && matchOccupancy;
   });
 
