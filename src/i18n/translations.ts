@@ -209,6 +209,7 @@ const en = {
   "occupancy.needsAttention": "Status needs attention",
   "occupancy.syncedToastTitle": "Unit status reconciled",
   "occupancy.createLeaseAction": "Create lease",
+  "occupancy.makeVacantAction": "Make vacant",
   "occupancy.statusLockedByLease": "Status is driven by the active lease. End the lease or record notice to change occupancy.",
   "occupancy.statusNoOccupiedWithoutLease": "A unit cannot be marked occupied without an active lease — create a lease instead.",
   "occupancy.inconsistencyOccupiedNoLease": "Unit is marked as occupied but has no active lease.",
