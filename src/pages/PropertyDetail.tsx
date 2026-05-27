@@ -38,6 +38,7 @@ const UNIT_TYPES: { value: UnitType; label: string }[] = [
 const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
   { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
   { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
+  { value: "archived", label: "Archived" },
 ];
 
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
