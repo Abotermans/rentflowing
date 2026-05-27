@@ -24,6 +24,8 @@ import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
+import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
+import { formatCurrency as fmtCurrency } from "@/lib/formatters";
 
 const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -62,7 +64,7 @@ export default function Leases() {
     coTenantIds: [], leaseStatus: "draft", startDate: "", endDate: "",
     monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
-    signedDate: null, notes: "", rentFormula: "monthly",
+    signedDate: null, notes: "", rentFormula: 1,
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
     moveInScheduledDate: null, moveInActualDate: null, moveInMeterReading: null,
     moveInChecklist: { leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false, keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: false },
@@ -112,12 +114,9 @@ export default function Leases() {
       return;
     }
     const unitForSave = units.find(u => u.id === form.unitId);
-    const tierValue =
-      form.rentFormula === 'monthly' ? unitForSave?.baseRent :
-      form.rentFormula === 'six-months' ? unitForSave?.baseRentSixMonths :
-      unitForSave?.baseRentYearly;
+    const tierValue = unitForSave ? getMonthlyRentForMonths(unitForSave, form.rentFormula) : null;
     if (tierValue == null) {
-      toast({ title: "Validation Error", description: "Selected rent formula is not available for this unit.", variant: "destructive" });
+      toast({ title: "Validation Error", description: "Selected rent tier is not available for this unit.", variant: "destructive" });
       return;
     }
     // Validate status transition
@@ -187,11 +186,14 @@ export default function Leases() {
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
   const selectedUnit = useMemo(() => units.find(u => u.id === form.unitId), [units, form.unitId]);
-  const formulaAvailability = useMemo(() => ({
-    monthly: selectedUnit?.baseRent != null,
-    'six-months': selectedUnit?.baseRentSixMonths != null,
-    yearly: selectedUnit?.baseRentYearly != null,
-  }), [selectedUnit]);
+  const availableTiers = useMemo(
+    () => (selectedUnit ? getAllRentTiers(selectedUnit) : []),
+    [selectedUnit],
+  );
+  const selectedProperty = useMemo(
+    () => properties.find(p => p.id === form.propertyId),
+    [properties, form.propertyId],
+  );
 
   return (
     <div className="space-y-6">
