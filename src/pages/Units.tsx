@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { DoorOpen, Plus, Search, Eye, Pencil, AlertTriangle } from "lucide-react";
+import { DoorOpen, Plus, Search, Eye, Pencil, AlertTriangle, HelpCircle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS } from "@/lib/formatters";
@@ -322,7 +322,22 @@ export default function Units() {
                     <SelectContent>{UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{t(ut.labelKey)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>{t("units.status")} *</Label>
+              <div>
+                <div className="flex items-center gap-1">
+                  <Label>{t("units.status")} *</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[250px]">
+                      <p className="text-xs">
+                        {editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
+                          ? t("occupancy.statusLockedByLease")
+                          : t("occupancy.statusNoOccupiedWithoutLease")}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <Select
                   value={form.currentStatus}
                   onValueChange={v => setForm(f => ({ ...f, currentStatus: v as UnitStatus }))}
@@ -336,11 +351,6 @@ export default function Units() {
                       ).map(s => <SelectItem key={s.value} value={s.value}>{t(s.labelKey)}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
-                    ? t("occupancy.statusLockedByLease")
-                    : t("occupancy.statusNoOccupiedWithoutLease")}
-                </p>
                 <StatusTransitionAlert validation={unitStatusValidation} />
               </div>
             </div>
