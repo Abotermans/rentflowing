@@ -526,10 +526,21 @@ export default function UnitDetail() {
                   </Select>
                 </div>
                 <div><Label>{t("units.status")} *</Label>
-                  <Select value={form.currentStatus} onValueChange={v => setForm(f => f && ({ ...f, currentStatus: v as UnitStatus }))}>
+                  <Select
+                    value={form.currentStatus}
+                    onValueChange={v => setForm(f => f && ({ ...f, currentStatus: v as UnitStatus }))}
+                    disabled={!!activeLease}
+                  >
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      {(activeLease ? UNIT_STATUSES : UNIT_STATUSES_NO_LEASE).map(s => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {activeLease ? t("occupancy.statusLockedByLease") : t("occupancy.statusNoOccupiedWithoutLease")}
+                  </p>
                   <StatusTransitionAlert validation={statusValidation} />
                 </div>
               </div>
