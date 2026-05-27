@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { DoorOpen, Plus, Search, Eye, Pencil, AlertTriangle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
-import { formatCurrency, formatArea, formatDate, getUnitTypeLabel } from "@/lib/formatters";
+import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS } from "@/lib/formatters";
 import { useSettings } from "@/context/SettingsContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -28,29 +28,36 @@ import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 
-const UNIT_TYPES: { value: UnitType; label: string }[] = [
-  { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
-  { value: "office", label: "Office" }, { value: "parking", label: "Parking" },
-  { value: "storage", label: "Storage" }, { value: "house", label: "House" },
-  { value: "commercial-unit", label: "Commercial Unit" },
+import type { TranslationKey } from "@/i18n/translations";
+
+const UNIT_TYPES: { value: UnitType; labelKey: TranslationKey }[] = [
+  { value: "apartment", labelKey: "units.apartment" },
+  { value: "studio", labelKey: "units.studio" },
+  { value: "office", labelKey: "units.office" },
+  { value: "parking", labelKey: "units.parking" },
+  { value: "storage", labelKey: "units.storage" },
+  { value: "house", labelKey: "units.house" },
+  { value: "commercial-unit", labelKey: "units.commercialUnit" },
 ];
-const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
-  { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
-  { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
+const UNIT_STATUSES: { value: UnitStatus; labelKey: TranslationKey }[] = [
+  { value: "vacant", labelKey: "status.vacant" },
+  { value: "occupied", labelKey: "status.occupied" },
+  { value: "reserved", labelKey: "status.reserved" },
+  { value: "unavailable", labelKey: "status.unavailable" },
 ];
-const UNIT_STATUSES_NO_LEASE: { value: UnitStatus; label: string }[] = [
-  { value: "vacant", label: "Vacant" },
-  { value: "reserved", label: "Reserved" },
-  { value: "unavailable", label: "Unavailable" },
+const UNIT_STATUSES_NO_LEASE: { value: UnitStatus; labelKey: TranslationKey }[] = [
+  { value: "vacant", labelKey: "status.vacant" },
+  { value: "reserved", labelKey: "status.reserved" },
+  { value: "unavailable", labelKey: "status.unavailable" },
 ];
 
-const OCCUPANCY_FILTERS: { value: DerivedOccupancy | "all"; label: string }[] = [
-  { value: "all", label: "All Occupancy" },
-  { value: "vacant", label: "Vacant" },
-  { value: "occupied", label: "Occupied" },
-  { value: "under-notice", label: "Under Notice" },
-  { value: "move-in-pending", label: "Move-In Pending" },
-  { value: "move-out-scheduled", label: "Move-Out Scheduled" },
+const OCCUPANCY_FILTERS: { value: DerivedOccupancy | "all"; labelKey: TranslationKey }[] = [
+  { value: "all", labelKey: "units.allOccupancy" },
+  { value: "vacant", labelKey: "status.vacant" },
+  { value: "occupied", labelKey: "status.occupied" },
+  { value: "under-notice", labelKey: "status.underNotice" },
+  { value: "move-in-pending", labelKey: "status.moveInPending" },
+  { value: "move-out-scheduled", labelKey: "status.moveOutScheduled" },
 ];
 
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
@@ -104,17 +111,17 @@ export default function Units() {
   const executeSave = () => {
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...form });
-      toast({ title: "Unit updated" });
+      toast({ title: t("units.toastUpdated") });
     } else {
       addUnit(form);
-      toast({ title: "Unit added" });
+      toast({ title: t("units.toastAdded") });
     }
     setSheetOpen(false);
   };
 
   const handleSave = () => {
     if (!form.unitCode.trim() || !form.unitLabel.trim() || !form.propertyId) {
-      toast({ title: "Validation Error", description: "Property, unit code, and label are required.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("units.requiredFields"), variant: "destructive" });
       return;
     }
     if (editingUnit && form.currentStatus !== editingUnit.currentStatus) {
@@ -125,7 +132,7 @@ export default function Units() {
           setOverrideDialogOpen(true);
           return;
         }
-        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        toast({ title: t("units.statusChangeBlocked"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
         return;
       }
     }
@@ -143,13 +150,13 @@ export default function Units() {
     });
     updateUnit({ ...editingUnit, ...form });
     setSheetOpen(false);
-    toast({ title: "Unit updated (overridden)", description: `Override reason: ${reason}` });
+    toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
     setPendingOverrideValidation(null);
   };
 
   const handleDelete = (uid: string) => {
     deleteUnit(uid);
-    toast({ title: "Unit deleted" });
+    toast({ title: t("units.toastDeleted") });
   };
 
   // Compute derived occupancy for each unit
@@ -196,13 +203,13 @@ export default function Units() {
           <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder={t("filter.type")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("filter.allTypes")}</SelectItem>
-            {UNIT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            {UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{t(ut.labelKey)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterOccupancy} onValueChange={v => setFilterOccupancy(v as DerivedOccupancy | "all")}>
           <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("occupancy.derivedLabel")} /></SelectTrigger>
           <SelectContent>
-            {OCCUPANCY_FILTERS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            {OCCUPANCY_FILTERS.map(o => <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -242,7 +249,7 @@ export default function Units() {
                       <TableCell className="text-muted-foreground">
                         {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline">{prop.name}</Link> : "—"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
+                      <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
                       <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null && prop ? formatArea(u.surfaceArea, prop.measurementSystem) : "—"}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{u.baseRent != null && prop ? formatCurrency(u.baseRent, prop.currencyCode, prop.locale) : "—"}</TableCell>
@@ -256,7 +263,7 @@ export default function Units() {
                                 <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[250px]">
-                                <p className="text-xs">{occupancy.inconsistencyMessage}</p>
+                                <p className="text-xs">{occupancy.inconsistencyKey ? t(occupancy.inconsistencyKey) : ""}</p>
                               </TooltipContent>
                             </Tooltip>
                           )}
@@ -305,7 +312,7 @@ export default function Units() {
               <div><Label>{t("units.type")} *</Label>
                 <Select value={form.unitType} onValueChange={v => setForm(f => ({ ...f, unitType: v as UnitType }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>{UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{t(ut.labelKey)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>{t("units.status")} *</Label>
@@ -319,7 +326,7 @@ export default function Units() {
                     {(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
                       ? UNIT_STATUSES
                       : UNIT_STATUSES_NO_LEASE
-                    ).map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                      ).map(s => <SelectItem key={s.value} value={s.value}>{t(s.labelKey)}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -341,8 +348,8 @@ export default function Units() {
               <div><Label>{t("units.charges")} ({selectedProperty?.currencyCode ?? "EUR"})</Label><Input type="number" value={form.baseCharges ?? ""} onChange={e => setForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Rent (6-Month Advance)</Label><Input type="number" value={form.baseRentSixMonths ?? ""} onChange={e => setForm(f => ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
-              <div><Label>Rent (1-Year Advance)</Label><Input type="number" value={form.baseRentYearly ?? ""} onChange={e => setForm(f => ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
+              <div><Label>{t("units.advanceRent6m")}</Label><Input type="number" value={form.baseRentSixMonths ?? ""} onChange={e => setForm(f => ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder={t("units.optionalPlaceholder")} /></div>
+              <div><Label>{t("units.advanceRent1y")}</Label><Input type="number" value={form.baseRentYearly ?? ""} onChange={e => setForm(f => ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder={t("units.optionalPlaceholder")} /></div>
             </div>
             <div className="flex items-center gap-3">
               <Switch checked={form.furnished} onCheckedChange={v => setForm(f => ({ ...f, furnished: v }))} />
@@ -364,7 +371,7 @@ export default function Units() {
           open={overrideDialogOpen}
           onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) setPendingOverrideValidation(null); }}
           validation={pendingOverrideValidation}
-          actionLabel="Override and Save"
+          actionLabel={t("units.overrideAndSave")}
           onOverride={handleOverrideConfirm}
         />
       )}
