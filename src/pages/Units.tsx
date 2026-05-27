@@ -309,10 +309,24 @@ export default function Units() {
                 </Select>
               </div>
               <div><Label>{t("units.status")} *</Label>
-                <Select value={form.currentStatus} onValueChange={v => setForm(f => ({ ...f, currentStatus: v as UnitStatus }))}>
+                <Select
+                  value={form.currentStatus}
+                  onValueChange={v => setForm(f => ({ ...f, currentStatus: v as UnitStatus }))}
+                  disabled={!!(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active"))}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
+                      ? UNIT_STATUSES
+                      : UNIT_STATUSES_NO_LEASE
+                    ).map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
+                    ? t("occupancy.statusLockedByLease")
+                    : t("occupancy.statusNoOccupiedWithoutLease")}
+                </p>
                 <StatusTransitionAlert validation={unitStatusValidation} />
               </div>
             </div>
