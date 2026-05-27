@@ -37,10 +37,14 @@ export function getDerivedOccupancy(
   );
 
   if (!activeLease) {
-    // No active lease — derive vacant
+    // No active lease — respect manual operational status (vacant/reserved/unavailable).
+    // "occupied" without a lease is the one illegal state and gets flagged.
     const inconsistent = manualStatus === "occupied";
+    const derived: DerivedOccupancy = inconsistent
+      ? "vacant"
+      : (manualStatus as DerivedOccupancy);
     return {
-      derived: "vacant",
+      derived,
       manualStatus,
       inconsistent,
       inconsistencyMessage: inconsistent
