@@ -38,6 +38,11 @@ const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
   { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
   { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
 ];
+const UNIT_STATUSES_NO_LEASE: { value: UnitStatus; label: string }[] = [
+  { value: "vacant", label: "Vacant" },
+  { value: "reserved", label: "Reserved" },
+  { value: "unavailable", label: "Unavailable" },
+];
 
 const OCCUPANCY_FILTERS: { value: DerivedOccupancy | "all"; label: string }[] = [
   { value: "all", label: "All Occupancy" },
