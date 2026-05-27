@@ -423,10 +423,10 @@ export default function Payments() {
             </div>
             <div>
               <Label>Tenant (optional)</Label>
-              <Select value={formTenantId} onValueChange={setFormTenantId}>
+              <Select value={formTenantId || "__none__"} onValueChange={v => setFormTenantId(v === "__none__" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="Select tenant…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— None —</SelectItem>
+                  <SelectItem value="__none__">— None —</SelectItem>
                   {tenants.filter(tn => tn.status === "active").map(tn => (
                     <SelectItem key={tn.id} value={tn.id}>{getTenantFullName(tn)}</SelectItem>
                   ))}
@@ -435,10 +435,10 @@ export default function Payments() {
             </div>
             <div>
               <Label>Lease (optional)</Label>
-              <Select value={formLeaseId} onValueChange={setFormLeaseId}>
+              <Select value={formLeaseId || "__none__"} onValueChange={v => setFormLeaseId(v === "__none__" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="Select lease…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— None —</SelectItem>
+                  <SelectItem value="__none__">— None —</SelectItem>
                   {leases.filter(l => l.leaseStatus === "active").map(l => {
                     const tn = tenants.find(x => x.id === l.primaryTenantId);
                     return <SelectItem key={l.id} value={l.id}>{l.leaseReference} — {tn ? getTenantFullName(tn) : ""}</SelectItem>;
