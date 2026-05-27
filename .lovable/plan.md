@@ -1,58 +1,62 @@
-# Flexible rent tiers for a unit
+# Kebab menu + Archive on Unit detail
 
-Today a unit stores three fixed rent fields: `baseRent` (monthly), `baseRentSixMonths`, `baseRentYearly`. The user wants a fully flexible **table of rent tiers** where each row is `{ advance period in months, monthly rent }`. Any number of rows, any duration (1, 2, 3, … 12, 18, 24, …).
+## Goal
+On `/units/:id`, the Delete button is too prominent. Demote it into a 3-dot (kebab) menu in the top-right header, alongside a new **Archive** action. Introduce an **Archived** status for units so archived units are visually distinguished and excluded from active operations.
 
-## What changes on screen
+## UI changes — `src/pages/UnitDetail.tsx`
 
-**Unit detail → "Financial defaults" card** becomes a table:
+Header right side becomes:
+- `Create Lease` (primary, when no active lease + status is `vacant`/`reserved`) — unchanged
+- `Make Vacant` (outline) — unchanged
+- **Kebab menu** (`MoreVertical` icon, ghost icon button) containing:
+  - `Archive` (or `Unarchive` if already archived)
+  - `Delete` — opens the existing `DeleteDialog`
 
-| Advance period | Monthly rent | Total for the period |
-|---|---|---|
-| 1 month  | €1 350 | €1 350 |
-| 6 months | €1 250 | €7 500 |
-| 12 months | €1 150 | €13 800 |
+The standalone Delete button is removed; the dialog is triggered from the menu item via the `trigger` prop of `DeleteDialog`.
 
-- Always-visible columns; "Total" is computed (`monthlyRent × durationMonths`).
-- Base monthly charges and currency stay shown next to the table (single read-only line below).
-- The pencil button opens an edit dialog with the **same table, editable**:
-  - Each row has a months input (integer ≥ 1) and a monthly-rent input.
-  - "Add tier" button appends a new row.
-  - Trash icon removes a row.
-  - At least one row required, durations must be unique, all values > 0; rows auto-sort ascending by months on save.
+Archived units:
+- Show the new "Archived" status badge in the header.
+- Hide `Create Lease` and `Make Vacant` buttons (only Unarchive + Delete remain in the kebab).
 
-## Data model
-
-Add a new field on `Unit`:
-
+## Data model — `src/types/index.ts`
+Extend `UnitStatus`:
 ```ts
-rentTiers: { durationMonths: number; monthlyRent: number }[];
+export type UnitStatus = "vacant" | "occupied" | "reserved" | "unavailable" | "archived";
 ```
 
-Drop `baseRentSixMonths` and `baseRentYearly`. Keep `baseRent` as a derived convenience (the `durationMonths === 1` tier's monthly rent) so existing list views and KPIs don't need a rewrite — populated automatically whenever `rentTiers` is saved.
+## Status badge — `src/components/shared/StatusBadge.tsx`
+- Add `"archived"` to the `StatusType` union.
+- Style: `bg-muted text-muted-foreground border-border` with reduced opacity (visually muted, similar to `unavailable` but distinct — e.g. dashed border or italic label).
+- Add label mapping → new i18n key `status.archived` ("Archived" / "Archivé").
 
-Mock data migration: convert each existing unit's three legacy fields into a `rentTiers` array (only including the tiers that are non-null).
+## Integrity — `src/lib/integrity/unitIntegrity.ts`
+Extend `canChangeUnitStatus` for `targetStatus === "archived"`:
+- Block if any active lease exists (must be vacated first).
+- Block if there are open receivables (warning + block with override allowed).
+- Otherwise allow.
 
-## Lease creation flow
+Add a small helper `canArchiveUnit(unitId, s)` that wraps the above for the action handler.
 
-`src/pages/Leases.tsx` currently hard-codes three `RentFormula` options. Replace the formula `Select` with a dynamic list built from the selected unit's `rentTiers`:
+Unarchive = set status back to `vacant` (same rules as vacate, which already exist).
 
-- Each option label: "1 month — €1 350", "6 months — €1 250", "12 months — €1 150", …
-- Selecting a tier sets `monthlyRent = tier.monthlyRent` and, when `durationMonths > 1`, configures `hasAdvancePayment = true`, `advancePaymentAmount = monthlyRent × durationMonths`, `advanceAllocationMethod = 'spread-evenly'`, `advanceAllocationDurationMonths = durationMonths`. When `durationMonths === 1`, no advance.
-- `RentFormula` type changes from `'monthly' | 'six-months' | 'yearly'` to `number` (the chosen duration in months) so any tier is representable. The lease's existing `rentFormula` field stores the months count.
+## Status select in edit dialog
+Add `archived` to `UNIT_STATUSES` and `UNIT_STATUSES_NO_LEASE` so it can be set from the edit form too (mirrors the kebab action).
 
-Mock leases migration: map `'monthly' → 1`, `'six-months' → 6`, `'yearly' → 12`.
+## Filtering existing lists
+`Units.tsx`, `PropertyDetail.tsx` and dashboards already filter by status. Add an "Archived" entry to the unit-status filter dropdown but **exclude archived units by default** from the main list and KPIs (toggle "Show archived" in the filter). Occupancy KPIs ignore archived units entirely (treat like `unavailable` — not counted in vacancy rate).
 
-## Files touched
-
-- `src/types/index.ts` — `Unit.rentTiers`, drop legacy tier fields, redefine `RentFormula = number`.
-- `src/data/mockData.ts` — migrate units and any leases referencing the old formula strings.
-- `src/pages/UnitDetail.tsx` — replace the financial-defaults grid with the read-only table; rebuild the financials edit dialog with the row editor.
-- `src/pages/Units.tsx` and `src/pages/PropertyDetail.tsx` — replace the three rent inputs in the unit create/edit dialogs with the same row editor; list cells keep showing the 1-month rent via the derived `baseRent`.
-- `src/pages/Leases.tsx` — dynamic tier select, updated save logic, removed hard-coded `formulaAvailability`.
-- `src/i18n/translations.ts` — new keys: `units.rentTiers`, `units.advancePeriodMonths`, `units.monthlyRent`, `units.totalForPeriod`, `units.addTier`, `units.atLeastOneTier`, `units.duplicateDuration`.
+## i18n — `src/i18n/translations.ts`
+New keys (EN/FR):
+- `status.archived` — "Archived" / "Archivé"
+- `units.archiveAction` — "Archive" / "Archiver"
+- `units.unarchiveAction` — "Unarchive" / "Désarchiver"
+- `units.archiveBlocked` — "Cannot archive: …" / "Impossible d'archiver : …"
+- `units.toastArchived`, `units.toastUnarchived`
+- `units.moreActions` — "More actions" / "Plus d'actions" (kebab aria-label)
+- `units.showArchived` — "Show archived" / "Afficher les archivés"
 
 ## Out of scope
-
-- `src/lib/advancePricing.ts` already operates on `lease.monthlyRent` + a duration — no change.
-- No change to receivables generation, occupancy logic, or reporting.
-- No backend/storage changes (mock data only).
+- No DB/backend changes (mock data only).
+- No bulk-archive UI.
+- `PropertyDetail.tsx` per-unit row actions are unchanged in this pass — only the unit detail page header gets the kebab.
+- Archive on tenants/leases/properties not included.
