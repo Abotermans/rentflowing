@@ -27,6 +27,8 @@ import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
+import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
+import { getAllRentTiers } from "@/lib/rentTiers";
 
 import type { TranslationKey } from "@/i18n/translations";
 
@@ -124,8 +126,9 @@ export default function UnitDetail() {
       });
     } else if (editSection === "financials") {
       persist({
-        baseRent: form.baseRent, baseRentSixMonths: form.baseRentSixMonths,
-        baseRentYearly: form.baseRentYearly, baseCharges: form.baseCharges,
+        baseRent: form.baseRent,
+        rentTiers: [...form.rentTiers].sort((a, b) => a.durationMonths - b.durationMonths),
+        baseCharges: form.baseCharges,
       });
     } else if (editSection === "property") {
       if (!form.propertyId) {
