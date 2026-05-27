@@ -342,17 +342,36 @@ export default function UnitDetail() {
           <CardTitle className="text-sm font-medium">{t("detail.financialDefaults")}</CardTitle>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("financials")}><Pencil className="h-3.5 w-3.5" /></Button>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            <div><p className="text-xs text-muted-foreground">{t("units.rentMonthly")}</p><p className="text-lg font-bold text-foreground">{unit.baseRent != null ? formatCurrency(unit.baseRent, property.currencyCode, property.locale) : "—"}</p></div>
-            {unit.baseRentSixMonths != null && (
-              <div><p className="text-xs text-muted-foreground">{t("units.advanceRent6m")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(unit.baseRentSixMonths, property.currencyCode, property.locale)}</p></div>
-            )}
-            {unit.baseRentYearly != null && (
-              <div><p className="text-xs text-muted-foreground">{t("units.advanceRent1y")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(unit.baseRentYearly, property.currencyCode, property.locale)}</p></div>
-            )}
-            <div><p className="text-xs text-muted-foreground">{t("detail.baseCharges")}</p><p className="text-lg font-bold text-foreground">{unit.baseCharges != null ? formatCurrency(unit.baseCharges, property.currencyCode, property.locale) : "—"}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("properties.currency")}</p><p className="text-lg font-bold text-foreground">{property.currencyCode}</p></div>
+        <CardContent className="space-y-4">
+          {(() => {
+            const rows = getAllRentTiers(unit);
+            if (rows.length === 0) {
+              return <p className="text-sm text-muted-foreground">{t("detail.noActiveLeaseDesc")}</p>;
+            }
+            return (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">{t("units.advancePeriodMonths")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("units.monthlyRent")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("units.totalForPeriod")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map(r => (
+                    <TableRow key={r.durationMonths}>
+                      <TableCell className="text-sm font-medium text-foreground">{r.durationMonths}</TableCell>
+                      <TableCell className="text-right text-sm text-foreground">{formatCurrency(r.monthlyRent, property.currencyCode, property.locale)}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold text-foreground">{formatCurrency(r.monthlyRent * r.durationMonths, property.currencyCode, property.locale)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            );
+          })()}
+          <div className="grid grid-cols-2 gap-6 pt-2 border-t">
+            <div><p className="text-xs text-muted-foreground">{t("detail.baseCharges")}</p><p className="text-sm font-semibold text-foreground">{unit.baseCharges != null ? formatCurrency(unit.baseCharges, property.currencyCode, property.locale) : "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("properties.currency")}</p><p className="text-sm font-semibold text-foreground">{property.currencyCode}</p></div>
           </div>
         </CardContent>
       </Card>
