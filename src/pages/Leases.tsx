@@ -280,13 +280,11 @@ export default function Leases() {
                       {unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}
                     </TableCell>
                     <TableCell>
-                      {l.rentFormula === 'yearly' ? (
-                        <Badge>{t("leases.formula.yearly")}</Badge>
-                      ) : l.rentFormula === 'six-months' ? (
-                        <Badge variant="secondary">{t("leases.formula.sixMonths")}</Badge>
-                      ) : (
-                        <Badge variant="outline">{t("leases.formula.monthly")}</Badge>
-                      )}
+                      <Badge variant={l.rentFormula === 1 ? "outline" : l.rentFormula >= 12 ? "default" : "secondary"}>
+                        {l.rentFormula === 1
+                          ? t("leases.formula.monthly")
+                          : `${l.rentFormula} ${t("units.advancePeriodMonths").toLowerCase().replace(/\s*\(.*\)/, "")}`}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 flex-wrap">
@@ -337,17 +335,13 @@ export default function Leases() {
                 <Select value={form.unitId} onValueChange={v => {
                   const newUnit = units.find(u => u.id === v);
                   setForm(f => {
-                    let nextFormula = f.rentFormula;
-                    let next: LeaseFormData = { ...f, unitId: v };
-                    const stillAvailable =
-                      (f.rentFormula === 'monthly' && newUnit?.baseRent != null) ||
-                      (f.rentFormula === 'six-months' && newUnit?.baseRentSixMonths != null) ||
-                      (f.rentFormula === 'yearly' && newUnit?.baseRentYearly != null);
-                    if (!stillAvailable) {
-                      nextFormula = 'monthly';
-                      next = {
+                    const next: LeaseFormData = { ...f, unitId: v };
+                    const rent = newUnit ? getMonthlyRentForMonths(newUnit, f.rentFormula) : null;
+                    if (rent == null) {
+                      // Selected duration not available on this unit — fall back to 1 month.
+                      return {
                         ...next,
-                        rentFormula: 'monthly',
+                        rentFormula: 1,
                         monthlyRent: newUnit?.baseRent ?? f.monthlyRent,
                         hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
                         advanceAllocationMethod: null, advanceAppliedTo: null,
@@ -355,7 +349,7 @@ export default function Leases() {
                         fixedMonthlyReductionAmount: null,
                       };
                     }
-                    return next;
+                    return { ...next, monthlyRent: rent };
                   });
                 }}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
