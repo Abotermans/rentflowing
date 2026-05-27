@@ -111,7 +111,7 @@ describe("getDerivedOccupancy", () => {
     const result = getDerivedOccupancy("unit-1", "occupied", []);
     expect(result.derived).toBe("vacant");
     expect(result.inconsistent).toBe(true);
-    expect(result.inconsistencyMessage).toContain("no active lease");
+    expect(result.inconsistencyKey).toBe("occupancy.inconsistencyOccupiedNoLease");
   });
 
   // Inconsistency: manual=vacant but active lease exists
@@ -120,7 +120,7 @@ describe("getDerivedOccupancy", () => {
     const result = getDerivedOccupancy("unit-1", "vacant", [lease]);
     expect(result.derived).toBe("occupied");
     expect(result.inconsistent).toBe(true);
-    expect(result.inconsistencyMessage).toContain("vacant");
+    expect(result.inconsistencyKey).toBe("occupancy.inconsistencyVacantWithLease");
   });
 
   // Inconsistency: manual=reserved but lease is occupied
@@ -129,7 +129,7 @@ describe("getDerivedOccupancy", () => {
     const result = getDerivedOccupancy("unit-1", "reserved", [lease]);
     expect(result.derived).toBe("occupied");
     expect(result.inconsistent).toBe(true);
-    expect(result.inconsistencyMessage).toContain("reserved");
+    expect(result.inconsistencyKey).toBe("occupancy.inconsistencyReservedWithLease");
   });
 
   // Under-notice unit should still be occupied (not vacant)
@@ -179,7 +179,7 @@ describe("getUnitOccupancyWarnings", () => {
   it("returns inconsistency warning for occupied without lease", () => {
     const warnings = getUnitOccupancyWarnings("unit-1", "occupied", []);
     expect(warnings.length).toBe(1);
-    expect(warnings[0]).toContain("no active lease");
+    expect(warnings[0].key).toBe("occupancy.inconsistencyOccupiedNoLease");
   });
 
   it("returns under-notice warning with availability date", () => {
@@ -188,8 +188,8 @@ describe("getUnitOccupancyWarnings", () => {
       intendedMoveOutDate: "2024-06-30",
     });
     const warnings = getUnitOccupancyWarnings("unit-1", "occupied", [lease]);
-    expect(warnings.some((w) => w.includes("under notice"))).toBe(true);
-    expect(warnings.some((w) => w.includes("2024-06-30"))).toBe(true);
+    expect(warnings.some((w) => w.key === "occupancy.warningUnderNoticeDate")).toBe(true);
+    expect(warnings.some((w) => w.params?.date === "2024-06-30")).toBe(true);
   });
 
   it("returns move-in-pending warning", () => {
@@ -198,6 +198,6 @@ describe("getUnitOccupancyWarnings", () => {
       moveInActualDate: null,
     });
     const warnings = getUnitOccupancyWarnings("unit-1", "occupied", [lease]);
-    expect(warnings.some((w) => w.includes("Move-in is scheduled"))).toBe(true);
+    expect(warnings.some((w) => w.key === "occupancy.warningMoveInPending")).toBe(true);
   });
 });
