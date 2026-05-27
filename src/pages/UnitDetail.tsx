@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote } from "lucide-react";
-import { formatCurrency, formatArea, formatDate, getUnitTypeLabel, getCountryName } from "@/lib/formatters";
+import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
@@ -28,24 +28,37 @@ import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 
-const UNIT_TYPES: { value: UnitType; label: string }[] = [
-  { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
-  { value: "office", label: "Office" }, { value: "parking", label: "Parking" },
-  { value: "storage", label: "Storage" }, { value: "house", label: "House" },
-  { value: "commercial-unit", label: "Commercial Unit" },
-];
-const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
-  { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
-  { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
-];
+import type { TranslationKey } from "@/i18n/translations";
 
+const UNIT_TYPES: { value: UnitType; labelKey: TranslationKey }[] = [
+  { value: "apartment", labelKey: "units.apartment" },
+  { value: "studio", labelKey: "units.studio" },
+  { value: "office", labelKey: "units.office" },
+  { value: "parking", labelKey: "units.parking" },
+  { value: "storage", labelKey: "units.storage" },
+  { value: "house", labelKey: "units.house" },
+  { value: "commercial-unit", labelKey: "units.commercialUnit" },
+];
+const UNIT_STATUSES: { value: UnitStatus; labelKey: TranslationKey }[] = [
+  { value: "vacant", labelKey: "status.vacant" },
+  { value: "occupied", labelKey: "status.occupied" },
+  { value: "reserved", labelKey: "status.reserved" },
+  { value: "unavailable", labelKey: "status.unavailable" },
+];
 // Status options selectable when no active lease exists.
 // `occupied` is intentionally excluded — occupancy is derived from an active lease.
-const UNIT_STATUSES_NO_LEASE: { value: UnitStatus; label: string }[] = [
-  { value: "vacant", label: "Vacant" },
-  { value: "reserved", label: "Reserved" },
-  { value: "unavailable", label: "Unavailable" },
+const UNIT_STATUSES_NO_LEASE: { value: UnitStatus; labelKey: TranslationKey }[] = [
+  { value: "vacant", labelKey: "status.vacant" },
+  { value: "reserved", labelKey: "status.reserved" },
+  { value: "unavailable", labelKey: "status.unavailable" },
 ];
+
+const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
+  vacant: "status.vacant",
+  occupied: "status.occupied",
+  reserved: "status.reserved",
+  unavailable: "status.unavailable",
+};
 
 type EditSection = "info" | "financials" | "property" | "notes" | null;
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
@@ -82,7 +95,7 @@ export default function UnitDetail() {
   const persist = (patch: Partial<UnitFormData>) => {
     if (!unit) return;
     updateUnit({ ...unit, ...patch });
-    toast({ title: t("units.edit") });
+    toast({ title: t("units.toastUpdated") });
     closeEdit();
   };
 
@@ -90,14 +103,14 @@ export default function UnitDetail() {
     if (!unit || !form) return;
     if (editSection === "info") {
       if (!form.unitCode.trim() || !form.unitLabel.trim()) {
-        toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
+        toast({ title: t("common.validationError"), description: t("units.requiredCodeLabel"), variant: "destructive" });
         return;
       }
       if (form.currentStatus !== unit.currentStatus) {
         const v = canChangeUnitStatus(unit.id, form.currentStatus, integrityState);
         if (!v.allowed) {
           if (v.overrideAllowed) { setPendingOverride(v); setOverrideOpen(true); return; }
-          toast({ title: "Status change blocked", description: v.blockers.map(b => b.message).join(". "), variant: "destructive" });
+          toast({ title: t("units.statusChangeBlocked"), description: v.blockers.map(b => b.message).join(". "), variant: "destructive" });
           return;
         }
       }
@@ -113,7 +126,7 @@ export default function UnitDetail() {
       });
     } else if (editSection === "property") {
       if (!form.propertyId) {
-        toast({ title: "Validation Error", description: "Property is required.", variant: "destructive" });
+        toast({ title: t("common.validationError"), description: t("units.requiredProperty"), variant: "destructive" });
         return;
       }
       persist({ propertyId: form.propertyId });
@@ -136,7 +149,7 @@ export default function UnitDetail() {
       floor: form.floor, surfaceArea: form.surfaceArea, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
       furnished: form.furnished, availableFrom: form.availableFrom, currentStatus: form.currentStatus,
     });
-    toast({ title: "Unit updated (overridden)", description: `Override reason: ${reason}` });
+    toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
     setPendingOverride(null);
     setOverrideOpen(false);
     closeEdit();
@@ -165,7 +178,7 @@ export default function UnitDetail() {
   const nextDueItem = receivables.filter(ri => ri.outstandingAmount > 0 && ri.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
   const infoItems = [
-    { label: t("units.type"), value: getUnitTypeLabel(unit.unitType), icon: Home },
+    { label: t("units.type"), value: t(UNIT_TYPE_KEYS[unit.unitType]), icon: Home },
     { label: t("units.floor"), value: unit.floor != null ? String(unit.floor) : "—", icon: Home },
     { label: t("units.surface"), value: unit.surfaceArea != null ? formatArea(unit.surfaceArea, property.measurementSystem) : "—", icon: Ruler },
     { label: t("units.bedrooms"), value: String(unit.bedrooms), icon: BedDouble },
@@ -199,14 +212,14 @@ export default function UnitDetail() {
       </div>
 
       {/* Reconciliation panel — one truth, one suggested fix */}
-      {occupancy.inconsistent && occupancy.inconsistencyMessage && (
+      {occupancy.inconsistent && occupancy.inconsistencyKey && (
         <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-sm">
             <div className="font-semibold mb-1">{t("occupancy.needsAttention")}</div>
-            <p className="text-xs mb-1">{occupancy.inconsistencyMessage}</p>
+            <p className="text-xs mb-1">{t(occupancy.inconsistencyKey)}</p>
             {occupancy.suggestedFix && (
-              <p className="text-xs text-muted-foreground mb-2">{occupancy.suggestedFix.rationale}</p>
+              <p className="text-xs text-muted-foreground mb-2">{t(occupancy.suggestedFix.rationaleKey)}</p>
             )}
             {occupancy.suggestedFix && (
               <div className="flex flex-wrap gap-2 mt-2">
@@ -222,12 +235,12 @@ export default function UnitDetail() {
                       entityId: unit.id,
                       action: `status_reconcile:${prev}->${target}`,
                       blockerCodes: [],
-                      reason: "Reconciled to match lease state",
+                      reason: t("occupancy.reconcileReason"),
                     });
-                    toast({ title: t("occupancy.syncedToastTitle"), description: `${prev} → ${target}` });
+                    toast({ title: t("occupancy.syncedToastTitle"), description: `${t(UNIT_STATUS_LABEL_KEYS[prev])} → ${t(UNIT_STATUS_LABEL_KEYS[target])}` });
                   }}
                 >
-                  {occupancy.suggestedFix.label}
+                  {t(occupancy.suggestedFix.labelKey)}
                 </Button>
                 {occupancy.suggestedFix.secondaryAction === "create-lease" && (
                   <Button size="sm" variant="default" asChild>
@@ -275,12 +288,12 @@ export default function UnitDetail() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            <div><p className="text-xs text-muted-foreground">{t("detail.baseRent")} (Monthly)</p><p className="text-lg font-bold text-foreground">{unit.baseRent != null ? formatCurrency(unit.baseRent, property.currencyCode, property.locale) : "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("units.rentMonthly")}</p><p className="text-lg font-bold text-foreground">{unit.baseRent != null ? formatCurrency(unit.baseRent, property.currencyCode, property.locale) : "—"}</p></div>
             {unit.baseRentSixMonths != null && (
-              <div><p className="text-xs text-muted-foreground">Rent (6-Month Advance)</p><p className="text-lg font-bold text-foreground">{formatCurrency(unit.baseRentSixMonths, property.currencyCode, property.locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("units.advanceRent6m")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(unit.baseRentSixMonths, property.currencyCode, property.locale)}</p></div>
             )}
             {unit.baseRentYearly != null && (
-              <div><p className="text-xs text-muted-foreground">Rent (1-Year Advance)</p><p className="text-lg font-bold text-foreground">{formatCurrency(unit.baseRentYearly, property.currencyCode, property.locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("units.advanceRent1y")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(unit.baseRentYearly, property.currencyCode, property.locale)}</p></div>
             )}
             <div><p className="text-xs text-muted-foreground">{t("detail.baseCharges")}</p><p className="text-lg font-bold text-foreground">{unit.baseCharges != null ? formatCurrency(unit.baseCharges, property.currencyCode, property.locale) : "—"}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("properties.currency")}</p><p className="text-lg font-bold text-foreground">{property.currencyCode}</p></div>
@@ -350,10 +363,10 @@ export default function UnitDetail() {
                 </>
               )}
               {unappliedCredit > 0 && (
-                <div><p className="text-xs text-muted-foreground">Unapplied Credit</p><p className="text-sm font-bold text-primary"><Banknote className="h-3.5 w-3.5 inline mr-1" />{formatCurrency(unappliedCredit, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("units.unappliedCredit")}</p><p className="text-sm font-bold text-primary"><Banknote className="h-3.5 w-3.5 inline mr-1" />{formatCurrency(unappliedCredit, property.currencyCode, property.locale)}</p></div>
               )}
               {nextDueItem && (
-                <div><p className="text-xs text-muted-foreground">{t("detail.nextDue")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(nextDueItem.outstandingAmount, property.currencyCode, property.locale)} on {formatDate(nextDueItem.dueDate, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("detail.nextDue")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(nextDueItem.outstandingAmount, property.currencyCode, property.locale)} — {formatDate(nextDueItem.dueDate, property.locale)}</p></div>
               )}
             </div>
           ) : (
@@ -439,35 +452,35 @@ export default function UnitDetail() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Banknote className="h-4 w-4" />Costs & Taxes Burden
+                <Banknote className="h-4 w-4" />{t("units.costsTaxesBurden")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div><p className="text-xs text-muted-foreground">Total Burden</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalBurden, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Direct Costs</p><p className="text-sm font-medium text-foreground">{formatCurrency(directTotal, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Allocated</p><p className="text-sm font-medium text-foreground">{formatCurrency(allocTotal, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Entries</p><p className="text-sm font-medium text-foreground">{directEntries.length} direct + {allocResults.length} alloc.</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("units.totalBurden")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalBurden, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("units.directCosts")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(directTotal, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("units.allocated")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(allocTotal, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("units.entries")}</p><p className="text-sm font-medium text-foreground">{t("units.entriesBreakdown").replace("{direct}", String(directEntries.length)).replace("{alloc}", String(allocResults.length))}</p></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-md bg-muted/50 border">
-                  <p className="text-xs text-muted-foreground">Owner-Borne</p>
+                  <p className="text-xs text-muted-foreground">{t("units.ownerBorne")}</p>
                   <p className="text-lg font-bold text-destructive">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</p>
                 </div>
                 <div className="p-3 rounded-md bg-muted/50 border">
-                  <p className="text-xs text-muted-foreground">Recoverable</p>
+                  <p className="text-xs text-muted-foreground">{t("units.recoverable")}</p>
                   <p className="text-lg font-bold text-success">{formatCurrency(recoverable, property.currencyCode, property.locale)}</p>
                 </div>
               </div>
               {directEntries.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Direct Entries</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("units.directEntries")}</p>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">Label</TableHead>
-                        <TableHead className="text-xs">Recovery</TableHead>
-                        <TableHead className="text-xs text-right">Amount</TableHead>
+                        <TableHead className="text-xs">{t("costs.label")}</TableHead>
+                        <TableHead className="text-xs">{t("units.recovery")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("units.amount")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -522,7 +535,7 @@ export default function UnitDetail() {
                 <div><Label>{t("units.type")} *</Label>
                   <Select value={form.unitType} onValueChange={v => setForm(f => f && ({ ...f, unitType: v as UnitType }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{ut.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>{UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{t(ut.labelKey)}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><Label>{t("units.status")} *</Label>
@@ -534,7 +547,7 @@ export default function UnitDetail() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {(activeLease ? UNIT_STATUSES : UNIT_STATUSES_NO_LEASE).map(s => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        <SelectItem key={s.value} value={s.value}>{t(s.labelKey)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -566,14 +579,14 @@ export default function UnitDetail() {
                 <div><Label>{t("units.charges")} ({property.currencyCode})</Label><Input type="number" value={form.baseCharges ?? ""} onChange={e => setForm(f => f && ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>Rent (6-Month Advance)</Label><Input type="number" value={form.baseRentSixMonths ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
-                <div><Label>Rent (1-Year Advance)</Label><Input type="number" value={form.baseRentYearly ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
+                <div><Label>{t("units.advanceRent6m")}</Label><Input type="number" value={form.baseRentSixMonths ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder={t("units.optionalPlaceholder")} /></div>
+                <div><Label>{t("units.advanceRent1y")}</Label><Input type="number" value={form.baseRentYearly ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder={t("units.optionalPlaceholder")} /></div>
               </div>
             </div>
           )}
           {form && editSection === "property" && (
             <div className="space-y-4 mt-4">
-              <Alert><AlertDescription className="text-xs">Changing the property re-parents this unit. Property-level attributes (city, country, locale, currency) come from the selected property.</AlertDescription></Alert>
+              <Alert><AlertDescription className="text-xs">{t("units.changePropertyWarning")}</AlertDescription></Alert>
               <div>
                 <Label>{t("table.property")} *</Label>
                 <Select value={form.propertyId} onValueChange={v => setForm(f => f && ({ ...f, propertyId: v }))}>

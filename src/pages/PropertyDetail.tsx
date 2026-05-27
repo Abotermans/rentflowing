@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote, AlertTriangle } from "lucide-react";
-import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, getUnitTypeLabel } from "@/lib/formatters";
+import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, UNIT_TYPE_KEYS } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
@@ -272,7 +272,7 @@ export default function PropertyDetail() {
                           <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
-                        <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
+                        <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
                         <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
@@ -286,7 +286,7 @@ export default function PropertyDetail() {
                                   <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-[250px]">
-                                  <p className="text-xs">{occupancy.inconsistencyMessage}</p>
+                                  <p className="text-xs">{occupancy.inconsistencyKey ? t(occupancy.inconsistencyKey) : ""}</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}

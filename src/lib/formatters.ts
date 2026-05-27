@@ -1,3 +1,5 @@
+import type { TranslationKey } from "@/i18n/translations";
+
 export function formatCurrency(amount: number, currencyCode: string = "EUR", locale: string = "fr-FR"): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -31,15 +33,12 @@ export function getCountryName(countryCode: string, locale: string = "en"): stri
   }
 }
 
-export function getUnitStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    vacant: "Vacant",
-    occupied: "Occupied",
-    reserved: "Reserved",
-    unavailable: "Unavailable",
-  };
-  return map[status] ?? status;
-}
+export const UNIT_STATUS_KEYS: Record<string, TranslationKey> = {
+  vacant: "status.vacant",
+  occupied: "status.occupied",
+  reserved: "status.reserved",
+  unavailable: "status.unavailable",
+};
 
 export function getPropertyTypeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -50,15 +49,12 @@ export function getPropertyTypeLabel(type: string): string {
   return map[type] ?? type;
 }
 
-export function getUnitTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    apartment: "Apartment",
-    studio: "Studio",
-    office: "Office",
-    parking: "Parking",
-    storage: "Storage",
-    house: "House",
-    "commercial-unit": "Commercial Unit",
-  };
-  return map[type] ?? type;
-}
+export const UNIT_TYPE_KEYS: Record<string, TranslationKey> = {
+  apartment: "units.apartment",
+  studio: "units.studio",
+  office: "units.office",
+  parking: "units.parking",
+  storage: "units.storage",
+  house: "units.house",
+  "commercial-unit": "units.commercialUnit",
+};
