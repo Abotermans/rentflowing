@@ -286,7 +286,7 @@ export default function PropertyDetail() {
                                   <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-[250px]">
-                                  <p className="text-xs">{occupancy.inconsistencyMessage}</p>
+                                  <p className="text-xs">{occupancy.inconsistencyKey ? t(occupancy.inconsistencyKey) : ""}</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}
