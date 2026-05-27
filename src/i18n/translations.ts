@@ -204,6 +204,7 @@ const en = {
   "status.moveOutScheduled": "Move-Out Scheduled",
   "status.availableSoon": "Available Soon",
   "occupancy.derivedLabel": "Occupancy",
+  "occupancy.statusFilterLabel": "Status",
   "occupancy.inconsistencyWarning": "Status Inconsistency",
   "occupancy.needsAttention": "Status needs attention",
   "occupancy.syncedToastTitle": "Unit status reconciled",
