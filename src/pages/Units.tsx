@@ -214,7 +214,7 @@ export default function Units() {
           </SelectContent>
         </Select>
         <Select value={filterOccupancy} onValueChange={v => setFilterOccupancy(v as DerivedOccupancy | "all")}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("occupancy.derivedLabel")} /></SelectTrigger>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("occupancy.statusFilterLabel")} /></SelectTrigger>
           <SelectContent>
             {OCCUPANCY_FILTERS.map(o => <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>)}
           </SelectContent>
