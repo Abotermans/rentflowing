@@ -649,13 +649,20 @@ export default function UnitDetail() {
           )}
           {form && editSection === "financials" && (
             <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>{t("units.rent")} ({property.currencyCode})</Label><Input type="number" value={form.baseRent ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
-                <div><Label>{t("units.charges")} ({property.currencyCode})</Label><Input type="number" value={form.baseCharges ?? ""} onChange={e => setForm(f => f && ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div>
+                <Label>{t("units.rentTiers")}</Label>
+                <p className="text-xs text-muted-foreground mb-2">{t("units.rentTiersHelp")}</p>
+                <RentTiersEditor
+                  baseRent={form.baseRent}
+                  rentTiers={form.rentTiers}
+                  currencyCode={property.currencyCode}
+                  locale={property.locale}
+                  onChange={(baseRent, rentTiers) => setForm(f => f && ({ ...f, baseRent, rentTiers }))}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>{t("units.advanceRent6m")}</Label><Input type="number" value={form.baseRentSixMonths ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder={t("units.optionalPlaceholder")} /></div>
-                <div><Label>{t("units.advanceRent1y")}</Label><Input type="number" value={form.baseRentYearly ?? ""} onChange={e => setForm(f => f && ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder={t("units.optionalPlaceholder")} /></div>
+              <div>
+                <Label>{t("units.charges")} ({property.currencyCode})</Label>
+                <Input type="number" value={form.baseCharges ?? ""} onChange={e => setForm(f => f && ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} />
               </div>
             </div>
           )}
