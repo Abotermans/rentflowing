@@ -15,6 +15,12 @@ export interface OccupancyInfo {
   inconsistencyMessage?: string;
   activeLease?: Lease;
   availableFromDate?: string;
+  suggestedFix?: {
+    targetStatus: UnitStatus;
+    label: string;
+    rationale: string;
+    secondaryAction?: "create-lease";
+  };
 }
 
 /**
@@ -39,6 +45,15 @@ export function getDerivedOccupancy(
       inconsistent,
       inconsistencyMessage: inconsistent
         ? "Unit is marked as occupied but has no active lease."
+        : undefined,
+      suggestedFix: inconsistent
+        ? {
+            targetStatus: "vacant",
+            label: "Mark vacant",
+            rationale:
+              "Occupancy requires an active lease. Either create a lease or set the unit to vacant.",
+            secondaryAction: "create-lease",
+          }
         : undefined,
     };
   }
@@ -75,15 +90,26 @@ export function getDerivedOccupancy(
   // Detect inconsistencies
   let inconsistent = false;
   let inconsistencyMessage: string | undefined;
+  let suggestedFix: OccupancyInfo["suggestedFix"];
 
   if (manualStatus === "vacant") {
     inconsistent = true;
     inconsistencyMessage =
       "Unit is marked as vacant but has an active lease — occupancy should reflect the lease state.";
+    suggestedFix = {
+      targetStatus: "occupied",
+      label: "Sync to occupied",
+      rationale: "An active lease exists; the stored status should reflect it.",
+    };
   } else if (manualStatus === "reserved" && (derived === "occupied" || derived === "under-notice")) {
     inconsistent = true;
     inconsistencyMessage =
       "Unit is marked as reserved but has an active occupied lease.";
+    suggestedFix = {
+      targetStatus: "occupied",
+      label: "Sync to occupied",
+      rationale: "Reservation is superseded by the active lease.",
+    };
   }
 
   return {
@@ -93,6 +119,7 @@ export function getDerivedOccupancy(
     inconsistencyMessage,
     activeLease,
     availableFromDate,
+    suggestedFix,
   };
 }
 

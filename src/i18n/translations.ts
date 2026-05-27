@@ -177,6 +177,11 @@ const en = {
   "status.availableSoon": "Available Soon",
   "occupancy.derivedLabel": "Occupancy",
   "occupancy.inconsistencyWarning": "Status Inconsistency",
+  "occupancy.needsAttention": "Status needs attention",
+  "occupancy.syncedToastTitle": "Unit status reconciled",
+  "occupancy.createLeaseAction": "Create lease",
+  "occupancy.statusLockedByLease": "Status is driven by the active lease. End the lease or record notice to change occupancy.",
+  "occupancy.statusNoOccupiedWithoutLease": "A unit cannot be marked occupied without an active lease — create a lease instead.",
 
   // Tenants
   "tenants.title": "Tenants",
@@ -899,6 +904,11 @@ const fr: TranslationKeys = {
   "status.availableSoon": "Bientôt disponible",
   "occupancy.derivedLabel": "Occupation",
   "occupancy.inconsistencyWarning": "Incohérence de statut",
+  "occupancy.needsAttention": "Statut à corriger",
+  "occupancy.syncedToastTitle": "Statut de l'unité réconcilié",
+  "occupancy.createLeaseAction": "Créer un bail",
+  "occupancy.statusLockedByLease": "Le statut est piloté par le bail actif. Terminez le bail ou enregistrez un préavis pour modifier l'occupation.",
+  "occupancy.statusNoOccupiedWithoutLease": "Une unité ne peut pas être marquée occupée sans bail actif — créez un bail à la place.",
 
   // Tenants
   "tenants.title": "Locataires",

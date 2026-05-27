@@ -39,6 +39,14 @@ const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
   { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
 ];
 
+// Status options selectable when no active lease exists.
+// `occupied` is intentionally excluded — occupancy is derived from an active lease.
+const UNIT_STATUSES_NO_LEASE: { value: UnitStatus; label: string }[] = [
+  { value: "vacant", label: "Vacant" },
+  { value: "reserved", label: "Reserved" },
+  { value: "unavailable", label: "Unavailable" },
+];
+
 type EditSection = "info" | "financials" | "property" | "notes" | null;
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
@@ -177,9 +185,6 @@ export default function UnitDetail() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{unit.unitCode}</h1>
               <StatusBadge status={occupancy.derived} />
-              {occupancy.derived !== unit.currentStatus && (
-                <span className="text-xs text-muted-foreground">({unit.currentStatus})</span>
-              )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">{unit.unitLabel}</p>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -193,12 +198,44 @@ export default function UnitDetail() {
         </div>
       </div>
 
-      {/* Inconsistency Warning */}
+      {/* Reconciliation panel — one truth, one suggested fix */}
       {occupancy.inconsistent && occupancy.inconsistencyMessage && (
         <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-sm">
-            <strong>{t("occupancy.inconsistencyWarning")}:</strong> {occupancy.inconsistencyMessage}
+            <div className="font-semibold mb-1">{t("occupancy.needsAttention")}</div>
+            <p className="text-xs mb-1">{occupancy.inconsistencyMessage}</p>
+            {occupancy.suggestedFix && (
+              <p className="text-xs text-muted-foreground mb-2">{occupancy.suggestedFix.rationale}</p>
+            )}
+            {occupancy.suggestedFix && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const target = occupancy.suggestedFix!.targetStatus;
+                    const prev = unit.currentStatus;
+                    updateUnit({ ...unit, currentStatus: target });
+                    addOverride({
+                      entityType: "unit",
+                      entityId: unit.id,
+                      action: `status_reconcile:${prev}->${target}`,
+                      blockerCodes: [],
+                      reason: "Reconciled to match lease state",
+                    });
+                    toast({ title: t("occupancy.syncedToastTitle"), description: `${prev} → ${target}` });
+                  }}
+                >
+                  {occupancy.suggestedFix.label}
+                </Button>
+                {occupancy.suggestedFix.secondaryAction === "create-lease" && (
+                  <Button size="sm" variant="default" asChild>
+                    <Link to={`/leases?new=1&unitId=${unit.id}`}>{t("occupancy.createLeaseAction")}</Link>
+                  </Button>
+                )}
+              </div>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -257,7 +294,6 @@ export default function UnitDetail() {
         <CardContent>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusBadge status={occupancy.derived} />
-            {occupancy.derived !== unit.currentStatus && <StatusBadge status={unit.currentStatus} />}
             {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && lifecycle !== occupancy.derived && <StatusBadge status={lifecycle} />}
             {activeLease && moveIn === "scheduled" && occupancy.derived !== "move-in-pending" && <StatusBadge status="scheduled" />}
             {activeLease && activeLease.returnStatus && activeLease.returnStatus !== "completed" && <StatusBadge status={activeLease.returnStatus} />}
@@ -490,10 +526,21 @@ export default function UnitDetail() {
                   </Select>
                 </div>
                 <div><Label>{t("units.status")} *</Label>
-                  <Select value={form.currentStatus} onValueChange={v => setForm(f => f && ({ ...f, currentStatus: v as UnitStatus }))}>
+                  <Select
+                    value={form.currentStatus}
+                    onValueChange={v => setForm(f => f && ({ ...f, currentStatus: v as UnitStatus }))}
+                    disabled={!!activeLease}
+                  >
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      {(activeLease ? UNIT_STATUSES : UNIT_STATUSES_NO_LEASE).map(s => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {activeLease ? t("occupancy.statusLockedByLease") : t("occupancy.statusNoOccupiedWithoutLease")}
+                  </p>
                   <StatusTransitionAlert validation={statusValidation} />
                 </div>
               </div>
