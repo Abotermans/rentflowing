@@ -322,7 +322,22 @@ export default function Units() {
                     <SelectContent>{UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{t(ut.labelKey)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>{t("units.status")} *</Label>
+              <div>
+                <div className="flex items-center gap-1">
+                  <Label>{t("units.status")} *</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[250px]">
+                      <p className="text-xs">
+                        {editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
+                          ? t("occupancy.statusLockedByLease")
+                          : t("occupancy.statusNoOccupiedWithoutLease")}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <Select
                   value={form.currentStatus}
                   onValueChange={v => setForm(f => ({ ...f, currentStatus: v as UnitStatus }))}
@@ -336,11 +351,6 @@ export default function Units() {
                       ).map(s => <SelectItem key={s.value} value={s.value}>{t(s.labelKey)}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
-                    ? t("occupancy.statusLockedByLease")
-                    : t("occupancy.statusNoOccupiedWithoutLease")}
-                </p>
                 <StatusTransitionAlert validation={unitStatusValidation} />
               </div>
             </div>
