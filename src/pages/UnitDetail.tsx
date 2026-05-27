@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
@@ -15,6 +15,7 @@ import { getDerivedOccupancy } from "@/lib/occupancy";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,7 @@ const UNIT_STATUSES: { value: UnitStatus; labelKey: TranslationKey }[] = [
   { value: "occupied", labelKey: "status.occupied" },
   { value: "reserved", labelKey: "status.reserved" },
   { value: "unavailable", labelKey: "status.unavailable" },
+  { value: "archived", labelKey: "status.archived" },
 ];
 // Status options selectable when no active lease exists.
 // `occupied` is intentionally excluded — occupancy is derived from an active lease.
@@ -53,6 +55,7 @@ const UNIT_STATUSES_NO_LEASE: { value: UnitStatus; labelKey: TranslationKey }[] 
   { value: "vacant", labelKey: "status.vacant" },
   { value: "reserved", labelKey: "status.reserved" },
   { value: "unavailable", labelKey: "status.unavailable" },
+  { value: "archived", labelKey: "status.archived" },
 ];
 
 const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
@@ -60,6 +63,7 @@ const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
   occupied: "status.occupied",
   reserved: "status.reserved",
   unavailable: "status.unavailable",
+  archived: "status.archived",
 };
 
 type EditSection = "info" | "financials" | "property" | "notes" | null;
@@ -83,6 +87,8 @@ export default function UnitDetail() {
   const [pendingOverride, setPendingOverride] = useState<ValidationResult | null>(null);
   const [vacateValidation, setVacateValidation] = useState<ValidationResult | null>(null);
   const [vacateOverrideOpen, setVacateOverrideOpen] = useState(false);
+  const [archiveValidation, setArchiveValidation] = useState<ValidationResult | null>(null);
+  const [archiveOverrideOpen, setArchiveOverrideOpen] = useState(false);
 
   const openEdit = (section: Exclude<EditSection, null>) => {
     if (!unit) return;
@@ -197,6 +203,42 @@ export default function UnitDetail() {
     navigate("/units");
   };
 
+  const handleArchive = () => {
+    if (!unit) return;
+    const v = canChangeUnitStatus(unit.id, "archived", integrityState);
+    if (v.allowed) {
+      updateUnit({ ...unit, currentStatus: "archived" });
+      toast({ title: t("units.toastArchived") });
+      return;
+    }
+    if (v.overrideAllowed) {
+      setArchiveValidation(v);
+      setArchiveOverrideOpen(true);
+      return;
+    }
+    toast({ title: t("units.archiveBlocked"), description: v.blockers.map(b => b.message).join(". "), variant: "destructive" });
+  };
+
+  const handleArchiveOverride = (reason: string) => {
+    if (!unit || !archiveValidation) return;
+    addOverride({
+      entityType: "unit", entityId: unit.id,
+      action: "status_change:archived",
+      blockerCodes: archiveValidation.blockers.map(b => b.code),
+      reason,
+    });
+    updateUnit({ ...unit, currentStatus: "archived" });
+    toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
+    setArchiveValidation(null);
+    setArchiveOverrideOpen(false);
+  };
+
+  const handleUnarchive = () => {
+    if (!unit) return;
+    updateUnit({ ...unit, currentStatus: "vacant" });
+    toast({ title: t("units.toastUnarchived") });
+  };
+
   if (!unit || !property) {
     return (
       <div className="text-center py-12">
@@ -251,27 +293,46 @@ export default function UnitDetail() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {!getActiveLease(unit.id) && (unit.currentStatus === "vacant" || unit.currentStatus === "reserved") && (
+            {unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (unit.currentStatus === "vacant" || unit.currentStatus === "reserved") && (
               <Button size="sm" asChild>
                 <Link to={`/leases?new=1&unitId=${unit.id}`}><Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}</Link>
               </Button>
             )}
-            {unit.currentStatus !== "vacant" && !getActiveLease(unit.id) && (
+            {unit.currentStatus !== "vacant" && unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (
               <Button size="sm" variant="outline" onClick={handleMakeVacant}>
                 <DoorOpen className="h-4 w-4" />{t("occupancy.makeVacantAction")}
               </Button>
             )}
-            <DeleteDialog
-              entityType="unit"
-              entityId={unit.id}
-              entityLabel={unit.unitCode}
-              onDelete={handleDeleteUnit}
-              trigger={
-                <Button size="sm" variant="destructive">
-                  <Trash2 className="h-4 w-4" />{t("action.delete")}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("units.moreActions")}>
+                  <MoreVertical className="h-4 w-4" />
                 </Button>
-              }
-            />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                {unit.currentStatus === "archived" ? (
+                  <DropdownMenuItem onClick={handleUnarchive}>
+                    <ArchiveRestore className="h-4 w-4 mr-2" />{t("units.unarchiveAction")}
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={handleArchive}>
+                    <Archive className="h-4 w-4 mr-2" />{t("units.archiveAction")}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DeleteDialog
+                  entityType="unit"
+                  entityId={unit.id}
+                  entityLabel={unit.unitCode}
+                  onDelete={handleDeleteUnit}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />{t("action.delete")}
+                    </DropdownMenuItem>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -707,6 +768,16 @@ export default function UnitDetail() {
           validation={vacateValidation}
           actionLabel="Override and Vacate"
           onOverride={handleVacateOverride}
+        />
+      )}
+
+      {archiveValidation && (
+        <OverrideConfirmDialog
+          open={archiveOverrideOpen}
+          onOpenChange={(v) => { setArchiveOverrideOpen(v); if (!v) setArchiveValidation(null); }}
+          validation={archiveValidation}
+          actionLabel="Override and Archive"
+          onOverride={handleArchiveOverride}
         />
       )}
     </div>

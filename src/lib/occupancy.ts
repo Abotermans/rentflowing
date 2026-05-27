@@ -9,7 +9,8 @@ export type DerivedOccupancy =
   | "move-out-scheduled"
   | "available-soon"
   | "reserved"
-  | "unavailable";
+  | "unavailable"
+  | "archived";
 
 export interface OccupancyInfo {
   derived: DerivedOccupancy;
@@ -45,6 +46,9 @@ export function getDerivedOccupancy(
   );
 
   if (!activeLease) {
+    if (manualStatus === "archived") {
+      return { derived: "archived", manualStatus, inconsistent: false };
+    }
     // No active lease — respect manual operational status (vacant/reserved/unavailable).
     // "occupied" without a lease is the one illegal state and gets flagged.
     const inconsistent = manualStatus === "occupied";
@@ -175,5 +179,6 @@ export function getDerivedOccupancyKey(derived: DerivedOccupancy): TranslationKe
     case "available-soon": return "status.availableSoon";
     case "reserved": return "status.reserved";
     case "unavailable": return "status.unavailable";
+    case "archived": return "status.archived";
   }
 }

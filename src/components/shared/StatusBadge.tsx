@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational" | "move-in-pending" | "move-out-scheduled" | "available-soon" | "not-applicable";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "archived" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational" | "move-in-pending" | "move-out-scheduled" | "available-soon" | "not-applicable";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -11,6 +11,7 @@ const statusStyles: Record<StatusType, string> = {
   vacant: "bg-warning/15 text-warning border-warning/30",
   reserved: "bg-primary/15 text-primary border-primary/30",
   unavailable: "bg-muted text-muted-foreground border-border",
+  archived: "bg-muted/60 text-muted-foreground border-dashed border-border italic",
   inactive: "bg-muted text-muted-foreground border-border",
   draft: "bg-muted text-muted-foreground border-border",
   ended: "bg-muted text-muted-foreground border-border",
@@ -67,6 +68,7 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   vacant: "status.vacant",
   reserved: "status.reserved",
   unavailable: "status.unavailable",
+  archived: "status.archived",
   draft: "status.draft",
   ended: "status.ended",
   terminated: "status.terminated",

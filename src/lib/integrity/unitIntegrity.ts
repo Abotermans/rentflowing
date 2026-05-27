@@ -63,6 +63,18 @@ export function canChangeUnitStatus(unitId: string, targetStatus: UnitStatus, s:
         warnings.push({ code: "UNIT_ALREADY_LEASED", message: "Unit already has an active lease", severity: "medium" });
       }
       break;
+
+    case "archived":
+      if (activeLeases.length > 0) {
+        blockers.push({ code: "UNIT_ACTIVE_LEASE_EXISTS", message: "Cannot archive a unit with an active lease — vacate first" });
+        return { allowed: false, blockers, warnings, overrideAllowed: false, recommendedAction: "Complete the move-out flow before archiving" };
+      }
+      const openReceivables = s.receivableItems.filter(r => r.unitId === unitId && r.outstandingAmount > 0);
+      if (openReceivables.length > 0) {
+        blockers.push({ code: "UNIT_OPEN_BALANCES", message: `Unit has ${openReceivables.length} open receivable(s)`, count: openReceivables.length });
+        return { allowed: false, blockers, warnings, overrideAllowed: true, recommendedAction: "Resolve open balances before archiving" };
+      }
+      break;
   }
 
   if (blockers.length > 0) return blocked(blockers, warnings);

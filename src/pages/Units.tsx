@@ -45,11 +45,13 @@ const UNIT_STATUSES: { value: UnitStatus; labelKey: TranslationKey }[] = [
   { value: "occupied", labelKey: "status.occupied" },
   { value: "reserved", labelKey: "status.reserved" },
   { value: "unavailable", labelKey: "status.unavailable" },
+  { value: "archived", labelKey: "status.archived" },
 ];
 const UNIT_STATUSES_NO_LEASE: { value: UnitStatus; labelKey: TranslationKey }[] = [
   { value: "vacant", labelKey: "status.vacant" },
   { value: "reserved", labelKey: "status.reserved" },
   { value: "unavailable", labelKey: "status.unavailable" },
+  { value: "archived", labelKey: "status.archived" },
 ];
 
 const OCCUPANCY_FILTERS: { value: DerivedOccupancy | "all"; labelKey: TranslationKey }[] = [
