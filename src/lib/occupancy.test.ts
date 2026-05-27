@@ -46,7 +46,7 @@ function makeLease(overrides: Partial<Lease> = {}): Lease {
     advanceAllocationStartDate: null,
     advanceAllocationDurationMonths: null,
     fixedMonthlyReductionAmount: null,
-    rentFormula: "monthly",
+    rentFormula: 1,
     createdAt: "2024-01-01",
     updatedAt: "2024-01-01",
     ...overrides,

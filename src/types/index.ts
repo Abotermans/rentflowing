@@ -38,8 +38,12 @@ export interface Unit {
   furnished: boolean;
   currentStatus: UnitStatus;
   baseRent: number | null;
-  baseRentSixMonths: number | null;
-  baseRentYearly: number | null;
+  /**
+   * Additional rent tiers for multi-month advance periods.
+   * The 1-month rent lives in `baseRent`; this array carries every OTHER tier.
+   * Each entry: monthly rent applied when the tenant commits to paying `durationMonths` upfront.
+   */
+  rentTiers: { durationMonths: number; monthlyRent: number }[];
   baseCharges: number | null;
   availableFrom: string | null;
   notes: string;
@@ -73,7 +77,11 @@ export type LeaseStatus = "draft" | "active" | "ended" | "terminated";
 export type AdvanceAllocationMethod = 'spread-evenly' | 'fixed-monthly-reduction';
 export type AdvanceAppliedTo = 'rent' | 'charges' | 'rent-and-charges';
 export type AdvanceStatus = 'not-applicable' | 'scheduled' | 'active' | 'fully-consumed';
-export type RentFormula = 'monthly' | 'six-months' | 'yearly';
+/**
+ * Rent formula on a lease: the number of months the rent tier covers.
+ * 1 = monthly (no advance), 6 = 6-month advance, 12 = yearly advance, etc.
+ */
+export type RentFormula = number;
 
 // Checklist types
 export interface MoveInChecklist {

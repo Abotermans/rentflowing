@@ -27,6 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
+import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
@@ -60,7 +61,7 @@ export default function PropertyDetail() {
   const emptyUnitForm: UnitFormData = {
     propertyId: id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
     floor: null, surfaceArea: null, bedrooms: 0, bathrooms: 0, furnished: false,
-    currentStatus: "vacant", baseRent: null, baseRentSixMonths: null, baseRentYearly: null, baseCharges: null, availableFrom: null, notes: "",
+    currentStatus: "vacant", baseRent: null, rentTiers: [], baseCharges: null, availableFrom: null, notes: "",
   };
   const [unitForm, setUnitForm] = useState<UnitFormData>({ ...emptyUnitForm });
 
@@ -450,9 +451,16 @@ export default function PropertyDetail() {
               <div><Label>Base Rent</Label><Input type="number" min={0} value={unitForm.baseRent ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
               <div><Label>Base Charges</Label><Input type="number" min={0} value={unitForm.baseCharges ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Rent (6-Month Advance)</Label><Input type="number" min={0} value={unitForm.baseRentSixMonths ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRentSixMonths: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
-              <div><Label>Rent (1-Year Advance)</Label><Input type="number" min={0} value={unitForm.baseRentYearly ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRentYearly: e.target.value ? Number(e.target.value) : null }))} placeholder="Optional" /></div>
+            <div>
+              <Label>{t("units.rentTiers")}</Label>
+              <p className="text-xs text-muted-foreground mb-2">{t("units.rentTiersHelp")}</p>
+              <RentTiersEditor
+                baseRent={unitForm.baseRent}
+                rentTiers={unitForm.rentTiers}
+                currencyCode={property.currencyCode}
+                locale={property.locale}
+                onChange={(baseRent, rentTiers) => setUnitForm(f => ({ ...f, baseRent, rentTiers }))}
+              />
             </div>
             <div><Label>Notes</Label><Textarea value={unitForm.notes} onChange={e => setUnitForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>

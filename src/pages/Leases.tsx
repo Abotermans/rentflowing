@@ -24,6 +24,8 @@ import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
+import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
+import { formatCurrency as fmtCurrency } from "@/lib/formatters";
 
 const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -62,7 +64,7 @@ export default function Leases() {
     coTenantIds: [], leaseStatus: "draft", startDate: "", endDate: "",
     monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
-    signedDate: null, notes: "", rentFormula: "monthly",
+    signedDate: null, notes: "", rentFormula: 1,
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
     moveInScheduledDate: null, moveInActualDate: null, moveInMeterReading: null,
     moveInChecklist: { leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false, keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: false },
@@ -112,12 +114,9 @@ export default function Leases() {
       return;
     }
     const unitForSave = units.find(u => u.id === form.unitId);
-    const tierValue =
-      form.rentFormula === 'monthly' ? unitForSave?.baseRent :
-      form.rentFormula === 'six-months' ? unitForSave?.baseRentSixMonths :
-      unitForSave?.baseRentYearly;
+    const tierValue = unitForSave ? getMonthlyRentForMonths(unitForSave, form.rentFormula) : null;
     if (tierValue == null) {
-      toast({ title: "Validation Error", description: "Selected rent formula is not available for this unit.", variant: "destructive" });
+      toast({ title: "Validation Error", description: "Selected rent tier is not available for this unit.", variant: "destructive" });
       return;
     }
     // Validate status transition
@@ -187,11 +186,14 @@ export default function Leases() {
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
   const selectedUnit = useMemo(() => units.find(u => u.id === form.unitId), [units, form.unitId]);
-  const formulaAvailability = useMemo(() => ({
-    monthly: selectedUnit?.baseRent != null,
-    'six-months': selectedUnit?.baseRentSixMonths != null,
-    yearly: selectedUnit?.baseRentYearly != null,
-  }), [selectedUnit]);
+  const availableTiers = useMemo(
+    () => (selectedUnit ? getAllRentTiers(selectedUnit) : []),
+    [selectedUnit],
+  );
+  const selectedProperty = useMemo(
+    () => properties.find(p => p.id === form.propertyId),
+    [properties, form.propertyId],
+  );
 
   return (
     <div className="space-y-6">
@@ -278,13 +280,11 @@ export default function Leases() {
                       {unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}
                     </TableCell>
                     <TableCell>
-                      {l.rentFormula === 'yearly' ? (
-                        <Badge>{t("leases.formula.yearly")}</Badge>
-                      ) : l.rentFormula === 'six-months' ? (
-                        <Badge variant="secondary">{t("leases.formula.sixMonths")}</Badge>
-                      ) : (
-                        <Badge variant="outline">{t("leases.formula.monthly")}</Badge>
-                      )}
+                      <Badge variant={l.rentFormula === 1 ? "outline" : l.rentFormula >= 12 ? "default" : "secondary"}>
+                        {l.rentFormula === 1
+                          ? t("leases.formula.monthly")
+                          : `${l.rentFormula} ${t("units.advancePeriodMonths").toLowerCase().replace(/\s*\(.*\)/, "")}`}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 flex-wrap">
@@ -335,17 +335,13 @@ export default function Leases() {
                 <Select value={form.unitId} onValueChange={v => {
                   const newUnit = units.find(u => u.id === v);
                   setForm(f => {
-                    let nextFormula = f.rentFormula;
-                    let next: LeaseFormData = { ...f, unitId: v };
-                    const stillAvailable =
-                      (f.rentFormula === 'monthly' && newUnit?.baseRent != null) ||
-                      (f.rentFormula === 'six-months' && newUnit?.baseRentSixMonths != null) ||
-                      (f.rentFormula === 'yearly' && newUnit?.baseRentYearly != null);
-                    if (!stillAvailable) {
-                      nextFormula = 'monthly';
-                      next = {
+                    const next: LeaseFormData = { ...f, unitId: v };
+                    const rent = newUnit ? getMonthlyRentForMonths(newUnit, f.rentFormula) : null;
+                    if (rent == null) {
+                      // Selected duration not available on this unit — fall back to 1 month.
+                      return {
                         ...next,
-                        rentFormula: 'monthly',
+                        rentFormula: 1,
                         monthlyRent: newUnit?.baseRent ?? f.monthlyRent,
                         hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
                         advanceAllocationMethod: null, advanceAppliedTo: null,
@@ -353,7 +349,7 @@ export default function Leases() {
                         fixedMonthlyReductionAmount: null,
                       };
                     }
-                    return next;
+                    return { ...next, monthlyRent: rent };
                   });
                 }}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
@@ -391,54 +387,52 @@ export default function Leases() {
               <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
             </div>
             <div>
-              <Label>Rent Formula *</Label>
-              <Select value={form.rentFormula} onValueChange={(v: RentFormula) => {
-                const selectedUnit = units.find(u => u.id === form.unitId);
-                if (v === 'monthly') {
-                  setForm(f => ({
-                    ...f, rentFormula: v,
-                    monthlyRent: selectedUnit?.baseRent ?? f.monthlyRent,
-                    hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
-                    advanceAllocationMethod: null, advanceAppliedTo: null,
-                    advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
-                    fixedMonthlyReductionAmount: null,
-                  }));
-                } else if (v === 'six-months') {
-                  const rent = selectedUnit?.baseRentSixMonths ?? selectedUnit?.baseRent ?? form.monthlyRent;
-                  setForm(f => ({
-                    ...f, rentFormula: v, monthlyRent: rent,
-                    hasAdvancePayment: true, advancePaymentAmount: rent * 6,
-                    advanceAllocationMethod: 'spread-evenly', advanceAppliedTo: 'rent',
-                    advanceAllocationStartDate: f.startDate || null,
-                    advanceAllocationDurationMonths: 6, fixedMonthlyReductionAmount: null,
-                  }));
-                } else {
-                  const rent = selectedUnit?.baseRentYearly ?? selectedUnit?.baseRent ?? form.monthlyRent;
-                  setForm(f => ({
-                    ...f, rentFormula: v, monthlyRent: rent,
-                    hasAdvancePayment: true, advancePaymentAmount: rent * 12,
-                    advanceAllocationMethod: 'spread-evenly', advanceAppliedTo: 'rent',
-                    advanceAllocationStartDate: f.startDate || null,
-                    advanceAllocationDurationMonths: 12, fixedMonthlyReductionAmount: null,
-                  }));
-                }
-              }}>
+              <Label>{t("leases.formula")} *</Label>
+              <Select
+                value={String(form.rentFormula)}
+                onValueChange={(raw) => {
+                  const months = Number(raw) as RentFormula;
+                  const rent = selectedUnit ? getMonthlyRentForMonths(selectedUnit, months) : null;
+                  const effectiveRent = rent ?? selectedUnit?.baseRent ?? form.monthlyRent;
+                  if (months === 1) {
+                    setForm(f => ({
+                      ...f, rentFormula: months, monthlyRent: effectiveRent,
+                      hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+                      advanceAllocationMethod: null, advanceAppliedTo: null,
+                      advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
+                      fixedMonthlyReductionAmount: null,
+                    }));
+                  } else {
+                    setForm(f => ({
+                      ...f, rentFormula: months, monthlyRent: effectiveRent,
+                      hasAdvancePayment: true, advancePaymentAmount: effectiveRent * months,
+                      advanceAllocationMethod: 'spread-evenly', advanceAppliedTo: 'rent',
+                      advanceAllocationStartDate: f.startDate || null,
+                      advanceAllocationDurationMonths: months, fixedMonthlyReductionAmount: null,
+                    }));
+                  }
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="monthly" disabled={!formulaAvailability.monthly}>
-                    {t("leases.formula.monthly")}{!formulaAvailability.monthly && ` ${t("leases.formula.notAvailable")}`}
-                  </SelectItem>
-                  <SelectItem value="six-months" disabled={!formulaAvailability['six-months']}>
-                    {t("leases.formula.sixMonths")} Advance{!formulaAvailability['six-months'] && ` ${t("leases.formula.notAvailable")}`}
-                  </SelectItem>
-                  <SelectItem value="yearly" disabled={!formulaAvailability.yearly}>
-                    {t("leases.formula.yearly")} Advance{!formulaAvailability.yearly && ` ${t("leases.formula.notAvailable")}`}
-                  </SelectItem>
+                  {availableTiers.length === 0 && (
+                    <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
+                  )}
+                  {availableTiers.map(tier => (
+                    <SelectItem key={tier.durationMonths} value={String(tier.durationMonths)}>
+                      {tier.durationMonths === 1
+                        ? t("leases.formula.monthly")
+                        : `${tier.durationMonths} months`}
+                      {selectedProperty
+                        ? ` — ${fmtCurrency(tier.monthlyRent, selectedProperty.currencyCode, selectedProperty.locale)}/mo`
+                        : ` — ${tier.monthlyRent}/mo`}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {form.rentFormula !== 'monthly' && (
+              {form.rentFormula !== 1 && form.advancePaymentAmount != null && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Advance: {form.advancePaymentAmount != null ? `${form.advancePaymentAmount.toLocaleString()} (${form.advanceAllocationDurationMonths} months)` : '—'}
+                  Advance: {form.advancePaymentAmount.toLocaleString()} ({form.advanceAllocationDurationMonths} months)
                 </p>
               )}
             </div>
