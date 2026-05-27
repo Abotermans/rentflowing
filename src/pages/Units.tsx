@@ -263,7 +263,7 @@ export default function Units() {
                       <TableCell className="text-right text-muted-foreground">{u.baseCharges != null && prop ? formatCurrency(u.baseCharges, prop.currencyCode, prop.locale) : "—"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <StatusBadge status={occupancy.derived} />
+                          <StatusBadge status={u.currentStatus} />
                           {occupancy.inconsistent && (
                             <Tooltip>
                               <TooltipTrigger>
