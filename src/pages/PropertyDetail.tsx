@@ -272,7 +272,7 @@ export default function PropertyDetail() {
                           <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
-                        <TableCell className="text-muted-foreground">{getUnitTypeLabel(u.unitType)}</TableCell>
+                        <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
                         <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
