@@ -1,4 +1,5 @@
 import type { Lease, UnitStatus } from "@/types";
+import type { TranslationKey } from "@/i18n/translations";
 
 export type DerivedOccupancy =
   | "vacant"
@@ -14,15 +15,20 @@ export interface OccupancyInfo {
   derived: DerivedOccupancy;
   manualStatus: UnitStatus;
   inconsistent: boolean;
-  inconsistencyMessage?: string;
+  inconsistencyKey?: TranslationKey;
   activeLease?: Lease;
   availableFromDate?: string;
   suggestedFix?: {
     targetStatus: UnitStatus;
-    label: string;
-    rationale: string;
+    labelKey: TranslationKey;
+    rationaleKey: TranslationKey;
     secondaryAction?: "create-lease";
   };
+}
+
+export interface OccupancyWarning {
+  key: TranslationKey;
+  params?: Record<string, string>;
 }
 
 /**
@@ -49,15 +55,14 @@ export function getDerivedOccupancy(
       derived,
       manualStatus,
       inconsistent,
-      inconsistencyMessage: inconsistent
-        ? "Unit is marked as occupied but has no active lease."
+      inconsistencyKey: inconsistent
+        ? "occupancy.inconsistencyOccupiedNoLease"
         : undefined,
       suggestedFix: inconsistent
         ? {
             targetStatus: "vacant",
-            label: "Mark vacant",
-            rationale:
-              "Occupancy requires an active lease. Either create a lease or set the unit to vacant.",
+            labelKey: "occupancy.fixMarkVacant",
+            rationaleKey: "occupancy.rationaleNoLease",
             secondaryAction: "create-lease",
           }
         : undefined,
@@ -95,26 +100,24 @@ export function getDerivedOccupancy(
 
   // Detect inconsistencies
   let inconsistent = false;
-  let inconsistencyMessage: string | undefined;
+  let inconsistencyKey: TranslationKey | undefined;
   let suggestedFix: OccupancyInfo["suggestedFix"];
 
   if (manualStatus === "vacant") {
     inconsistent = true;
-    inconsistencyMessage =
-      "Unit is marked as vacant but has an active lease — occupancy should reflect the lease state.";
+    inconsistencyKey = "occupancy.inconsistencyVacantWithLease";
     suggestedFix = {
       targetStatus: "occupied",
-      label: "Sync to occupied",
-      rationale: "An active lease exists; the stored status should reflect it.",
+      labelKey: "occupancy.fixSyncOccupied",
+      rationaleKey: "occupancy.rationaleLeaseExists",
     };
   } else if (manualStatus === "reserved" && (derived === "occupied" || derived === "under-notice")) {
     inconsistent = true;
-    inconsistencyMessage =
-      "Unit is marked as reserved but has an active occupied lease.";
+    inconsistencyKey = "occupancy.inconsistencyReservedWithLease";
     suggestedFix = {
       targetStatus: "occupied",
-      label: "Sync to occupied",
-      rationale: "Reservation is superseded by the active lease.",
+      labelKey: "occupancy.fixSyncOccupied",
+      rationaleKey: "occupancy.rationaleReservationSuperseded",
     };
   }
 
@@ -122,7 +125,7 @@ export function getDerivedOccupancy(
     derived,
     manualStatus,
     inconsistent,
-    inconsistencyMessage,
+    inconsistencyKey,
     activeLease,
     availableFromDate,
     suggestedFix,
@@ -130,47 +133,47 @@ export function getDerivedOccupancy(
 }
 
 /**
- * Get human-readable warnings for a unit's occupancy state.
+ * Get translation-key-based warnings for a unit's occupancy state.
+ * Caller resolves via t() and interpolates `params` into the template.
  */
 export function getUnitOccupancyWarnings(
   unitId: string,
   manualStatus: UnitStatus,
   leases: Lease[]
-): string[] {
+): OccupancyWarning[] {
   const info = getDerivedOccupancy(unitId, manualStatus, leases);
-  const warnings: string[] = [];
+  const warnings: OccupancyWarning[] = [];
 
-  if (info.inconsistent && info.inconsistencyMessage) {
-    warnings.push(info.inconsistencyMessage);
+  if (info.inconsistent && info.inconsistencyKey) {
+    warnings.push({ key: info.inconsistencyKey });
   }
 
   if (info.derived === "under-notice" && info.availableFromDate) {
-    warnings.push(
-      `Unit is under notice — available from ${info.availableFromDate}.`
-    );
+    warnings.push({
+      key: "occupancy.warningUnderNoticeDate",
+      params: { date: info.availableFromDate },
+    });
   }
 
   if (info.derived === "move-in-pending") {
-    warnings.push(
-      "Move-in is scheduled but not yet completed — unit is not yet physically occupied."
-    );
+    warnings.push({ key: "occupancy.warningMoveInPending" });
   }
 
   return warnings;
 }
 
 /**
- * Get a display label for derived occupancy (used alongside StatusBadge).
+ * Map a derived occupancy state to its StatusBadge translation key.
  */
-export function getDerivedOccupancyLabel(derived: DerivedOccupancy): string {
+export function getDerivedOccupancyKey(derived: DerivedOccupancy): TranslationKey {
   switch (derived) {
-    case "vacant": return "Vacant";
-    case "move-in-pending": return "Move-In Pending";
-    case "occupied": return "Occupied";
-    case "under-notice": return "Under Notice";
-    case "move-out-scheduled": return "Move-Out Scheduled";
-    case "available-soon": return "Available Soon";
-    case "reserved": return "Reserved";
-    case "unavailable": return "Unavailable";
+    case "vacant": return "status.vacant";
+    case "move-in-pending": return "status.moveInPending";
+    case "occupied": return "status.occupied";
+    case "under-notice": return "status.underNotice";
+    case "move-out-scheduled": return "status.moveOutScheduled";
+    case "available-soon": return "status.availableSoon";
+    case "reserved": return "status.reserved";
+    case "unavailable": return "status.unavailable";
   }
 }
