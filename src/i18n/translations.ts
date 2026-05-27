@@ -971,6 +971,7 @@ const fr: TranslationKeys = {
   "status.moveOutScheduled": "Déménagement planifié",
   "status.availableSoon": "Bientôt disponible",
   "occupancy.derivedLabel": "Occupation",
+  "occupancy.statusFilterLabel": "Statut",
   "occupancy.inconsistencyWarning": "Incohérence de statut",
   "occupancy.needsAttention": "Statut à corriger",
   "occupancy.syncedToastTitle": "Statut de l'unité réconcilié",
