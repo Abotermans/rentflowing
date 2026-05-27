@@ -255,7 +255,7 @@ export default function UnitDetail() {
             )}
             {unit.currentStatus !== "vacant" && !getActiveLease(unit.id) && (
               <Button size="sm" variant="outline" onClick={handleMakeVacant}>
-                <DoorOpen className="h-4 w-4" />{t("units.makeVacant") || "Make vacant"}
+                <DoorOpen className="h-4 w-4" />{t("occupancy.makeVacantAction")}
               </Button>
             )}
             <DeleteDialog
@@ -265,7 +265,7 @@ export default function UnitDetail() {
               onDelete={handleDeleteUnit}
               trigger={
                 <Button size="sm" variant="destructive">
-                  <Trash2 className="h-4 w-4" />{t("common.delete") || "Delete"}
+                  <Trash2 className="h-4 w-4" />{t("action.delete")}
                 </Button>
               }
             />
