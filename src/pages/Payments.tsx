@@ -383,7 +383,26 @@ export default function Payments() {
                     <TableRow key={al.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(al.allocationDate)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{al.receipt?.reference ?? al.cashReceiptId}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{al.ri?.label ?? "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {al.ri ? (
+                          (() => {
+                            const href = al.ri.leaseId
+                              ? `/leases/${al.ri.leaseId}`
+                              : al.ri.unitId
+                              ? `/units/${al.ri.unitId}`
+                              : al.ri.tenantId
+                              ? `/tenants/${al.ri.tenantId}`
+                              : null;
+                            return href ? (
+                              <Link to={href} className="hover:underline text-foreground">{al.ri.label}</Link>
+                            ) : (
+                              <span className="text-muted-foreground">{al.ri.label}</span>
+                            );
+                          })()
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{al.ri ? ITEM_TYPE_LABELS[al.ri.itemType] : "—"}</TableCell>
                       <TableCell className="text-sm">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(al.allocatedAmount)}</TableCell>
