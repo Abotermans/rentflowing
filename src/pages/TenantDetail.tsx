@@ -244,7 +244,7 @@ export default function TenantDetail() {
                       <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{unit?.unitCode ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)} — {formatDate(l.endDate, prop?.locale)}</TableCell>
-                      <TableCell><StatusBadge status={l.lifecycleStage} /></TableCell>
+                      <TableCell><StatusBadge status={getLeaseStatus(l)} /></TableCell>
                     </TableRow>
                   );
                 })}
