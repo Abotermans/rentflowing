@@ -153,8 +153,8 @@ export const COST_ENTRY_STATUS_ICONS: Record<string, LucideIcon> = {
 export const RECOVERY_TYPE_ICONS: Record<string, LucideIcon> = {
   "owner-only": Shield,
   "tenant-recoverable": Users,
-  shared: Users,
-  mixed: Plug,
+  "partially-recoverable": Plug,
+  informational: Tag,
 };
 
 export const FILE_ICON: LucideIcon = FileText;
