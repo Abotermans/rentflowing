@@ -202,7 +202,7 @@ export interface Lease {
   updatedAt: string;
 }
 
-export type LeaseStatus = "draft" | "active" | "under-notice" | "ending-soon" | "overdue-end" | "ended" | "terminated";
+export type LeaseStatus = "draft" | "active" | "under-notice" | "overdue-end" | "ended" | "terminated";
 
 export function getLeaseStatus(lease: Lease): LeaseStatus {
   if (lease.lifecycleStage === "draft") return "draft";
@@ -214,10 +214,6 @@ export function getLeaseStatus(lease: Lease): LeaseStatus {
   const today = new Date();
   const todayISO = today.toISOString().slice(0, 10);
   if (lease.endDate < todayISO) return "overdue-end";
-  const in90 = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  if (lease.endDate <= in90) return "ending-soon";
   return "active";
 }
 
