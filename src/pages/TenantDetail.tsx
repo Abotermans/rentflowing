@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Shield, Bell, Banknote } from "lucide-react";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
-import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS } from "@/types/receivables";
+import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canDeleteTenant, canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
@@ -133,7 +133,7 @@ export default function TenantDetail() {
                   return (
                     <TableRow key={ri.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, activeProperty?.locale)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{ITEM_TYPE_LABELS[ri.itemType]}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{ri.label}</TableCell>
                       <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className="hover:underline text-foreground">{lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.outstandingAmount, ri.currencyCode, activeProperty?.locale)}</TableCell>
@@ -205,7 +205,7 @@ export default function TenantDetail() {
                       <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className="hover:underline text-foreground">{lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, cr.currencyCode, prop?.locale)}</TableCell>
                       <TableCell className="text-right text-sm">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, prop?.locale) : "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{SOURCE_TYPE_LABELS[cr.sourceType]}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference || "—"}</TableCell>
                       <TableCell><StatusBadge status={cr.status} /></TableCell>
                     </TableRow>

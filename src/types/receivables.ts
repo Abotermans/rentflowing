@@ -191,3 +191,50 @@ export const ALLOCATION_TYPE_LABELS: Record<AllocationTypeValue, string> = {
   "reversal": "Reversal",
   "write-off": "Write-Off",
 };
+
+// ========== LOCALIZED LABEL HELPERS ==========
+// Pass the translator from useSettings().t — never shadow it with a loop iterator.
+
+type Translator = (key: any) => string;
+
+const ITEM_TYPE_TKEY: Record<ReceivableItemType, string> = {
+  "rent": "payments.itemType.rent",
+  "charges": "payments.itemType.charges",
+  "deposit": "payments.itemType.deposit",
+  "guarantee": "payments.itemType.guarantee",
+  "advance-payment": "payments.itemType.advancePayment",
+  "adjustment": "payments.itemType.adjustment",
+  "late-fee": "payments.itemType.lateFee",
+  "repair-recharge": "payments.itemType.repairRecharge",
+  "credit-note": "payments.itemType.creditNote",
+  "other": "payments.itemType.other",
+};
+
+const SOURCE_TYPE_TKEY: Record<CashReceiptSourceType, string> = {
+  "bank-transfer": "payments.sourceType.bankTransfer",
+  "instant-transfer": "payments.sourceType.instantTransfer",
+  "direct-debit": "payments.sourceType.directDebit",
+  "card": "payments.sourceType.card",
+  "cash": "payments.sourceType.cash",
+  "cheque": "payments.sourceType.cheque",
+  "manual": "payments.sourceType.manual",
+};
+
+const ALLOC_TYPE_TKEY: Record<AllocationTypeValue, string> = {
+  "automatic": "payments.allocType.automatic",
+  "manual": "payments.allocType.manual",
+  "rule-based": "payments.allocType.ruleBased",
+  "reallocation": "payments.allocType.reallocation",
+  "reversal": "payments.allocType.reversal",
+  "write-off": "payments.allocType.writeOff",
+};
+
+export function getItemTypeLabel(translator: Translator, key: ReceivableItemType): string {
+  return translator(ITEM_TYPE_TKEY[key]);
+}
+export function getSourceTypeLabel(translator: Translator, key: CashReceiptSourceType): string {
+  return translator(SOURCE_TYPE_TKEY[key]);
+}
+export function getAllocationTypeLabel(translator: Translator, key: AllocationTypeValue): string {
+  return translator(ALLOC_TYPE_TKEY[key]);
+}
