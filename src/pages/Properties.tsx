@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { PROPERTY_TYPE_ICONS, PROPERTY_STATUS_ICONS, COUNTRY_ICON } from "@/lib/filterIcons";
+import { Tag, CircleCheck } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Building2, Plus, Pencil, Trash2, Search, Eye } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -61,9 +64,9 @@ export default function Properties() {
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<PropertyFormData>({ ...emptyForm });
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterCountry, setFilterCountry] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
+  const [filterCountry, setFilterCountry] = useState<string[]>([]);
 
   const propertyStatusValidation = (() => {
     if (!editing) return null;
@@ -113,9 +116,9 @@ export default function Properties() {
   const filtered = properties.filter(p => {
     const q = search.toLowerCase();
     const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.referenceCode.toLowerCase().includes(q) || p.city.toLowerCase().includes(q) || p.ownerName.toLowerCase().includes(q);
-    const matchesType = filterType === "all" || p.propertyType === filterType;
-    const matchesStatus = filterStatus === "all" || p.status === filterStatus;
-    const matchesCountry = filterCountry === "all" || p.countryCode === filterCountry;
+    const matchesType = filterType.length === 0 || filterType.includes(p.propertyType);
+    const matchesStatus = filterStatus.length === 0 || filterStatus.includes(p.status);
+    const matchesCountry = filterCountry.length === 0 || filterCountry.includes(p.countryCode);
     return matchesSearch && matchesType && matchesStatus && matchesCountry;
   });
 
@@ -140,32 +143,34 @@ export default function Properties() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <Select value={filterCountry} onValueChange={setFilterCountry}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder={t("properties.country")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allCountries")}</SelectItem>
-            {usedCountries.map(code => (
-              <SelectItem key={code} value={code}>{getCountryName(code)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder={t("filter.type")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allTypes")}</SelectItem>
-            <SelectItem value="residential">{t("properties.residential")}</SelectItem>
-            <SelectItem value="commercial">{t("properties.commercial")}</SelectItem>
-            <SelectItem value="mixed-use">{t("properties.mixedUse")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
-            <SelectItem value="active">{t("properties.active")}</SelectItem>
-            <SelectItem value="inactive">{t("properties.inactive")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label={t("properties.country")}
+          icon={COUNTRY_ICON}
+          values={filterCountry}
+          onChange={setFilterCountry}
+          options={usedCountries.map(code => ({ value: code, label: getCountryName(code), icon: COUNTRY_ICON }))}
+        />
+        <MultiSelectFilter
+          label={t("filter.type")}
+          icon={Tag}
+          values={filterType}
+          onChange={setFilterType}
+          options={[
+            { value: "residential", label: t("properties.residential"), icon: PROPERTY_TYPE_ICONS.residential },
+            { value: "commercial", label: t("properties.commercial"), icon: PROPERTY_TYPE_ICONS.commercial },
+            { value: "mixed-use", label: t("properties.mixedUse"), icon: PROPERTY_TYPE_ICONS["mixed-use"] },
+          ]}
+        />
+        <MultiSelectFilter
+          label={t("filter.status")}
+          icon={CircleCheck}
+          values={filterStatus}
+          onChange={setFilterStatus}
+          options={[
+            { value: "active", label: t("properties.active"), icon: PROPERTY_STATUS_ICONS.active },
+            { value: "inactive", label: t("properties.inactive"), icon: PROPERTY_STATUS_ICONS.inactive },
+          ]}
+        />
       </div>
 
       {properties.length === 0 ? (

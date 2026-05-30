@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { COST_NATURE_ICONS, COST_SCOPE_ICONS } from "@/lib/filterIcons";
+import { Tag, Building2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Switch } from "@/components/ui/switch";
@@ -24,8 +27,8 @@ export default function CostCategories() {
   const { toast } = useToast();
   const { t } = useSettings();
   const [search, setSearch] = useState("");
-  const [filterNature, setFilterNature] = useState("all");
-  const [filterScope, setFilterScope] = useState("all");
+  const [filterNature, setFilterNature] = useState<string[]>([]);
+  const [filterScope, setFilterScope] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<CostCategory | null>(null);
 
@@ -68,8 +71,8 @@ export default function CostCategories() {
       const s = search.toLowerCase();
       if (!c.code.toLowerCase().includes(s) && !c.name.toLowerCase().includes(s)) return false;
     }
-    if (filterNature !== "all" && c.nature !== filterNature) return false;
-    if (filterScope !== "all" && c.scope !== filterScope) return false;
+    if (filterNature.length > 0 && !filterNature.includes(c.nature)) return false;
+    if (filterScope.length > 0 && !filterScope.includes(c.scope)) return false;
     return true;
   });
 
@@ -91,24 +94,24 @@ export default function CostCategories() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
-        <Select value={filterNature} onValueChange={setFilterNature}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("costs.allNatures")}</SelectItem>
-            {(Object.keys(COST_NATURE_LABELS) as CostNature[]).map(n => (
-              <SelectItem key={n} value={n}>{COST_NATURE_LABELS[n]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterScope} onValueChange={setFilterScope}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("costs.allScopes")}</SelectItem>
-            {(Object.keys(COST_SCOPE_LABELS) as CostScope[]).map(s => (
-              <SelectItem key={s} value={s}>{COST_SCOPE_LABELS[s]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label={t("costs.nature")}
+          icon={Tag}
+          values={filterNature}
+          onChange={setFilterNature}
+          options={(Object.keys(COST_NATURE_LABELS) as CostNature[]).map(n => ({
+            value: n, label: COST_NATURE_LABELS[n], icon: COST_NATURE_ICONS[n],
+          }))}
+        />
+        <MultiSelectFilter
+          label={t("costs.scope")}
+          icon={Building2}
+          values={filterScope}
+          onChange={setFilterScope}
+          options={(Object.keys(COST_SCOPE_LABELS) as CostScope[]).map(s => ({
+            value: s, label: COST_SCOPE_LABELS[s], icon: COST_SCOPE_ICONS[s],
+          }))}
+        />
       </div>
 
       {/* Table */}

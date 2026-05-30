@@ -9,6 +9,12 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatDate } from "@/lib/formatters";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import {
+  MAINTENANCE_STATUS_ICONS, MAINTENANCE_CATEGORY_ICONS, PRIORITY_ICONS, PRIORITY_CLASSES,
+  PROPERTY_ICON, VENDOR_ICON,
+} from "@/lib/filterIcons";
+import { CircleDot, Tag, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,11 +32,11 @@ export default function Maintenance() {
   const { toast } = useToast();
   const { t } = useSettings();
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [filterPriority, setFilterPriority] = useState("all");
-  const [filterProperty, setFilterProperty] = useState("all");
-  const [filterVendor, setFilterVendor] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
+  const [filterCategory, setFilterCategory] = useState<string[]>([]);
+  const [filterPriority, setFilterPriority] = useState<string[]>([]);
+  const [filterProperty, setFilterProperty] = useState<string[]>([]);
+  const [filterVendor, setFilterVendor] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceTicket | null>(null);
 
@@ -94,11 +100,11 @@ export default function Maintenance() {
     const unit = units.find(u => u.id === t.unitId);
     const q = search.toLowerCase();
     const matchSearch = !q || t.title.toLowerCase().includes(q) || (prop?.name.toLowerCase().includes(q) ?? false) || (unit?.unitCode.toLowerCase().includes(q) ?? false);
-    const matchStatus = filterStatus === "all" || t.status === filterStatus;
-    const matchCategory = filterCategory === "all" || t.category === filterCategory;
-    const matchPriority = filterPriority === "all" || t.priority === filterPriority;
-    const matchProperty = filterProperty === "all" || t.propertyId === filterProperty;
-    const matchVendor = filterVendor === "all" || t.assignedVendorId === filterVendor;
+    const matchStatus = filterStatus.length === 0 || filterStatus.includes(t.status);
+    const matchCategory = filterCategory.length === 0 || filterCategory.includes(t.category);
+    const matchPriority = filterPriority.length === 0 || filterPriority.includes(t.priority);
+    const matchProperty = filterProperty.length === 0 || filterProperty.includes(t.propertyId);
+    const matchVendor = filterVendor.length === 0 || (t.assignedVendorId ? filterVendor.includes(t.assignedVendorId) : false);
     return matchSearch && matchStatus && matchCategory && matchPriority && matchProperty && matchVendor;
   });
 
@@ -119,41 +125,47 @@ export default function Maintenance() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            {(Object.keys(MAINTENANCE_STATUS_LABELS) as MaintenanceStatus[]).map(s => <SelectItem key={s} value={s}>{MAINTENANCE_STATUS_LABELS[s]}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Category" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {(Object.keys(MAINTENANCE_CATEGORY_LABELS) as MaintenanceCategory[]).map(c => <SelectItem key={c} value={c}>{MAINTENANCE_CATEGORY_LABELS[c]}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterPriority} onValueChange={setFilterPriority}>
-          <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Priority" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Priorities</SelectItem>
-            {(Object.keys(MAINTENANCE_PRIORITY_LABELS) as MaintenancePriority[]).map(p => <SelectItem key={p} value={p}>{MAINTENANCE_PRIORITY_LABELS[p]}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterProperty} onValueChange={setFilterProperty}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Property" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Properties</SelectItem>
-            {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterVendor} onValueChange={setFilterVendor}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Vendor" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Vendors</SelectItem>
-            {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.vendorName}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label="Status"
+          icon={CircleDot}
+          values={filterStatus}
+          onChange={setFilterStatus}
+          options={(Object.keys(MAINTENANCE_STATUS_LABELS) as MaintenanceStatus[]).map(s => ({
+            value: s, label: MAINTENANCE_STATUS_LABELS[s], icon: MAINTENANCE_STATUS_ICONS[s],
+          }))}
+        />
+        <MultiSelectFilter
+          label="Category"
+          icon={Tag}
+          values={filterCategory}
+          onChange={setFilterCategory}
+          options={(Object.keys(MAINTENANCE_CATEGORY_LABELS) as MaintenanceCategory[]).map(c => ({
+            value: c, label: MAINTENANCE_CATEGORY_LABELS[c], icon: MAINTENANCE_CATEGORY_ICONS[c],
+          }))}
+        />
+        <MultiSelectFilter
+          label="Priority"
+          icon={AlertTriangleIcon}
+          values={filterPriority}
+          onChange={setFilterPriority}
+          options={(Object.keys(MAINTENANCE_PRIORITY_LABELS) as MaintenancePriority[]).map(p => ({
+            value: p, label: MAINTENANCE_PRIORITY_LABELS[p], icon: PRIORITY_ICONS[p], iconClassName: PRIORITY_CLASSES[p],
+          }))}
+        />
+        <MultiSelectFilter
+          label="Property"
+          icon={PROPERTY_ICON}
+          values={filterProperty}
+          onChange={setFilterProperty}
+          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+        />
+        <MultiSelectFilter
+          label="Vendor"
+          icon={VENDOR_ICON}
+          values={filterVendor}
+          onChange={setFilterVendor}
+          options={vendors.map(v => ({ value: v.id, label: v.vendorName, icon: VENDOR_ICON }))}
+        />
       </div>
 
       {tickets.length === 0 ? (
