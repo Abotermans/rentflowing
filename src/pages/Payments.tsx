@@ -197,7 +197,7 @@ export default function Payments() {
         <div className="flex items-center gap-2">
           <div className="relative w-64">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("payments.searchAll")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
           </div>
           <Button onClick={() => setAddReceiptOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>
         </div>
