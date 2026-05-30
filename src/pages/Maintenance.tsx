@@ -191,7 +191,7 @@ export default function Maintenance() {
                     <TableCell className="text-muted-foreground text-sm">{unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
                     <TableCell className="text-xs capitalize">{MAINTENANCE_CATEGORY_LABELS[t.category]}</TableCell>
-                    <TableCell><StatusBadge status={t.priority} /></TableCell>
+                    <TableCell><PriorityLabel priority={t.priority} /></TableCell>
                     <TableCell><StatusBadge status={t.status} /></TableCell>
                     <TableCell className="text-muted-foreground text-sm">{vendor ? <Link to={`/vendors/${vendor.id}`} className="hover:underline">{vendor.vendorName}</Link> : "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{formatDate(t.createdDate)}</TableCell>
