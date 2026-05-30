@@ -4,9 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { FileText, Plus, Search, Eye, Pencil, Trash2, Bell } from "lucide-react";
+import { FileText, Plus, Search, Pencil, Trash2, Bell } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 };
 
 export default function Leases() {
+  const navigate = useNavigate();
   const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease, getGuaranteeByLease } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
@@ -270,20 +271,20 @@ export default function Leases() {
                 const unit = units.find(u => u.id === l.unitId);
                 const guarantee = getGuaranteeByLease(l.id);
                 return (
-                  <TableRow key={l.id}>
+                  <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/leases/${l.id}`)}>
                     <TableCell className="font-mono text-xs font-medium">
                       <div className="flex items-center gap-1.5">
-                        <Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link>
+                        <span className="text-foreground">{l.leaseReference}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}
+                      {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{getTenantFullName(tenant)}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline">{prop.name}</Link> : "—"}
+                      {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{prop.name}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}
+                      {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={l.rentFormula === 1 ? "outline" : l.rentFormula >= 12 ? "default" : "secondary"}>
@@ -312,9 +313,10 @@ export default function Leases() {
                     <TableCell className="text-right font-medium text-foreground">{prop ? formatCurrency(l.monthlyRent + l.monthlyCharges, prop.currencyCode, prop.locale) : l.monthlyRent + l.monthlyCharges}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/leases/${l.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(l)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <DeleteDialog entityType="lease" entityId={l.id} entityLabel="lease" onDelete={handleDelete} />
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit(l); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DeleteDialog entityType="lease" entityId={l.id} entityLabel="lease" onDelete={handleDelete} />
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
