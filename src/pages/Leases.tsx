@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { Lease, LifecycleStage, RentFormula, getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LifecycleStage, LeaseStatus, RentFormula, getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -27,9 +27,19 @@ import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency } from "@/lib/formatters";
 
-const LEASE_STATUSES: { value: LifecycleStage; label: string }[] = [
+const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "active", label: "Active" },
+  { value: "ended", label: "Ended" },
+  { value: "terminated", label: "Terminated" },
+];
+
+const LEASE_STATUS_FILTERS: { value: LeaseStatus; label: string }[] = [
+  { value: "draft", label: "Draft" },
+  { value: "active", label: "Active" },
+  { value: "under-notice", label: "Under notice" },
+  { value: "ending-soon", label: "Ending soon" },
+  { value: "overdue-end", label: "Overdue end" },
   { value: "ended", label: "Ended" },
   { value: "terminated", label: "Terminated" },
 ];
@@ -92,9 +102,9 @@ export default function Leases() {
   }, [editingLease, form.lifecycleStage, integrityState]);
 
   const availableStatuses = useMemo(() => {
-    if (!editingLease) return LEASE_STATUSES; // new lease: all statuses
+    if (!editingLease) return LEASE_STAGES; // new lease: all stages
     const allowed = ALLOWED_TRANSITIONS[editingLease.lifecycleStage] || [editingLease.lifecycleStage];
-    return LEASE_STATUSES.filter(s => allowed.includes(s.value));
+    return LEASE_STAGES.filter(s => allowed.includes(s.value));
   }, [editingLease]);
 
   const executeLeaseSave = () => {
@@ -176,7 +186,7 @@ export default function Leases() {
     const matchSearch = !q || l.leaseReference.toLowerCase().includes(q) ||
       (tenant ? getTenantFullName(tenant).toLowerCase().includes(q) : false) ||
       (prop?.name.toLowerCase().includes(q) ?? false);
-    const matchStatus = filterStatus === "all" || l.lifecycleStage === filterStatus;
+    const matchStatus = filterStatus === "all" || getLeaseStatus(l) === filterStatus;
     const matchProperty = filterProperty === "all" || l.propertyId === filterProperty;
     const matchEnding = !filterEndingSoon || (l.lifecycleStage === "active" && new Date(l.endDate) <= in90Days);
     const matchNotice = !filterUnderNotice || l.noticeGiven;
@@ -214,7 +224,7 @@ export default function Leases() {
           <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
-            {LEASE_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+            {LEASE_STATUS_FILTERS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterProperty} onValueChange={setFilterProperty}>
@@ -260,14 +270,11 @@ export default function Leases() {
                 const prop = properties.find(p => p.id === l.propertyId);
                 const unit = units.find(u => u.id === l.unitId);
                 const guarantee = getGuaranteeByLease(l.id);
-                const lifecycle = getLeaseStatus(l);
                 return (
                   <TableRow key={l.id}>
                     <TableCell className="font-mono text-xs font-medium">
                       <div className="flex items-center gap-1.5">
                         <Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link>
-                        {l.noticeGiven && <StatusBadge status="under-notice" />}
-                        {lifecycle === "ending-soon" && !l.noticeGiven && <StatusBadge status="ending-soon" />}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
@@ -288,7 +295,7 @@ export default function Leases() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 flex-wrap">
-                        <StatusBadge status={l.lifecycleStage} />
+                        <StatusBadge status={getLeaseStatus(l)} />
                         {getMoveInStatus(l) === "scheduled" && <StatusBadge status="scheduled" />}
                         {getMoveOutStatus(l) === "scheduled" && !l.moveOutActualDate && <StatusBadge status="scheduled" />}
                         {l.returnStatus && l.returnStatus !== "completed" && <StatusBadge status={l.returnStatus} />}
