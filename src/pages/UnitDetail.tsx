@@ -818,6 +818,20 @@ export default function UnitDetail() {
           onOverride={handleArchiveOverride}
         />
       )}
+
+      <Dialog open={vacateEndDialogOpen} onOpenChange={setVacateEndDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("unit.vacateLeaseEndTitle")}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("unit.vacateLeaseEndDescription")}</p>
+          <div className="space-y-3 mt-3">
+            <div><Label>{t("lease.endDialog.endDate")}</Label><Input type="date" value={vacateEndDate} onChange={e => setVacateEndDate(e.target.value)} /></div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setVacateEndDialogOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={confirmVacateWithLeaseEnd} disabled={!vacateEndDate}>{t("occupancy.makeVacantAction")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
