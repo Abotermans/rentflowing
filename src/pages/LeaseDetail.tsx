@@ -419,8 +419,7 @@ export default function LeaseDetail() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{lease.leaseReference}</h1>
-              <StatusBadge status={lease.lifecycleStage} />
-              {lifecycle !== lease.lifecycleStage && <StatusBadge status={lifecycle} />}
+              <StatusBadge status={lifecycle} />
             </div>
             <div className="flex gap-2 mt-1 text-sm text-muted-foreground">
               {tenant && <Link to={`/tenants/${tenant.id}`} className="hover:underline text-primary">{getTenantFullName(tenant)}</Link>}
