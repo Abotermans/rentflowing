@@ -111,13 +111,12 @@ export default function AllocationRules() {
           <h1 className="text-2xl font-bold text-foreground">{t("costs.allocationRules")}</h1>
           <p className="text-sm text-muted-foreground">{t("costs.allocationRulesSubtitle")}</p>
         </div>
-        <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />{t("costs.addRule")}</Button>
-      </div>
-
-      <div className="flex flex-wrap gap-3 items-end">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t("costs.searchRules")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder={t("costs.searchRules")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          </div>
+          <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />{t("costs.addRule")}</Button>
         </div>
       </div>
 
