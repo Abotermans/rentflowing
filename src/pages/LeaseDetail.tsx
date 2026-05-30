@@ -997,7 +997,7 @@ export default function LeaseDetail() {
               <Select value={formSourceType} onValueChange={v => setFormSourceType(v as CashReceiptSourceType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(SOURCE_TYPE_LABELS) as CashReceiptSourceType[]).map(k => (
+                  {(["bank-transfer","instant-transfer","direct-debit","card","cash","cheque","manual"] as CashReceiptSourceType[]).map(k => (
                     <SelectItem key={k} value={k}>{getSourceTypeLabel(t, k)}</SelectItem>
                   ))}
                 </SelectContent>
