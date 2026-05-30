@@ -72,7 +72,7 @@ export function getTenantFullName(t: Tenant): string {
   return `${t.firstName} ${t.lastName}`;
 }
 
-export type LeaseStatus = "draft" | "active" | "ended" | "terminated";
+export type LifecycleStage = "draft" | "active" | "ended" | "terminated";
 
 export type AdvanceAllocationMethod = 'spread-evenly' | 'fixed-monthly-reduction';
 export type AdvanceAppliedTo = 'rent' | 'charges' | 'rent-and-charges';
@@ -149,7 +149,7 @@ export interface Lease {
   unitId: string;
   primaryTenantId: string;
   coTenantIds: string[];
-  leaseStatus: LeaseStatus;
+  lifecycleStage: LifecycleStage;
   startDate: string;
   endDate: string;
   monthlyRent: number;
@@ -202,12 +202,12 @@ export interface Lease {
   updatedAt: string;
 }
 
-export type LeaseLifecycleStatus = "draft" | "active" | "under-notice" | "ending-soon" | "overdue-end" | "ended" | "terminated";
+export type LeaseStatus = "draft" | "active" | "under-notice" | "ending-soon" | "overdue-end" | "ended" | "terminated";
 
-export function getLeaseLifecycleStatus(lease: Lease): LeaseLifecycleStatus {
-  if (lease.leaseStatus === "draft") return "draft";
-  if (lease.leaseStatus === "ended") return "ended";
-  if (lease.leaseStatus === "terminated") return "terminated";
+export function getLeaseStatus(lease: Lease): LeaseStatus {
+  if (lease.lifecycleStage === "draft") return "draft";
+  if (lease.lifecycleStage === "ended") return "ended";
+  if (lease.lifecycleStage === "terminated") return "terminated";
   // active lease
   if (lease.noticeGiven) return "under-notice";
   // Compare ISO date strings (YYYY-MM-DD) to avoid timezone drift

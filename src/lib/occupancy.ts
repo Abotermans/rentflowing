@@ -42,7 +42,7 @@ export function getDerivedOccupancy(
   leases: Lease[]
 ): OccupancyInfo {
   const activeLease = leases.find(
-    (l) => l.unitId === unitId && l.leaseStatus === "active"
+    (l) => l.unitId === unitId && l.lifecycleStage === "active"
   );
 
   if (!activeLease) {

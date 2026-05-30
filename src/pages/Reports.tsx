@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { exportToCSV } from "@/lib/exportCsv";
-import { getTenantFullName, getLeaseLifecycleStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS, MAINTENANCE_PRIORITY_LABELS, MAINTENANCE_STATUS_LABELS } from "@/types/maintenance";
 import type { MaintenanceCategory, MaintenancePriority, MaintenanceStatus } from "@/types/maintenance";
 import { Download, Printer, BarChart3 } from "lucide-react";
@@ -61,7 +61,7 @@ function RentRollReport() {
   const [propFilter, setPropFilter] = useState("all");
 
   const data = useMemo(() => {
-    const active = leases.filter(l => l.leaseStatus === "active");
+    const active = leases.filter(l => l.lifecycleStage === "active");
     return (propFilter === "all" ? active : active.filter(l => l.propertyId === propFilter)).map(l => {
       const prop = properties.find(p => p.id === l.propertyId);
       const unit = units.find(u => u.id === l.unitId);
@@ -205,7 +205,7 @@ function OverdueReport() {
   const [propFilter, setPropFilter] = useState("all");
 
   const data = useMemo(() => {
-    const activeLeases = leases.filter(l => l.leaseStatus === "active");
+    const activeLeases = leases.filter(l => l.lifecycleStage === "active");
     const tenantIds = [...new Set(activeLeases.map(l => l.primaryTenantId))];
     return tenantIds.map(tid => {
       const tenant = tenants.find(t => t.id === tid);
@@ -269,13 +269,13 @@ function LeaseExpiryReport() {
     const now = new Date();
     const cutoff = new Date(now.getTime() + Number(range) * 24 * 60 * 60 * 1000);
     return leases
-      .filter(l => l.leaseStatus === "active" && new Date(l.endDate) <= cutoff)
+      .filter(l => l.lifecycleStage === "active" && new Date(l.endDate) <= cutoff)
       .filter(l => propFilter === "all" || l.propertyId === propFilter)
       .sort((a, b) => a.endDate.localeCompare(b.endDate))
       .map(l => {
         const prop = properties.find(p => p.id === l.propertyId);
         const tenant = tenants.find(t => t.id === l.primaryTenantId);
-        const lifecycle = getLeaseLifecycleStatus(l);
+        const lifecycle = getLeaseStatus(l);
         const daysLeft = Math.ceil((new Date(l.endDate).getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
         return { l, prop, tenant, lifecycle, daysLeft };
       });

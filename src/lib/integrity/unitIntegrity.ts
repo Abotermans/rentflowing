@@ -27,7 +27,7 @@ export function canDeleteUnit(unitId: string, s: IntegrityState): ValidationResu
 }
 
 export function canChangeUnitStatus(unitId: string, targetStatus: UnitStatus, s: IntegrityState): ValidationResult {
-  const activeLeases = s.leases.filter(l => l.unitId === unitId && l.leaseStatus === "active");
+  const activeLeases = s.leases.filter(l => l.unitId === unitId && l.lifecycleStage === "active");
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
 
@@ -84,7 +84,7 @@ export function canChangeUnitStatus(unitId: string, targetStatus: UnitStatus, s:
 
 export function getUnitIntegrityWarnings(unitId: string, s: IntegrityState): IntegrityWarning[] {
   const warnings: IntegrityWarning[] = [];
-  const activeLeases = s.leases.filter(l => l.unitId === unitId && l.leaseStatus === "active");
+  const activeLeases = s.leases.filter(l => l.unitId === unitId && l.lifecycleStage === "active");
   if (activeLeases.length > 1) {
     warnings.push({ code: "UNIT_MULTIPLE_ACTIVE_LEASES", message: `Unit has ${activeLeases.length} active leases`, severity: "high" });
   }

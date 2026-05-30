@@ -226,7 +226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const moveOutDate = lease.moveOutActualDate ?? ts;
     setLeases(prev => prev.map(x => x.id === lease.id ? {
       ...lease,
-      leaseStatus: "ended" as const,
+      lifecycleStage: "ended" as const,
       moveOutActualDate: moveOutDate,
       // Preserve an existing legal end date; only fill it from move-out if missing.
       endDate: lease.endDate || moveOutDate,
@@ -483,7 +483,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const counts = { occupied: 0, vacant: 0, reserved: 0, unavailable: 0 };
     propUnits.forEach(u => {
       // Use derived occupancy: if unit has an active lease, count as occupied regardless of manual status
-      const hasActiveLease = leases.some(l => l.unitId === u.id && l.leaseStatus === "active");
+      const hasActiveLease = leases.some(l => l.unitId === u.id && l.lifecycleStage === "active");
       if (hasActiveLease) {
         counts.occupied++;
       } else if (u.currentStatus === "reserved") {
@@ -500,7 +500,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getPropertyById = useCallback((id: string) => properties.find(p => p.id === id), [properties]);
   const getUnitById = useCallback((id: string) => units.find(u => u.id === id), [units]);
   const getTenantById = useCallback((id: string) => tenants.find(t => t.id === id), [tenants]);
-  const getActiveLease = useCallback((unitId: string) => leases.find(l => l.unitId === unitId && l.leaseStatus === "active"), [leases]);
+  const getActiveLease = useCallback((unitId: string) => leases.find(l => l.unitId === unitId && l.lifecycleStage === "active"), [leases]);
   const getLeasesByTenant = useCallback((tenantId: string) => leases.filter(l => l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId)), [leases]);
   const getLeasesByProperty = useCallback((propertyId: string) => leases.filter(l => l.propertyId === propertyId), [leases]);
   const getGuaranteeByLease = useCallback((leaseId: string) => guarantees.find(g => g.leaseId === leaseId), [guarantees]);

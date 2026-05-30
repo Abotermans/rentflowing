@@ -11,7 +11,7 @@ function makeLease(overrides: Partial<Lease> = {}): Lease {
     unitId: "unit-1",
     primaryTenantId: "tenant-1",
     coTenantIds: [],
-    leaseStatus: "active",
+    lifecycleStage: "active",
     startDate: "2024-01-01",
     endDate: "2025-01-01",
     monthlyRent: 1000,
@@ -145,7 +145,7 @@ describe("getDerivedOccupancy", () => {
 
   // Only considers active leases, ignores ended/terminated
   it("ignores non-active leases", () => {
-    const endedLease = makeLease({ leaseStatus: "ended" });
+    const endedLease = makeLease({ lifecycleStage: "ended" });
     const result = getDerivedOccupancy("unit-1", "vacant", [endedLease]);
     expect(result.derived).toBe("vacant");
     expect(result.inconsistent).toBe(false);

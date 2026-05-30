@@ -334,7 +334,7 @@ export default function Units() {
                     </TooltipTrigger>
                     <TooltipContent side="right" className="max-w-[250px]">
                       <p className="text-xs">
-                        {editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
+                        {editingUnit && leases.some(l => l.unitId === editingUnit.id && l.lifecycleStage === "active")
                           ? t("occupancy.statusLockedByLease")
                           : t("occupancy.statusNoOccupiedWithoutLease")}
                       </p>
@@ -344,11 +344,11 @@ export default function Units() {
                 <Select
                   value={form.currentStatus}
                   onValueChange={v => setForm(f => ({ ...f, currentStatus: v as UnitStatus }))}
-                  disabled={!!(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active"))}
+                  disabled={!!(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.lifecycleStage === "active"))}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.leaseStatus === "active")
+                    {(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.lifecycleStage === "active")
                       ? UNIT_STATUSES
                       : UNIT_STATUSES_NO_LEASE
                       ).map(s => <SelectItem key={s.value} value={s.value}>{t(s.labelKey)}</SelectItem>)}

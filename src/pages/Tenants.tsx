@@ -122,7 +122,7 @@ export default function Tenants() {
     return matchSearch && matchStatus;
   });
 
-  const getActiveLease = (tenantId: string) => leases.find(l => l.primaryTenantId === tenantId && l.leaseStatus === "active");
+  const getActiveLease = (tenantId: string) => leases.find(l => l.primaryTenantId === tenantId && l.lifecycleStage === "active");
 
   return (
     <div className="space-y-6">

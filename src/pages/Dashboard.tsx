@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench, ArrowRightLeft, Banknote, Receipt } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
-import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
+import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
@@ -23,7 +23,7 @@ export default function Dashboard() {
   // Mutually exclusive occupancy: active lease → occupied (priority), then unavailable, then reserved, then vacant
   let occupied = 0, unavailable = 0, reserved = 0;
   units.forEach(u => {
-    const hasActiveLease = leases.some(l => l.unitId === u.id && l.leaseStatus === "active");
+    const hasActiveLease = leases.some(l => l.unitId === u.id && l.lifecycleStage === "active");
     if (hasActiveLease) { occupied++; }
     else if (u.currentStatus === "unavailable") { unavailable++; }
     else if (u.currentStatus === "reserved") { reserved++; }
@@ -37,7 +37,7 @@ export default function Dashboard() {
   const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const in30Str = in30Days.toISOString().split("T")[0];
 
-  const activeLeases = leases.filter(l => l.leaseStatus === "active");
+  const activeLeases = leases.filter(l => l.lifecycleStage === "active");
   const leasesEndingSoon = activeLeases.filter(l => new Date(l.endDate) <= in90Days && !l.noticeGiven);
   const leasesUnderNotice = activeLeases.filter(l => l.noticeGiven);
 
