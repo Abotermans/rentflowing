@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
-type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "archived" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational" | "move-in-pending" | "move-out-scheduled" | "available-soon" | "not-applicable";
+type StatusType = "active" | "inactive" | "occupied" | "vacant" | "reserved" | "unavailable" | "archived" | "draft" | "ended" | "terminated" | "former" | "applicant" | "due" | "paid" | "partially-paid" | "overdue" | "pending" | "incomplete" | "released" | "partially-retained" | "under-notice" | "ending-soon" | "overdue-end" | "in-review" | "completed" | "scheduled" | "not-scheduled" | "open" | "assigned" | "in-progress" | "cancelled" | "low" | "medium" | "high" | "urgent" | "none" | "fully-consumed" | "disputed" | "written-off" | "imported" | "unmatched" | "partially-matched" | "matched" | "exception" | "reversed" | "refunded" | "owner-only" | "tenant-recoverable" | "partially-recoverable" | "informational" | "move-in-pending" | "move-out-scheduled" | "available-soon" | "not-applicable";
 
 const statusStyles: Record<StatusType, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -28,6 +28,7 @@ const statusStyles: Record<StatusType, string> = {
   "partially-retained": "bg-destructive/15 text-destructive border-destructive/30",
   "under-notice": "bg-warning/15 text-warning border-warning/30",
   "ending-soon": "bg-destructive/15 text-destructive border-destructive/30",
+  "overdue-end": "bg-destructive/20 text-destructive border-destructive/40 font-semibold",
   "in-review": "bg-warning/15 text-warning border-warning/30",
   completed: "bg-success/15 text-success border-success/30",
   scheduled: "bg-primary/15 text-primary border-primary/30",
@@ -84,6 +85,7 @@ const STATUS_KEYS: Record<StatusType, TranslationKey> = {
   "partially-retained": "status.partiallyRetained",
   "under-notice": "status.underNotice",
   "ending-soon": "status.endingSoon",
+  "overdue-end": "status.overdueEnd",
   "in-review": "status.inReview",
   completed: "status.completed",
   scheduled: "status.scheduled",
