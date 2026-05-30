@@ -224,7 +224,7 @@ export default function LeaseDetail() {
       return;
     }
     if (endDateInput < lease.startDate) {
-      toast({ title: t("common.validationError"), description: "End date cannot be before start date", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("lease.endDateBeforeStart"), variant: "destructive" });
       return;
     }
     const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
@@ -236,7 +236,7 @@ export default function LeaseDetail() {
         setOverrideDialogOpen(true);
         return;
       }
-      toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      toast({ title: t("lease.cannotEnd"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
     if (overrideReason) {
@@ -282,7 +282,7 @@ export default function LeaseDetail() {
       return;
     }
     if (termDateInput < lease.startDate) {
-      toast({ title: t("common.validationError"), description: "End date cannot be before start date", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("lease.endDateBeforeStart"), variant: "destructive" });
       return;
     }
     const validation = canChangeLeaseStatus(lease.id, "terminated", integrityState);
@@ -294,7 +294,7 @@ export default function LeaseDetail() {
         setOverrideDialogOpen(true);
         return;
       }
-      toast({ title: "Cannot terminate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      toast({ title: t("lease.cannotTerminate"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
     if (overrideReason) {
@@ -431,7 +431,7 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />Record Cash Receipt</Button>
+            <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("units.moreActions")}>
@@ -443,7 +443,7 @@ export default function LeaseDetail() {
                   entityType="lease"
                   entityId={lease.id}
                   entityLabel={lease.leaseReference}
-                  onDelete={(lid) => { deleteLease(lid); toast({ title: "Lease deleted" }); navigate("/leases"); }}
+                  onDelete={(lid) => { deleteLease(lid); toast({ title: t("lease.toastDeleted") }); navigate("/leases"); }}
                   trigger={
                     <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
                       <Trash2 className="h-4 w-4 mr-2" />{t("action.delete")}
@@ -1139,7 +1139,7 @@ export default function LeaseDetail() {
           open={overrideDialogOpen}
           onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) { setPendingOverrideValidation(null); setPendingOverrideAction(""); } }}
           validation={pendingOverrideValidation}
-          actionLabel={`Override and ${pendingOverrideAction === "ended" ? "End Lease" : "Terminate Lease"}`}
+          actionLabel={pendingOverrideAction === "ended" ? t("lease.overrideAndEnd") : t("lease.overrideAndTerminate")}
           onOverride={handleLeaseOverrideConfirm}
         />
       )}
