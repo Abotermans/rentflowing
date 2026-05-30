@@ -131,14 +131,16 @@ export default function Tenants() {
           <h1 className="text-2xl font-bold text-foreground">{t("tenants.title")}</h1>
           <p className="text-sm text-muted-foreground">{tenants.length} {t("tenants.title").toLowerCase()}</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("tenants.add")}</Button>
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder={t("tenants.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          </div>
+          <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("tenants.add")}</Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t("tenants.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
-        </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
           <SelectContent>

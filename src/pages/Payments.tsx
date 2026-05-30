@@ -189,7 +189,13 @@ export default function Payments() {
           <h1 className="text-2xl font-bold text-foreground">{t("payments.pageTitle")}</h1>
           <p className="text-sm text-muted-foreground">{t("payments.pageSubtitle")}</p>
         </div>
-        <Button onClick={() => setAddReceiptOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder={t("payments.searchAll")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          </div>
+          <Button onClick={() => setAddReceiptOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -211,10 +217,6 @@ export default function Payments() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t("payments.searchAll")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
-        </div>
         <Select value={propertyFilter} onValueChange={setPropertyFilter}>
           <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("payments.filter.property")} /></SelectTrigger>
           <SelectContent>
