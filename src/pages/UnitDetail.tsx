@@ -336,6 +336,11 @@ export default function UnitDetail() {
                 <DoorOpen className="h-4 w-4" />{t("occupancy.makeVacantAction")}
               </Button>
             )}
+            {unit.currentStatus !== "archived" && getActiveLease(unit.id) && (
+              <Button size="sm" variant="outline" onClick={openVacateWithLeaseEnd}>
+                <DoorOpen className="h-4 w-4" />{t("occupancy.makeVacantAction")}
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("units.moreActions")}>
