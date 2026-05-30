@@ -34,6 +34,23 @@ export default function Maintenance() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceTicket | null>(null);
 
+  const priorityConfig: Record<MaintenancePriority, { icon: React.ElementType; colorClass: string }> = {
+    low: { icon: ArrowDown, colorClass: "text-muted-foreground" },
+    medium: { icon: Minus, colorClass: "text-primary" },
+    high: { icon: ArrowUp, colorClass: "text-warning" },
+    urgent: { icon: AlertTriangle, colorClass: "text-destructive" },
+  };
+  const PriorityLabel = ({ priority }: { priority: MaintenancePriority }) => {
+    const cfg = priorityConfig[priority];
+    const Icon = cfg.icon;
+    return (
+      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${cfg.colorClass}`}>
+        <Icon className="h-3.5 w-3.5" />
+        {MAINTENANCE_PRIORITY_LABELS[priority]}
+      </span>
+    );
+  };
+
   const emptyForm: TicketFormData = {
     title: "", description: "", propertyId: properties[0]?.id ?? "", unitId: "",
     tenantId: null, category: "general", priority: "medium", status: "open",
