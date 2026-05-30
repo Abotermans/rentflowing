@@ -16,7 +16,6 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/context/SettingsContext";
 import { CostCategory, CostNature, CostScope, RecoveryType, COST_NATURE_LABELS, COST_SCOPE_LABELS, RECOVERY_TYPE_LABELS } from "@/types/costs";
-import { CostsNav } from "@/components/costs/CostsNav";
 
 type FormData = Omit<CostCategory, "id" | "createdAt" | "updatedAt">;
 
@@ -76,7 +75,6 @@ export default function CostCategories() {
 
   return (
     <div className="space-y-6">
-      <CostsNav />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("costs.categories")}</h1>

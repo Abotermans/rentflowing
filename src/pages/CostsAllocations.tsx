@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
-import { CostsNav } from "@/components/costs/CostsNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -79,7 +78,6 @@ export default function CostsAllocations() {
 
   return (
     <div className="space-y-6">
-      <CostsNav />
       <div>
         <h1 className="text-2xl font-bold text-foreground">{t("costs.allocations")}</h1>
         <p className="text-sm text-muted-foreground">{t("costs.allocationsSubtitle")}</p>

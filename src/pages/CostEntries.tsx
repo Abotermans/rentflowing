@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
-import { CostsNav } from "@/components/costs/CostsNav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +109,6 @@ export default function CostEntries() {
 
   return (
     <div className="space-y-6">
-      <CostsNav />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("costs.entries")}</h1>
