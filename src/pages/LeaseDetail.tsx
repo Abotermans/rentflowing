@@ -15,7 +15,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet, MoreVertical, Trash2 } from "lucide-react";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
 import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
@@ -27,7 +27,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeLeaseStatus, canActivateLease, canRenewLease } from "@/lib/integrity/leaseIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
@@ -432,13 +431,47 @@ export default function LeaseDetail() {
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
+            {(lease.leaseStatus === "active" || lease.leaseStatus === "draft") && (
+              <Button variant="outline" size="sm" onClick={openNoticeForm}>
+                <Bell className="h-4 w-4 mr-1" />
+                {lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("units.moreActions")}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuContent align="end" className="w-56">
+                {lease.leaseStatus === "draft" && (() => {
+                  const activationCheck = canActivateLease(lease.id, integrityState);
+                  return (
+                    <DropdownMenuItem onSelect={() => handleActivateLease()} disabled={!activationCheck.allowed}>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />Activate Lease
+                    </DropdownMenuItem>
+                  );
+                })()}
+                {lease.leaseStatus === "active" && (() => {
+                  const endCheck = canChangeLeaseStatus(lease.id, "ended", integrityState);
+                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  const endDisabled = !endCheck.allowed && !endCheck.overrideAllowed;
+                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
+                  return (
+                    <>
+                      <DropdownMenuItem onSelect={() => openRenewDialog()}>
+                        <Clock className="h-4 w-4 mr-2" />{t("lease.renew")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleMarkEnded()} disabled={endDisabled}>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />{t("detail.markEnded")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
+                        <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  );
+                })()}
                 <DeleteDialog
                   entityType="lease"
                   entityId={lease.id}
@@ -689,66 +722,7 @@ export default function LeaseDetail() {
       {/* Notice / Lease End Card */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
-            <TooltipProvider>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}</Button>
-                {lease.leaseStatus === "draft" && (() => {
-                  const activationCheck = canActivateLease(lease.id, integrityState);
-                  return (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Button variant="default" size="sm" onClick={handleActivateLease} disabled={!activationCheck.allowed}>Activate Lease</Button>
-                        </span>
-                      </TooltipTrigger>
-                      {!activationCheck.allowed && (
-                        <TooltipContent className="max-w-[300px]">
-                          <p className="text-xs">{activationCheck.blockers.map(b => b.message).join(". ")}</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  );
-                })()}
-                {lease.leaseStatus === "active" && (() => {
-                  const endCheck = canChangeLeaseStatus(lease.id, "ended", integrityState);
-                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
-                  const endDisabled = !endCheck.allowed && !endCheck.overrideAllowed;
-                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
-                  return (
-                    <>
-                      <Button variant="outline" size="sm" onClick={openRenewDialog}>{t("lease.renew")}</Button>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button variant="outline" size="sm" onClick={handleMarkEnded} disabled={endDisabled}>{t("detail.markEnded")}</Button>
-                          </span>
-                        </TooltipTrigger>
-                        {endDisabled && (
-                          <TooltipContent className="max-w-[300px]">
-                            <p className="text-xs">{endCheck.blockers.map(b => b.message).join(". ")}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button variant="destructive" size="sm" onClick={handleMarkTerminated} disabled={termDisabled}>{t("detail.terminate")}</Button>
-                          </span>
-                        </TooltipTrigger>
-                        {termDisabled && (
-                          <TooltipContent className="max-w-[300px]">
-                            <p className="text-xs">{termCheck.blockers.map(b => b.message).join(". ")}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </>
-                  );
-                })()}
-              </div>
-            </TooltipProvider>
-          </div>
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
