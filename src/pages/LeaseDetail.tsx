@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet } from "lucide-react";
 import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
-import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
+import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
 import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS, ALLOCATION_TYPE_LABELS } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
@@ -37,7 +37,7 @@ export default function LeaseDetail() {
     leases, tenants, units, properties,
     getReceivableItemsByLease, getCashReceiptsByLease, getAllocationsByReceipt,
     getLeaseOutstanding, getGuaranteeByLease, allocations,
-    addGuarantee, updateGuarantee, updateLease, confirmMoveOut,
+    addGuarantee, updateGuarantee, updateLease, updateUnit, confirmMoveOut,
     createCashReceipt, getTenantUnappliedCredit,
   } = useAppData();
   const { toast } = useToast();
@@ -72,6 +72,24 @@ export default function LeaseDetail() {
   const [nDate, setNDate] = useState("");
   const [nMoveOut, setNMoveOut] = useState("");
   const [nReason, setNReason] = useState("");
+
+  // End / Terminate / Renew dialogs
+  const [endDialogOpen, setEndDialogOpen] = useState(false);
+  const [endDateInput, setEndDateInput] = useState("");
+  const [endReasonInput, setEndReasonInput] = useState<LeaseEndReason>("natural-expiry");
+  const [endNotesInput, setEndNotesInput] = useState("");
+  const [endFreeUnit, setEndFreeUnit] = useState(true);
+
+  const [termDialogOpen, setTermDialogOpen] = useState(false);
+  const [termDateInput, setTermDateInput] = useState("");
+  const [termReasonInput, setTermReasonInput] = useState("");
+  const [termNotesInput, setTermNotesInput] = useState("");
+  const [termFreeUnit, setTermFreeUnit] = useState(true);
+
+  const [renewDialogOpen, setRenewDialogOpen] = useState(false);
+  const [renewNewEndDate, setRenewNewEndDate] = useState("");
+  const [renewNewRent, setRenewNewRent] = useState("");
+  const [renewNewCharges, setRenewNewCharges] = useState("");
 
   // Move-in form
   const [moveInSheetOpen, setMoveInSheetOpen] = useState(false);
@@ -190,56 +208,139 @@ export default function LeaseDetail() {
     }
   };
 
-  const handleMarkEnded = () => {
+  const openEndDialog = () => {
+    setEndDateInput(lease.moveOutActualDate ?? lease.intendedMoveOutDate ?? lease.endDate ?? today);
+    setEndReasonInput(lease.noticeGiven ? "notice-completed" : "natural-expiry");
+    setEndNotesInput("");
+    setEndFreeUnit(!lease.moveOutActualDate);
+    setEndDialogOpen(true);
+  };
+
+  const performEndLease = (overrideReason?: string) => {
     const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
-    if (!validation.allowed) {
+    if (!validation.allowed && !overrideReason) {
       if (validation.overrideAllowed) {
         setPendingOverrideValidation(validation);
         setPendingOverrideAction("ended");
+        setEndDialogOpen(false);
         setOverrideDialogOpen(true);
         return;
       }
       toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
-    updateLease({ ...lease, leaseStatus: "ended" });
-    if (validation.warnings.length > 0) {
-      toast({ title: "Lease ended with warnings", description: validation.warnings.map(w => w.message).join(". ") });
-    } else {
-      toast({ title: "Lease marked as ended" });
+    if (overrideReason) {
+      addOverride({
+        entityType: "lease", entityId: lease.id,
+        action: "status_change:ended",
+        blockerCodes: [...validation.blockers.map(b => b.code), ...validation.warnings.map(w => w.code)],
+        reason: overrideReason,
+      });
     }
+    const updatedLease = {
+      ...lease,
+      leaseStatus: "ended" as const,
+      endDate: endDateInput || lease.endDate,
+      endReason: endReasonInput,
+      notes: endNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[End] ${endNotesInput}` : lease.notes,
+    };
+    updateLease(updatedLease);
+    if (endFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
+      updateUnit({ ...unit, currentStatus: "vacant", availableFrom: updatedLease.endDate });
+    }
+    toast({ title: t("lease.toastEnded") });
+    setEndDialogOpen(false);
   };
 
-  const handleMarkTerminated = () => {
+  const handleMarkEnded = () => openEndDialog();
+
+  const openTermDialog = () => {
+    setTermDateInput(today);
+    setTermReasonInput("");
+    setTermNotesInput("");
+    setTermFreeUnit(true);
+    setTermDialogOpen(true);
+  };
+
+  const performTerminate = (overrideReason?: string) => {
+    if (!termReasonInput.trim()) {
+      toast({ title: t("common.validationError"), description: t("lease.terminateDialog.reason"), variant: "destructive" });
+      return;
+    }
     const validation = canChangeLeaseStatus(lease.id, "terminated", integrityState);
-    if (!validation.allowed) {
+    if (!validation.allowed && !overrideReason) {
       if (validation.overrideAllowed) {
         setPendingOverrideValidation(validation);
         setPendingOverrideAction("terminated");
+        setTermDialogOpen(false);
         setOverrideDialogOpen(true);
         return;
       }
       toast({ title: "Cannot terminate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
-    updateLease({ ...lease, leaseStatus: "terminated" });
-    toast({ title: "Lease marked as terminated" });
+    if (overrideReason) {
+      addOverride({
+        entityType: "lease", entityId: lease.id,
+        action: "status_change:terminated",
+        blockerCodes: [...validation.blockers.map(b => b.code), ...validation.warnings.map(w => w.code)],
+        reason: overrideReason,
+      });
+    }
+    updateLease({
+      ...lease,
+      leaseStatus: "terminated",
+      endDate: termDateInput || today,
+      terminationReason: termReasonInput,
+      notes: termNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[Terminate] ${termNotesInput}` : lease.notes,
+    });
+    if (termFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
+      updateUnit({ ...unit, currentStatus: "vacant", availableFrom: termDateInput || today });
+    }
+    toast({ title: t("lease.toastTerminated") });
+    setTermDialogOpen(false);
+  };
+
+  const handleMarkTerminated = () => openTermDialog();
+
+  const openRenewDialog = () => {
+    setRenewNewEndDate("");
+    setRenewNewRent("");
+    setRenewNewCharges("");
+    setRenewDialogOpen(true);
+  };
+
+  const handleRenewLease = () => {
+    if (!renewNewEndDate || renewNewEndDate <= lease.endDate) {
+      toast({ title: t("common.validationError"), description: t("lease.renewDialog.errorInvalidDate"), variant: "destructive" });
+      return;
+    }
+    const patch: typeof lease = { ...lease, endDate: renewNewEndDate };
+    if (renewNewRent) patch.monthlyRent = parseFloat(renewNewRent);
+    if (renewNewCharges) patch.monthlyCharges = parseFloat(renewNewCharges);
+    updateLease(patch);
+    toast({ title: t("lease.toastRenewed") });
+    setRenewDialogOpen(false);
+  };
+
+  const handleCancelNotice = () => {
+    updateLease({
+      ...lease,
+      noticeGiven: false,
+      noticeDate: null,
+      intendedMoveOutDate: null,
+      terminationReason: null,
+    });
+    toast({ title: t("lease.toastNoticeCancelled") });
   };
 
   const handleLeaseOverrideConfirm = (reason: string) => {
     if (!pendingOverrideValidation || !pendingOverrideAction) return;
-    addOverride({
-      entityType: "lease",
-      entityId: lease.id,
-      action: `status_change:${pendingOverrideAction}`,
-      blockerCodes: [
-        ...pendingOverrideValidation.blockers.map(b => b.code),
-        ...pendingOverrideValidation.warnings.map(w => w.code),
-      ],
-      reason,
-    });
-    updateLease({ ...lease, leaseStatus: pendingOverrideAction as any });
-    toast({ title: `Lease marked as ${pendingOverrideAction} (overridden)`, description: `Override reason: ${reason}` });
+    if (pendingOverrideAction === "ended") {
+      performEndLease(reason);
+    } else if (pendingOverrideAction === "terminated") {
+      performTerminate(reason);
+    }
     setPendingOverrideValidation(null);
     setPendingOverrideAction("");
   };
@@ -338,9 +439,32 @@ export default function LeaseDetail() {
         <Alert>
           <Bell className="h-4 w-4" />
           <AlertDescription>
-            This lease is <strong>under notice</strong>.
-            {lease.noticeDate && <> Notice given on {formatDate(lease.noticeDate, locale)}.</>}
-            {lease.intendedMoveOutDate && <> Intended move-out: {formatDate(lease.intendedMoveOutDate, locale)}.</>}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span>
+                This lease is <strong>under notice</strong>.
+                {lease.noticeDate && <> Notice given on {formatDate(lease.noticeDate, locale)}.</>}
+                {lease.intendedMoveOutDate && <> Intended move-out: {formatDate(lease.intendedMoveOutDate, locale)}.</>}
+              </span>
+              {!lease.moveOutActualDate && (
+                <Button variant="outline" size="sm" onClick={handleCancelNotice}>{t("lease.cancelNotice")}</Button>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Overdue end banner */}
+      {lifecycle === "overdue-end" && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="font-semibold mb-1">{t("lease.overdueBanner.title")}</div>
+            <p className="text-xs mb-2">{t("lease.overdueBanner.description").replace("{date}", formatDate(lease.endDate, locale))}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={openRenewDialog}>{t("lease.overdueBanner.renew")}</Button>
+              <Button size="sm" variant="outline" onClick={openEndDialog}>{t("lease.overdueBanner.end")}</Button>
+              <Button size="sm" variant="destructive" onClick={openTermDialog}>{t("lease.overdueBanner.terminate")}</Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -547,6 +671,7 @@ export default function LeaseDetail() {
                   const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
                   return (
                     <>
+                      <Button variant="outline" size="sm" onClick={openRenewDialog}>{t("lease.renew")}</Button>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
@@ -971,6 +1096,74 @@ export default function LeaseDetail() {
           onOverride={handleLeaseOverrideConfirm}
         />
       )}
+
+      {/* End Lease Dialog */}
+      <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("lease.endDialog.title")}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("lease.endDialog.description")}</p>
+          <div className="space-y-3 mt-3">
+            <div><Label>{t("lease.endDialog.endDate")}</Label><Input type="date" value={endDateInput} onChange={e => setEndDateInput(e.target.value)} /></div>
+            <div>
+              <Label>{t("lease.endDialog.reason")}</Label>
+              <Select value={endReasonInput} onValueChange={v => setEndReasonInput(v as LeaseEndReason)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="natural-expiry">{t("lease.endReason.naturalExpiry")}</SelectItem>
+                  <SelectItem value="mutual-non-renewal">{t("lease.endReason.mutualNonRenewal")}</SelectItem>
+                  <SelectItem value="notice-completed">{t("lease.endReason.noticeCompleted")}</SelectItem>
+                  <SelectItem value="other">{t("lease.endReason.other")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>{t("lease.endDialog.notes")}</Label><Textarea value={endNotesInput} onChange={e => setEndNotesInput(e.target.value)} rows={2} /></div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">{t("lease.endDialog.freeUnit")}</Label>
+              <Switch checked={endFreeUnit} onCheckedChange={setEndFreeUnit} />
+            </div>
+            <Button className="w-full" onClick={() => performEndLease()} disabled={!endDateInput}>{t("lease.endDialog.confirm")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Terminate Lease Dialog */}
+      <Dialog open={termDialogOpen} onOpenChange={setTermDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("lease.terminateDialog.title")}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("lease.terminateDialog.description")}</p>
+          <div className="space-y-3 mt-3">
+            <div><Label>{t("lease.terminateDialog.endDate")}</Label><Input type="date" value={termDateInput} onChange={e => setTermDateInput(e.target.value)} /></div>
+            <div>
+              <Label>{t("lease.terminateDialog.reason")}</Label>
+              <Textarea value={termReasonInput} onChange={e => setTermReasonInput(e.target.value)} rows={2} placeholder={t("lease.terminateDialog.reasonPlaceholder")} />
+            </div>
+            <div><Label>{t("lease.terminateDialog.notes")}</Label><Textarea value={termNotesInput} onChange={e => setTermNotesInput(e.target.value)} rows={2} /></div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">{t("lease.terminateDialog.freeUnit")}</Label>
+              <Switch checked={termFreeUnit} onCheckedChange={setTermFreeUnit} />
+            </div>
+            <Button className="w-full" variant="destructive" onClick={() => performTerminate()} disabled={!termDateInput || !termReasonInput.trim()}>{t("lease.terminateDialog.confirm")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Renew Lease Dialog */}
+      <Dialog open={renewDialogOpen} onOpenChange={setRenewDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("lease.renewDialog.title")}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("lease.renewDialog.description")}</p>
+          <div className="space-y-3 mt-3">
+            <div>
+              <Label>{t("lease.renewDialog.currentEndDate")}</Label>
+              <p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p>
+            </div>
+            <div><Label>{t("lease.renewDialog.newEndDate")}</Label><Input type="date" value={renewNewEndDate} onChange={e => setRenewNewEndDate(e.target.value)} min={lease.endDate} /></div>
+            <div><Label>{t("lease.renewDialog.newRent")}</Label><Input type="number" step="0.01" value={renewNewRent} onChange={e => setRenewNewRent(e.target.value)} placeholder={String(lease.monthlyRent)} /></div>
+            <div><Label>{t("lease.renewDialog.newCharges")}</Label><Input type="number" step="0.01" value={renewNewCharges} onChange={e => setRenewNewCharges(e.target.value)} placeholder={String(lease.monthlyCharges)} /></div>
+            <Button className="w-full" onClick={handleRenewLease} disabled={!renewNewEndDate}>{t("lease.renewDialog.confirm")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

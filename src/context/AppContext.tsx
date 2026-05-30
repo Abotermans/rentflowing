@@ -223,8 +223,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const confirmMoveOut = useCallback((lease: Lease) => {
     const ts = now();
-    setLeases(prev => prev.map(x => x.id === lease.id ? { ...lease, leaseStatus: "ended" as const, moveOutActualDate: ts, updatedAt: ts } : x));
-    setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: ts, updatedAt: ts } : x));
+    const moveOutDate = lease.moveOutActualDate ?? ts;
+    setLeases(prev => prev.map(x => x.id === lease.id ? {
+      ...lease,
+      leaseStatus: "ended" as const,
+      moveOutActualDate: moveOutDate,
+      endDate: moveOutDate,
+      updatedAt: ts,
+    } : x));
+    setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts } : x));
   }, []);
 
   // ===== Guarantee =====

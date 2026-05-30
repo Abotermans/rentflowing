@@ -71,7 +71,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
+  const { units, properties, leases, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, confirmMoveOut } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
   const integrityState = useIntegrityState();
@@ -89,6 +89,8 @@ export default function UnitDetail() {
   const [vacateOverrideOpen, setVacateOverrideOpen] = useState(false);
   const [archiveValidation, setArchiveValidation] = useState<ValidationResult | null>(null);
   const [archiveOverrideOpen, setArchiveOverrideOpen] = useState(false);
+  const [vacateEndDialogOpen, setVacateEndDialogOpen] = useState(false);
+  const [vacateEndDate, setVacateEndDate] = useState("");
 
   const openEdit = (section: Exclude<EditSection, null>) => {
     if (!unit) return;
@@ -239,6 +241,37 @@ export default function UnitDetail() {
     toast({ title: t("units.toastUnarchived") });
   };
 
+  const openVacateWithLeaseEnd = () => {
+    setVacateEndDate(new Date().toISOString().split("T")[0]);
+    setVacateEndDialogOpen(true);
+  };
+
+  const confirmVacateWithLeaseEnd = () => {
+    if (!unit) return;
+    const lease = getActiveLease(unit.id);
+    if (!lease) {
+      setVacateEndDialogOpen(false);
+      return;
+    }
+    const ed = vacateEndDate || new Date().toISOString().split("T")[0];
+    confirmMoveOut({
+      ...lease,
+      moveOutActualDate: ed,
+      moveOutScheduledDate: lease.moveOutScheduledDate || ed,
+      moveOutChecklist: {
+        noticeConfirmed: true,
+        moveOutDateConfirmed: true,
+        keysReturned: lease.moveOutChecklist.keysReturned,
+        moveOutMeterReadingCaptured: lease.moveOutChecklist.moveOutMeterReadingCaptured,
+        balanceReviewed: lease.moveOutChecklist.balanceReviewed,
+        guaranteeReviewCompleted: lease.moveOutChecklist.guaranteeReviewCompleted,
+      },
+      returnStatus: lease.returnStatus || "pending",
+    });
+    toast({ title: t("units.toastUpdated") });
+    setVacateEndDialogOpen(false);
+  };
+
   if (!unit || !property) {
     return (
       <div className="text-center py-12">
@@ -300,6 +333,11 @@ export default function UnitDetail() {
             )}
             {unit.currentStatus !== "vacant" && unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (
               <Button size="sm" variant="outline" onClick={handleMakeVacant}>
+                <DoorOpen className="h-4 w-4" />{t("occupancy.makeVacantAction")}
+              </Button>
+            )}
+            {unit.currentStatus !== "archived" && getActiveLease(unit.id) && (
+              <Button size="sm" variant="outline" onClick={openVacateWithLeaseEnd}>
                 <DoorOpen className="h-4 w-4" />{t("occupancy.makeVacantAction")}
               </Button>
             )}
@@ -780,6 +818,20 @@ export default function UnitDetail() {
           onOverride={handleArchiveOverride}
         />
       )}
+
+      <Dialog open={vacateEndDialogOpen} onOpenChange={setVacateEndDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("unit.vacateLeaseEndTitle")}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("unit.vacateLeaseEndDescription")}</p>
+          <div className="space-y-3 mt-3">
+            <div><Label>{t("lease.endDialog.endDate")}</Label><Input type="date" value={vacateEndDate} onChange={e => setVacateEndDate(e.target.value)} /></div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setVacateEndDialogOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={confirmVacateWithLeaseEnd} disabled={!vacateEndDate}>{t("occupancy.makeVacantAction")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
