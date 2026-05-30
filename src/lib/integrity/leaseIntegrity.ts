@@ -105,3 +105,35 @@ export function canChangeLeaseStatus(leaseId: string, targetStatus: LeaseStatus,
       return ok();
   }
 }
+
+/**
+ * Validate a lease renewal: extending the current lease's end date (and
+ * optionally rent/charges) instead of creating a new lease record.
+ */
+export function canRenewLease(
+  leaseId: string,
+  newEndDate: string,
+  s: IntegrityState,
+): ValidationResult {
+  const lease = s.leases.find(l => l.id === leaseId);
+  if (!lease) return blocked([{ code: "LEASE_NOT_FOUND", message: "Lease not found" }]);
+
+  const blockers: IntegrityBlocker[] = [];
+  const warnings: IntegrityWarning[] = [];
+
+  if (lease.leaseStatus !== "active") {
+    blockers.push({ code: "LEASE_NOT_ACTIVE", message: "Only active leases can be renewed" });
+  }
+  if (!newEndDate) {
+    blockers.push({ code: "LEASE_RENEW_NO_DATE", message: "A new end date is required" });
+  } else if (newEndDate <= lease.endDate) {
+    blockers.push({ code: "LEASE_RENEW_DATE_NOT_AFTER", message: "New end date must be after the current end date" });
+  }
+  if (lease.noticeGiven) {
+    warnings.push({ code: "LEASE_RENEW_HAS_NOTICE", message: "Notice is currently active; renewing will cancel the notice", severity: "high" });
+  }
+
+  if (blockers.length > 0) return blocked(blockers, warnings);
+  if (warnings.length > 0) return allowedWithWarnings(warnings, false, "Renewing will clear notice fields");
+  return ok();
+}
