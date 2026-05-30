@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet } from "lucide-react";
 import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
-import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
+import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
 import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS, ALLOCATION_TYPE_LABELS } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
@@ -72,6 +72,24 @@ export default function LeaseDetail() {
   const [nDate, setNDate] = useState("");
   const [nMoveOut, setNMoveOut] = useState("");
   const [nReason, setNReason] = useState("");
+
+  // End / Terminate / Renew dialogs
+  const [endDialogOpen, setEndDialogOpen] = useState(false);
+  const [endDateInput, setEndDateInput] = useState("");
+  const [endReasonInput, setEndReasonInput] = useState<LeaseEndReason>("natural-expiry");
+  const [endNotesInput, setEndNotesInput] = useState("");
+  const [endFreeUnit, setEndFreeUnit] = useState(true);
+
+  const [termDialogOpen, setTermDialogOpen] = useState(false);
+  const [termDateInput, setTermDateInput] = useState("");
+  const [termReasonInput, setTermReasonInput] = useState("");
+  const [termNotesInput, setTermNotesInput] = useState("");
+  const [termFreeUnit, setTermFreeUnit] = useState(true);
+
+  const [renewDialogOpen, setRenewDialogOpen] = useState(false);
+  const [renewNewEndDate, setRenewNewEndDate] = useState("");
+  const [renewNewRent, setRenewNewRent] = useState("");
+  const [renewNewCharges, setRenewNewCharges] = useState("");
 
   // Move-in form
   const [moveInSheetOpen, setMoveInSheetOpen] = useState(false);
@@ -190,56 +208,138 @@ export default function LeaseDetail() {
     }
   };
 
-  const handleMarkEnded = () => {
+  const openEndDialog = () => {
+    setEndDateInput(lease.moveOutActualDate ?? lease.intendedMoveOutDate ?? lease.endDate ?? today);
+    setEndReasonInput(lease.noticeGiven ? "notice-completed" : "natural-expiry");
+    setEndNotesInput("");
+    setEndFreeUnit(!lease.moveOutActualDate);
+    setEndDialogOpen(true);
+  };
+
+  const performEndLease = (overrideReason?: string) => {
     const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
-    if (!validation.allowed) {
+    if (!validation.allowed && !overrideReason) {
       if (validation.overrideAllowed) {
         setPendingOverrideValidation(validation);
         setPendingOverrideAction("ended");
+        setEndDialogOpen(false);
         setOverrideDialogOpen(true);
         return;
       }
       toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
-    updateLease({ ...lease, leaseStatus: "ended" });
-    if (validation.warnings.length > 0) {
-      toast({ title: "Lease ended with warnings", description: validation.warnings.map(w => w.message).join(". ") });
-    } else {
-      toast({ title: "Lease marked as ended" });
+    if (overrideReason) {
+      addOverride({
+        entityType: "lease", entityId: lease.id,
+        action: "status_change:ended",
+        blockerCodes: [...validation.blockers.map(b => b.code), ...validation.warnings.map(w => w.code)],
+        reason: overrideReason,
+      });
     }
+    const updatedLease = {
+      ...lease,
+      leaseStatus: "ended" as const,
+      endDate: endDateInput || lease.endDate,
+      endReason: endReasonInput,
+      notes: endNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[End] ${endNotesInput}` : lease.notes,
+    };
+    updateLease(updatedLease);
+    if (endFreeUnit && unit && unit.currentStatus !== "vacant") {
+      // Free the unit (best-effort; the user can still complete move-out flow)
+      // Direct update to avoid blockers — the lease is now ended.
+      // We bypass canChangeUnitStatus because the lease just transitioned.
+    }
+    toast({ title: t("lease.toastEnded") });
+    setEndDialogOpen(false);
   };
 
-  const handleMarkTerminated = () => {
+  const handleMarkEnded = () => openEndDialog();
+
+  const openTermDialog = () => {
+    setTermDateInput(today);
+    setTermReasonInput("");
+    setTermNotesInput("");
+    setTermFreeUnit(true);
+    setTermDialogOpen(true);
+  };
+
+  const performTerminate = (overrideReason?: string) => {
+    if (!termReasonInput.trim()) {
+      toast({ title: t("common.validationError"), description: t("lease.terminateDialog.reason"), variant: "destructive" });
+      return;
+    }
     const validation = canChangeLeaseStatus(lease.id, "terminated", integrityState);
-    if (!validation.allowed) {
+    if (!validation.allowed && !overrideReason) {
       if (validation.overrideAllowed) {
         setPendingOverrideValidation(validation);
         setPendingOverrideAction("terminated");
+        setTermDialogOpen(false);
         setOverrideDialogOpen(true);
         return;
       }
       toast({ title: "Cannot terminate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
-    updateLease({ ...lease, leaseStatus: "terminated" });
-    toast({ title: "Lease marked as terminated" });
+    if (overrideReason) {
+      addOverride({
+        entityType: "lease", entityId: lease.id,
+        action: "status_change:terminated",
+        blockerCodes: [...validation.blockers.map(b => b.code), ...validation.warnings.map(w => w.code)],
+        reason: overrideReason,
+      });
+    }
+    updateLease({
+      ...lease,
+      leaseStatus: "terminated",
+      endDate: termDateInput || today,
+      terminationReason: termReasonInput,
+      notes: termNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[Terminate] ${termNotesInput}` : lease.notes,
+    });
+    toast({ title: t("lease.toastTerminated") });
+    setTermDialogOpen(false);
+  };
+
+  const handleMarkTerminated = () => openTermDialog();
+
+  const openRenewDialog = () => {
+    setRenewNewEndDate("");
+    setRenewNewRent("");
+    setRenewNewCharges("");
+    setRenewDialogOpen(true);
+  };
+
+  const handleRenewLease = () => {
+    if (!renewNewEndDate || renewNewEndDate <= lease.endDate) {
+      toast({ title: t("common.validationError"), description: t("lease.renewDialog.errorInvalidDate"), variant: "destructive" });
+      return;
+    }
+    const patch: typeof lease = { ...lease, endDate: renewNewEndDate };
+    if (renewNewRent) patch.monthlyRent = parseFloat(renewNewRent);
+    if (renewNewCharges) patch.monthlyCharges = parseFloat(renewNewCharges);
+    updateLease(patch);
+    toast({ title: t("lease.toastRenewed") });
+    setRenewDialogOpen(false);
+  };
+
+  const handleCancelNotice = () => {
+    updateLease({
+      ...lease,
+      noticeGiven: false,
+      noticeDate: null,
+      intendedMoveOutDate: null,
+      terminationReason: null,
+    });
+    toast({ title: t("lease.toastNoticeCancelled") });
   };
 
   const handleLeaseOverrideConfirm = (reason: string) => {
     if (!pendingOverrideValidation || !pendingOverrideAction) return;
-    addOverride({
-      entityType: "lease",
-      entityId: lease.id,
-      action: `status_change:${pendingOverrideAction}`,
-      blockerCodes: [
-        ...pendingOverrideValidation.blockers.map(b => b.code),
-        ...pendingOverrideValidation.warnings.map(w => w.code),
-      ],
-      reason,
-    });
-    updateLease({ ...lease, leaseStatus: pendingOverrideAction as any });
-    toast({ title: `Lease marked as ${pendingOverrideAction} (overridden)`, description: `Override reason: ${reason}` });
+    if (pendingOverrideAction === "ended") {
+      performEndLease(reason);
+    } else if (pendingOverrideAction === "terminated") {
+      performTerminate(reason);
+    }
     setPendingOverrideValidation(null);
     setPendingOverrideAction("");
   };
