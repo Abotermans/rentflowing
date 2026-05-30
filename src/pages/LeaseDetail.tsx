@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -759,10 +760,16 @@ export default function LeaseDetail() {
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("detail.checklist")}</p>
                 {(Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[]).map(key => (
-                  <div key={key} className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">{MOVE_IN_CHECKLIST_LABELS[key]}</span>
-                    <Switch checked={lease.moveInChecklist[key]} onCheckedChange={() => toggleMoveInChecklist(key)} disabled={moveInStatus === "completed"} />
-                  </div>
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={lease.moveInChecklist[key]}
+                      onCheckedChange={() => toggleMoveInChecklist(key)}
+                      disabled={moveInStatus === "completed"}
+                    />
+                    <span className={`text-sm ${lease.moveInChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                      {MOVE_IN_CHECKLIST_LABELS[key]}
+                    </span>
+                  </label>
                 ))}
               </div>
             </CardContent>
@@ -787,10 +794,16 @@ export default function LeaseDetail() {
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("detail.checklist")}</p>
                 {(Object.keys(lease.moveOutChecklist) as (keyof MoveOutChecklist)[]).map(key => (
-                  <div key={key} className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">{MOVE_OUT_CHECKLIST_LABELS[key]}</span>
-                    <Switch checked={lease.moveOutChecklist[key]} onCheckedChange={() => toggleMoveOutChecklist(key)} disabled={moveOutStatus === "completed"} />
-                  </div>
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={lease.moveOutChecklist[key]}
+                      onCheckedChange={() => toggleMoveOutChecklist(key)}
+                      disabled={moveOutStatus === "completed"}
+                    />
+                    <span className={`text-sm ${lease.moveOutChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                      {MOVE_OUT_CHECKLIST_LABELS[key]}
+                    </span>
+                  </label>
                 ))}
               </div>
               {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
