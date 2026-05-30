@@ -15,7 +15,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet, MoreVertical, Trash2 } from "lucide-react";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
 import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
@@ -432,13 +432,47 @@ export default function LeaseDetail() {
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
+            {(lease.leaseStatus === "active" || lease.leaseStatus === "draft") && (
+              <Button variant="outline" size="sm" onClick={openNoticeForm}>
+                <Bell className="h-4 w-4 mr-1" />
+                {lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("units.moreActions")}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuContent align="end" className="w-56">
+                {lease.leaseStatus === "draft" && (() => {
+                  const activationCheck = canActivateLease(lease.id, integrityState);
+                  return (
+                    <DropdownMenuItem onSelect={() => handleActivateLease()} disabled={!activationCheck.allowed}>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />Activate Lease
+                    </DropdownMenuItem>
+                  );
+                })()}
+                {lease.leaseStatus === "active" && (() => {
+                  const endCheck = canChangeLeaseStatus(lease.id, "ended", integrityState);
+                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  const endDisabled = !endCheck.allowed && !endCheck.overrideAllowed;
+                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
+                  return (
+                    <>
+                      <DropdownMenuItem onSelect={() => openRenewDialog()}>
+                        <Clock className="h-4 w-4 mr-2" />{t("lease.renew")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleMarkEnded()} disabled={endDisabled}>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />{t("detail.markEnded")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
+                        <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  );
+                })()}
                 <DeleteDialog
                   entityType="lease"
                   entityId={lease.id}
