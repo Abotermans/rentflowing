@@ -224,7 +224,7 @@ export default function LeaseDetail() {
       return;
     }
     if (endDateInput < lease.startDate) {
-      toast({ title: t("common.validationError"), description: "End date cannot be before start date", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("lease.endDateBeforeStart"), variant: "destructive" });
       return;
     }
     const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
@@ -236,7 +236,7 @@ export default function LeaseDetail() {
         setOverrideDialogOpen(true);
         return;
       }
-      toast({ title: "Cannot end lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      toast({ title: t("lease.cannotEnd"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
     if (overrideReason) {
