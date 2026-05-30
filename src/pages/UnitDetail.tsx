@@ -71,7 +71,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit } = useAppData();
+  const { units, properties, leases, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, confirmMoveOut } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
   const integrityState = useIntegrityState();
@@ -89,6 +89,8 @@ export default function UnitDetail() {
   const [vacateOverrideOpen, setVacateOverrideOpen] = useState(false);
   const [archiveValidation, setArchiveValidation] = useState<ValidationResult | null>(null);
   const [archiveOverrideOpen, setArchiveOverrideOpen] = useState(false);
+  const [vacateEndDialogOpen, setVacateEndDialogOpen] = useState(false);
+  const [vacateEndDate, setVacateEndDate] = useState("");
 
   const openEdit = (section: Exclude<EditSection, null>) => {
     if (!unit) return;
@@ -237,6 +239,37 @@ export default function UnitDetail() {
     if (!unit) return;
     updateUnit({ ...unit, currentStatus: "vacant" });
     toast({ title: t("units.toastUnarchived") });
+  };
+
+  const openVacateWithLeaseEnd = () => {
+    setVacateEndDate(new Date().toISOString().split("T")[0]);
+    setVacateEndDialogOpen(true);
+  };
+
+  const confirmVacateWithLeaseEnd = () => {
+    if (!unit) return;
+    const lease = getActiveLease(unit.id);
+    if (!lease) {
+      setVacateEndDialogOpen(false);
+      return;
+    }
+    const ed = vacateEndDate || new Date().toISOString().split("T")[0];
+    confirmMoveOut({
+      ...lease,
+      moveOutActualDate: ed,
+      moveOutScheduledDate: lease.moveOutScheduledDate || ed,
+      moveOutChecklist: {
+        noticeConfirmed: true,
+        moveOutDateConfirmed: true,
+        keysReturned: lease.moveOutChecklist.keysReturned,
+        moveOutMeterReadingCaptured: lease.moveOutChecklist.moveOutMeterReadingCaptured,
+        balanceReviewed: lease.moveOutChecklist.balanceReviewed,
+        guaranteeReviewCompleted: lease.moveOutChecklist.guaranteeReviewCompleted,
+      },
+      returnStatus: lease.returnStatus || "pending",
+    });
+    toast({ title: t("units.toastUpdated") });
+    setVacateEndDialogOpen(false);
   };
 
   if (!unit || !property) {
