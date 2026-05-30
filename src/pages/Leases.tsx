@@ -53,6 +53,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 };
 
 export default function Leases() {
+  const navigate = useNavigate();
   const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease, getGuaranteeByLease } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
