@@ -431,7 +431,29 @@ export default function LeaseDetail() {
               {property && <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>}
             </div>
           </div>
-          <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />Record Cash Receipt</Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />Record Cash Receipt</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("units.moreActions")}>
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DeleteDialog
+                  entityType="lease"
+                  entityId={lease.id}
+                  entityLabel={lease.leaseReference}
+                  onDelete={(lid) => { deleteLease(lid); toast({ title: "Lease deleted" }); navigate("/leases"); }}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />{t("action.delete")}
+                    </DropdownMenuItem>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -442,12 +464,6 @@ export default function LeaseDetail() {
           <StatusTransitionAlert validation={activationCheck} />
         ) : null;
       })()}
-
-      {/* Integrity Summary — delete blockers */}
-      <IntegritySummaryPanel
-        title="Lease Dependencies"
-        deleteValidation={canDeleteLease(lease.id, integrityState)}
-      />
 
       {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
