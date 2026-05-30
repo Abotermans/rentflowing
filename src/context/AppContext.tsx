@@ -228,7 +228,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...lease,
       leaseStatus: "ended" as const,
       moveOutActualDate: moveOutDate,
-      endDate: moveOutDate,
+      // Preserve an existing legal end date; only fill it from move-out if missing.
+      endDate: lease.endDate || moveOutDate,
       updatedAt: ts,
     } : x));
     setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts } : x));
