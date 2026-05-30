@@ -38,7 +38,6 @@ const LEASE_STATUS_FILTERS: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "active", label: "Active" },
   { value: "under-notice", label: "Under notice" },
-  { value: "ending-soon", label: "Ending soon" },
   { value: "overdue-end", label: "Overdue end" },
   { value: "ended", label: "Ended" },
   { value: "terminated", label: "Terminated" },

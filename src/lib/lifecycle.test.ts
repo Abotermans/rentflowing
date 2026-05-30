@@ -88,8 +88,8 @@ describe("getLeaseStatus", () => {
   it("returns overdue-end when active and endDate is in the past", () => {
     expect(getLeaseStatus(makeLease({ endDate: PAST }))).toBe("overdue-end");
   });
-  it("returns ending-soon when active and endDate within 90 days", () => {
-    expect(getLeaseStatus(makeLease({ endDate: SOON }))).toBe("ending-soon");
+  it("returns active when endDate is within 90 days (no special status)", () => {
+    expect(getLeaseStatus(makeLease({ endDate: SOON }))).toBe("active");
   });
   it("returns active when far from end and no notice", () => {
     expect(getLeaseStatus(makeLease({ endDate: FUTURE }))).toBe("active");
