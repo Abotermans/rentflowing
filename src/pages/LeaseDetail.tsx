@@ -1095,6 +1095,74 @@ export default function LeaseDetail() {
           onOverride={handleLeaseOverrideConfirm}
         />
       )}
+
+      {/* End Lease Dialog */}
+      <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("lease.endDialog.title")}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("lease.endDialog.description")}</p>
+          <div className="space-y-3 mt-3">
+            <div><Label>{t("lease.endDialog.endDate")}</Label><Input type="date" value={endDateInput} onChange={e => setEndDateInput(e.target.value)} /></div>
+            <div>
+              <Label>{t("lease.endDialog.reason")}</Label>
+              <Select value={endReasonInput} onValueChange={v => setEndReasonInput(v as LeaseEndReason)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="natural-expiry">{t("lease.endReason.naturalExpiry")}</SelectItem>
+                  <SelectItem value="mutual-non-renewal">{t("lease.endReason.mutualNonRenewal")}</SelectItem>
+                  <SelectItem value="notice-completed">{t("lease.endReason.noticeCompleted")}</SelectItem>
+                  <SelectItem value="other">{t("lease.endReason.other")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>{t("lease.endDialog.notes")}</Label><Textarea value={endNotesInput} onChange={e => setEndNotesInput(e.target.value)} rows={2} /></div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">{t("lease.endDialog.freeUnit")}</Label>
+              <Switch checked={endFreeUnit} onCheckedChange={setEndFreeUnit} />
+            </div>
+            <Button className="w-full" onClick={() => performEndLease()} disabled={!endDateInput}>{t("lease.endDialog.confirm")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Terminate Lease Dialog */}
+      <Dialog open={termDialogOpen} onOpenChange={setTermDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("lease.terminateDialog.title")}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("lease.terminateDialog.description")}</p>
+          <div className="space-y-3 mt-3">
+            <div><Label>{t("lease.terminateDialog.endDate")}</Label><Input type="date" value={termDateInput} onChange={e => setTermDateInput(e.target.value)} /></div>
+            <div>
+              <Label>{t("lease.terminateDialog.reason")}</Label>
+              <Textarea value={termReasonInput} onChange={e => setTermReasonInput(e.target.value)} rows={2} placeholder={t("lease.terminateDialog.reasonPlaceholder")} />
+            </div>
+            <div><Label>{t("lease.terminateDialog.notes")}</Label><Textarea value={termNotesInput} onChange={e => setTermNotesInput(e.target.value)} rows={2} /></div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">{t("lease.terminateDialog.freeUnit")}</Label>
+              <Switch checked={termFreeUnit} onCheckedChange={setTermFreeUnit} />
+            </div>
+            <Button className="w-full" variant="destructive" onClick={() => performTerminate()} disabled={!termDateInput || !termReasonInput.trim()}>{t("lease.terminateDialog.confirm")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Renew Lease Dialog */}
+      <Dialog open={renewDialogOpen} onOpenChange={setRenewDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("lease.renewDialog.title")}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("lease.renewDialog.description")}</p>
+          <div className="space-y-3 mt-3">
+            <div>
+              <Label>{t("lease.renewDialog.currentEndDate")}</Label>
+              <p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p>
+            </div>
+            <div><Label>{t("lease.renewDialog.newEndDate")}</Label><Input type="date" value={renewNewEndDate} onChange={e => setRenewNewEndDate(e.target.value)} min={lease.endDate} /></div>
+            <div><Label>{t("lease.renewDialog.newRent")}</Label><Input type="number" step="0.01" value={renewNewRent} onChange={e => setRenewNewRent(e.target.value)} placeholder={String(lease.monthlyRent)} /></div>
+            <div><Label>{t("lease.renewDialog.newCharges")}</Label><Input type="number" step="0.01" value={renewNewCharges} onChange={e => setRenewNewCharges(e.target.value)} placeholder={String(lease.monthlyCharges)} /></div>
+            <Button className="w-full" onClick={handleRenewLease} disabled={!renewNewEndDate}>{t("lease.renewDialog.confirm")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
