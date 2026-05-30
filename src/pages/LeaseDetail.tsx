@@ -438,9 +438,32 @@ export default function LeaseDetail() {
         <Alert>
           <Bell className="h-4 w-4" />
           <AlertDescription>
-            This lease is <strong>under notice</strong>.
-            {lease.noticeDate && <> Notice given on {formatDate(lease.noticeDate, locale)}.</>}
-            {lease.intendedMoveOutDate && <> Intended move-out: {formatDate(lease.intendedMoveOutDate, locale)}.</>}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span>
+                This lease is <strong>under notice</strong>.
+                {lease.noticeDate && <> Notice given on {formatDate(lease.noticeDate, locale)}.</>}
+                {lease.intendedMoveOutDate && <> Intended move-out: {formatDate(lease.intendedMoveOutDate, locale)}.</>}
+              </span>
+              {!lease.moveOutActualDate && (
+                <Button variant="outline" size="sm" onClick={handleCancelNotice}>{t("lease.cancelNotice")}</Button>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Overdue end banner */}
+      {lifecycle === "overdue-end" && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="font-semibold mb-1">{t("lease.overdueBanner.title")}</div>
+            <p className="text-xs mb-2">{t("lease.overdueBanner.description").replace("{date}", formatDate(lease.endDate, locale))}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={openRenewDialog}>{t("lease.overdueBanner.renew")}</Button>
+              <Button size="sm" variant="outline" onClick={openEndDialog}>{t("lease.overdueBanner.end")}</Button>
+              <Button size="sm" variant="destructive" onClick={openTermDialog}>{t("lease.overdueBanner.terminate")}</Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
