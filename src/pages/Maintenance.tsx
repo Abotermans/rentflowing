@@ -118,7 +118,7 @@ export default function Maintenance() {
         <div className="flex items-center gap-2">
           <div className="relative inline-flex">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px]" style={{ fieldSizing: 'content' }} />
+            <Input placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
           </div>
           <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("maintenance.add")}</Button>
         </div>

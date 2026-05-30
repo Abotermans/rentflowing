@@ -84,9 +84,9 @@ export default function CostCategories() {
           <p className="text-sm text-muted-foreground">{t("costs.categoriesSubtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative w-64">
+          <div className="relative inline-flex">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
           </div>
           <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />{t("costs.addCategory")}</Button>
         </div>
