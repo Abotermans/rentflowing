@@ -1,39 +1,71 @@
-# Move Charges & Taxes sub-pages into the sidebar
-
-## Current state
-- The sidebar has a single top-level entry **Charges & Taxes** (`nav.costs` → `/costs`).
-- Each costs page (`/costs/categories`, `/costs/entries`, `/costs/rules`, `/costs/allocations`) renders its own in-page tab bar `CostsNav` at the top, which eats vertical space and duplicates navigation.
-
 ## Goal
-Promote the 4 cost sub-routes into a collapsible **Charges & Taxes** group in the sidebar, and drop the in-page tab bar.
 
-## Approach
+Convert every filter dropdown on the main list pages from single-select to multi-select, and display a meaningful icon next to each option (and next to the selected count in the trigger). Reports page is out of scope.
 
-### 1. Sidebar — `src/components/layout/AppSidebar.tsx`
-Replace the single `nav.costs` row with a **collapsible group** that lists the 4 sub-items as sidebar children. Use shadcn `SidebarMenuSub` / `SidebarMenuSubItem` / `SidebarMenuSubButton` plus a `Collapsible` trigger so it expands/collapses.
+## 1. New shared component — `src/components/ui/multi-select-filter.tsx`
 
-- Parent row: icon `Coins`, label "Charges & Taxes". Clicking the chevron toggles; the parent itself is not navigable (or it routes to the first child `/costs/entries` for backwards-compat).
-- Sub-items (in order, with icons + existing translation keys):
-  - `costs.entries` → `/costs/entries` (FileText)
-  - `costs.categories` → `/costs/categories` (Tag/Layers)
-  - `costs.allocationRules` → `/costs/rules` (Settings2)
-  - `costs.allocations` → `/costs/allocations` (PieChart)
-- Auto-expand the group when the current route starts with `/costs`.
-- Collapsed-sidebar behaviour: keep the parent icon visible; opening the parent in collapsed mode shows the sub-items in a popover (default shadcn behavior).
+A Popover + Command-based multi-select built on existing shadcn primitives.
 
-### 2. Remove the in-page tab bar
-- Delete the `<CostsNav />` import + render from the 4 cost pages: `CostCategories.tsx`, `CostEntries.tsx`, `AllocationRules.tsx`, `CostsAllocations.tsx`.
-- Delete `src/components/costs/CostsNav.tsx` (no longer used).
+Props:
+- `label` (string) — used as placeholder ("Status", "Type"…)
+- `icon?` (LucideIcon) — leading icon on the trigger
+- `options: { value: string; label: string; icon?: LucideIcon }[]`
+- `values: string[]` and `onChange(values: string[])`
+- `width?` class
 
-### 3. Routing
-- Keep `App.tsx` routes unchanged. `/costs` already aliases to `CostEntries` — leave as a default landing for the group.
+Trigger behaviour:
+- Empty selection → `<Icon /> Label` (acts as "All")
+- Any selection → `<Icon /> Label · N` (just a count, per user choice)
+- Right side: chevron, plus a small `×` to clear when N > 0
+Dropdown behaviour:
+- Searchable `Command` list, each row = checkbox + option icon + label
+- Header row "Select all / Clear" toggle
+- Keeps `h-9` to match current filter row density
 
-## Files touched
-- `src/components/layout/AppSidebar.tsx` — convert Charges & Taxes to a collapsible group with 4 sub-items.
-- `src/pages/CostCategories.tsx`, `CostEntries.tsx`, `AllocationRules.tsx`, `CostsAllocations.tsx` — remove `<CostsNav />` and its import.
-- `src/components/costs/CostsNav.tsx` — delete.
+## 2. Domain icon catalog — `src/lib/filterIcons.ts`
 
-## Out of scope
-- Reordering or relabelling the cost pages themselves.
-- Translations (`costs.*` keys already exist).
-- Other sidebar groupings (Properties / Units / Tenants etc. stay flat).
+Single source of truth mapping every filter value to a Lucide icon. Pages import from here. Assigns sensible icons where none exist today.
+
+| Domain | Values → Icons |
+|---|---|
+| Property type | residential `Home`, commercial `Store`, mixed-use `Building` |
+| Property status | active `CircleCheck`, inactive `CircleSlash` |
+| Country | `Flag` (generic; per-country flag emoji stays in label) |
+| Unit type | studio `Bed`, apartment `Building2`, house `Home`, office `Briefcase`, retail `Store`, parking `Car`, storage `Package`, other `Box` |
+| Unit occupancy | vacant `DoorOpen`, occupied `UserCheck`, reserved `CalendarClock`, notice-given `Bell`, unavailable `Ban` |
+| Lease status | draft `FileEdit`, active `FileCheck`, expiring `Clock`, ended `FileX`, terminated `Ban` |
+| Tenant status | active `UserCheck`, former `UserMinus`, blacklisted `UserX`, prospect `UserPlus` |
+| Maintenance status | open `CircleDot`, in-progress `Loader`, on-hold `Pause`, resolved `CircleCheck`, closed `Archive`, cancelled `Ban` |
+| Maintenance category | plumbing `Droplet`, electrical `Zap`, hvac `Thermometer`, appliance `WashingMachine`, structural `Hammer`, cosmetic `Paintbrush`, other `Wrench` |
+| Priority | low `ArrowDown`, medium `Minus`, high `ArrowUp`, urgent `AlertTriangle` (reuse Maintenance.tsx colors) |
+| Vendor status | active `CircleCheck`, inactive `CircleSlash` |
+| Property filter (lists) | per-property `Building2` |
+| Vendor filter (Maintenance) | per-vendor `HardHat` |
+| Receivable status | open `CircleDot`, paid `CircleCheck`, partially-paid `CircleDashed`, overdue `AlertTriangle` |
+| Receivable type | rent `Home`, charges `Receipt`, deposit `PiggyBank`, guarantee `ShieldCheck`, advance-payment `Wallet`, adjustment `Pencil`, late-fee `AlertTriangle`, repair-recharge `Wrench`, credit-note `Undo2`, other `Tag` |
+| Cost nature | rental-charge `Receipt`, property-tax `Landmark`, insurance `Shield`, utility `Plug`, maintenance `Wrench`, other `Tag` |
+| Cost scope | property `Building2`, unit `Home`, common-area `Users` |
+| Cost entry status | draft `FileEdit`, posted `CheckCircle`, archived `Archive` |
+
+## 3. Page wiring
+
+For each list page below, replace each filter `Select` with the new `MultiSelectFilter`, change the corresponding state from `string` to `string[]` (default `[]` meaning "no filter"), and update the matching predicate from `=== "all"` to `values.length === 0 || values.includes(row.field)`. Remove the now-unused "All …" sentinel `SelectItem`s and `filter.all*` placeholders from the filter rows (translation keys stay in `translations.ts` since other pages use them).
+
+- `src/pages/Properties.tsx` — country, type, status
+- `src/pages/Units.tsx` — property, type, occupancy status
+- `src/pages/Leases.tsx` — status, property
+- `src/pages/Tenants.tsx` — status
+- `src/pages/Vendors.tsx` — status
+- `src/pages/Maintenance.tsx` — status, category, priority, property, vendor
+- `src/pages/Payments.tsx` — property (header filter row) + Receivables tab: status, type (Cash Receipts / Allocations tabs already have no extra dropdowns to convert)
+- `src/pages/CostEntries.tsx` — property, nature, category, status
+- `src/pages/CostCategories.tsx` — nature, scope
+
+URL/query-param edit flow (`?edit=…`) is untouched — only filter state shape changes.
+
+## 4. Out of scope
+
+- Reports page filters (per user choice — stays single-select)
+- In-form `Select` dropdowns inside CRUD Dialogs (these remain single-select — picking one property, one unit, etc.)
+- New translation keys; reuse existing `filter.*` and domain labels
+- Persisting filter state across reloads
