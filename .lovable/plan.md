@@ -1,131 +1,89 @@
-## Lease Lifecycle — Conceptual Model
+## Why the two were different
 
-Today the system has 4 raw `leaseStatus` values (`draft | active | ended | terminated`) and a `noticeGiven` flag, but the semantics, the required data, and the bidirectional sync with the unit are inconsistent. This plan formalises the lifecycle, fills the gaps, and makes the unit ↔ lease relationship symmetric.
+Today the lease has **two parallel states** that get displayed side-by-side:
 
-### Canonical lifecycle
+- `lease.leaseStatus` — a stored field with only 4 values: `draft | active | ended | terminated`.
+- `getLeaseLifecycleStatus(lease)` — a derived view that *expands* `active` into `active | under-notice | ending-soon | overdue-end` based on `noticeGiven` and `endDate`.
+
+So when notice is registered, the stored status stays `"active"` (because the lease is still legally running) while the derived view returns `"under-notice"`. The UI was rendering both, which is what made "Active + Under notice" appear at the same time.
+
+That split was deliberate originally (notice/ending-soon/overdue-end are time-derived, not user-chosen), but the user-facing surface should expose **one** status. The fix is to collapse them into one state machine, store the user-chosen state, and derive only the time-based variants — then render that single value everywhere.
+
+## Unified state machine
+
+Single type used by every UI surface:
 
 ```text
-draft ──activate──► active ──give notice──► active+notice ──move-out──► ended (natural)
-                      │                           │
-                      │                           └──cancel notice──► active
-                      ├──terminate (early/breach)──► terminated
-                      └──reach endDate─────────► overdue → user picks: end | renew | terminate
+LeaseStatus =
+  draft
+  | active           // running, no notice, end date far away
+  | ending-soon      // running, no notice, endDate within 90 days   (derived)
+  | overdue-end      // running, no notice, endDate already passed   (derived)
+  | under-notice     // running, notice registered                   (stored flag)
+  | ended            // closed normally
+  | terminated       // closed early / forced
 ```
 
-**Definitions (made explicit, currently ambiguous):**
-- **Ended** = lease reached its planned end (natural expiry, mutual non-renewal, or after a notice period). Closed in the normal way.
-- **Terminated** = early/forced closure before the planned end (breach, eviction, mutual early agreement, force majeure). Always requires a reason.
-- **Notice** = announcement that the lease will end on `intendedMoveOutDate`. Lease stays `active` until move-out is confirmed; then it auto-flows to `ended`.
+Transitions (all already exist in `AppContext`, just renamed/cleaned):
 
-### Gaps identified in current code
+```text
+draft ──activate──► active
+active ──registerNotice──► under-notice
+under-notice ──cancelNotice──► active
+active | under-notice ──(time passes)──► ending-soon → overdue-end   (auto)
+active | under-notice | ending-soon | overdue-end ──endLease──► ended
+any-active-variant ──terminateLease──► terminated
+ended | terminated ──reopen?──► (not supported, same as today)
+```
 
-1. `handleMarkEnded` / `handleMarkTerminated` mutate `leaseStatus` **without writing `endDate`** and without touching the unit status.
-2. `confirmMoveOut` correctly ends the lease and frees the unit, but **does not update `endDate`** to the actual move-out date.
-3. Unit → Lease direction is missing: `Make Vacant` on a unit does not end the active lease, does not register an end date, and does not open the move-out flow.
-4. No proactive surfacing when `endDate < today` and lease is still `active`.
-5. No `Renew` action — only end / terminate.
-6. No reason captured for `ended` (mutual non-renewal vs natural expiry).
-7. Notice cancellation is not exposed.
+Persisted on the lease:
+- `lifecycleStage: "draft" | "active" | "ended" | "terminated"` (renamed from `leaseStatus`, holds only the user-chosen stages)
+- `noticeGiven`, `noticeDate`, `intendedMoveOutDate`, `terminationReason`, `endDate`, `endReason` — unchanged
 
----
+Derived getter `getLeaseStatus(lease): LeaseStatus` (replaces both `lease.leaseStatus` and `getLeaseLifecycleStatus`):
+
+```text
+if lifecycleStage in {draft, ended, terminated} → that value
+if noticeGiven                                  → under-notice
+if endDate < today                              → overdue-end
+if endDate within 90 days                       → ending-soon
+otherwise                                       → active
+```
+
+There is **never** a case where two statuses coexist, because the function returns exactly one value with a strict priority.
 
 ## Changes
 
-### 1. Lease end actions require an end date + reason
+### Types (`src/types/index.ts`)
+- Rename stored field `Lease.leaseStatus` → `Lease.lifecycleStage` (type `"draft" | "active" | "ended" | "terminated"`).
+- Remove the public `LeaseStatus = "draft" | "active" | "ended" | "terminated"` type.
+- Rename `LeaseLifecycleStatus` → `LeaseStatus` with the 7 values above.
+- Rename `getLeaseLifecycleStatus` → `getLeaseStatus`. Same logic, reads `lifecycleStage` instead of `leaseStatus`.
 
-`LeaseDetail.tsx` — replace the silent `handleMarkEnded` / `handleMarkTerminated` with two dialogs:
+### Mock data (`src/data/mockData.ts`)
+- Search/replace `leaseStatus:` → `lifecycleStage:` in every lease seed.
 
-- **End Lease dialog**
-  - `endDate` (required, defaults to `moveOutActualDate ?? intendedMoveOutDate ?? today`)
-  - `endReason` (select: `natural-expiry | mutual-non-renewal | notice-completed | other`)
-  - `notes` (optional)
-  - On save: `leaseStatus = "ended"`, `endDate = chosen`, plus unit sync (see §4).
+### Context (`src/context/AppContext.tsx`)
+- Replace every `leaseStatus` read/write with `lifecycleStage`.
+- Mutators `endLease`, `terminateLease`, `confirmMoveOut`, `renewLease`, notice register/cancel — only ever set `lifecycleStage` to `draft | active | ended | terminated`. Notice/dates handle the rest.
 
-- **Terminate Lease dialog**
-  - `endDate` (required, defaults to today)
-  - `terminationReason` (required, free text or select: `breach | mutual-early | force-majeure | eviction | other`)
-  - `notes` (optional)
-  - On save: `leaseStatus = "terminated"`, `endDate = chosen`, unit sync.
+### Integrity (`src/lib/integrity/*.ts`)
+- `leaseIntegrity.ts`, `unitIntegrity.ts`, `tenantIntegrity.ts`, `propertyIntegrity.ts`: replace `leaseStatus` reads with `lifecycleStage`. Public `canChangeLeaseStatus(target: "ended" | "terminated", …)` keeps its signature (the targets are still the stored stages).
 
-Both dialogs run the existing integrity check (`canChangeLeaseStatus`) and feed the override flow when blocked.
+### Pages and components
+Every file in this list reads `lease.leaseStatus` or calls `getLeaseLifecycleStatus`. All switch to `getLeaseStatus(lease)` and stop reading the raw stage for display:
 
-### 2. `confirmMoveOut` writes the end date
+- `src/pages/LeaseDetail.tsx` — header badge already used the lifecycle value; just remove any remaining `leaseStatus` text. The summary card no longer needs a separate "stage" row (already removed last turn).
+- `src/pages/Leases.tsx` — list badge uses `getLeaseStatus`; filters use the unified 7-value set.
+- `src/pages/UnitDetail.tsx`, `src/pages/TenantDetail.tsx`, `src/pages/Tenants.tsx`, `src/pages/Units.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Reports.tsx`, `src/pages/Payments.tsx`, `src/lib/occupancy.ts` — replace `lease.leaseStatus === "active"` checks with `lease.lifecycleStage === "active"` (occupancy logic still needs the stored stage, not the derived label).
+- `StatusBadge` — already supports all 7 keys, no change.
 
-`AppContext.confirmMoveOut` — also set `endDate: moveOutActualDate` so the lease record stays internally consistent. Unit currently goes to `vacant` (already correct).
+### Tests
+- `src/lib/lifecycle.test.ts`, `src/lib/occupancy.test.ts` — update `leaseStatus:` → `lifecycleStage:` and `getLeaseLifecycleStatus` → `getLeaseStatus`.
 
-### 3. Overdue-end detection + suggested actions
+### i18n
+- No new keys; `status.*` keys for the 7 values already exist.
 
-`getLeaseLifecycleStatus` — add a new derived state `overdue-end` when `leaseStatus === "active" && endDate < today && !noticeGiven`. Render a prominent banner on `LeaseDetail` (and a row badge on `Leases.tsx`) offering three actions:
-- **Mark as Ended** → opens End dialog (§1)
-- **Renew Lease** → opens new Renew dialog (§5)
-- **Terminate** → opens Terminate dialog (§1)
+## Result
 
-This banner uses the existing `StatusTransitionAlert` styling pattern.
-
-### 4. Bidirectional Lease ↔ Unit sync
-
-**Lease → Unit** (when lease becomes `ended` or `terminated`):
-- If unit is `occupied` / `reserved` and no other active lease references it → set unit `currentStatus = "vacant"`, `availableFrom = endDate`.
-- If a move-out has not been recorded, prompt the user inside the End/Terminate dialog: checkbox "Also free the unit and start move-out" (default on) → opens move-out flow pre-filled with `endDate`.
-
-**Unit → Lease** (when user clicks `Make Vacant` on a unit with an active lease):
-- Today `handleMakeVacant` in `UnitDetail.tsx` only changes the unit. Update it to detect the active lease and instead open an **"End Lease + Move-Out" combined dialog**:
-  - Show the affected lease, prompt for `endDate`, `endReason`, then run `confirmMoveOut` (which now writes `endDate`, ends lease, frees unit).
-- If no active lease exists, behaviour is unchanged.
-
-Centralise the sync in a new helper `src/lib/lifecycle/leaseUnitSync.ts` with:
-- `endLeaseAndSyncUnit(lease, { endDate, reason, freeUnit })`
-- `vacateUnitAndEndLease(unit, { endDate, reason })`
-
-These call the existing context mutators so integrity checks and override flow stay intact.
-
-### 5. Renew action
-
-New dialog on `LeaseDetail`:
-- `newEndDate` (required, > current `endDate`)
-- Optional: adjust `monthlyRent`, `monthlyCharges`, `rentFormula`
-- On save: extend the same lease (update `endDate`, optionally rent fields), keep status `active`. No new lease record in this pass (avoids cascading guarantees/receivables migration).
-
-### 6. Notice cancellation
-
-Add a "Cancel Notice" button next to the existing notice banner when `noticeGiven === true && !moveOutActualDate`. Clears `noticeGiven`, `noticeDate`, `intendedMoveOutDate`, `terminationReason`.
-
-### 7. Integrity rules update
-
-`leaseIntegrity.ts`:
-- `canChangeLeaseStatus("ended" | "terminated", …)` — require `endDate` to be provided by the caller (validated in the dialog before submit, not in the rule itself; rule keeps current warning-based behaviour).
-- Add `canRenewLease(leaseId, newEndDate, s)` — blocks if lease is not `active`, warns if `noticeGiven`, blocks if `newEndDate <= currentEndDate`.
-
-`unitIntegrity.ts`:
-- `canMakeUnitVacant` — when an active lease exists, return a warning recommending the combined End+Move-Out flow (not a blocker; the new UI will route the user there).
-
-### 8. Types & translations
-
-- `src/types/index.ts` — extend `LeaseLifecycleStatus` with `"overdue-end"`; add optional `endReason: "natural-expiry" | "mutual-non-renewal" | "notice-completed" | "other" | null` on `Lease`.
-- `src/i18n/translations.ts` — new keys: `lease.endDialog.*`, `lease.terminateDialog.*`, `lease.renewDialog.*`, `lease.overdueEndBanner.*`, `lease.endReason.*`, `lease.cancelNotice`, `unit.vacantWithActiveLease.*`.
-- `StatusBadge` — add `overdue-end` style (amber, like `ending-soon` but stronger).
-
----
-
-## Out of scope (kept simple on purpose)
-
-- No renewal as a brand-new lease record (only date extension).
-- No automatic prorated invoicing on early termination — left to manual adjustments.
-- No bulk lifecycle actions on `Leases.tsx` list.
-- No backend / DB changes (project is mock-data front-end).
-- No changes to guarantees release flow (already covered by existing move-out checklist).
-
----
-
-## Files touched
-
-- `src/types/index.ts` — `LeaseLifecycleStatus`, `Lease.endReason`, helper update.
-- `src/context/AppContext.tsx` — `confirmMoveOut` writes `endDate`; new `endLease`, `terminateLease`, `renewLease`, `vacateUnitAndEndLease` actions delegating to new helper.
-- `src/lib/lifecycle/leaseUnitSync.ts` *(new)* — centralised bidirectional sync.
-- `src/lib/integrity/leaseIntegrity.ts` — add `canRenewLease`, tighten end/terminate guidance.
-- `src/lib/integrity/unitIntegrity.ts` — `canMakeUnitVacant` warning when active lease exists.
-- `src/pages/LeaseDetail.tsx` — replace plain buttons with End / Terminate / Renew / Cancel-Notice dialogs; overdue-end banner.
-- `src/pages/UnitDetail.tsx` — `Make Vacant` routes through combined End-Lease dialog when an active lease exists.
-- `src/pages/Leases.tsx` — show `overdue-end` badge + quick action in row.
-- `src/components/shared/StatusBadge.tsx` — `overdue-end` variant.
-- `src/i18n/translations.ts` — new keys (EN + FR).
+Anywhere a lease status is shown, exactly **one** badge appears, drawn from the unified 7-value `LeaseStatus`. Internally we still distinguish "user-chosen stage" (`lifecycleStage`) from "computed status" (`getLeaseStatus`), but that split is now invisible to the UI and to filters, so "Active" and "Under notice" can never appear together again.
