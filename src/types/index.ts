@@ -210,11 +210,14 @@ export function getLeaseLifecycleStatus(lease: Lease): LeaseLifecycleStatus {
   if (lease.leaseStatus === "terminated") return "terminated";
   // active lease
   if (lease.noticeGiven) return "under-notice";
-  const now = new Date();
-  const endDate = new Date(lease.endDate);
-  if (endDate < now) return "overdue-end";
-  const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-  if (endDate <= in90Days) return "ending-soon";
+  // Compare ISO date strings (YYYY-MM-DD) to avoid timezone drift
+  const today = new Date();
+  const todayISO = today.toISOString().slice(0, 10);
+  if (lease.endDate < todayISO) return "overdue-end";
+  const in90 = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  if (lease.endDate <= in90) return "ending-soon";
   return "active";
 }
 

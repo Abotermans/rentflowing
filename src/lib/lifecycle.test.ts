@@ -3,6 +3,7 @@ import { getLeaseLifecycleStatus } from "@/types";
 import type { Lease } from "@/types";
 import { DEFAULT_MOVE_IN_CHECKLIST, DEFAULT_MOVE_OUT_CHECKLIST } from "@/types";
 import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
+import { canRenewLease } from "@/lib/integrity/leaseIntegrity";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
 import type { IntegrityState } from "@/lib/integrity/types";
 
@@ -177,5 +178,38 @@ describe("canChangeUnitStatus → archived", () => {
   it("allows archiving when no leases and no balances", () => {
     const result = canChangeUnitStatus("u1", "archived", emptyState());
     expect(result.allowed).toBe(true);
+  });
+});
+
+describe("canRenewLease", () => {
+  it("blocks renewal with no new date", () => {
+    const lease = makeLease();
+    const r = canRenewLease("l1", "", emptyState({ leases: [lease] }));
+    expect(r.allowed).toBe(false);
+    expect(r.blockers.some(b => b.code === "LEASE_RENEW_NO_DATE")).toBe(true);
+  });
+  it("blocks renewal when new date is not after current end date", () => {
+    const lease = makeLease({ endDate: "2099-01-01" });
+    const r = canRenewLease("l1", "2099-01-01", emptyState({ leases: [lease] }));
+    expect(r.allowed).toBe(false);
+    expect(r.blockers.some(b => b.code === "LEASE_RENEW_DATE_NOT_AFTER")).toBe(true);
+  });
+  it("blocks renewal when lease is not active", () => {
+    const lease = makeLease({ leaseStatus: "ended" });
+    const r = canRenewLease("l1", "2100-01-01", emptyState({ leases: [lease] }));
+    expect(r.allowed).toBe(false);
+    expect(r.blockers.some(b => b.code === "LEASE_NOT_ACTIVE")).toBe(true);
+  });
+  it("warns (but allows) when notice is active", () => {
+    const lease = makeLease({ noticeGiven: true });
+    const r = canRenewLease("l1", "2100-01-01", emptyState({ leases: [lease] }));
+    expect(r.allowed).toBe(true);
+    expect(r.warnings.some(w => w.code === "LEASE_RENEW_HAS_NOTICE")).toBe(true);
+  });
+  it("allows clean renewal", () => {
+    const lease = makeLease();
+    const r = canRenewLease("l1", "2100-06-01", emptyState({ leases: [lease] }));
+    expect(r.allowed).toBe(true);
+    expect(r.warnings).toHaveLength(0);
   });
 });
