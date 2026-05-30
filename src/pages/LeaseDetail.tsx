@@ -431,7 +431,7 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />Record Cash Receipt</Button>
+            <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("units.moreActions")}>
@@ -443,7 +443,7 @@ export default function LeaseDetail() {
                   entityType="lease"
                   entityId={lease.id}
                   entityLabel={lease.leaseReference}
-                  onDelete={(lid) => { deleteLease(lid); toast({ title: "Lease deleted" }); navigate("/leases"); }}
+                  onDelete={(lid) => { deleteLease(lid); toast({ title: t("lease.toastDeleted") }); navigate("/leases"); }}
                   trigger={
                     <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
                       <Trash2 className="h-4 w-4 mr-2" />{t("action.delete")}
