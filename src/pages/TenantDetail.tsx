@@ -133,7 +133,7 @@ export default function TenantDetail() {
                   return (
                     <TableRow key={ri.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, activeProperty?.locale)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{ITEM_TYPE_LABELS[ri.itemType]}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{ri.label}</TableCell>
                       <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className="hover:underline text-foreground">{lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.outstandingAmount, ri.currencyCode, activeProperty?.locale)}</TableCell>
@@ -205,7 +205,7 @@ export default function TenantDetail() {
                       <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className="hover:underline text-foreground">{lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, cr.currencyCode, prop?.locale)}</TableCell>
                       <TableCell className="text-right text-sm">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, prop?.locale) : "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{SOURCE_TYPE_LABELS[cr.sourceType]}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference || "—"}</TableCell>
                       <TableCell><StatusBadge status={cr.status} /></TableCell>
                     </TableRow>
