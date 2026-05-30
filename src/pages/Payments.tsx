@@ -14,7 +14,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
-import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS, ALLOCATION_TYPE_LABELS } from "@/types/receivables";
+import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType, ReceivableItemType } from "@/types/receivables";
 import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -176,20 +176,20 @@ export default function Payments() {
   };
 
   const kpis = [
-    { label: "Open Receivables", value: formatCurrency(totalOpenReceivables), icon: FileText, color: "text-primary" },
-    { label: "Total Overdue", value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
-    { label: "Unmatched Receipts", value: formatCurrency(totalUnmatchedReceipts), icon: ArrowRightLeft, color: totalUnmatchedReceipts > 0 ? "text-warning" : "text-foreground" },
-    { label: "Unapplied Credit", value: formatCurrency(unappliedCreditTotal), icon: Banknote, color: unappliedCreditTotal > 0 ? "text-primary" : "text-foreground" },
+    { label: t("payments.kpi.openReceivables"), value: formatCurrency(totalOpenReceivables), icon: FileText, color: "text-primary" },
+    { label: t("payments.kpi.totalOverdue"), value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
+    { label: t("payments.kpi.unmatchedReceipts"), value: formatCurrency(totalUnmatchedReceipts), icon: ArrowRightLeft, color: totalUnmatchedReceipts > 0 ? "text-warning" : "text-foreground" },
+    { label: t("payments.kpi.unappliedCredit"), value: formatCurrency(unappliedCreditTotal), icon: Banknote, color: unappliedCreditTotal > 0 ? "text-primary" : "text-foreground" },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Receivables & Reconciliation</h1>
-          <p className="text-sm text-muted-foreground">Manage receivables, cash receipts, and allocations</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("payments.pageTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{t("payments.pageSubtitle")}</p>
         </div>
-        <Button onClick={() => setAddReceiptOpen(true)}><Plus className="h-4 w-4 mr-1" />Record Cash Receipt</Button>
+        <Button onClick={() => setAddReceiptOpen(true)}><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>
       </div>
 
       {/* KPIs */}
@@ -213,10 +213,10 @@ export default function Payments() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search tenant, lease, reference…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input placeholder={t("payments.searchAll")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
         <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Property" /></SelectTrigger>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("payments.filter.property")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("filter.allProperties")}</SelectItem>
             {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -226,54 +226,54 @@ export default function Payments() {
 
       <Tabs defaultValue="receivables">
         <TabsList>
-          <TabsTrigger value="receivables">Receivables ({filteredReceivables.length})</TabsTrigger>
-          <TabsTrigger value="receipts">Cash Receipts ({filteredReceipts.length})</TabsTrigger>
-          <TabsTrigger value="allocations">Allocations ({enrichedAllocations.length})</TabsTrigger>
+          <TabsTrigger value="receivables">{t("payments.tab.receivables")} ({filteredReceivables.length})</TabsTrigger>
+          <TabsTrigger value="receipts">{t("payments.tab.cashReceipts")} ({filteredReceipts.length})</TabsTrigger>
+          <TabsTrigger value="allocations">{t("payments.tab.allocations")} ({enrichedAllocations.length})</TabsTrigger>
         </TabsList>
 
         {/* ===== TAB 1: RECEIVABLES ===== */}
         <TabsContent value="receivables">
           <div className="flex flex-wrap gap-2 mb-3">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder={t("payments.filter.status")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="partially-paid">Partially Paid</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="all">{t("payments.filter.allStatuses")}</SelectItem>
+                <SelectItem value="open">{t("payments.filter.open")}</SelectItem>
+                <SelectItem value="paid">{t("payments.filter.paid")}</SelectItem>
+                <SelectItem value="partially-paid">{t("payments.filter.partiallyPaid")}</SelectItem>
+                <SelectItem value="overdue">{t("payments.filter.overdue")}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder={t("payments.filter.type")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {(Object.keys(ITEM_TYPE_LABELS) as ReceivableItemType[]).map(k => (
-                  <SelectItem key={k} value={k}>{ITEM_TYPE_LABELS[k]}</SelectItem>
+                <SelectItem value="all">{t("payments.filter.allTypes")}</SelectItem>
+                {(["rent","charges","deposit","guarantee","advance-payment","adjustment","late-fee","repair-recharge","credit-note","other"] as ReceivableItemType[]).map(k => (
+                  <SelectItem key={k} value={k}>{getItemTypeLabel(t, k)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Button variant={overdueOnly ? "default" : "outline"} size="sm" className="h-8 text-xs" onClick={() => setOverdueOnly(!overdueOnly)}>
-              <AlertTriangle className="h-3 w-3 mr-1" />Overdue Only
+              <AlertTriangle className="h-3 w-3 mr-1" />{t("payments.filter.overdueOnly")}
             </Button>
           </div>
           {filteredReceivables.length === 0 ? (
-            <EmptyState icon={Search} title="No receivables found" description="Adjust filters or add receivable items." />
+            <EmptyState icon={Search} title={t("payments.empty.receivables")} description={t("payments.empty.receivablesDesc")} />
           ) : (
             <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Due Date</TableHead>
-                    <TableHead className="text-xs">Tenant</TableHead>
-                    <TableHead className="text-xs">Lease</TableHead>
-                    <TableHead className="text-xs">Property</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Label</TableHead>
-                    <TableHead className="text-xs text-right">Expected</TableHead>
-                    <TableHead className="text-xs text-right">Allocated</TableHead>
-                    <TableHead className="text-xs text-right">Outstanding</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.dueDate")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.tenant")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.lease")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.property")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.type")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.label")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("payments.table.expected")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("payments.table.allocated")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("payments.table.outstanding")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -283,7 +283,7 @@ export default function Payments() {
                       <TableCell className="text-sm">{ri.tenant ? <Link to={`/tenants/${ri.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(ri.tenant)}</Link> : "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className="hover:underline text-foreground">{ri.lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{ri.prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{ITEM_TYPE_LABELS[ri.itemType]}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{ri.label}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
@@ -301,35 +301,35 @@ export default function Payments() {
         <TabsContent value="receipts">
           <div className="flex flex-wrap gap-2 mb-3">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder={t("payments.filter.status")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="matched">Matched</SelectItem>
-                <SelectItem value="partially-matched">Partially Matched</SelectItem>
-                <SelectItem value="unmatched">Unmatched</SelectItem>
-                <SelectItem value="exception">Exception</SelectItem>
+                <SelectItem value="all">{t("payments.filter.allStatuses")}</SelectItem>
+                <SelectItem value="matched">{t("payments.filter.matched")}</SelectItem>
+                <SelectItem value="partially-matched">{t("payments.filter.partiallyMatched")}</SelectItem>
+                <SelectItem value="unmatched">{t("payments.filter.unmatched")}</SelectItem>
+                <SelectItem value="exception">{t("payments.filter.exception")}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant={unmatchedOnly ? "default" : "outline"} size="sm" className="h-8 text-xs" onClick={() => setUnmatchedOnly(!unmatchedOnly)}>
-              <ArrowRightLeft className="h-3 w-3 mr-1" />Unmatched Only
+              <ArrowRightLeft className="h-3 w-3 mr-1" />{t("payments.filter.unmatchedOnly")}
             </Button>
           </div>
           {filteredReceipts.length === 0 ? (
-            <EmptyState icon={Banknote} title="No cash receipts found" description="Record a cash receipt to get started." />
+            <EmptyState icon={Banknote} title={t("payments.empty.cashReceipts")} description={t("payments.empty.cashReceiptsDesc")} />
           ) : (
             <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">Payer</TableHead>
-                    <TableHead className="text-xs">Tenant</TableHead>
-                    <TableHead className="text-xs">Lease</TableHead>
-                    <TableHead className="text-xs text-right">Received</TableHead>
-                    <TableHead className="text-xs text-right">Unmatched</TableHead>
-                    <TableHead className="text-xs">Source</TableHead>
-                    <TableHead className="text-xs">Reference</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.payer")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.tenant")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.lease")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("payments.table.received")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("payments.table.unmatched")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.source")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.reference")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
                     <TableHead className="text-xs"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -342,13 +342,13 @@ export default function Payments() {
                       <TableCell className="font-mono text-xs">{cr.lease ? <Link to={`/leases/${cr.lease.id}`} className="hover:underline text-foreground">{cr.lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, cr.currencyCode, cr.prop?.locale)}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, cr.prop?.locale) : "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{SOURCE_TYPE_LABELS[cr.sourceType]}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference ?? "—"}</TableCell>
                       <TableCell><StatusBadge status={cr.status} /></TableCell>
                       <TableCell>
                         {cr.unmatchedAmount > 0 && (
                           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setAllocateReceiptId(cr.id); setAllocAmounts({}); }}>
-                            Allocate
+                            {t("payments.action.allocate")}
                           </Button>
                         )}
                       </TableCell>
@@ -363,19 +363,19 @@ export default function Payments() {
         {/* ===== TAB 3: ALLOCATIONS ===== */}
         <TabsContent value="allocations">
           {enrichedAllocations.length === 0 ? (
-            <EmptyState icon={ArrowRightLeft} title="No allocations" description="Allocations are created when cash receipts are matched to receivables." />
+            <EmptyState icon={ArrowRightLeft} title={t("payments.empty.allocations")} description={t("payments.empty.allocationsDesc")} />
           ) : (
             <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">Receipt Ref</TableHead>
-                    <TableHead className="text-xs">Receivable</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Tenant</TableHead>
-                    <TableHead className="text-xs text-right">Amount</TableHead>
-                    <TableHead className="text-xs">Method</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.receiptRef")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.receivable")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.type")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.tenant")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("payments.table.amount")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.method")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -403,10 +403,10 @@ export default function Payments() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{al.ri ? ITEM_TYPE_LABELS[al.ri.itemType] : "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{al.ri ? getItemTypeLabel(t, al.ri.itemType) : "—"}</TableCell>
                       <TableCell className="text-sm">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(al.allocatedAmount)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{ALLOCATION_TYPE_LABELS[al.allocationType]}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{getAllocationTypeLabel(t, al.allocationType)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -419,33 +419,33 @@ export default function Payments() {
       {/* ===== ADD CASH RECEIPT SHEET ===== */}
       <Dialog open={addReceiptOpen} onOpenChange={setAddReceiptOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Record Cash Receipt</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("payments.dialog.recordTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
-              <Label>Source Type</Label>
+              <Label>{t("payments.dialog.sourceType")}</Label>
               <Select value={formSourceType} onValueChange={v => setFormSourceType(v as CashReceiptSourceType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(SOURCE_TYPE_LABELS) as CashReceiptSourceType[]).map(k => (
-                    <SelectItem key={k} value={k}>{SOURCE_TYPE_LABELS[k]}</SelectItem>
+                  {(["bank-transfer","instant-transfer","direct-debit","card","cash","cheque","manual"] as CashReceiptSourceType[]).map(k => (
+                    <SelectItem key={k} value={k}>{getSourceTypeLabel(t, k)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Payment Date</Label>
+              <Label>{t("payments.dialog.paymentDate")}</Label>
               <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
             </div>
             <div>
-              <Label>Amount Received ({selectedProp?.currencyCode ?? "EUR"})</Label>
+              <Label>{t("payments.dialog.amountReceived")} ({selectedProp?.currencyCode ?? "EUR"})</Label>
               <Input type="number" step="0.01" min="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" />
             </div>
             <div>
-              <Label>Tenant (optional)</Label>
+              <Label>{t("payments.dialog.tenantOptional")}</Label>
               <Select value={formTenantId || "__none__"} onValueChange={v => setFormTenantId(v === "__none__" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Select tenant…" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("payments.dialog.selectTenant")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">— None —</SelectItem>
+                  <SelectItem value="__none__">{t("payments.dialog.none")}</SelectItem>
                   {tenants.filter(tn => tn.status === "active").map(tn => (
                     <SelectItem key={tn.id} value={tn.id}>{getTenantFullName(tn)}</SelectItem>
                   ))}
@@ -453,11 +453,11 @@ export default function Payments() {
               </Select>
             </div>
             <div>
-              <Label>Lease (optional)</Label>
+              <Label>{t("payments.dialog.leaseOptional")}</Label>
               <Select value={formLeaseId || "__none__"} onValueChange={v => setFormLeaseId(v === "__none__" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Select lease…" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("payments.dialog.selectLease")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">— None —</SelectItem>
+                  <SelectItem value="__none__">{t("payments.dialog.none")}</SelectItem>
                   {leases.filter(l => l.lifecycleStage === "active").map(l => {
                     const tn = tenants.find(x => x.id === l.primaryTenantId);
                     return <SelectItem key={l.id} value={l.id}>{l.leaseReference} — {tn ? getTenantFullName(tn) : ""}</SelectItem>;
@@ -466,30 +466,30 @@ export default function Payments() {
               </Select>
             </div>
             <div>
-              <Label>Reference</Label>
-              <Input value={formReference} onChange={e => setFormReference(e.target.value)} placeholder="Payment reference" />
+              <Label>{t("payments.dialog.reference")}</Label>
+              <Input value={formReference} onChange={e => setFormReference(e.target.value)} placeholder={t("payments.dialog.referencePh")} />
             </div>
             <div>
-              <Label>Payer Name</Label>
+              <Label>{t("payments.dialog.payerName")}</Label>
               <Input value={formPayerName} onChange={e => setFormPayerName(e.target.value)} />
             </div>
             <div>
-              <Label>Payer IBAN</Label>
-              <Input value={formPayerIban} onChange={e => setFormPayerIban(e.target.value)} placeholder="e.g. FR76 3000 …" />
+              <Label>{t("payments.dialog.payerIban")}</Label>
+              <Input value={formPayerIban} onChange={e => setFormPayerIban(e.target.value)} placeholder={t("payments.dialog.ibanPh")} />
             </div>
             <div>
-              <Label>Remittance Information</Label>
+              <Label>{t("payments.dialog.remittance")}</Label>
               <Input value={formRemittance} onChange={e => setFormRemittance(e.target.value)} />
             </div>
             <div>
-              <Label>Notes</Label>
+              <Label>{t("payments.dialog.notes")}</Label>
               <Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2} />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Auto-allocate</Label>
+              <Label>{t("payments.dialog.autoAllocate")}</Label>
               <Switch checked={formAutoAllocate} onCheckedChange={setFormAutoAllocate} />
             </div>
-            <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">Record Cash Receipt</Button>
+            <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">{t("payments.recordCashReceipt")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -497,26 +497,26 @@ export default function Payments() {
       {/* ===== MANUAL ALLOCATION SHEET ===== */}
       <Dialog open={!!allocateReceiptId} onOpenChange={v => { if (!v) { setAllocateReceiptId(null); setAllocAmounts({}); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Manual Allocation</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("payments.dialog.manualTitle")}</DialogTitle></DialogHeader>
           {allocReceipt && (
             <div className="space-y-4 mt-4">
               <div className="p-3 bg-muted rounded-md space-y-1">
-                <p className="text-xs text-muted-foreground">Receipt: <span className="font-mono font-medium text-foreground">{allocReceipt.reference ?? allocReceipt.id}</span></p>
-                <p className="text-xs text-muted-foreground">Amount: <span className="font-medium text-foreground">{formatCurrency(allocReceipt.amountReceived, allocReceipt.currencyCode)}</span></p>
-                <p className="text-xs text-muted-foreground">Unmatched: <span className="font-bold text-warning">{formatCurrency(allocReceipt.unmatchedAmount, allocReceipt.currencyCode)}</span></p>
+                <p className="text-xs text-muted-foreground">{t("payments.dialog.receipt")}: <span className="font-mono font-medium text-foreground">{allocReceipt.reference ?? allocReceipt.id}</span></p>
+                <p className="text-xs text-muted-foreground">{t("payments.dialog.amount")}: <span className="font-medium text-foreground">{formatCurrency(allocReceipt.amountReceived, allocReceipt.currencyCode)}</span></p>
+                <p className="text-xs text-muted-foreground">{t("payments.dialog.unmatched")}: <span className="font-bold text-warning">{formatCurrency(allocReceipt.unmatchedAmount, allocReceipt.currencyCode)}</span></p>
               </div>
 
               {allocOpenItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No open receivable items found for this tenant/lease.</p>
+                <p className="text-sm text-muted-foreground">{t("payments.dialog.noOpenItems")}</p>
               ) : (
                 <>
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase">Open Receivable Items</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">{t("payments.dialog.openItems")}</p>
                     {allocOpenItems.map(ri => (
                       <div key={ri.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-foreground truncate">{ri.label}</p>
-                          <p className="text-xs text-muted-foreground">{ITEM_TYPE_LABELS[ri.itemType]} · Due {formatDate(ri.dueDate)} · Outstanding {formatCurrency(ri.outstandingAmount, ri.currencyCode)}</p>
+                          <p className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)} · {t("payments.dialog.dueShort")} {formatDate(ri.dueDate)} · {t("payments.dialog.outstandingShort")} {formatCurrency(ri.outstandingAmount, ri.currencyCode)}</p>
                         </div>
                         <Input
                           type="number" step="0.01" min="0"
@@ -537,14 +537,14 @@ export default function Payments() {
                     return (
                       <div className="p-3 bg-muted/50 rounded-md space-y-1 border">
                         <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Total allocating</span>
+                          <span className="text-muted-foreground">{t("payments.dialog.totalAllocating")}</span>
                           <span className="font-medium text-foreground">{formatCurrency(totalAllocating, allocReceipt.currencyCode)}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Remaining unmatched</span>
+                          <span className="text-muted-foreground">{t("payments.dialog.remainingUnmatched")}</span>
                           <span className={`font-medium ${remaining < 0 ? "text-destructive" : "text-foreground"}`}>{formatCurrency(remaining, allocReceipt.currencyCode)}</span>
                         </div>
-                        {remaining < 0 && <p className="text-xs text-destructive">Total exceeds available unmatched amount.</p>}
+                        {remaining < 0 && <p className="text-xs text-destructive">{t("payments.dialog.exceedsUnmatched")}</p>}
                       </div>
                     );
                   })()}
@@ -552,8 +552,8 @@ export default function Payments() {
               )}
 
               <div className="flex gap-2">
-                <Button onClick={handleManualAllocate} disabled={allocOpenItems.length === 0 || Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0) <= 0 || Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0) > allocReceipt.unmatchedAmount} className="flex-1">Apply Manual Allocation</Button>
-                <Button variant="outline" onClick={() => { autoAllocateCashReceipt(allocateReceiptId!); setAllocateReceiptId(null); setAllocAmounts({}); }} disabled={allocOpenItems.length === 0}>Auto-Allocate</Button>
+                <Button onClick={handleManualAllocate} disabled={allocOpenItems.length === 0 || Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0) <= 0 || Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0) > allocReceipt.unmatchedAmount} className="flex-1">{t("payments.dialog.applyManual")}</Button>
+                <Button variant="outline" onClick={() => { autoAllocateCashReceipt(allocateReceiptId!); setAllocateReceiptId(null); setAllocAmounts({}); }} disabled={allocOpenItems.length === 0}>{t("payments.dialog.autoAllocateBtn")}</Button>
               </div>
             </div>
           )}
