@@ -1139,7 +1139,7 @@ export default function LeaseDetail() {
           open={overrideDialogOpen}
           onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) { setPendingOverrideValidation(null); setPendingOverrideAction(""); } }}
           validation={pendingOverrideValidation}
-          actionLabel={`Override and ${pendingOverrideAction === "ended" ? "End Lease" : "Terminate Lease"}`}
+          actionLabel={pendingOverrideAction === "ended" ? t("lease.overrideAndEnd") : t("lease.overrideAndTerminate")}
           onOverride={handleLeaseOverrideConfirm}
         />
       )}
