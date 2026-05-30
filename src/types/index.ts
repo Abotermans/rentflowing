@@ -83,6 +83,16 @@ export type AdvanceStatus = 'not-applicable' | 'scheduled' | 'active' | 'fully-c
  */
 export type RentFormula = number;
 
+/**
+ * Why a lease ended naturally (status === "ended").
+ * For terminated leases, see Lease.terminationReason (free text).
+ */
+export type LeaseEndReason =
+  | "natural-expiry"
+  | "mutual-non-renewal"
+  | "notice-completed"
+  | "other";
+
 // Checklist types
 export interface MoveInChecklist {
   leaseSigned: boolean;
@@ -175,6 +185,9 @@ export interface Lease {
   // Rent formula
   rentFormula: RentFormula;
 
+  // End-of-lease metadata (set when lease is marked ended or terminated)
+  endReason?: LeaseEndReason | null;
+
   // Advance payment
   hasAdvancePayment: boolean;
   advancePaymentAmount: number | null;
@@ -189,7 +202,7 @@ export interface Lease {
   updatedAt: string;
 }
 
-export type LeaseLifecycleStatus = "draft" | "active" | "under-notice" | "ending-soon" | "ended" | "terminated";
+export type LeaseLifecycleStatus = "draft" | "active" | "under-notice" | "ending-soon" | "overdue-end" | "ended" | "terminated";
 
 export function getLeaseLifecycleStatus(lease: Lease): LeaseLifecycleStatus {
   if (lease.leaseStatus === "draft") return "draft";
@@ -199,6 +212,7 @@ export function getLeaseLifecycleStatus(lease: Lease): LeaseLifecycleStatus {
   if (lease.noticeGiven) return "under-notice";
   const now = new Date();
   const endDate = new Date(lease.endDate);
+  if (endDate < now) return "overdue-end";
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
   if (endDate <= in90Days) return "ending-soon";
   return "active";
