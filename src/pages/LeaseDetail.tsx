@@ -23,7 +23,7 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canChangeLeaseStatus, canActivateLease, canDeleteLease } from "@/lib/integrity/leaseIntegrity";
+import { canChangeLeaseStatus, canActivateLease, canDeleteLease, canRenewLease } from "@/lib/integrity/leaseIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -217,6 +217,14 @@ export default function LeaseDetail() {
   };
 
   const performEndLease = (overrideReason?: string) => {
+    if (!endDateInput) {
+      toast({ title: t("common.validationError"), description: t("lease.endDialog.endDate"), variant: "destructive" });
+      return;
+    }
+    if (endDateInput < lease.startDate) {
+      toast({ title: t("common.validationError"), description: "End date cannot be before start date", variant: "destructive" });
+      return;
+    }
     const validation = canChangeLeaseStatus(lease.id, "ended", integrityState);
     if (!validation.allowed && !overrideReason) {
       if (validation.overrideAllowed) {
@@ -240,7 +248,7 @@ export default function LeaseDetail() {
     const updatedLease = {
       ...lease,
       leaseStatus: "ended" as const,
-      endDate: endDateInput || lease.endDate,
+      endDate: endDateInput,
       endReason: endReasonInput,
       notes: endNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[End] ${endNotesInput}` : lease.notes,
     };
@@ -267,6 +275,14 @@ export default function LeaseDetail() {
       toast({ title: t("common.validationError"), description: t("lease.terminateDialog.reason"), variant: "destructive" });
       return;
     }
+    if (!termDateInput) {
+      toast({ title: t("common.validationError"), description: t("lease.terminateDialog.endDate"), variant: "destructive" });
+      return;
+    }
+    if (termDateInput < lease.startDate) {
+      toast({ title: t("common.validationError"), description: "End date cannot be before start date", variant: "destructive" });
+      return;
+    }
     const validation = canChangeLeaseStatus(lease.id, "terminated", integrityState);
     if (!validation.allowed && !overrideReason) {
       if (validation.overrideAllowed) {
@@ -290,12 +306,12 @@ export default function LeaseDetail() {
     updateLease({
       ...lease,
       leaseStatus: "terminated",
-      endDate: termDateInput || today,
+      endDate: termDateInput,
       terminationReason: termReasonInput,
       notes: termNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[Terminate] ${termNotesInput}` : lease.notes,
     });
     if (termFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
-      updateUnit({ ...unit, currentStatus: "vacant", availableFrom: termDateInput || today });
+      updateUnit({ ...unit, currentStatus: "vacant", availableFrom: termDateInput });
     }
     toast({ title: t("lease.toastTerminated") });
     setTermDialogOpen(false);
@@ -311,15 +327,28 @@ export default function LeaseDetail() {
   };
 
   const handleRenewLease = () => {
-    if (!renewNewEndDate || renewNewEndDate <= lease.endDate) {
-      toast({ title: t("common.validationError"), description: t("lease.renewDialog.errorInvalidDate"), variant: "destructive" });
+    const validation = canRenewLease(lease.id, renewNewEndDate, integrityState);
+    if (!validation.allowed) {
+      toast({ title: t("common.validationError"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
-    const patch: typeof lease = { ...lease, endDate: renewNewEndDate };
+    const patch: typeof lease = {
+      ...lease,
+      endDate: renewNewEndDate,
+      // Renewal supersedes any pending notice
+      noticeGiven: false,
+      noticeDate: null,
+      intendedMoveOutDate: null,
+      terminationReason: null,
+    };
     if (renewNewRent) patch.monthlyRent = parseFloat(renewNewRent);
     if (renewNewCharges) patch.monthlyCharges = parseFloat(renewNewCharges);
     updateLease(patch);
-    toast({ title: t("lease.toastRenewed") });
+    if (validation.warnings.length > 0) {
+      toast({ title: t("lease.toastRenewed"), description: validation.warnings.map(w => w.message).join(". ") });
+    } else {
+      toast({ title: t("lease.toastRenewed") });
+    }
     setRenewDialogOpen(false);
   };
 
