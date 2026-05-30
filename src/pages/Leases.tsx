@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { Lease, LeaseStatus, RentFormula, getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LifecycleStage, RentFormula, getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -27,7 +27,7 @@ import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency } from "@/lib/formatters";
 
-const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
+const LEASE_STATUSES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "active", label: "Active" },
   { value: "ended", label: "Ended" },
@@ -36,7 +36,7 @@ const LEASE_STATUSES: { value: LeaseStatus; label: string }[] = [
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 
-const ALLOWED_TRANSITIONS: Record<LeaseStatus, LeaseStatus[]> = {
+const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
   draft: ["draft", "active"],
   active: ["active", "ended", "terminated"],
   ended: ["ended"],
@@ -61,7 +61,7 @@ export default function Leases() {
 
   const emptyForm: LeaseFormData = {
     leaseReference: "", propertyId: properties[0]?.id ?? "", unitId: "", primaryTenantId: "",
-    coTenantIds: [], leaseStatus: "draft", startDate: "", endDate: "",
+    coTenantIds: [], lifecycleStage: "draft", startDate: "", endDate: "",
     monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
     signedDate: null, notes: "", rentFormula: 1,
@@ -87,13 +87,13 @@ export default function Leases() {
 
   // Status transition validation for the form
   const statusValidation = useMemo(() => {
-    if (!editingLease || form.leaseStatus === editingLease.leaseStatus) return null;
-    return canChangeLeaseStatus(editingLease.id, form.leaseStatus, integrityState);
-  }, [editingLease, form.leaseStatus, integrityState]);
+    if (!editingLease || form.lifecycleStage === editingLease.lifecycleStage) return null;
+    return canChangeLeaseStatus(editingLease.id, form.lifecycleStage, integrityState);
+  }, [editingLease, form.lifecycleStage, integrityState]);
 
   const availableStatuses = useMemo(() => {
     if (!editingLease) return LEASE_STATUSES; // new lease: all statuses
-    const allowed = ALLOWED_TRANSITIONS[editingLease.leaseStatus] || [editingLease.leaseStatus];
+    const allowed = ALLOWED_TRANSITIONS[editingLease.lifecycleStage] || [editingLease.lifecycleStage];
     return LEASE_STATUSES.filter(s => allowed.includes(s.value));
   }, [editingLease]);
 
@@ -120,8 +120,8 @@ export default function Leases() {
       return;
     }
     // Validate status transition
-    if (editingLease && form.leaseStatus !== editingLease.leaseStatus) {
-      const validation = canChangeLeaseStatus(editingLease.id, form.leaseStatus, integrityState);
+    if (editingLease && form.lifecycleStage !== editingLease.lifecycleStage) {
+      const validation = canChangeLeaseStatus(editingLease.id, form.lifecycleStage, integrityState);
       if (!validation.allowed) {
         if (validation.overrideAllowed) {
           setPendingOverrideValidation(validation);
@@ -136,7 +136,7 @@ export default function Leases() {
         toast({ title: "Lease saved with warnings", description: validation.warnings.map(w => w.message).join(". ") });
       }
     }
-    if (form.leaseStatus === "active") {
+    if (form.lifecycleStage === "active") {
       const existing = getActiveLease(form.unitId);
       if (existing && existing.id !== editingLease?.id) {
         toast({ title: "Conflict", description: `Unit already has an active lease: ${existing.leaseReference}`, variant: "destructive" });
@@ -151,7 +151,7 @@ export default function Leases() {
     addOverride({
       entityType: "lease",
       entityId: editingLease.id,
-      action: `status_change:${form.leaseStatus}`,
+      action: `status_change:${form.lifecycleStage}`,
       blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
       reason,
     });
@@ -176,9 +176,9 @@ export default function Leases() {
     const matchSearch = !q || l.leaseReference.toLowerCase().includes(q) ||
       (tenant ? getTenantFullName(tenant).toLowerCase().includes(q) : false) ||
       (prop?.name.toLowerCase().includes(q) ?? false);
-    const matchStatus = filterStatus === "all" || l.leaseStatus === filterStatus;
+    const matchStatus = filterStatus === "all" || l.lifecycleStage === filterStatus;
     const matchProperty = filterProperty === "all" || l.propertyId === filterProperty;
-    const matchEnding = !filterEndingSoon || (l.leaseStatus === "active" && new Date(l.endDate) <= in90Days);
+    const matchEnding = !filterEndingSoon || (l.lifecycleStage === "active" && new Date(l.endDate) <= in90Days);
     const matchNotice = !filterUnderNotice || l.noticeGiven;
     return matchSearch && matchStatus && matchProperty && matchEnding && matchNotice;
   });
@@ -260,7 +260,7 @@ export default function Leases() {
                 const prop = properties.find(p => p.id === l.propertyId);
                 const unit = units.find(u => u.id === l.unitId);
                 const guarantee = getGuaranteeByLease(l.id);
-                const lifecycle = getLeaseLifecycleStatus(l);
+                const lifecycle = getLeaseStatus(l);
                 return (
                   <TableRow key={l.id}>
                     <TableCell className="font-mono text-xs font-medium">
@@ -288,7 +288,7 @@ export default function Leases() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 flex-wrap">
-                        <StatusBadge status={l.leaseStatus} />
+                        <StatusBadge status={l.lifecycleStage} />
                         {getMoveInStatus(l) === "scheduled" && <StatusBadge status="scheduled" />}
                         {getMoveOutStatus(l) === "scheduled" && !l.moveOutActualDate && <StatusBadge status="scheduled" />}
                         {l.returnStatus && l.returnStatus !== "completed" && <StatusBadge status={l.returnStatus} />}
@@ -375,7 +375,7 @@ export default function Leases() {
                 </Select>
               </div>
             <div><Label>{t("leases.status")} *</Label>
-                <Select value={form.leaseStatus} onValueChange={v => setForm(f => ({ ...f, leaseStatus: v as LeaseStatus }))}>
+                <Select value={form.lifecycleStage} onValueChange={v => setForm(f => ({ ...f, lifecycleStage: v as LifecycleStage }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{availableStatuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>

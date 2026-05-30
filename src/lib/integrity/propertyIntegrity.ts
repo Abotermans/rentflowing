@@ -34,7 +34,7 @@ export function canArchiveProperty(propertyId: string, s: IntegrityState): Valid
   const activeUnits = s.units.filter(u => u.propertyId === propertyId && u.currentStatus !== "unavailable");
   if (activeUnits.length > 0) warnings.push({ code: "PROP_ACTIVE_UNITS", message: `${activeUnits.length} active unit(s) will become inaccessible`, severity: "medium" });
 
-  const activeLeases = s.leases.filter(l => l.propertyId === propertyId && l.leaseStatus === "active");
+  const activeLeases = s.leases.filter(l => l.propertyId === propertyId && l.lifecycleStage === "active");
   if (activeLeases.length > 0) warnings.push({ code: "PROP_ACTIVE_LEASES", message: `${activeLeases.length} active lease(s) exist on this property`, severity: "high" });
 
   const openReceivables = s.receivableItems.filter(r => r.propertyId === propertyId && r.outstandingAmount > 0);

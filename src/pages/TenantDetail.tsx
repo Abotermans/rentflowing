@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Shield, Bell, Banknote } from "lucide-react";
-import { getTenantFullName, getLeaseLifecycleStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -30,7 +30,7 @@ export default function TenantDetail() {
   }
 
   const tenantLeases = leases.filter(l => l.primaryTenantId === tenant.id || l.coTenantIds.includes(tenant.id));
-  const activeLease = tenantLeases.find(l => l.leaseStatus === "active");
+  const activeLease = tenantLeases.find(l => l.lifecycleStage === "active");
   const activeUnit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
   const activeProperty = activeLease ? properties.find(p => p.id === activeLease.propertyId) : null;
   const { outstanding, overdue } = getTenantOutstanding(tenant.id);
@@ -38,7 +38,7 @@ export default function TenantDetail() {
   const recentReceipts = getCashReceiptsByTenant(tenant.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
   const openReceivables = getReceivableItemsByTenant(tenant.id).filter(ri => ri.outstandingAmount > 0).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const activeGuarantee = activeLease ? getGuaranteeByLease(activeLease.id) : undefined;
-  const activeLifecycle = activeLease ? getLeaseLifecycleStatus(activeLease) : undefined;
+  const activeLifecycle = activeLease ? getLeaseStatus(activeLease) : undefined;
   const today = new Date().toISOString().split("T")[0];
 
   return (
@@ -244,7 +244,7 @@ export default function TenantDetail() {
                       <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{unit?.unitCode ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)} — {formatDate(l.endDate, prop?.locale)}</TableCell>
-                      <TableCell><StatusBadge status={l.leaseStatus} /></TableCell>
+                      <TableCell><StatusBadge status={l.lifecycleStage} /></TableCell>
                     </TableRow>
                   );
                 })}

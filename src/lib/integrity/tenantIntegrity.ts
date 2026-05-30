@@ -34,7 +34,7 @@ export function canChangeTenantStatus(tenantId: string, targetStatus: TenantStat
   const warnings: IntegrityWarning[] = [];
 
   if (targetStatus === "former") {
-    const activeLeases = s.leases.filter(l => (l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId)) && l.leaseStatus === "active");
+    const activeLeases = s.leases.filter(l => (l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId)) && l.lifecycleStage === "active");
     if (activeLeases.length > 0) {
       blockers.push({ code: "TENANT_ACTIVE_LEASES", message: `Tenant has ${activeLeases.length} active lease(s) — end them first`, count: activeLeases.length });
     }

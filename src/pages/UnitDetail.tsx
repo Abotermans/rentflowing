@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
-import { getTenantFullName, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
+import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -284,7 +284,7 @@ export default function UnitDetail() {
   const activeLease = getActiveLease(unit.id);
   const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases);
   const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
-  const lifecycle = activeLease ? getLeaseLifecycleStatus(activeLease) : null;
+  const lifecycle = activeLease ? getLeaseStatus(activeLease) : null;
   const moveIn = activeLease ? getMoveInStatus(activeLease) : null;
   const moveOut = activeLease ? getMoveOutStatus(activeLease) : null;
 

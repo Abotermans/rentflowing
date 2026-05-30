@@ -439,7 +439,7 @@ export default function Payments() {
                 <SelectTrigger><SelectValue placeholder="Select lease…" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— None —</SelectItem>
-                  {leases.filter(l => l.leaseStatus === "active").map(l => {
+                  {leases.filter(l => l.lifecycleStage === "active").map(l => {
                     const tn = tenants.find(x => x.id === l.primaryTenantId);
                     return <SelectItem key={l.id} value={l.id}>{l.leaseReference} — {tn ? getTenantFullName(tn) : ""}</SelectItem>;
                   })}

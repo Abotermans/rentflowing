@@ -19,7 +19,7 @@ import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckC
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
-import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
+import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
 import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS, ALLOCATION_TYPE_LABELS } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
@@ -125,7 +125,7 @@ export default function LeaseDetail() {
   const property = properties.find(p => p.id === lease.propertyId);
   const locale = property?.locale ?? "fr-FR";
   const currency = property?.currencyCode ?? "EUR";
-  const lifecycle = getLeaseLifecycleStatus(lease);
+  const lifecycle = getLeaseStatus(lease);
   const guarantee = getGuaranteeByLease(lease.id);
   const moveInStatus = getMoveInStatus(lease);
   const moveOutStatus = getMoveOutStatus(lease);
@@ -202,7 +202,7 @@ export default function LeaseDetail() {
       toast({ title: "Cannot activate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
-    updateLease({ ...lease, leaseStatus: "active" });
+    updateLease({ ...lease, lifecycleStage: "active" });
     if (validation.warnings.length > 0) {
       toast({ title: "Lease activated with warnings", description: validation.warnings.map(w => w.message).join(". ") });
     } else {
@@ -249,7 +249,7 @@ export default function LeaseDetail() {
     }
     const updatedLease = {
       ...lease,
-      leaseStatus: "ended" as const,
+      lifecycleStage: "ended" as const,
       endDate: endDateInput,
       endReason: endReasonInput,
       notes: endNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[End] ${endNotesInput}` : lease.notes,
@@ -307,7 +307,7 @@ export default function LeaseDetail() {
     }
     updateLease({
       ...lease,
-      leaseStatus: "terminated",
+      lifecycleStage: "terminated",
       endDate: termDateInput,
       terminationReason: termReasonInput,
       notes: termNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[Terminate] ${termNotesInput}` : lease.notes,
@@ -419,8 +419,8 @@ export default function LeaseDetail() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{lease.leaseReference}</h1>
-              <StatusBadge status={lease.leaseStatus} />
-              {lifecycle !== lease.leaseStatus && <StatusBadge status={lifecycle} />}
+              <StatusBadge status={lease.lifecycleStage} />
+              {lifecycle !== lease.lifecycleStage && <StatusBadge status={lifecycle} />}
             </div>
             <div className="flex gap-2 mt-1 text-sm text-muted-foreground">
               {tenant && <Link to={`/tenants/${tenant.id}`} className="hover:underline text-primary">{getTenantFullName(tenant)}</Link>}
@@ -432,7 +432,7 @@ export default function LeaseDetail() {
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
-            {(lease.leaseStatus === "active" || lease.leaseStatus === "draft") && (
+            {(lease.lifecycleStage === "active" || lease.lifecycleStage === "draft") && (
               <Button variant="outline" size="sm" onClick={openNoticeForm}>
                 <Bell className="h-4 w-4 mr-1" />
                 {lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}
@@ -445,7 +445,7 @@ export default function LeaseDetail() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {lease.leaseStatus === "draft" && (() => {
+                {lease.lifecycleStage === "draft" && (() => {
                   const activationCheck = canActivateLease(lease.id, integrityState);
                   return (
                     <DropdownMenuItem onSelect={() => handleActivateLease()} disabled={!activationCheck.allowed}>
@@ -453,7 +453,7 @@ export default function LeaseDetail() {
                     </DropdownMenuItem>
                   );
                 })()}
-                {lease.leaseStatus === "active" && (() => {
+                {lease.lifecycleStage === "active" && (() => {
                   const endCheck = canChangeLeaseStatus(lease.id, "ended", integrityState);
                   const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
                   const endDisabled = !endCheck.allowed && !endCheck.overrideAllowed;
@@ -491,7 +491,7 @@ export default function LeaseDetail() {
       </div>
 
       {/* Activation Blocker Panel (draft leases) */}
-      {lease.leaseStatus === "draft" && (() => {
+      {lease.lifecycleStage === "draft" && (() => {
         const activationCheck = canActivateLease(lease.id, integrityState);
         return (activationCheck.blockers.length > 0 || activationCheck.warnings.length > 0) ? (
           <StatusTransitionAlert validation={activationCheck} />

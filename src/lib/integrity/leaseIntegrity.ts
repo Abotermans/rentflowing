@@ -1,4 +1,4 @@
-import { LeaseStatus } from "@/types";
+import { LifecycleStage } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 
 export function canDeleteLease(leaseId: string, s: IntegrityState): ValidationResult {
@@ -48,7 +48,7 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   }
 
   // No other active lease on same unit
-  const conflicting = s.leases.filter(l => l.id !== leaseId && l.unitId === lease.unitId && l.leaseStatus === "active");
+  const conflicting = s.leases.filter(l => l.id !== leaseId && l.unitId === lease.unitId && l.lifecycleStage === "active");
   if (conflicting.length > 0) {
     blockers.push({ code: "LEASE_UNIT_ALREADY_ACTIVE", message: `Unit already has ${conflicting.length} active lease(s)`, count: conflicting.length });
   }
@@ -65,7 +65,7 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   return ok();
 }
 
-export function canChangeLeaseStatus(leaseId: string, targetStatus: LeaseStatus, s: IntegrityState): ValidationResult {
+export function canChangeLeaseStatus(leaseId: string, targetStatus: LifecycleStage, s: IntegrityState): ValidationResult {
   const lease = s.leases.find(l => l.id === leaseId);
   if (!lease) return blocked([{ code: "LEASE_NOT_FOUND", message: "Lease not found" }]);
 
@@ -89,14 +89,14 @@ export function canChangeLeaseStatus(leaseId: string, targetStatus: LeaseStatus,
 
     case "terminated": {
       const warnings: IntegrityWarning[] = [];
-      if (lease.leaseStatus !== "active") {
+      if (lease.lifecycleStage !== "active") {
         warnings.push({ code: "LEASE_NOT_ACTIVE", message: "Lease is not currently active", severity: "medium" });
       }
       return warnings.length > 0 ? allowedWithWarnings(warnings, true) : ok();
     }
 
     case "draft":
-      if (lease.leaseStatus !== "draft") {
+      if (lease.lifecycleStage !== "draft") {
         return blocked([{ code: "LEASE_CANNOT_REVERT_DRAFT", message: "Cannot revert a non-draft lease back to draft status" }]);
       }
       return ok();
@@ -121,7 +121,7 @@ export function canRenewLease(
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
 
-  if (lease.leaseStatus !== "active") {
+  if (lease.lifecycleStage !== "active") {
     blockers.push({ code: "LEASE_NOT_ACTIVE", message: "Only active leases can be renewed" });
   }
   if (!newEndDate) {

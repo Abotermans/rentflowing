@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLeaseLifecycleStatus } from "@/types";
+import { getLeaseStatus } from "@/types";
 import type { Lease } from "@/types";
 import { DEFAULT_MOVE_IN_CHECKLIST, DEFAULT_MOVE_OUT_CHECKLIST } from "@/types";
 import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
@@ -15,7 +15,7 @@ function makeLease(overrides: Partial<Lease> = {}): Lease {
     unitId: "u1",
     primaryTenantId: "t1",
     coTenantIds: [],
-    leaseStatus: "active",
+    lifecycleStage: "active",
     startDate: "2024-01-01",
     endDate: "2099-01-01",
     monthlyRent: 1000,
@@ -72,30 +72,30 @@ const FUTURE = "2099-01-01";
 const PAST = "2000-01-01";
 const SOON = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
 
-describe("getLeaseLifecycleStatus", () => {
+describe("getLeaseStatus", () => {
   it("returns draft for draft leases", () => {
-    expect(getLeaseLifecycleStatus(makeLease({ leaseStatus: "draft" }))).toBe("draft");
+    expect(getLeaseStatus(makeLease({ lifecycleStage: "draft" }))).toBe("draft");
   });
   it("returns ended for ended leases", () => {
-    expect(getLeaseLifecycleStatus(makeLease({ leaseStatus: "ended" }))).toBe("ended");
+    expect(getLeaseStatus(makeLease({ lifecycleStage: "ended" }))).toBe("ended");
   });
   it("returns terminated for terminated leases", () => {
-    expect(getLeaseLifecycleStatus(makeLease({ leaseStatus: "terminated" }))).toBe("terminated");
+    expect(getLeaseStatus(makeLease({ lifecycleStage: "terminated" }))).toBe("terminated");
   });
   it("returns under-notice when active and notice given", () => {
-    expect(getLeaseLifecycleStatus(makeLease({ noticeGiven: true }))).toBe("under-notice");
+    expect(getLeaseStatus(makeLease({ noticeGiven: true }))).toBe("under-notice");
   });
   it("returns overdue-end when active and endDate is in the past", () => {
-    expect(getLeaseLifecycleStatus(makeLease({ endDate: PAST }))).toBe("overdue-end");
+    expect(getLeaseStatus(makeLease({ endDate: PAST }))).toBe("overdue-end");
   });
   it("returns ending-soon when active and endDate within 90 days", () => {
-    expect(getLeaseLifecycleStatus(makeLease({ endDate: SOON }))).toBe("ending-soon");
+    expect(getLeaseStatus(makeLease({ endDate: SOON }))).toBe("ending-soon");
   });
   it("returns active when far from end and no notice", () => {
-    expect(getLeaseLifecycleStatus(makeLease({ endDate: FUTURE }))).toBe("active");
+    expect(getLeaseStatus(makeLease({ endDate: FUTURE }))).toBe("active");
   });
   it("prioritises notice over overdue-end", () => {
-    expect(getLeaseLifecycleStatus(makeLease({ noticeGiven: true, endDate: PAST }))).toBe("under-notice");
+    expect(getLeaseStatus(makeLease({ noticeGiven: true, endDate: PAST }))).toBe("under-notice");
   });
 });
 
@@ -140,7 +140,7 @@ describe("canChangeLeaseStatus → terminated", () => {
     expect(result.allowed).toBe(true);
   });
   it("warns when terminating a non-active lease but still allows", () => {
-    const lease = makeLease({ leaseStatus: "draft" });
+    const lease = makeLease({ lifecycleStage: "draft" });
     const result = canChangeLeaseStatus("l1", "terminated", emptyState({ leases: [lease] }));
     expect(result.allowed).toBe(true);
     expect(result.warnings.some(w => w.code === "LEASE_NOT_ACTIVE")).toBe(true);
@@ -149,7 +149,7 @@ describe("canChangeLeaseStatus → terminated", () => {
 
 describe("canChangeUnitStatus → vacant", () => {
   it("allows vacating when no active lease", () => {
-    const result = canChangeUnitStatus("u1", "vacant", emptyState({ leases: [makeLease({ leaseStatus: "ended" })] }));
+    const result = canChangeUnitStatus("u1", "vacant", emptyState({ leases: [makeLease({ lifecycleStage: "ended" })] }));
     expect(result.allowed).toBe(true);
   });
   it("blocks vacating but allows override when active lease exists", () => {
@@ -195,7 +195,7 @@ describe("canRenewLease", () => {
     expect(r.blockers.some(b => b.code === "LEASE_RENEW_DATE_NOT_AFTER")).toBe(true);
   });
   it("blocks renewal when lease is not active", () => {
-    const lease = makeLease({ leaseStatus: "ended" });
+    const lease = makeLease({ lifecycleStage: "ended" });
     const r = canRenewLease("l1", "2100-01-01", emptyState({ leases: [lease] }));
     expect(r.allowed).toBe(false);
     expect(r.blockers.some(b => b.code === "LEASE_NOT_ACTIVE")).toBe(true);
