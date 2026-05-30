@@ -723,66 +723,7 @@ export default function LeaseDetail() {
       {/* Notice / Lease End Card */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
-            <TooltipProvider>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={openNoticeForm}>{lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}</Button>
-                {lease.leaseStatus === "draft" && (() => {
-                  const activationCheck = canActivateLease(lease.id, integrityState);
-                  return (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Button variant="default" size="sm" onClick={handleActivateLease} disabled={!activationCheck.allowed}>Activate Lease</Button>
-                        </span>
-                      </TooltipTrigger>
-                      {!activationCheck.allowed && (
-                        <TooltipContent className="max-w-[300px]">
-                          <p className="text-xs">{activationCheck.blockers.map(b => b.message).join(". ")}</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  );
-                })()}
-                {lease.leaseStatus === "active" && (() => {
-                  const endCheck = canChangeLeaseStatus(lease.id, "ended", integrityState);
-                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
-                  const endDisabled = !endCheck.allowed && !endCheck.overrideAllowed;
-                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
-                  return (
-                    <>
-                      <Button variant="outline" size="sm" onClick={openRenewDialog}>{t("lease.renew")}</Button>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button variant="outline" size="sm" onClick={handleMarkEnded} disabled={endDisabled}>{t("detail.markEnded")}</Button>
-                          </span>
-                        </TooltipTrigger>
-                        {endDisabled && (
-                          <TooltipContent className="max-w-[300px]">
-                            <p className="text-xs">{endCheck.blockers.map(b => b.message).join(". ")}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button variant="destructive" size="sm" onClick={handleMarkTerminated} disabled={termDisabled}>{t("detail.terminate")}</Button>
-                          </span>
-                        </TooltipTrigger>
-                        {termDisabled && (
-                          <TooltipContent className="max-w-[300px]">
-                            <p className="text-xs">{termCheck.blockers.map(b => b.message).join(". ")}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </>
-                  );
-                })()}
-              </div>
-            </TooltipProvider>
-          </div>
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Bell className="h-4 w-4" />{t("detail.noticeLease")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
