@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,9 @@ import { Switch } from "@/components/ui/switch";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet } from "lucide-react";
+import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet, MoreVertical, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
 import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseLifecycleStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus } from "@/types";
 import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS, ALLOCATION_TYPE_LABELS } from "@/types/receivables";
@@ -23,9 +25,8 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canChangeLeaseStatus, canActivateLease, canDeleteLease, canRenewLease } from "@/lib/integrity/leaseIntegrity";
+import { canChangeLeaseStatus, canActivateLease, canRenewLease } from "@/lib/integrity/leaseIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
-import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
@@ -33,11 +34,12 @@ import type { ValidationResult } from "@/lib/integrity/types";
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const {
     leases, tenants, units, properties,
     getReceivableItemsByLease, getCashReceiptsByLease, getAllocationsByReceipt,
     getLeaseOutstanding, getGuaranteeByLease, allocations,
-    addGuarantee, updateGuarantee, updateLease, updateUnit, confirmMoveOut,
+    addGuarantee, updateGuarantee, updateLease, updateUnit, deleteLease, confirmMoveOut,
     createCashReceipt, getTenantUnappliedCredit,
   } = useAppData();
   const { toast } = useToast();
@@ -428,7 +430,29 @@ export default function LeaseDetail() {
               {property && <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>}
             </div>
           </div>
-          <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />Record Cash Receipt</Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />Record Cash Receipt</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("units.moreActions")}>
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DeleteDialog
+                  entityType="lease"
+                  entityId={lease.id}
+                  entityLabel={lease.leaseReference}
+                  onDelete={(lid) => { deleteLease(lid); toast({ title: "Lease deleted" }); navigate("/leases"); }}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />{t("action.delete")}
+                    </DropdownMenuItem>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -439,12 +463,6 @@ export default function LeaseDetail() {
           <StatusTransitionAlert validation={activationCheck} />
         ) : null;
       })()}
-
-      {/* Integrity Summary — delete blockers */}
-      <IntegritySummaryPanel
-        title="Lease Dependencies"
-        deleteValidation={canDeleteLease(lease.id, integrityState)}
-      />
 
       {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
