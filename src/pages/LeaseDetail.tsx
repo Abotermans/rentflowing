@@ -37,7 +37,7 @@ export default function LeaseDetail() {
     leases, tenants, units, properties,
     getReceivableItemsByLease, getCashReceiptsByLease, getAllocationsByReceipt,
     getLeaseOutstanding, getGuaranteeByLease, allocations,
-    addGuarantee, updateGuarantee, updateLease, confirmMoveOut,
+    addGuarantee, updateGuarantee, updateLease, updateUnit, confirmMoveOut,
     createCashReceipt, getTenantUnappliedCredit,
   } = useAppData();
   const { toast } = useToast();
@@ -245,10 +245,8 @@ export default function LeaseDetail() {
       notes: endNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[End] ${endNotesInput}` : lease.notes,
     };
     updateLease(updatedLease);
-    if (endFreeUnit && unit && unit.currentStatus !== "vacant") {
-      // Free the unit (best-effort; the user can still complete move-out flow)
-      // Direct update to avoid blockers — the lease is now ended.
-      // We bypass canChangeUnitStatus because the lease just transitioned.
+    if (endFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
+      updateUnit({ ...unit, currentStatus: "vacant", availableFrom: updatedLease.endDate });
     }
     toast({ title: t("lease.toastEnded") });
     setEndDialogOpen(false);
@@ -296,6 +294,9 @@ export default function LeaseDetail() {
       terminationReason: termReasonInput,
       notes: termNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[Terminate] ${termNotesInput}` : lease.notes,
     });
+    if (termFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
+      updateUnit({ ...unit, currentStatus: "vacant", availableFrom: termDateInput || today });
+    }
     toast({ title: t("lease.toastTerminated") });
     setTermDialogOpen(false);
   };
