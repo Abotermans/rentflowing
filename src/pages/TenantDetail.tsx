@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Shield, Bell, Banknote } from "lucide-react";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
-import { ITEM_TYPE_LABELS, SOURCE_TYPE_LABELS } from "@/types/receivables";
+import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canDeleteTenant, canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
