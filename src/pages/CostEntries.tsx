@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { PROPERTY_ICON, COST_NATURE_ICONS, COST_ENTRY_STATUS_ICONS, RECOVERY_TYPE_ICONS } from "@/lib/filterIcons";
+import { Tag, CircleDot, Shield } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
@@ -39,10 +42,10 @@ export default function CostEntries() {
   const { toast } = useToast();
 
   const [search, setSearch] = useState("");
-  const [filterProperty, setFilterProperty] = useState("all");
-  const [filterNature, setFilterNature] = useState("all");
-  const [filterRecovery, setFilterRecovery] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterProperty, setFilterProperty] = useState<string[]>([]);
+  const [filterNature, setFilterNature] = useState<string[]>([]);
+  const [filterRecovery, setFilterRecovery] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<CostEntry | null>(null);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
@@ -93,13 +96,13 @@ export default function CostEntries() {
       const s = search.toLowerCase();
       if (!e.label.toLowerCase().includes(s) && !e.vendorName.toLowerCase().includes(s)) return false;
     }
-    if (filterProperty !== "all" && e.propertyId !== filterProperty) return false;
-    if (filterNature !== "all") {
+    if (filterProperty.length > 0 && !filterProperty.includes(e.propertyId)) return false;
+    if (filterNature.length > 0) {
       const cat = getCostCategoryById(e.categoryId);
-      if (cat && cat.nature !== filterNature) return false;
+      if (!cat || !filterNature.includes(cat.nature)) return false;
     }
-    if (filterRecovery !== "all" && e.recoveryType !== filterRecovery) return false;
-    if (filterStatus !== "all" && e.status !== filterStatus) return false;
+    if (filterRecovery.length > 0 && !filterRecovery.includes(e.recoveryType)) return false;
+    if (filterStatus.length > 0 && !filterStatus.includes(e.status)) return false;
     return true;
   });
 
@@ -125,40 +128,40 @@ export default function CostEntries() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
-        <Select value={filterProperty} onValueChange={setFilterProperty}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allProperties")}</SelectItem>
-            {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterNature} onValueChange={setFilterNature}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("costs.allNatures")}</SelectItem>
-            {(Object.keys(COST_NATURE_LABELS) as CostNature[]).map(n => (
-              <SelectItem key={n} value={n}>{COST_NATURE_LABELS[n]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterRecovery} onValueChange={setFilterRecovery}>
-          <SelectTrigger className="w-[170px] h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("costs.allRecoveryTypes")}</SelectItem>
-            {(Object.keys(RECOVERY_TYPE_LABELS) as RecoveryType[]).map(r => (
-              <SelectItem key={r} value={r}>{RECOVERY_TYPE_LABELS[r]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
-            {(Object.keys(COST_ENTRY_STATUS_LABELS) as CostEntryStatus[]).map(s => (
-              <SelectItem key={s} value={s}>{COST_ENTRY_STATUS_LABELS[s]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label={t("filter.property")}
+          icon={PROPERTY_ICON}
+          values={filterProperty}
+          onChange={setFilterProperty}
+          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+        />
+        <MultiSelectFilter
+          label={t("costs.nature")}
+          icon={Tag}
+          values={filterNature}
+          onChange={setFilterNature}
+          options={(Object.keys(COST_NATURE_LABELS) as CostNature[]).map(n => ({
+            value: n, label: COST_NATURE_LABELS[n], icon: COST_NATURE_ICONS[n],
+          }))}
+        />
+        <MultiSelectFilter
+          label={t("costs.recoveryType")}
+          icon={Shield}
+          values={filterRecovery}
+          onChange={setFilterRecovery}
+          options={(Object.keys(RECOVERY_TYPE_LABELS) as RecoveryType[]).map(r => ({
+            value: r, label: RECOVERY_TYPE_LABELS[r], icon: RECOVERY_TYPE_ICONS[r],
+          }))}
+        />
+        <MultiSelectFilter
+          label={t("filter.status")}
+          icon={CircleDot}
+          values={filterStatus}
+          onChange={setFilterStatus}
+          options={(Object.keys(COST_ENTRY_STATUS_LABELS) as CostEntryStatus[]).map(s => ({
+            value: s, label: COST_ENTRY_STATUS_LABELS[s], icon: COST_ENTRY_STATUS_ICONS[s],
+          }))}
+        />
       </div>
 
       {/* Table */}

@@ -9,6 +9,9 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { LEASE_STATUS_ICONS, PROPERTY_ICON } from "@/lib/filterIcons";
+import { FileCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,8 +65,8 @@ export default function Leases() {
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterProperty, setFilterProperty] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
+  const [filterProperty, setFilterProperty] = useState<string[]>([]);
   const [filterEndingSoon, setFilterEndingSoon] = useState(false);
   const [filterUnderNotice, setFilterUnderNotice] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -186,8 +189,8 @@ export default function Leases() {
     const matchSearch = !q || l.leaseReference.toLowerCase().includes(q) ||
       (tenant ? getTenantFullName(tenant).toLowerCase().includes(q) : false) ||
       (prop?.name.toLowerCase().includes(q) ?? false);
-    const matchStatus = filterStatus === "all" || getLeaseStatus(l) === filterStatus;
-    const matchProperty = filterProperty === "all" || l.propertyId === filterProperty;
+    const matchStatus = filterStatus.length === 0 || filterStatus.includes(getLeaseStatus(l));
+    const matchProperty = filterProperty.length === 0 || filterProperty.includes(l.propertyId);
     const matchEnding = !filterEndingSoon || (l.lifecycleStage === "active" && new Date(l.endDate) <= in90Days);
     const matchNotice = !filterUnderNotice || l.noticeGiven;
     return matchSearch && matchStatus && matchProperty && matchEnding && matchNotice;
@@ -222,20 +225,20 @@ export default function Leases() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
-            {LEASE_STATUS_FILTERS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterProperty} onValueChange={setFilterProperty}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("filter.property")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allProperties")}</SelectItem>
-            {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label={t("filter.status")}
+          icon={FileCheck}
+          values={filterStatus}
+          onChange={setFilterStatus}
+          options={LEASE_STATUS_FILTERS.map(s => ({ value: s.value, label: s.label, icon: LEASE_STATUS_ICONS[s.value] }))}
+        />
+        <MultiSelectFilter
+          label={t("filter.property")}
+          icon={PROPERTY_ICON}
+          values={filterProperty}
+          onChange={setFilterProperty}
+          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+        />
         <Button variant={filterEndingSoon ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterEndingSoon(!filterEndingSoon)}>
           {t("filter.endingSoon")}
         </Button>

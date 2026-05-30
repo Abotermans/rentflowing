@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { VENDOR_STATUS_ICONS } from "@/lib/filterIcons";
+import { CircleCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +27,7 @@ export default function Vendors() {
   const { toast } = useToast();
   const { t } = useSettings();
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Vendor | null>(null);
 
@@ -57,7 +60,7 @@ export default function Vendors() {
   const filtered = vendors.filter(v => {
     const q = search.toLowerCase();
     const matchSearch = !q || v.vendorName.toLowerCase().includes(q) || v.tradeCategory.toLowerCase().includes(q) || v.contactName.toLowerCase().includes(q);
-    const matchStatus = filterStatus === "all" || v.status === filterStatus;
+    const matchStatus = filterStatus.length === 0 || filterStatus.includes(v.status);
     return matchSearch && matchStatus;
   });
 
@@ -78,14 +81,16 @@ export default function Vendors() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label="Status"
+          icon={CircleCheck}
+          values={filterStatus}
+          onChange={setFilterStatus}
+          options={[
+            { value: "active", label: "Active", icon: VENDOR_STATUS_ICONS.active },
+            { value: "inactive", label: "Inactive", icon: VENDOR_STATUS_ICONS.inactive },
+          ]}
+        />
       </div>
 
       {vendors.length === 0 ? (

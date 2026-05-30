@@ -5,6 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import {
+  PROPERTY_ICON, RECEIVABLE_STATUS_ICONS, RECEIVABLE_TYPE_ICONS, RECEIPT_STATUS_ICONS,
+} from "@/lib/filterIcons";
+import { CircleDot, Tag } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,9 +34,9 @@ export default function Payments() {
     getReceivableItemsByLease, getReceivableItemsByTenant,
   } = useAppData();
 
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [propertyFilter, setPropertyFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [propertyFilter, setPropertyFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [unmatchedOnly, setUnmatchedOnly] = useState(false);
   const [search, setSearch] = useState("");
@@ -76,9 +81,9 @@ export default function Payments() {
   });
 
   const filteredReceivables = enrichedReceivables.filter(ri => {
-    if (statusFilter !== "all" && ri.effectiveStatus !== statusFilter) return false;
-    if (propertyFilter !== "all" && ri.prop?.id !== propertyFilter) return false;
-    if (typeFilter !== "all" && ri.itemType !== typeFilter) return false;
+    if (statusFilter.length > 0 && !statusFilter.includes(ri.effectiveStatus)) return false;
+    if (propertyFilter.length > 0 && (!ri.prop?.id || !propertyFilter.includes(ri.prop.id))) return false;
+    if (typeFilter.length > 0 && !typeFilter.includes(ri.itemType)) return false;
     if (overdueOnly && ri.effectiveStatus !== "overdue") return false;
     if (search) {
       const q = search.toLowerCase();
@@ -98,8 +103,8 @@ export default function Payments() {
   }).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
   const filteredReceipts = enrichedReceipts.filter(cr => {
-    if (statusFilter !== "all" && cr.status !== statusFilter) return false;
-    if (propertyFilter !== "all" && cr.prop?.id !== propertyFilter) return false;
+    if (statusFilter.length > 0 && !statusFilter.includes(cr.status)) return false;
+    if (propertyFilter.length > 0 && (!cr.prop?.id || !propertyFilter.includes(cr.prop.id))) return false;
     if (unmatchedOnly && cr.unmatchedAmount <= 0) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -217,13 +222,13 @@ export default function Payments() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("payments.filter.property")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allProperties")}</SelectItem>
-            {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label={t("payments.filter.property")}
+          icon={PROPERTY_ICON}
+          values={propertyFilter}
+          onChange={setPropertyFilter}
+          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+        />
       </div>
 
       <Tabs defaultValue="receivables">
@@ -236,25 +241,27 @@ export default function Payments() {
         {/* ===== TAB 1: RECEIVABLES ===== */}
         <TabsContent value="receivables">
           <div className="flex flex-wrap gap-2 mb-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder={t("payments.filter.status")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("payments.filter.allStatuses")}</SelectItem>
-                <SelectItem value="open">{t("payments.filter.open")}</SelectItem>
-                <SelectItem value="paid">{t("payments.filter.paid")}</SelectItem>
-                <SelectItem value="partially-paid">{t("payments.filter.partiallyPaid")}</SelectItem>
-                <SelectItem value="overdue">{t("payments.filter.overdue")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder={t("payments.filter.type")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("payments.filter.allTypes")}</SelectItem>
-                {(["rent","charges","deposit","guarantee","advance-payment","adjustment","late-fee","repair-recharge","credit-note","other"] as ReceivableItemType[]).map(k => (
-                  <SelectItem key={k} value={k}>{getItemTypeLabel(t, k)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              label={t("payments.filter.status")}
+              icon={CircleDot}
+              values={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: "open", label: t("payments.filter.open"), icon: RECEIVABLE_STATUS_ICONS.open },
+                { value: "paid", label: t("payments.filter.paid"), icon: RECEIVABLE_STATUS_ICONS.paid },
+                { value: "partially-paid", label: t("payments.filter.partiallyPaid"), icon: RECEIVABLE_STATUS_ICONS["partially-paid"] },
+                { value: "overdue", label: t("payments.filter.overdue"), icon: RECEIVABLE_STATUS_ICONS.overdue },
+              ]}
+            />
+            <MultiSelectFilter
+              label={t("payments.filter.type")}
+              icon={Tag}
+              values={typeFilter}
+              onChange={setTypeFilter}
+              options={(["rent","charges","deposit","guarantee","advance-payment","adjustment","late-fee","repair-recharge","credit-note","other"] as ReceivableItemType[]).map(k => ({
+                value: k, label: getItemTypeLabel(t, k), icon: RECEIVABLE_TYPE_ICONS[k],
+              }))}
+            />
             <Button variant={overdueOnly ? "default" : "outline"} size="sm" className="h-8 text-xs" onClick={() => setOverdueOnly(!overdueOnly)}>
               <AlertTriangle className="h-3 w-3 mr-1" />{t("payments.filter.overdueOnly")}
             </Button>
@@ -302,16 +309,18 @@ export default function Payments() {
         {/* ===== TAB 2: CASH RECEIPTS ===== */}
         <TabsContent value="receipts">
           <div className="flex flex-wrap gap-2 mb-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder={t("payments.filter.status")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("payments.filter.allStatuses")}</SelectItem>
-                <SelectItem value="matched">{t("payments.filter.matched")}</SelectItem>
-                <SelectItem value="partially-matched">{t("payments.filter.partiallyMatched")}</SelectItem>
-                <SelectItem value="unmatched">{t("payments.filter.unmatched")}</SelectItem>
-                <SelectItem value="exception">{t("payments.filter.exception")}</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              label={t("payments.filter.status")}
+              icon={CircleDot}
+              values={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: "matched", label: t("payments.filter.matched"), icon: RECEIPT_STATUS_ICONS.matched },
+                { value: "partially-matched", label: t("payments.filter.partiallyMatched"), icon: RECEIPT_STATUS_ICONS["partially-matched"] },
+                { value: "unmatched", label: t("payments.filter.unmatched"), icon: RECEIPT_STATUS_ICONS.unmatched },
+                { value: "exception", label: t("payments.filter.exception"), icon: RECEIPT_STATUS_ICONS.exception },
+              ]}
+            />
             <Button variant={unmatchedOnly ? "default" : "outline"} size="sm" className="h-8 text-xs" onClick={() => setUnmatchedOnly(!unmatchedOnly)}>
               <ArrowRightLeft className="h-3 w-3 mr-1" />{t("payments.filter.unmatchedOnly")}
             </Button>

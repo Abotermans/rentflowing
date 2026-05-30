@@ -8,6 +8,9 @@ import { Users, Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { TENANT_STATUS_ICONS } from "@/lib/filterIcons";
+import { UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,7 +43,7 @@ export default function Tenants() {
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
 
@@ -118,7 +121,7 @@ export default function Tenants() {
     const name = getTenantFullName(t).toLowerCase();
     const q = search.toLowerCase();
     const matchSearch = !q || name.includes(q) || t.email.toLowerCase().includes(q);
-    const matchStatus = filterStatus === "all" || t.status === filterStatus;
+    const matchStatus = filterStatus.length === 0 || filterStatus.includes(t.status);
     return matchSearch && matchStatus;
   });
 
@@ -141,13 +144,13 @@ export default function Tenants() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder={t("filter.status")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allStatuses")}</SelectItem>
-            {TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label={t("filter.status")}
+          icon={UserCheck}
+          values={filterStatus}
+          onChange={setFilterStatus}
+          options={TENANT_STATUSES.map(s => ({ value: s.value, label: s.label, icon: TENANT_STATUS_ICONS[s.value] }))}
+        />
       </div>
 
       {tenants.length === 0 ? (

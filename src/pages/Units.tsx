@@ -11,6 +11,9 @@ import { Link } from "react-router-dom";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS } from "@/lib/formatters";
 import { useSettings } from "@/context/SettingsContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { UNIT_TYPE_ICONS, UNIT_OCCUPANCY_ICONS, PROPERTY_ICON } from "@/lib/filterIcons";
+import { Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,9 +78,9 @@ export default function Units() {
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [filterProperty, setFilterProperty] = useState("all");
-  const [filterType, setFilterType] = useState("all");
-  const [filterOccupancy, setFilterOccupancy] = useState<DerivedOccupancy | "all">("all");
+  const [filterProperty, setFilterProperty] = useState<string[]>([]);
+  const [filterType, setFilterType] = useState<string[]>([]);
+  const [filterOccupancy, setFilterOccupancy] = useState<DerivedOccupancy[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
 
@@ -172,16 +175,15 @@ export default function Units() {
     const prop = properties.find(p => p.id === u.propertyId);
     const q = search.toLowerCase();
     const matchSearch = !q || u.unitCode.toLowerCase().includes(q) || u.unitLabel.toLowerCase().includes(q) || (prop?.name.toLowerCase().includes(q) ?? false);
-    const matchProp = filterProperty === "all" || u.propertyId === filterProperty;
-    const matchType = filterType === "all" || u.unitType === filterType;
+    const matchProp = filterProperty.length === 0 || filterProperty.includes(u.propertyId);
+    const matchType = filterType.length === 0 || filterType.includes(u.unitType);
     // Stored-status filters match unit.currentStatus (what's displayed); lifecycle-nuance filters match derived.
-    const storedStatusFilters: (DerivedOccupancy | "all")[] = ["vacant", "occupied", "reserved", "unavailable"];
+    const storedStatusFilters: DerivedOccupancy[] = ["vacant", "occupied", "reserved", "unavailable"];
     const matchOccupancy =
-      filterOccupancy === "all"
-        ? true
-        : storedStatusFilters.includes(filterOccupancy)
-          ? u.currentStatus === filterOccupancy
-          : occupancy.derived === filterOccupancy;
+      filterOccupancy.length === 0 ||
+      filterOccupancy.some(f =>
+        storedStatusFilters.includes(f) ? u.currentStatus === f : occupancy.derived === f,
+      );
     return matchSearch && matchProp && matchType && matchOccupancy;
   });
 
@@ -204,26 +206,31 @@ export default function Units() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Select value={filterProperty} onValueChange={setFilterProperty}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("filter.property")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allProperties")}</SelectItem>
-            {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder={t("filter.type")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filter.allTypes")}</SelectItem>
-            {UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{t(ut.labelKey)}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterOccupancy} onValueChange={v => setFilterOccupancy(v as DerivedOccupancy | "all")}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder={t("occupancy.statusFilterLabel")} /></SelectTrigger>
-          <SelectContent>
-            {OCCUPANCY_FILTERS.map(o => <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          label={t("filter.property")}
+          icon={PROPERTY_ICON}
+          values={filterProperty}
+          onChange={setFilterProperty}
+          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+        />
+        <MultiSelectFilter
+          label={t("filter.type")}
+          icon={Tag}
+          values={filterType}
+          onChange={setFilterType}
+          options={UNIT_TYPES.map(ut => ({ value: ut.value, label: t(ut.labelKey), icon: UNIT_TYPE_ICONS[ut.value] }))}
+        />
+        <MultiSelectFilter
+          label={t("occupancy.statusFilterLabel")}
+          icon={UNIT_OCCUPANCY_ICONS.occupied}
+          values={filterOccupancy}
+          onChange={(v) => setFilterOccupancy(v as DerivedOccupancy[])}
+          options={OCCUPANCY_FILTERS.filter(o => o.value !== "all").map(o => ({
+            value: o.value as string,
+            label: t(o.labelKey),
+            icon: UNIT_OCCUPANCY_ICONS[o.value as string],
+          }))}
+        />
       </div>
 
       {units.length === 0 ? (
