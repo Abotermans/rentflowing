@@ -670,6 +670,7 @@ export default function LeaseDetail() {
                   const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
                   return (
                     <>
+                      <Button variant="outline" size="sm" onClick={openRenewDialog}>{t("lease.renew")}</Button>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
