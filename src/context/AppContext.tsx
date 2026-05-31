@@ -10,7 +10,16 @@ import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
 import { autoAllocate } from "@/lib/reconciliation";
 import { computeAllocations } from "@/lib/costAllocation";
-import { migrateLegacyLeaseAssignments, getActiveLeaseForUnit as findActiveLeaseForUnit, assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import {
+  migrateLegacyLeaseAssignments,
+  getActiveLeaseForUnit as findActiveLeaseForUnit,
+  assignmentIsActiveOn,
+  closeOpenAssignmentsForLease,
+  getLeaseAssignedUnits as libGetLeaseAssignedUnits,
+  getPrimaryLeaseUnit as libGetPrimaryLeaseUnit,
+  getAncillaryLeaseUnits as libGetAncillaryLeaseUnits,
+  isUnitAssignedToActiveLease as libIsUnitAssignedToActiveLease,
+} from "@/lib/leaseAssignments";
 
 function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: Tenant[]): Tenant[] {
   const affected = new Set(tenantIds.filter(Boolean));
@@ -31,6 +40,8 @@ function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: 
 interface PropertyStats {
   total: number;
   occupied: number;
+  /** Units leased only as ancillary (parking, cellar, …). Not a primary home. */
+  ancillaryLeased: number;
   vacant: number;
   reserved: number;
   unavailable: number;
@@ -89,6 +100,10 @@ interface AppState {
   }[]) => void;
   getLeaseAssignments: (leaseId: string) => LeaseUnitAssignment[];
   getActiveLeaseAssignmentForUnit: (unitId: string) => { lease: Lease; assignment: LeaseUnitAssignment } | undefined;
+  getLeaseAssignedUnits: (leaseId: string, opts?: { activeOnly?: boolean }) => { unit: Unit; assignment: LeaseUnitAssignment }[];
+  getPrimaryLeaseUnit: (leaseId: string) => Unit | undefined;
+  getAncillaryLeaseUnits: (leaseId: string, opts?: { activeOnly?: boolean }) => { unit: Unit; assignment: LeaseUnitAssignment }[];
+  isUnitAssignedToActiveLease: (unitId: string) => boolean;
 
   // Guarantee
   addGuarantee: (g: Omit<Guarantee, "id">) => void;
@@ -277,14 +292,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return created;
   }, []);
   const updateLease = useCallback((l: Lease) => {
+    const ts = now();
     setLeases(prev => {
       const old = prev.find(x => x.id === l.id);
-      const next = prev.map(x => x.id === l.id ? { ...l, updatedAt: now() } : x);
+      const next = prev.map(x => x.id === l.id ? { ...l, updatedAt: ts } : x);
       const affected = [
         ...(old ? [old.primaryTenantId, ...old.coTenantIds] : []),
         l.primaryTenantId, ...l.coTenantIds,
       ];
       setTenants(prevT => reconcileTenantStatuses(affected, next, prevT));
+
+      // Lifecycle transition cascade: when a lease moves to ended/terminated, close
+      // every open assignment and vacate the linked units so ancillary spaces (parking,
+      // cellar, …) don't stay flagged as occupied.
+      const becameClosed =
+        old &&
+        old.lifecycleStage === "active" &&
+        (l.lifecycleStage === "ended" || l.lifecycleStage === "terminated");
+      if (becameClosed) {
+        const endDate = l.endDate || ts;
+        setLeaseUnitAssignments(prevA => {
+          const openUnitIds = prevA
+            .filter(a => a.leaseId === l.id && !a.endDate)
+            .map(a => a.unitId);
+          if (openUnitIds.length > 0) {
+            setUnits(prevU => prevU.map(u =>
+              openUnitIds.includes(u.id)
+                ? { ...u, currentStatus: "vacant" as const, availableFrom: endDate, updatedAt: ts }
+                : u,
+            ));
+          }
+          return closeOpenAssignmentsForLease(l.id, endDate, prevA, ts);
+        });
+      }
       return next;
     });
   }, []);
@@ -308,13 +348,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTenants(prevT => reconcileTenantStatuses([lease.primaryTenantId, ...lease.coTenantIds], next, prevT));
       return next;
     });
-    setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts } : x));
-    // Close out all open assignments for this lease.
-    setLeaseUnitAssignments(prev => prev.map(a =>
-      a.leaseId === lease.id && !a.endDate
-        ? { ...a, endDate: moveOutDate, updatedAt: ts }
-        : a,
-    ));
+    // Vacate every unit that still had an open assignment on this lease
+    // (primary AND ancillary — parking/cellar/storage).
+    setLeaseUnitAssignments(prev => {
+      const openUnitIds = prev
+        .filter(a => a.leaseId === lease.id && !a.endDate)
+        .map(a => a.unitId);
+      // Always include the legacy unitId as a defensive fallback.
+      if (lease.unitId && !openUnitIds.includes(lease.unitId)) openUnitIds.push(lease.unitId);
+      if (openUnitIds.length > 0) {
+        setUnits(prevU => prevU.map(u =>
+          openUnitIds.includes(u.id)
+            ? { ...u, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts }
+            : u,
+        ));
+      }
+      return closeOpenAssignmentsForLease(lease.id, moveOutDate, prev, ts);
+    });
   }, []);
 
   // ===== Lease Unit Assignments =====
@@ -384,6 +434,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const getActiveLeaseAssignmentForUnit = useCallback(
     (unitId: string) => findActiveLeaseForUnit(unitId, leases, leaseUnitAssignments),
+    [leases, leaseUnitAssignments],
+  );
+
+  const getLeaseAssignedUnitsFn = useCallback(
+    (leaseId: string, opts: { activeOnly?: boolean } = {}) =>
+      libGetLeaseAssignedUnits(leaseId, leaseUnitAssignments, units, opts),
+    [leaseUnitAssignments, units],
+  );
+  const getPrimaryLeaseUnitFn = useCallback(
+    (leaseId: string) => libGetPrimaryLeaseUnit(leaseId, leaseUnitAssignments, units),
+    [leaseUnitAssignments, units],
+  );
+  const getAncillaryLeaseUnitsFn = useCallback(
+    (leaseId: string, opts: { activeOnly?: boolean } = {}) =>
+      libGetAncillaryLeaseUnits(leaseId, leaseUnitAssignments, units, opts),
+    [leaseUnitAssignments, units],
+  );
+  const isUnitAssignedToActiveLeaseFn = useCallback(
+    (unitId: string) => libIsUnitAssignedToActiveLease(unitId, leases, leaseUnitAssignments),
     [leases, leaseUnitAssignments],
   );
 
@@ -632,12 +701,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getPropertyStats = useCallback((propertyId: string): PropertyStats => {
     const propUnits = units.filter(u => u.propertyId === propertyId);
     const total = propUnits.length;
-    const counts = { occupied: 0, vacant: 0, reserved: 0, unavailable: 0 };
+    const counts = { occupied: 0, ancillaryLeased: 0, vacant: 0, reserved: 0, unavailable: 0 };
+    const todayISO = now();
+    const activeLeaseIds = new Set(
+      leases.filter(l => l.lifecycleStage === "active").map(l => l.id),
+    );
     propUnits.forEach(u => {
-      // Use derived occupancy: if unit has an active lease, count as occupied regardless of manual status
-      const hasActiveLease = leases.some(l => l.unitId === u.id && l.lifecycleStage === "active");
-      if (hasActiveLease) {
+      const active = leaseUnitAssignments.find(a =>
+        a.unitId === u.id &&
+        assignmentIsActiveOn(a, todayISO) &&
+        activeLeaseIds.has(a.leaseId),
+      );
+      if (active && active.isPrimary) {
         counts.occupied++;
+      } else if (active) {
+        counts.ancillaryLeased++;
       } else if (u.currentStatus === "reserved") {
         counts.reserved++;
       } else if (u.currentStatus === "unavailable") {
@@ -646,8 +724,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         counts.vacant++;
       }
     });
-    return { total, ...counts, occupancyRate: total > 0 ? Math.round((counts.occupied / total) * 100) : 0 };
-  }, [units, leases]);
+    // Ancillary units are not eligible to be a "home" — exclude them from the denominator
+    // so a 1-bedroom + parking lease doesn't show 50% occupancy.
+    const denominator = total - counts.ancillaryLeased;
+    return {
+      total,
+      ...counts,
+      occupancyRate: denominator > 0 ? Math.round((counts.occupied / denominator) * 100) : 0,
+    };
+  }, [units, leases, leaseUnitAssignments]);
 
   const getPropertyById = useCallback((id: string) => properties.find(p => p.id === id), [properties]);
   const getUnitById = useCallback((id: string) => units.find(u => u.id === id), [units]);
@@ -732,6 +817,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLeaseUnits: setLeaseUnitsFn,
     getLeaseAssignments,
     getActiveLeaseAssignmentForUnit,
+    getLeaseAssignedUnits: getLeaseAssignedUnitsFn,
+    getPrimaryLeaseUnit: getPrimaryLeaseUnitFn,
+    getAncillaryLeaseUnits: getAncillaryLeaseUnitsFn,
+    isUnitAssignedToActiveLease: isUnitAssignedToActiveLeaseFn,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
@@ -764,6 +853,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addTenant, updateTenant, deleteTenant,
     addLease, updateLease, deleteLease, confirmMoveOut,
     setLeaseUnitsFn, getLeaseAssignments, getActiveLeaseAssignmentForUnit,
+    getLeaseAssignedUnitsFn, getPrimaryLeaseUnitFn, getAncillaryLeaseUnitsFn, isUnitAssignedToActiveLeaseFn,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,

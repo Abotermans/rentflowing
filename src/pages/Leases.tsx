@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
+import { validateLeaseUnits, type DraftAssignment } from "@/lib/integrity/leaseUnitAssignmentIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
@@ -76,7 +77,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 
 export default function Leases() {
   const navigate = useNavigate();
-  const { leases, tenants, units, properties, addLease, updateLease, deleteLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits } = useAppData();
+  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, deleteLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -235,6 +236,51 @@ export default function Leases() {
         return;
       }
     }
+    // Validate the full assignment draft (primary + extras): property mismatch,
+    // duplicates, multi-primary, units already used on another active lease.
+    const draft: DraftAssignment[] = [
+      {
+        unitId: form.unitId,
+        assignmentType: "primary",
+        isPrimary: true,
+        startDate: form.startDate,
+        endDate: null,
+        rentShare: null,
+        chargesShare: null,
+      },
+      ...extraUnits
+        .filter(e => e.unitId && e.unitId !== form.unitId)
+        .map(e => ({
+          unitId: e.unitId,
+          assignmentType: e.assignmentType,
+          isPrimary: false,
+          startDate: form.startDate,
+          endDate: null as string | null,
+          rentShare: null,
+          chargesShare: null,
+        })),
+    ];
+    const unitsValidation = validateLeaseUnits(
+      editingLease?.id ?? null,
+      form.propertyId,
+      draft,
+      { monthlyRent: form.monthlyRent, monthlyCharges: form.monthlyCharges },
+      integrityState,
+    );
+    if (!unitsValidation.allowed) {
+      toast({
+        title: "Unit assignments blocked",
+        description: unitsValidation.blockers.map(b => b.message).join(". "),
+        variant: "destructive",
+      });
+      return;
+    }
+    if (unitsValidation.warnings.length > 0) {
+      toast({
+        title: "Lease saved with warnings",
+        description: unitsValidation.warnings.map(w => w.message).join(". "),
+      });
+    }
     executeLeaseSave();
   };
 
@@ -354,6 +400,7 @@ export default function Leases() {
                 const prop = properties.find(p => p.id === l.propertyId);
                 const unit = units.find(u => u.id === l.unitId);
                 const guarantee = getGuaranteeByLease(l.id);
+                const ancillaryCount = getAncillaryLeaseUnits(l.id, { activeOnly: true }).length;
                 return (
                   <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/leases/${l.id}`)}>
                     <TableCell className="font-mono text-xs font-medium">
@@ -368,7 +415,17 @@ export default function Leases() {
                       {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{prop.name}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
+                      <div className="flex items-center gap-1.5">
+                        {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
+                        {ancillaryCount > 0 && (
+                          <span
+                            className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                            title={`${ancillaryCount} ${t("leases.role.ancillary")}`}
+                          >
+                            +{ancillaryCount}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={l.rentFormula === 1 ? "outline" : l.rentFormula >= 12 ? "default" : "secondary"}>
@@ -437,7 +494,10 @@ export default function Leases() {
             <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.property")} *</Label>
-                <Select value={form.propertyId} onValueChange={v => setForm(f => ({ ...f, propertyId: v, unitId: "" }))}>
+                <Select value={form.propertyId} onValueChange={v => {
+                  setForm(f => ({ ...f, propertyId: v, unitId: "" }));
+                  setExtraUnits([]);
+                }}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
                   <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
@@ -465,15 +525,17 @@ export default function Leases() {
                 }}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                   <SelectContent>
-                    {formUnits.map(u => {
-                      const existing = getActiveLease(u.id);
-                      const blocked = existing && existing.id !== editingLease?.id;
-                      return (
-                        <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                          {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
-                        </SelectItem>
-                      );
-                    })}
+                    {formUnits
+                      .filter(u => !extraUnits.some(e => e.unitId === u.id))
+                      .map(u => {
+                        const existing = getActiveLease(u.id);
+                        const blocked = existing && existing.id !== editingLease?.id;
+                        return (
+                          <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
+                            {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>

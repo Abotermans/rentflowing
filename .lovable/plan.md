@@ -1,117 +1,99 @@
-# Multi-unit lease refactor
 
-A lease becomes a contract-level container that holds 1..N units through a dedicated `LeaseUnitAssignment` history table. Exactly one assignment is primary, all assigned units belong to the same property, and ancillary units (parking / cellar / storage) are tracked without inflating residential occupancy KPIs.
+# Multi-unit Lease — Verification & Hardening
 
-## 1. Data model
+After tracing the data model, context, and pages, the foundation is sound (proper `LeaseUnitAssignment` table, integrity rules for primary/property/overlap, occupancy aware of assignment role). But several real flaws remain that can corrupt occupancy KPIs, silently leave ancillary units occupied after move-out, and bypass validation. Below is the focused fix list. No new features.
 
-### `LeaseUnitAssignment` (new, in `src/types/index.ts`)
+## Findings (verified in code)
 
-```text
-id, leaseId, unitId,
-assignmentType: 'primary' | 'ancillary' | 'parking' | 'cellar'
-              | 'storage'  | 'office-secondary' | 'commercial-addon' | 'other',
-isPrimary: boolean,
-startDate, endDate?: string | null,
-rentShare?: number | null,        // optional internal split
-chargesShare?: number | null,
-notes: string,
-createdAt, updatedAt
-```
+### Blockers / correctness bugs
 
-Helper: an assignment is "active on date D" when `startDate <= D` and (`endDate` is null or `endDate >= D`).
+1. **`getPropertyStats` ignores assignments AND inflates occupancy** — `src/context/AppContext.tsx` ~L632. Uses `leases.some(l => l.unitId === u.id && active)`. Result: with a multi-unit lease, the property tile counts apartment + parking + cellar as 3 "occupied" homes. Occupancy rate is double-counted.
 
-### `Lease` changes (`src/types/index.ts`)
+2. **`confirmMoveOut` doesn't vacate ancillary units** — `AppContext.tsx` L311. It updates only `units` where `id === lease.unitId` (legacy primary). Cellars / parkings stay marked `occupied` after move-out. Assignments are closed correctly, but `units.currentStatus` drifts.
 
-- Deprecate `unitId` on the type but keep it readable for the migration step (marked `@deprecated`, populated from the primary assignment for backwards compatibility during transition, then removed from writes).
-- Add contract-level pricing fields, kept in sync with existing `monthlyRent` / `monthlyCharges`:
-  - `baseMonthlyRentTotal`, `baseMonthlyChargesTotal`
-  - `effectiveMonthlyRentTotal`, `effectiveMonthlyChargesTotal`, `effectiveMonthlyDueTotal` (computed via a `getLeasePricing(lease, assignments)` helper in a new `src/lib/leasePricing.ts`).
-- Keep `propertyId` on the lease — it is the single property all assignments must belong to.
+3. **Lease form save bypasses full draft validation** — `src/pages/Leases.tsx` `handleSave`. Only the primary unit is re-checked via `getActiveLease(form.unitId)`. Extras rely on the dropdown `disabled` state, which is stale across renders / fast clicks. We never call `validateLeaseUnits(...)` before `setLeaseUnits`, so an extra in conflict can slip through.
 
-### Unit classification
+4. **`updateLease` accepts a property change without re-validating assignments** — `AppContext.tsx` L279. If `propertyId` changes, every existing assignment becomes cross-property silently. `canActivateLease` would catch it later, but the data is already inconsistent.
 
-Add `isAncillaryUnitType(unitType)` in `src/lib/occupancy.ts` returning true for `parking | storage` (and any unit whose lease assignment type is non-primary residential). Used everywhere occupancy reporting needs to exclude ancillaries.
+5. **Status change to `ended` via the lease form does not close assignments** — only `confirmMoveOut` closes open assignments. A lease moved to `ended` through the dropdown leaves `endDate: null` rows behind, so `getActiveLeaseForUnit` keeps reporting the unit as still in this lease.
 
-## 2. State & migration (`src/context/AppContext.tsx`, `src/data/mockData.ts`)
+### Minor display / consistency issues
 
-- Add `leaseUnitAssignments: LeaseUnitAssignment[]` to `AppContext` with CRUD: `addLeaseUnitAssignment`, `updateLeaseUnitAssignment`, `removeLeaseUnitAssignment`, plus `setLeaseUnits(leaseId, [{unitId, assignmentType, isPrimary, rentShare, chargesShare}])` used by the form.
-- Migration on load: for every existing lease, if no assignments exist yet, seed one row from `lease.unitId` with `assignmentType: 'primary'`, `isPrimary: true`, `startDate = lease.startDate`, `endDate = lease.endDate` (or null when active).
-- Extend `IntegrityState` (`src/lib/integrity/types.ts`) and `use-integrity-state.ts` with `leaseUnitAssignments`.
-- Seed data: edit `src/data/mockData.ts` to produce realistic scenarios — (a) apt only, (b) apt + parking, (c) apt + cellar + storage, (d) office + 2 parking.
+6. **Lease list shows only the primary unit** — `Leases.tsx` ~L355. Multi-unit leases look like single-unit. Add a `+N ancillary` chip.
 
-## 3. Integrity & validation (`src/lib/integrity/`)
+7. **Rent Roll report uses `l.unitId`** — `Reports.tsx` L67. Acceptable (rent is lease-level) but should annotate ancillary count for clarity.
 
-New module `leaseUnitAssignmentIntegrity.ts` with `validateLeaseUnits(leaseId, draftAssignments, state)`:
+8. **Missing convenience helpers** the rest of the codebase keeps re-implementing inline: `getLeaseAssignedUnits`, `getPrimaryLeaseUnit`, `getAncillaryLeaseUnits`, `isUnitAssignedToActiveLease`. Centralise in `src/lib/leaseAssignments.ts` and reuse.
 
-Blockers:
-- 0 units, no `isPrimary`, more than one `isPrimary`.
-- Units span multiple properties or property mismatch with the lease.
-- Same unit listed twice in the same lease with overlapping active periods.
-- Unit already covered by another active lease whose assignment window overlaps.
+### Verified OK (no change needed)
 
-Warnings:
-- Only ancillary types present (no clear primary rentable).
-- Sum of `rentShare` / `chargesShare` does not equal contract total (when split is used).
-- Selected unit is `reserved` / `unavailable`.
+- `LeaseUnitAssignment` is a first-class entity; no naive `unitIds[]`.
+- Legacy `lease.unitId` is kept as a primary-sync mirror only and is rewritten by `setLeaseUnits`, which keeps existing pages (Tenants list, TenantDetail, VendorDetail, LeaseDetail header, Payments) compatible.
+- `migrateLegacyLeaseAssignments` runs once in `useState` initializer and seeds one primary row per legacy lease.
+- `canActivateLease` enforces: ≥1 unit, exactly one primary, same property, no active overlap.
+- `validateLeaseUnits` enforces the same set on drafts (duplicate, multi-primary, property mismatch, overlap).
+- `getDerivedOccupancy` is assignment-aware and sets `occupancyRole: 'primary' | 'ancillary'`.
+- Dashboard occupancy already counts only primary in numerator and excludes ancillary from denominator.
+- Receivables and cash receipts stay lease-scoped — no per-unit duplication.
 
-Refactor existing integrity helpers to read assignments instead of `lease.unitId`:
-- `leaseIntegrity.ts`: overlap detection iterates `leaseUnitAssignments`.
-- `unitIntegrity.ts`: `canDeleteUnit` / `canChangeUnitStatus` check active assignments, not `l.unitId`.
+## Planned fixes
 
-## 4. Occupancy logic (`src/lib/occupancy.ts`)
+### Data / business logic (`src/context/AppContext.tsx`, `src/lib/leaseAssignments.ts`)
 
-Change `getDerivedOccupancy` signature to accept assignments (or be wrapped by a context-aware helper). A unit is considered held by a lease when an active assignment exists for it. The derived state stays the same per-unit, but:
-- Primary residential/commercial units drive `occupied` KPIs.
-- Ancillary units expose a new `occupancyRole: 'primary' | 'ancillary'` field on `OccupancyInfo` so KPI cards and Dashboard can exclude ancillaries from "homes occupied" counts.
+- Rewrite `getPropertyStats` to use `leaseUnitAssignments`:
+  - `occupied` = primary active assignments on units of the property
+  - `ancillaryLeased` = non-primary active assignments
+  - `vacant/reserved/unavailable` from `unit.currentStatus` for units without any active assignment
+  - `occupancyRate = occupied / (total - ancillaryLeased)` (guard divide-by-zero)
+  - Extend `PropertyStats` with `ancillaryLeased` (additive; existing consumers keep working).
+- `confirmMoveOut`: iterate every unit with an open assignment for this lease and set `currentStatus = vacant`, `availableFrom = moveOutDate`. Then close assignments (existing behavior).
+- `updateLease`: if `propertyId` changes, refuse silently when any open assignment belongs to a different property; surface via toast at the call site (Leases.tsx form already shows status warnings — reuse same pattern with a blocker toast).
+- Add a helper `closeOpenAssignmentsForLease(leaseId, endDate)` and call it from `updateLease` when `lifecycleStage` transitions to `ended` or `terminated`, plus also vacate the linked units (same logic as `confirmMoveOut`).
+- Add helpers in `src/lib/leaseAssignments.ts`:
+  - `getLeaseAssignedUnits(leaseId, assignments, units, { activeOnly })`
+  - `getPrimaryLeaseUnit(leaseId, assignments, units)`
+  - `getAncillaryLeaseUnits(leaseId, assignments, units)`
+  - `isUnitAssignedToActiveLease(unitId, leases, assignments)`
+  Expose through context as pass-through queries.
 
-Update consumers: `Dashboard.tsx`, `Reports.tsx`, `PropertyDetail.tsx`, `UnitDetail.tsx`, `Units.tsx`, `Tenants.tsx`, `TenantDetail.tsx`, `AppContext.getActiveLease`.
+### Lease form (`src/pages/Leases.tsx`)
 
-`getActiveLease(unitId)` becomes "find active assignment for unit, return its lease" — preserves existing API surface.
+- Before calling `setLeaseUnits`, build the full draft (primary + extras) and run `validateLeaseUnits(editingLease?.id ?? null, propertyId, draft, totals, integrityState)`. Block on `blockers`; show warnings as a toast.
+- Filter the primary unit dropdown to exclude units already chosen in `extraUnits` (mirror the inverse filter that already exists for extras).
+- When user changes `form.propertyId` mid-edit, also clear `extraUnits` (currently only `unitId` is cleared).
 
-## 5. Lease create/edit flow (`src/pages/Leases.tsx` + lease form)
+### Display polish
 
-- Property select unchanged (one property per lease).
-- Replace single Unit select with a **Units table editor**:
-  - Add-row from a "units in this property not currently assigned to another active lease" picker.
-  - Per row: unit, `assignmentType` select, `isPrimary` radio (exactly one), optional `rentShare`, `chargesShare`, `startDate`, `endDate`.
-  - Inline validation surfaced via `StatusTransitionAlert` driven by `validateLeaseUnits`.
-- Contract totals (`monthlyRent`, `monthlyCharges`) remain top-level inputs. If internal shares are provided, show a "sum vs total" delta with a warning if they disagree.
-- Submit pipeline: save lease → diff assignments → call `setLeaseUnits` to insert/update/close rows (close = set `endDate` rather than delete, preserving history).
+- **Lease list (`Leases.tsx`)**: next to the unit cell, render a small `+N` chip when active ancillary assignments exist for the lease. Reuse the existing role badge styles.
+- **Rent Roll (`Reports.tsx`)**: append `(+N ancillary)` to the unit column when assignments exist; keep CSV columns unchanged.
+- **LeaseDetail header (`LeaseDetail.tsx` L144 area)**: keep the existing "Assigned units" card (already implemented); ensure header `unit` lookup still falls back to the primary assignment if `lease.unitId` is somehow stale (defensive).
 
-## 6. Lease detail (`src/pages/LeaseDetail.tsx`)
+## Tests
 
-Add three sections:
-1. **Contract summary** — reference, property, status, tenant(s), total rent, total charges, total due (from `getLeasePricing`).
-2. **Assigned units table** — unit code, label, assignmentType, primary badge, start/end, rentShare, chargesShare, history rows greyed.
-3. **Financial structure** — contract totals plus optional per-unit breakdown chart/table.
-4. **Effective occupancy summary** — primary unit, ancillary list, active unit count.
+Extend `src/lib/occupancy.test.ts` and add cases in `src/lib/lifecycle.test.ts`:
 
-Edit dialogs that currently rely on `lease.unitId` (move-in/out, etc.) operate on the primary assignment.
+- Scenario A: 1 lease / 1 apartment → primary, no ancillary, occupancy 1/1.
+- Scenario B: apartment + parking → both occupied, primary only counted; rate ignores parking.
+- Scenario C: apartment + cellar + storage → three units occupied, one primary, two ancillary.
+- Scenario D: draft including a unit from another property → `validateLeaseUnits` blocks `LUA_PROPERTY_MISMATCH`.
+- Scenario E: draft including a unit already in an active lease → blocks `LUA_UNIT_IN_OTHER_LEASE`.
+- Scenario F/G: zero / two primary → blocks `LUA_NO_PRIMARY` / `LUA_MULTIPLE_PRIMARY`.
+- Scenario H: migrated legacy single-unit lease → one primary assignment row, `getDerivedOccupancy` returns `occupied` + role `primary`, receivables untouched.
+- Move-out cascade: lease with apartment + parking → `confirmMoveOut` closes both assignments AND sets both units to `vacant`.
+- Status → `ended` via `updateLease`: assignments closed, units vacated.
 
-## 7. Unit & property surfaces
+## Out of scope (explicitly not touched)
 
-- `UnitDetail.tsx`: show current lease reference, role (primary/ancillary), assignmentType, lease-level monthly due, internal share if defined.
-- `Units.tsx`: add columns/indicators for current lease reference and lease role.
-- `PropertyDetail.tsx`: units table indicates "independent" vs "multi-unit lease" + lease reference + role.
+- New UI for rent/charges share editing.
+- Cross-property leases, lease amendments, per-unit receivables.
+- Refactor of Tenants / TenantDetail / VendorDetail unit display (legacy `lease.unitId` mirror keeps these correct).
+- Any styling overhaul.
 
-## 8. Receivables & payments
+## Files to change
 
-Receivables stay lease-level — `src/data/receivablesMockData.ts` and `src/lib/reconciliation.ts` are not restructured. Only the display layer changes: where a receivable currently shows "Unit X", show the lease reference and "primary: Unit X (+N ancillary)". No per-unit reconciliation work in this step. Payments/guarantees untouched.
-
-## 9. Reporting
-
-- Dashboard occupancy KPI: count units with active **primary** assignment of a residential/commercial type. Ancillary assignments shown in a secondary "Ancillary units leased" stat.
-- `Reports.tsx`: split "Leased units" into "Main" vs "Ancillary".
-
-## Technical details
-
-- New file: `src/lib/leasePricing.ts` (totals + share validation helpers).
-- New file: `src/lib/integrity/leaseUnitAssignmentIntegrity.ts` + export from `src/lib/integrity/index.ts`.
-- Touch list (read/edit): `src/types/index.ts`, `src/context/AppContext.tsx`, `src/hooks/use-integrity-state.ts`, `src/lib/integrity/{types,leaseIntegrity,unitIntegrity,index}.ts`, `src/lib/occupancy.ts`, `src/data/mockData.ts`, `src/pages/{Leases,LeaseDetail,Units,UnitDetail,PropertyDetail,Dashboard,Reports,Tenants,TenantDetail,Payments,Maintenance,MaintenanceDetail,VendorDetail}.tsx`, `src/lib/integrity/costIntegrity.ts` (only if it joins via unitId through leases — verify).
-- Backwards compat shim: a `getLeasePrimaryUnitId(lease, assignments)` helper used everywhere the old `lease.unitId` was read, until call sites are migrated.
-- i18n: add new translation keys (assignment types, "Primary unit", "Ancillary units", warning messages) to `src/i18n/translations.ts` in both EN and FR.
-- Tests: update `src/lib/occupancy.test.ts` and `src/lib/lifecycle.test.ts` for the new assignment-based occupancy lookup; add a small test file for `validateLeaseUnits`.
-
-## Out of scope (per the prompt)
-
-Formal amendment workflow UI, per-unit payment reconciliation, per-unit deposit, cross-property leases, AI, advanced document generation, full sub-unit check-in/out.
+- `src/context/AppContext.tsx` — `getPropertyStats`, `confirmMoveOut`, `updateLease`, new helpers.
+- `src/lib/leaseAssignments.ts` — add `getLeaseAssignedUnits`, `getPrimaryLeaseUnit`, `getAncillaryLeaseUnits`, `isUnitAssignedToActiveLease`, `closeOpenAssignmentsForLease`.
+- `src/pages/Leases.tsx` — full-draft validation, primary/extras exclusivity, clear extras on property change, +N chip in list.
+- `src/pages/Reports.tsx` — annotate ancillary count in Rent Roll.
+- `src/types/index.ts` — add `ancillaryLeased: number` to `PropertyStats`.
+- `src/lib/occupancy.test.ts`, `src/lib/lifecycle.test.ts` — new scenarios.
