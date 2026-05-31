@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, TenantStatus, Tenant, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,13 @@ const LEASE_STATUS_FILTERS: { value: LeaseStatus; label: string }[] = [
 ];
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
+type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
+
+const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "applicant", label: "Applicant" },
+  { value: "former", label: "Former" },
+];
 
 const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
   active:               { icon: CheckCircle2,  labelKey: "guarantee.deposited",         className: "text-success" },
@@ -67,7 +74,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 
 export default function Leases() {
   const navigate = useNavigate();
-  const { leases, tenants, units, properties, addLease, updateLease, deleteLease, getActiveLease, getGuaranteeByLease } = useAppData();
+  const { leases, tenants, units, properties, addLease, updateLease, deleteLease, addTenant, getActiveLease, getGuaranteeByLease } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -100,7 +107,21 @@ export default function Leases() {
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
 
-  const openAdd = () => { setEditingLease(null); setForm({ ...emptyForm }); setSheetOpen(true); };
+  const emptyTenantForm: TenantFormData = {
+    firstName: "", lastName: "", email: "", phone: "",
+    dateOfBirth: null, identificationNumber: null, currentAddress: null,
+    status: "active", notes: "",
+  };
+  const [tenantForm, setTenantForm] = useState<TenantFormData>({ ...emptyTenantForm });
+  const [step, setStep] = useState(1);
+
+  const openAdd = () => {
+    setEditingLease(null);
+    setForm({ ...emptyForm });
+    setTenantForm({ ...emptyTenantForm });
+    setStep(1);
+    setSheetOpen(true);
+  };
   const openEdit = (l: Lease) => {
     setEditingLease(l);
     const { id, createdAt, updatedAt, ...rest } = l;
@@ -125,16 +146,28 @@ export default function Leases() {
       updateLease({ ...editingLease, ...form });
       toast({ title: "Lease updated" });
     } else {
-      addLease(form);
-      toast({ title: "Lease added" });
+      const newTenant = addTenant(tenantForm);
+      addLease({ ...form, primaryTenantId: newTenant.id });
+      toast({ title: "Lease added", description: `Tenant ${getTenantFullName(newTenant)} created` });
     }
     setSheetOpen(false);
   };
 
   const handleSave = () => {
-    if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.primaryTenantId || !form.startDate || !form.endDate) {
-      toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
-      return;
+    if (editingLease) {
+      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.primaryTenantId || !form.startDate || !form.endDate) {
+        toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.startDate || !form.endDate) {
+        toast({ title: "Validation Error", description: "Reference, property, unit, start date, and end date are required.", variant: "destructive" });
+        return;
+      }
+      if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
+        toast({ title: "Validation Error", description: "Tenant first name, last name, and email are required.", variant: "destructive" });
+        return;
+      }
     }
     const unitForSave = units.find(u => u.id === form.unitId);
     const tierValue = unitForSave ? getMonthlyRentForMonths(unitForSave, form.rentFormula) : null;
