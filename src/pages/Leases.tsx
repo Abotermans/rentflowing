@@ -478,6 +478,64 @@ export default function Leases() {
                 </Select>
               </div>
             </div>
+            {/* Additional (ancillary) units */}
+            <div className="rounded-md border border-border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-xs">{t("leases.additionalUnits")}</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{t("leases.additionalUnitsHelp")}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={!form.propertyId}
+                  onClick={() => setExtraUnits(prev => [...prev, { unitId: "", assignmentType: "parking" }])}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />{t("leases.addUnit")}
+                </Button>
+              </div>
+              {extraUnits.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">{t("leases.noAdditionalUnits")}</p>
+              ) : (
+                <div className="space-y-2">
+                  {extraUnits.map((e, idx) => {
+                    const usedIds = new Set<string>([form.unitId, ...extraUnits.filter((_, i) => i !== idx).map(x => x.unitId)]);
+                    const options = formUnits.filter(u => !usedIds.has(u.id));
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Select value={e.unitId} onValueChange={v => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, unitId: v } : x))}>
+                          <SelectTrigger className="h-8 flex-1"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
+                          <SelectContent>
+                            {options.map(u => {
+                              const existing = getActiveLease(u.id);
+                              const blocked = existing && existing.id !== editingLease?.id;
+                              return (
+                                <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
+                                  {u.unitCode} — {u.unitLabel}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <Select value={e.assignmentType} onValueChange={v => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, assignmentType: v as LeaseUnitAssignmentType } : x))}>
+                          <SelectTrigger className="h-8 w-[160px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {(["parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
+                              <SelectItem key={at} value={at}>{ASSIGNMENT_TYPE_LABELS[at]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExtraUnits(prev => prev.filter((_, i) => i !== idx))}>
+                          <XIcon className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             </>)}
             {(editingLease || step === 3) && (<>
             <div className="grid grid-cols-2 gap-4">
