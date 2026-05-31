@@ -5,13 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Shield, Bell, Banknote, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2 } from "lucide-react";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
-import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canDeleteTenant, canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
-import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +17,6 @@ export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
   const { tenants, leases, units, properties, deleteTenant, getTenantOutstanding, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
   const { t } = useSettings();
-  const integrityState = useIntegrityState();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -104,16 +100,6 @@ export default function TenantDetail() {
         </CardContent>
       </Card>
 
-      {/* Integrity Summary */}
-      {id && (
-        <IntegritySummaryPanel
-          title="Tenant Dependencies"
-          deleteValidation={canDeleteTenant(id, integrityState)}
-          additionalWarnings={canChangeTenantStatus(id, "former", integrityState).warnings}
-        />
-      )}
-
-      {/* Financial Overview */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialOverview")}</CardTitle></CardHeader>
         <CardContent>
