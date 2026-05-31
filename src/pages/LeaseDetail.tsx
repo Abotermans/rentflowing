@@ -31,7 +31,15 @@ import { canChangeLeaseStatus, canActivateLease, canRenewLease } from "@/lib/int
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
-import type { ValidationResult } from "@/lib/integrity/types";
+import type { TranslationKey } from "@/i18n/translations";
+
+const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
+  active:               { icon: CheckCircle2,  labelKey: "guarantee.deposited",         className: "text-success" },
+  released:             { icon: Undo2,         labelKey: "guarantee.released",          className: "text-muted-foreground" },
+  pending:              { icon: Clock,         labelKey: "guarantee.waiting",           className: "text-warning" },
+  incomplete:           { icon: Clock,         labelKey: "guarantee.waiting",           className: "text-warning" },
+  "partially-retained": { icon: AlertTriangle, labelKey: "guarantee.partiallyRetained", className: "text-warning" },
+};
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
