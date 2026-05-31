@@ -40,6 +40,9 @@ const en = {
   "leases.wizard.leaseDetails": "Lease details",
   "leases.wizard.tenantDetails": "Tenant details",
   "leases.wizard.terms": "Terms & financials",
+ "leases.wizard.useExistingTenant": "Select existing tenant",
+ "leases.wizard.createNewTenant": "Create new tenant",
+ "leases.wizard.selectTenantPlaceholder": "Choose a tenant…",
 
   // Filters
   "filter.all": "All",
