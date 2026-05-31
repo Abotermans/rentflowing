@@ -177,8 +177,8 @@ function OccupancyReport() {
       </FilterBar>
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Total Units" value={String(data.length)} />
-        <KpiCard label="Occupied (primary)" value={String(occupiedPrimary)} />
-        <KpiCard label="Ancillary leased" value={String(occupiedAncillary)} />
+        <KpiCard label={t("reports.occupiedPrimary")} value={String(occupiedPrimary)} />
+        <KpiCard label={t("reports.ancillaryLeased")} value={String(occupiedAncillary)} />
         <KpiCard label="Vacant" value={String(vacant)} />
         <KpiCard label="Occupancy Rate" value={`${rate}%`} />
       </div>
@@ -203,7 +203,7 @@ function OccupancyReport() {
                   <div className="flex items-center gap-1.5">
                     <StatusBadge status={d.u.currentStatus} />
                     {d.role === "ancillary" && (
-                      <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">Ancillary</span>
+                      <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{t("leases.role.ancillary")}</span>
                     )}
                   </div>
                 </TableCell>
