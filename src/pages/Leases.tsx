@@ -50,6 +50,14 @@ const LEASE_STATUS_FILTERS: { value: LeaseStatus; label: string }[] = [
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 
+const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
+  active:               { icon: CheckCircle2,  labelKey: "guarantee.deposited",         className: "text-success" },
+  released:             { icon: Undo2,         labelKey: "guarantee.released",          className: "text-muted-foreground" },
+  pending:              { icon: Clock,         labelKey: "guarantee.waiting",           className: "text-warning" },
+  incomplete:           { icon: Clock,         labelKey: "guarantee.waiting",           className: "text-warning" },
+  "partially-retained": { icon: AlertTriangle, labelKey: "guarantee.partiallyRetained", className: "text-warning" },
+};
+
 const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
   draft: ["draft", "active"],
   active: ["active", "ended", "terminated"],
