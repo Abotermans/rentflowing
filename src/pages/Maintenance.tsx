@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Wrench, Plus, Search, Eye, Pencil, Trash2, ArrowDown, Minus, ArrowUp, AlertTriangle } from "lucide-react";
+import { Wrench, Plus, Search, Pencil, Trash2, ArrowDown, Minus, ArrowUp, AlertTriangle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatDate } from "@/lib/formatters";
@@ -31,6 +32,7 @@ export default function Maintenance() {
   const { tickets, properties, units, tenants, vendors, addTicket, updateTicket, deleteTicket } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [filterCategory, setFilterCategory] = useState<string[]>([]);
@@ -197,22 +199,21 @@ export default function Maintenance() {
                 const tenant = t.tenantId ? tenants.find(x => x.id === t.tenantId) : null;
                 const vendor = t.assignedVendorId ? vendors.find(v => v.id === t.assignedVendorId) : null;
                 return (
-                  <TableRow key={t.id}>
+                  <TableRow key={t.id} className="cursor-pointer" onClick={() => navigate(`/maintenance/${t.id}`)}>
                     <TableCell className="font-medium">
-                      <Link to={`/maintenance/${t.id}`} className="hover:underline text-foreground">{t.title}</Link>
+                      <Link to={`/maintenance/${t.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{t.title}</Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{prop ? <Link to={`/properties/${prop.id}`} className="hover:underline">{prop.name}</Link> : "—"}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
                     <TableCell className="text-xs capitalize">{MAINTENANCE_CATEGORY_LABELS[t.category]}</TableCell>
                     <TableCell><PriorityLabel priority={t.priority} /></TableCell>
                     <TableCell><StatusBadge status={t.status} /></TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{vendor ? <Link to={`/vendors/${vendor.id}`} className="hover:underline">{vendor.vendorName}</Link> : "—"}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{vendor ? <Link to={`/vendors/${vendor.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{vendor.vendorName}</Link> : "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{formatDate(t.createdDate)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{t.scheduledDate ? formatDate(t.scheduledDate) : "—"}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/maintenance/${t.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                      <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
