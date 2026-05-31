@@ -161,11 +161,12 @@ export function migrateLegacyLeaseAssignments(
   leases: readonly Lease[],
   existing: readonly LeaseUnitAssignment[],
 ): LeaseUnitAssignment[] {
-  const seen = new Set(existing.map(a => a.leaseId));
+  // A lease is considered already migrated when it already has a primary row.
+  const hasPrimary = new Set(existing.filter(a => a.isPrimary).map(a => a.leaseId));
   const added: LeaseUnitAssignment[] = [];
   let counter = 0;
   for (const l of leases) {
-    if (seen.has(l.id)) continue;
+    if (hasPrimary.has(l.id)) continue;
     if (!l.unitId) continue;
     // Backfill primary share: lease total minus whatever ancillary shares already exist
     // (pre-seeded mockData rows). Floor at 0 to avoid negative shares from inconsistent data.
