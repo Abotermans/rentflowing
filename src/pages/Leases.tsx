@@ -400,6 +400,7 @@ export default function Leases() {
                 const prop = properties.find(p => p.id === l.propertyId);
                 const unit = units.find(u => u.id === l.unitId);
                 const guarantee = getGuaranteeByLease(l.id);
+                const ancillaryCount = getAncillaryLeaseUnits(l.id, { activeOnly: true }).length;
                 return (
                   <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/leases/${l.id}`)}>
                     <TableCell className="font-mono text-xs font-medium">
@@ -414,7 +415,17 @@ export default function Leases() {
                       {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{prop.name}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
+                      <div className="flex items-center gap-1.5">
+                        {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
+                        {ancillaryCount > 0 && (
+                          <span
+                            className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                            title={`${ancillaryCount} ${t("leases.role.ancillary")}`}
+                          >
+                            +{ancillaryCount}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={l.rentFormula === 1 ? "outline" : l.rentFormula >= 12 ? "default" : "secondary"}>
