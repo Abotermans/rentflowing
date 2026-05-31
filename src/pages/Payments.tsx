@@ -62,10 +62,6 @@ export default function Payments() {
   const today = new Date().toISOString().split("T")[0];
 
   // KPIs
-  const totalOpenReceivables = receivableItems.filter(ri => ri.outstandingAmount > 0).reduce((s, ri) => s + ri.outstandingAmount, 0);
-  const totalOverdue = receivableItems.filter(ri => ri.outstandingAmount > 0 && ri.dueDate < today).reduce((s, ri) => s + ri.outstandingAmount, 0);
-  const totalUnmatchedReceipts = cashReceipts.filter(cr => cr.unmatchedAmount > 0).reduce((s, cr) => s + cr.unmatchedAmount, 0);
-  const unappliedCreditTotal = cashReceipts.filter(cr => cr.unmatchedAmount > 0 && cr.tenantId).reduce((s, cr) => s + cr.unmatchedAmount, 0);
 
   // Enriched receivables
   const enrichedReceivables = receivableItems.map(ri => {
@@ -180,45 +176,6 @@ export default function Payments() {
     setAllocAmounts({});
   };
 
-  const kpis = [
-    { label: t("payments.kpi.openReceivables"), value: formatCurrency(totalOpenReceivables), icon: FileText, color: "text-primary" },
-    { label: t("payments.kpi.totalOverdue"), value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
-    { label: t("payments.kpi.unmatchedReceipts"), value: formatCurrency(totalUnmatchedReceipts), icon: ArrowRightLeft, color: totalUnmatchedReceipts > 0 ? "text-warning" : "text-foreground" },
-    { label: t("payments.kpi.unappliedCredit"), value: formatCurrency(unappliedCreditTotal), icon: Banknote, color: unappliedCreditTotal > 0 ? "text-primary" : "text-foreground" },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("payments.pageTitle")}</h1>
-          <p className="text-sm text-muted-foreground">{t("payments.pageSubtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative inline-flex">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
-          </div>
-          <Button onClick={() => setAddReceiptOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        {kpis.map(k => (
-          <Card key={k.label}>
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
-                  <p className="text-lg font-bold text-foreground mt-1">{k.value}</p>
-                </div>
-                <k.icon className={`h-5 w-5 ${k.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       <Tabs defaultValue="receivables">
         <TabsList>
