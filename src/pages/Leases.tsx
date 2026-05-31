@@ -220,7 +220,7 @@ export default function Leases() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
           </div>
-          <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />{t("leases.add")}</Button>
+          <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("leases.add")}</Button>
         </div>
       </div>
 
