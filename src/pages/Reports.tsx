@@ -123,7 +123,7 @@ function RentRollReport() {
 
 // ─── Occupancy ───
 function OccupancyReport() {
-  const { units, properties, tenants, getActiveLease } = useAppData();
+  const { units, properties, tenants, getActiveLease, getActiveLeaseAssignmentForUnit } = useAppData();
   const [propFilter, setPropFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -135,13 +135,17 @@ function OccupancyReport() {
       const prop = properties.find(p => p.id === u.propertyId);
       const lease = getActiveLease(u.id);
       const tenant = lease ? tenants.find(t => t.id === lease.primaryTenantId) : null;
-      return { u, prop, lease, tenant };
+      const a = getActiveLeaseAssignmentForUnit(u.id);
+      const role: "primary" | "ancillary" | null = a ? (a.assignment.isPrimary ? "primary" : "ancillary") : null;
+      return { u, prop, lease, tenant, role };
     });
-  }, [units, properties, tenants, getActiveLease, propFilter, statusFilter]);
+  }, [units, properties, tenants, getActiveLease, getActiveLeaseAssignmentForUnit, propFilter, statusFilter]);
 
-  const occupied = data.filter(d => d.u.currentStatus === "occupied").length;
-  const vacant = data.filter(d => d.u.currentStatus === "vacant").length;
-  const rate = data.length > 0 ? Math.round((occupied / data.length) * 100) : 0;
+  const occupiedPrimary = data.filter(d => d.role === "primary").length;
+  const occupiedAncillary = data.filter(d => d.role === "ancillary").length;
+  const vacant = data.filter(d => d.u.currentStatus === "vacant" && !d.role).length;
+  const denom = data.length - occupiedAncillary;
+  const rate = denom > 0 ? Math.round((occupiedPrimary / denom) * 100) : 0;
 
   const doExport = () => exportToCSV("occupancy", ["Unit", "Property", "Type", "Status", "Tenant", "Rent"], data.map(d => [
     d.u.unitCode, d.prop?.name ?? "", d.u.unitType, d.u.currentStatus,
