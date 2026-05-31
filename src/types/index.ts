@@ -74,6 +74,70 @@ export function getTenantFullName(t: Tenant): string {
 
 export type LifecycleStage = "draft" | "active" | "ended" | "terminated";
 
+// ===== Lease ↔ Unit assignment (multi-unit leases) =====
+// A lease is a contract-level container that can cover several units of the
+// same property. Each row binds one unit to one lease for a date range and
+// records its role (primary residential/commercial vs ancillary parking,
+// cellar, storage, …) plus an optional internal rent / charges split.
+export type LeaseUnitAssignmentType =
+  | "primary"
+  | "ancillary"
+  | "parking"
+  | "cellar"
+  | "storage"
+  | "office-secondary"
+  | "commercial-addon"
+  | "other";
+
+export const ASSIGNMENT_TYPE_LABELS: Record<LeaseUnitAssignmentType, string> = {
+  primary: "Primary",
+  ancillary: "Ancillary",
+  parking: "Parking",
+  cellar: "Cellar",
+  storage: "Storage",
+  "office-secondary": "Secondary office",
+  "commercial-addon": "Commercial add-on",
+  other: "Other",
+};
+
+/**
+ * Assignment types that should NOT count toward primary occupancy KPIs
+ * (parking spots, cellars, storage rooms are leased but never a "home").
+ */
+export const ANCILLARY_ASSIGNMENT_TYPES: ReadonlySet<LeaseUnitAssignmentType> = new Set([
+  "ancillary", "parking", "cellar", "storage", "commercial-addon", "other",
+]);
+
+/** Unit types whose physical nature makes them ancillary by default. */
+export const ANCILLARY_UNIT_TYPES: ReadonlySet<UnitType> = new Set([
+  "parking", "storage",
+]);
+
+export function isAncillaryAssignmentType(t: LeaseUnitAssignmentType): boolean {
+  return ANCILLARY_ASSIGNMENT_TYPES.has(t);
+}
+
+export function isAncillaryUnitType(u: UnitType): boolean {
+  return ANCILLARY_UNIT_TYPES.has(u);
+}
+
+export interface LeaseUnitAssignment {
+  id: string;
+  leaseId: string;
+  unitId: string;
+  assignmentType: LeaseUnitAssignmentType;
+  isPrimary: boolean;
+  startDate: string;
+  endDate: string | null;
+  /** Optional internal split — share of lease-level monthly rent for this unit. */
+  rentShare: number | null;
+  /** Optional internal split — share of lease-level monthly charges for this unit. */
+  chargesShare: number | null;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type AdvanceAllocationMethod = 'spread-evenly' | 'fixed-monthly-reduction';
 export type AdvanceAppliedTo = 'rent' | 'charges' | 'rent-and-charges';
 export type AdvanceStatus = 'not-applicable' | 'scheduled' | 'active' | 'fully-consumed';
