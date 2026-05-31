@@ -10,7 +10,16 @@ import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
 import { autoAllocate } from "@/lib/reconciliation";
 import { computeAllocations } from "@/lib/costAllocation";
-import { migrateLegacyLeaseAssignments, getActiveLeaseForUnit as findActiveLeaseForUnit, assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import {
+  migrateLegacyLeaseAssignments,
+  getActiveLeaseForUnit as findActiveLeaseForUnit,
+  assignmentIsActiveOn,
+  closeOpenAssignmentsForLease,
+  getLeaseAssignedUnits as libGetLeaseAssignedUnits,
+  getPrimaryLeaseUnit as libGetPrimaryLeaseUnit,
+  getAncillaryLeaseUnits as libGetAncillaryLeaseUnits,
+  isUnitAssignedToActiveLease as libIsUnitAssignedToActiveLease,
+} from "@/lib/leaseAssignments";
 
 function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: Tenant[]): Tenant[] {
   const affected = new Set(tenantIds.filter(Boolean));
@@ -31,6 +40,8 @@ function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: 
 interface PropertyStats {
   total: number;
   occupied: number;
+  /** Units leased only as ancillary (parking, cellar, …). Not a primary home. */
+  ancillaryLeased: number;
   vacant: number;
   reserved: number;
   unavailable: number;
