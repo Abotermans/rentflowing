@@ -21,7 +21,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType, ReceivableItemType } from "@/types/receivables";
-import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote, FileText } from "lucide-react";
+import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSettings } from "@/context/SettingsContext";
 
@@ -62,10 +62,6 @@ export default function Payments() {
   const today = new Date().toISOString().split("T")[0];
 
   // KPIs
-  const totalOpenReceivables = receivableItems.filter(ri => ri.outstandingAmount > 0).reduce((s, ri) => s + ri.outstandingAmount, 0);
-  const totalOverdue = receivableItems.filter(ri => ri.outstandingAmount > 0 && ri.dueDate < today).reduce((s, ri) => s + ri.outstandingAmount, 0);
-  const totalUnmatchedReceipts = cashReceipts.filter(cr => cr.unmatchedAmount > 0).reduce((s, cr) => s + cr.unmatchedAmount, 0);
-  const unappliedCreditTotal = cashReceipts.filter(cr => cr.unmatchedAmount > 0 && cr.tenantId).reduce((s, cr) => s + cr.unmatchedAmount, 0);
 
   // Enriched receivables
   const enrichedReceivables = receivableItems.map(ri => {
@@ -180,13 +176,6 @@ export default function Payments() {
     setAllocAmounts({});
   };
 
-  const kpis = [
-    { label: t("payments.kpi.openReceivables"), value: formatCurrency(totalOpenReceivables), icon: FileText, color: "text-primary" },
-    { label: t("payments.kpi.totalOverdue"), value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
-    { label: t("payments.kpi.unmatchedReceipts"), value: formatCurrency(totalUnmatchedReceipts), icon: ArrowRightLeft, color: totalUnmatchedReceipts > 0 ? "text-warning" : "text-foreground" },
-    { label: t("payments.kpi.unappliedCredit"), value: formatCurrency(unappliedCreditTotal), icon: Banknote, color: unappliedCreditTotal > 0 ? "text-primary" : "text-foreground" },
-  ];
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -201,23 +190,6 @@ export default function Payments() {
           </div>
           <Button onClick={() => setAddReceiptOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>
         </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        {kpis.map(k => (
-          <Card key={k.label}>
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
-                  <p className="text-lg font-bold text-foreground mt-1">{k.value}</p>
-                </div>
-                <k.icon className={`h-5 w-5 ${k.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       <Tabs defaultValue="receivables">
