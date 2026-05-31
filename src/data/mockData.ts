@@ -1,5 +1,6 @@
 import { Property, Unit, Tenant, Lease, Guarantee, DEFAULT_MOVE_IN_CHECKLIST, DEFAULT_MOVE_OUT_CHECKLIST } from "@/types";
 import type { LeaseUnitAssignment } from "@/types";
+import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
 
 // initialProperties, initialUnits, initialTenants arrays stay identical
 
