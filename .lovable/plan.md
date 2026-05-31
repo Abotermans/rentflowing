@@ -1,74 +1,40 @@
 ## Goal
 
-Restructure the Create New Lease dialog in `src/pages/Leases.tsx` into a 3-step wizard. Step 2 creates a brand-new tenant inline (no existing-tenant picker) and collects all mandatory tenant information; that tenant is committed to the system when the lease is created. Edit mode keeps the current single-form layout.
+In Step 2 of the Create Lease wizard (`src/pages/Leases.tsx`), let the user either pick an existing tenant or create a new one inline. Steps 1 and 3 are unchanged.
 
-## Steps
+## Step 2 UI
 
-**Step 1 — Lease details**
-- Lease reference
-- Property
-- Unit
-- Rent formula (tier)
+At the top of the step, a segmented toggle (Tabs or two buttons) with two modes:
 
-**Step 2 — Tenant details (creates a new tenant)**
-- First name *
-- Last name *
-- Email *
-- Phone
-- Date of birth
-- Tenant status * (defaults to `active`)
-- Identification number
-- Current address
-- Tenant notes
+- **Existing tenant** (default if there are tenants in the system)
+  - Searchable Select listing all tenants (name + email), bound to `form.primaryTenantId`.
+  - Small helper text under it.
+- **New tenant**
+  - Current inline tenant form (firstName, lastName, email, phone, DOB, status, ID, address, notes), bound to `tenantForm`.
 
-**Step 3 — Terms & financials**
-- Start date / End date *
-- Lifecycle status
-- Monthly rent, monthly charges, due day
-- Deposit / guarantee amount
-- Notice period
-- Signed date
-- Lease notes
+State: `const [tenantMode, setTenantMode] = useState<"existing" | "new">(tenants.length ? "existing" : "new")`. Reset in `openAdd` and on dialog close.
 
-## Implementation
+## Validation (gating Next on Step 2)
 
-In `src/pages/Leases.tsx`:
+- `existing`: require `form.primaryTenantId` to be set.
+- `new`: require `tenantForm.firstName`, `lastName`, `email` (current rule).
 
-1. **Wizard state**
-   - `const [step, setStep] = useState(1)`; reset to 1 in `openAdd` and when the dialog closes.
-   - Add a second form state `tenantForm` (same shape used in `Tenants.tsx`: firstName, lastName, email, phone, dateOfBirth, status, identificationNumber, currentAddress, notes), reset on `openAdd`.
-   - Pull `addTenant` from `useAppData()` alongside the existing `addLease`.
+## Final submit
 
-2. **Dialog rendering**
-   - Keep the existing `<Dialog>`/`<DialogContent>` shell.
-   - When `editingLease` is set, keep today's full single-form layout untouched.
-   - When creating: render a small stepper (3 segments using `bg-primary` / `bg-muted`) and a `Step X of 3 — <label>` line under the title. Show only the current step's fields inside the scroll container.
-   - Remove the primary-tenant Select from the create flow (it stays in edit mode for now).
+In `executeLeaseSave` (create branch):
 
-3. **Per-step validation (gates Next only)**
-   - Step 1: reference, property, unit filled.
-   - Step 2: firstName, lastName, email filled (mirrors the Tenants page validation); show inline toast on invalid Next click.
-   - Step 3: dates present (existing required-field check still runs in `handleSave`).
+- If `tenantMode === "new"`: call `addTenant(tenantForm)` and use the returned id as `primaryTenantId` (current behavior).
+- If `tenantMode === "existing"`: skip `addTenant`; use the already-selected `form.primaryTenantId`.
 
-4. **Final submit (Create lease button on step 3)**
-   - Call `addTenant(tenantForm)` first and capture the returned tenant (or generate the id the same way `addTenant` does today — confirm by reading `AppContext`'s `addTenant` return value before implementing; if it doesn't return the new tenant, extend it to do so, or pre-generate the id with `crypto.randomUUID()` and pass it in).
-   - Set `form.primaryTenantId` to that new tenant's id, then run the existing `handleSave` flow unchanged (conflict checks, override dialog, `addLease`).
-   - On any failure after tenant creation, leave the tenant in the system (acceptable — user can edit on the Tenants page); do not attempt rollback.
+Then run the existing `addLease` flow (conflict checks + override dialog) unchanged.
 
-5. **Footer**
-   - Step 1: `Cancel` + `Next`
-   - Step 2: `Back` + `Next`
-   - Step 3: `Back` + `Create lease`
+## Translations
 
-6. **Translations** — add to both EN and FR in `src/i18n/translations.ts`:
-   - `leases.step.details`, `leases.step.tenant`, `leases.step.terms`
-   - `leases.stepLabel` ("Step {n} of {total}")
-   - `action.next`, `action.back` (only if missing)
-   - Reuse existing `tenants.firstName`, `tenants.lastName`, `tenants.email`, etc. for the tenant step labels.
+Add EN/FR keys in `src/i18n/translations.ts`:
+- `leases.wizard.useExistingTenant` ("Select existing tenant" / "Sélectionner un locataire existant")
+- `leases.wizard.createNewTenant` ("Create new tenant" / "Créer un nouveau locataire")
+- `leases.wizard.selectTenantPlaceholder` ("Choose a tenant…" / "Choisir un locataire…")
 
 ## Out of scope
 
-- Edit-lease flow (unchanged).
-- Selecting an existing tenant during creation (every new lease creates a new tenant in this flow).
-- Co-tenants.
-- Changes to the Tenants page or tenant integrity rules.
+Edit-lease flow, co-tenants, tenant integrity changes, Tenants page.
