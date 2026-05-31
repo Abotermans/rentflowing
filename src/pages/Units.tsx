@@ -77,6 +77,7 @@ export default function Units() {
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState<string[]>([]);
   const [filterType, setFilterType] = useState<string[]>([]);
