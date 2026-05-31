@@ -1,4 +1,5 @@
 import { Property, Unit, Tenant, Lease, Guarantee, DEFAULT_MOVE_IN_CHECKLIST, DEFAULT_MOVE_OUT_CHECKLIST } from "@/types";
+import type { LeaseUnitAssignment } from "@/types";
 
 // initialProperties, initialUnits, initialTenants arrays stay identical
 
@@ -175,4 +176,18 @@ export const initialGuarantees: Guarantee[] = [
   { id: "g4", leaseId: "l4", type: "cash-deposit", expectedAmount: 3200, receivedAmount: 3200, status: "partially-retained", receivedDate: "2023-08-20", releaseDate: "2026-01-15", retentionAmount: 500, notes: "€500 retained for cleaning and minor repairs." },
   { id: "g5", leaseId: "l6", type: "cash-deposit", expectedAmount: 4400, receivedAmount: 4400, status: "active", receivedDate: "2025-06-25", releaseDate: null, retentionAmount: null, notes: "Commercial deposit received in full." },
   { id: "g6", leaseId: "l7", type: "cash-deposit", expectedAmount: 6400, receivedAmount: 6400, status: "active", receivedDate: "2024-12-22", releaseDate: null, retentionAmount: null, notes: "Office lease deposit." },
+];
+
+/**
+ * Pre-seeded ancillary lease-unit assignments (apartment + parking, apartment + cellar,
+ * office + parking). Primary-unit rows are generated automatically at boot time from
+ * `lease.unitId` by `migrateLegacyLeaseAssignments` in `AppContext`.
+ */
+export const initialLeaseUnitAssignments: LeaseUnitAssignment[] = [
+  // l1 — Paris apartment + sous-sol parking
+  { id: "lua1", leaseId: "l1", unitId: "u4", assignmentType: "parking", isPrimary: false, startDate: "2024-03-01", endDate: null, rentShare: 120, chargesShare: 0, notes: "Spot 12, sous-sol", createdAt: "2024-03-01", updatedAt: "2024-03-01" },
+  // l2 — Brussels apartment + cave storage
+  { id: "lua2", leaseId: "l2", unitId: "u8", assignmentType: "storage", isPrimary: false, startDate: "2024-06-01", endDate: null, rentShare: 75, chargesShare: 0, notes: "Cave n°4", createdAt: "2024-06-01", updatedAt: "2024-06-01" },
+  // l7 — Amsterdam office + kelder parking (overrides unavailable parking status via assignment)
+  { id: "lua3", leaseId: "l7", unitId: "u12", assignmentType: "parking", isPrimary: false, startDate: "2025-01-01", endDate: null, rentShare: 200, chargesShare: 0, notes: "Reserved with the office", createdAt: "2025-01-01", updatedAt: "2025-01-01" },
 ];

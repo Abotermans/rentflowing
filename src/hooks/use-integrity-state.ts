@@ -10,6 +10,7 @@ export function useIntegrityState(): IntegrityState {
     tenants: ctx.tenants,
     leases: ctx.leases,
     guarantees: ctx.guarantees,
+    leaseUnitAssignments: ctx.leaseUnitAssignments,
     receivableItems: ctx.receivableItems,
     cashReceipts: ctx.cashReceipts,
     allocations: ctx.allocations,
@@ -21,6 +22,7 @@ export function useIntegrityState(): IntegrityState {
     costAllocationResults: ctx.costAllocationResults,
   }), [
     ctx.properties, ctx.units, ctx.tenants, ctx.leases, ctx.guarantees,
+    ctx.leaseUnitAssignments,
     ctx.receivableItems, ctx.cashReceipts, ctx.allocations, ctx.tickets,
     ctx.costCategories, ctx.costEntries, ctx.allocationRules,
     ctx.allocationRuleUnitShares, ctx.costAllocationResults,

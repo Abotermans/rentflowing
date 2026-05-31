@@ -10,6 +10,8 @@ export { canDeleteTenant, canChangeTenantStatus } from "./tenantIntegrity";
 export { canDeleteLease, canActivateLease, canChangeLeaseStatus } from "./leaseIntegrity";
 export { canDeleteReceivable, canDeleteCashReceipt, canCreateAllocation } from "./financialIntegrity";
 export { canDeleteCostCategory, canDeleteCostEntry, canDeleteAllocationRule, validateCostEntry, validateManualPercentageShares } from "./costIntegrity";
+export { validateLeaseUnits } from "./leaseUnitAssignmentIntegrity";
+export type { DraftAssignment } from "./leaseUnitAssignmentIntegrity";
 
 // ===== Generic Dispatchers =====
 

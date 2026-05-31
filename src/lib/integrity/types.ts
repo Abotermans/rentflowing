@@ -1,4 +1,5 @@
 import { Property, Unit, Tenant, Lease, Guarantee } from "@/types";
+import type { LeaseUnitAssignment } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation } from "@/types/receivables";
 import { MaintenanceTicket } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
@@ -35,6 +36,7 @@ export interface IntegrityState {
   tenants: readonly Tenant[];
   leases: readonly Lease[];
   guarantees: readonly Guarantee[];
+  leaseUnitAssignments: readonly LeaseUnitAssignment[];
   receivableItems: readonly ReceivableItem[];
   cashReceipts: readonly CashReceipt[];
   allocations: readonly ReceiptAllocation[];
