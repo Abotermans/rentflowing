@@ -168,11 +168,13 @@ export interface Lease {
   moveInScheduledDate: string | null;
   moveInActualDate: string | null;
   moveInMeterReading: string | null;
+  moveInWaterMeterReading: string | null;
   moveInChecklist: MoveInChecklist;
   // Move-out fields
   moveOutScheduledDate: string | null;
   moveOutActualDate: string | null;
   moveOutMeterReading: string | null;
+  moveOutWaterMeterReading: string | null;
   moveOutChecklist: MoveOutChecklist;
   moveOutNotes: string;
   // Keys
