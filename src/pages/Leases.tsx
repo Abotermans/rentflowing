@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
