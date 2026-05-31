@@ -5,6 +5,10 @@ import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
 import { initialProperties, initialUnits, initialTenants, initialLeases, initialGuarantees, initialLeaseUnitAssignments } from "@/data/mockData";
+import { initialAmendments, initialAmendmentChanges } from "@/data/mockData";
+import type { LeaseAmendment, LeaseAmendmentChange, AmendmentType, AmendmentStatus, AmendmentFieldName, AmendmentChangeType, AmendmentChangeMetadata } from "@/types/amendments";
+import { nextAmendmentNumber, getAmendmentChanges } from "@/lib/amendments";
+import { canActivateAmendment } from "@/lib/integrity/amendmentIntegrity";
 import { initialReceivableItems, initialCashReceipts, initialAllocations } from "@/data/receivablesMockData";
 import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
