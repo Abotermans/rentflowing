@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { HardHat, Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { HardHat, Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +26,7 @@ export default function Vendors() {
   const { vendors, addVendor, updateVendor, deleteVendor } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -113,8 +114,8 @@ export default function Vendors() {
             </TableHeader>
             <TableBody>
               {filtered.map(v => (
-                <TableRow key={v.id}>
-                  <TableCell className="font-medium"><Link to={`/vendors/${v.id}`} className="hover:underline text-foreground">{v.vendorName}</Link></TableCell>
+                <TableRow key={v.id} className="cursor-pointer" onClick={() => navigate(`/vendors/${v.id}`)}>
+                  <TableCell className="font-medium"><Link to={`/vendors/${v.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{v.vendorName}</Link></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{v.tradeCategory}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{v.contactName}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{v.email}</TableCell>
@@ -122,10 +123,9 @@ export default function Vendors() {
                   <TableCell><StatusBadge status={v.status} /></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/vendors/${v.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(v)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openEdit(v); }}><Pencil className="h-3.5 w-3.5" /></Button>
                       <AlertDialog>
-                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader><AlertDialogTitle>Delete vendor?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{v.vendorName}".</AlertDialogDescription></AlertDialogHeader>
                           <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(v.id)}>Delete</AlertDialogAction></AlertDialogFooter>
