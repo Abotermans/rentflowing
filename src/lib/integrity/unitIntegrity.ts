@@ -1,10 +1,28 @@
 import { UnitStatus } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
+import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+
+function activeLeasesForUnit(unitId: string, s: IntegrityState) {
+  const today = new Date().toISOString().slice(0, 10);
+  const activeLeaseIds = new Set(
+    s.leaseUnitAssignments
+      .filter(a => a.unitId === unitId && assignmentIsActiveOn(a, today))
+      .map(a => a.leaseId),
+  );
+  return s.leases.filter(l => activeLeaseIds.has(l.id) && l.lifecycleStage === "active");
+}
+
+function allLeasesTouchingUnit(unitId: string, s: IntegrityState) {
+  const leaseIds = new Set(s.leaseUnitAssignments.filter(a => a.unitId === unitId).map(a => a.leaseId));
+  // include legacy lease.unitId for safety
+  s.leases.forEach(l => { if (l.unitId === unitId) leaseIds.add(l.id); });
+  return s.leases.filter(l => leaseIds.has(l.id));
+}
 
 export function canDeleteUnit(unitId: string, s: IntegrityState): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
 
-  const leaseCount = s.leases.filter(l => l.unitId === unitId).length;
+  const leaseCount = allLeasesTouchingUnit(unitId, s).length;
   if (leaseCount > 0) blockers.push({ code: "UNIT_HAS_LEASES", message: `Unit has ${leaseCount} lease(s)`, entityType: "lease", count: leaseCount });
 
   const receivableCount = s.receivableItems.filter(r => r.unitId === unitId).length;
@@ -27,7 +45,7 @@ export function canDeleteUnit(unitId: string, s: IntegrityState): ValidationResu
 }
 
 export function canChangeUnitStatus(unitId: string, targetStatus: UnitStatus, s: IntegrityState): ValidationResult {
-  const activeLeases = s.leases.filter(l => l.unitId === unitId && l.lifecycleStage === "active");
+  const activeLeases = activeLeasesForUnit(unitId, s);
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
 
@@ -84,7 +102,7 @@ export function canChangeUnitStatus(unitId: string, targetStatus: UnitStatus, s:
 
 export function getUnitIntegrityWarnings(unitId: string, s: IntegrityState): IntegrityWarning[] {
   const warnings: IntegrityWarning[] = [];
-  const activeLeases = s.leases.filter(l => l.unitId === unitId && l.lifecycleStage === "active");
+  const activeLeases = activeLeasesForUnit(unitId, s);
   if (activeLeases.length > 1) {
     warnings.push({ code: "UNIT_MULTIPLE_ACTIVE_LEASES", message: `Unit has ${activeLeases.length} active leases`, severity: "high" });
   }
