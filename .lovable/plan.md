@@ -1,71 +1,74 @@
 ## Goal
 
-Convert every filter dropdown on the main list pages from single-select to multi-select, and display a meaningful icon next to each option (and next to the selected count in the trigger). Reports page is out of scope.
+Restructure the Create New Lease dialog in `src/pages/Leases.tsx` into a 3-step wizard. Step 2 creates a brand-new tenant inline (no existing-tenant picker) and collects all mandatory tenant information; that tenant is committed to the system when the lease is created. Edit mode keeps the current single-form layout.
 
-## 1. New shared component — `src/components/ui/multi-select-filter.tsx`
+## Steps
 
-A Popover + Command-based multi-select built on existing shadcn primitives.
+**Step 1 — Lease details**
+- Lease reference
+- Property
+- Unit
+- Rent formula (tier)
 
-Props:
-- `label` (string) — used as placeholder ("Status", "Type"…)
-- `icon?` (LucideIcon) — leading icon on the trigger
-- `options: { value: string; label: string; icon?: LucideIcon }[]`
-- `values: string[]` and `onChange(values: string[])`
-- `width?` class
+**Step 2 — Tenant details (creates a new tenant)**
+- First name *
+- Last name *
+- Email *
+- Phone
+- Date of birth
+- Tenant status * (defaults to `active`)
+- Identification number
+- Current address
+- Tenant notes
 
-Trigger behaviour:
-- Empty selection → `<Icon /> Label` (acts as "All")
-- Any selection → `<Icon /> Label · N` (just a count, per user choice)
-- Right side: chevron, plus a small `×` to clear when N > 0
-Dropdown behaviour:
-- Searchable `Command` list, each row = checkbox + option icon + label
-- Header row "Select all / Clear" toggle
-- Keeps `h-9` to match current filter row density
+**Step 3 — Terms & financials**
+- Start date / End date *
+- Lifecycle status
+- Monthly rent, monthly charges, due day
+- Deposit / guarantee amount
+- Notice period
+- Signed date
+- Lease notes
 
-## 2. Domain icon catalog — `src/lib/filterIcons.ts`
+## Implementation
 
-Single source of truth mapping every filter value to a Lucide icon. Pages import from here. Assigns sensible icons where none exist today.
+In `src/pages/Leases.tsx`:
 
-| Domain | Values → Icons |
-|---|---|
-| Property type | residential `Home`, commercial `Store`, mixed-use `Building` |
-| Property status | active `CircleCheck`, inactive `CircleSlash` |
-| Country | `Flag` (generic; per-country flag emoji stays in label) |
-| Unit type | studio `Bed`, apartment `Building2`, house `Home`, office `Briefcase`, retail `Store`, parking `Car`, storage `Package`, other `Box` |
-| Unit occupancy | vacant `DoorOpen`, occupied `UserCheck`, reserved `CalendarClock`, notice-given `Bell`, unavailable `Ban` |
-| Lease status | draft `FileEdit`, active `FileCheck`, expiring `Clock`, ended `FileX`, terminated `Ban` |
-| Tenant status | active `UserCheck`, former `UserMinus`, blacklisted `UserX`, prospect `UserPlus` |
-| Maintenance status | open `CircleDot`, in-progress `Loader`, on-hold `Pause`, resolved `CircleCheck`, closed `Archive`, cancelled `Ban` |
-| Maintenance category | plumbing `Droplet`, electrical `Zap`, hvac `Thermometer`, appliance `WashingMachine`, structural `Hammer`, cosmetic `Paintbrush`, other `Wrench` |
-| Priority | low `ArrowDown`, medium `Minus`, high `ArrowUp`, urgent `AlertTriangle` (reuse Maintenance.tsx colors) |
-| Vendor status | active `CircleCheck`, inactive `CircleSlash` |
-| Property filter (lists) | per-property `Building2` |
-| Vendor filter (Maintenance) | per-vendor `HardHat` |
-| Receivable status | open `CircleDot`, paid `CircleCheck`, partially-paid `CircleDashed`, overdue `AlertTriangle` |
-| Receivable type | rent `Home`, charges `Receipt`, deposit `PiggyBank`, guarantee `ShieldCheck`, advance-payment `Wallet`, adjustment `Pencil`, late-fee `AlertTriangle`, repair-recharge `Wrench`, credit-note `Undo2`, other `Tag` |
-| Cost nature | rental-charge `Receipt`, property-tax `Landmark`, insurance `Shield`, utility `Plug`, maintenance `Wrench`, other `Tag` |
-| Cost scope | property `Building2`, unit `Home`, common-area `Users` |
-| Cost entry status | draft `FileEdit`, posted `CheckCircle`, archived `Archive` |
+1. **Wizard state**
+   - `const [step, setStep] = useState(1)`; reset to 1 in `openAdd` and when the dialog closes.
+   - Add a second form state `tenantForm` (same shape used in `Tenants.tsx`: firstName, lastName, email, phone, dateOfBirth, status, identificationNumber, currentAddress, notes), reset on `openAdd`.
+   - Pull `addTenant` from `useAppData()` alongside the existing `addLease`.
 
-## 3. Page wiring
+2. **Dialog rendering**
+   - Keep the existing `<Dialog>`/`<DialogContent>` shell.
+   - When `editingLease` is set, keep today's full single-form layout untouched.
+   - When creating: render a small stepper (3 segments using `bg-primary` / `bg-muted`) and a `Step X of 3 — <label>` line under the title. Show only the current step's fields inside the scroll container.
+   - Remove the primary-tenant Select from the create flow (it stays in edit mode for now).
 
-For each list page below, replace each filter `Select` with the new `MultiSelectFilter`, change the corresponding state from `string` to `string[]` (default `[]` meaning "no filter"), and update the matching predicate from `=== "all"` to `values.length === 0 || values.includes(row.field)`. Remove the now-unused "All …" sentinel `SelectItem`s and `filter.all*` placeholders from the filter rows (translation keys stay in `translations.ts` since other pages use them).
+3. **Per-step validation (gates Next only)**
+   - Step 1: reference, property, unit filled.
+   - Step 2: firstName, lastName, email filled (mirrors the Tenants page validation); show inline toast on invalid Next click.
+   - Step 3: dates present (existing required-field check still runs in `handleSave`).
 
-- `src/pages/Properties.tsx` — country, type, status
-- `src/pages/Units.tsx` — property, type, occupancy status
-- `src/pages/Leases.tsx` — status, property
-- `src/pages/Tenants.tsx` — status
-- `src/pages/Vendors.tsx` — status
-- `src/pages/Maintenance.tsx` — status, category, priority, property, vendor
-- `src/pages/Payments.tsx` — property (header filter row) + Receivables tab: status, type (Cash Receipts / Allocations tabs already have no extra dropdowns to convert)
-- `src/pages/CostEntries.tsx` — property, nature, category, status
-- `src/pages/CostCategories.tsx` — nature, scope
+4. **Final submit (Create lease button on step 3)**
+   - Call `addTenant(tenantForm)` first and capture the returned tenant (or generate the id the same way `addTenant` does today — confirm by reading `AppContext`'s `addTenant` return value before implementing; if it doesn't return the new tenant, extend it to do so, or pre-generate the id with `crypto.randomUUID()` and pass it in).
+   - Set `form.primaryTenantId` to that new tenant's id, then run the existing `handleSave` flow unchanged (conflict checks, override dialog, `addLease`).
+   - On any failure after tenant creation, leave the tenant in the system (acceptable — user can edit on the Tenants page); do not attempt rollback.
 
-URL/query-param edit flow (`?edit=…`) is untouched — only filter state shape changes.
+5. **Footer**
+   - Step 1: `Cancel` + `Next`
+   - Step 2: `Back` + `Next`
+   - Step 3: `Back` + `Create lease`
 
-## 4. Out of scope
+6. **Translations** — add to both EN and FR in `src/i18n/translations.ts`:
+   - `leases.step.details`, `leases.step.tenant`, `leases.step.terms`
+   - `leases.stepLabel` ("Step {n} of {total}")
+   - `action.next`, `action.back` (only if missing)
+   - Reuse existing `tenants.firstName`, `tenants.lastName`, `tenants.email`, etc. for the tenant step labels.
 
-- Reports page filters (per user choice — stays single-select)
-- In-form `Select` dropdowns inside CRUD Dialogs (these remain single-select — picking one property, one unit, etc.)
-- New translation keys; reuse existing `filter.*` and domain labels
-- Persisting filter state across reloads
+## Out of scope
+
+- Edit-lease flow (unchanged).
+- Selecting an existing tenant during creation (every new lease creates a new tenant in this flow).
+- Co-tenants.
+- Changes to the Tenants page or tenant integrity rules.
