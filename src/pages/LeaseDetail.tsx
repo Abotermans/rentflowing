@@ -411,6 +411,9 @@ export default function LeaseDetail() {
   const openReturnForm = () => { setRetStatus(lease.returnStatus || "pending"); setRetNotes(lease.returnNotes); setReturnSheetOpen(true); };
   const handleSaveReturn = () => { updateLease({ ...lease, returnStatus: retStatus, returnNotes: retNotes }); toast({ title: "Return status updated" }); setReturnSheetOpen(false); };
   const handleUpdateKeys = (keyHandover: number, keyReturn: number) => { updateLease({ ...lease, keyHandoverCount: keyHandover, keyReturnCount: keyReturn }); };
+  const handleUpdateMeter = (field: "moveInMeterReading" | "moveOutMeterReading" | "moveInWaterMeterReading" | "moveOutWaterMeterReading", value: string) => {
+    updateLease({ ...lease, [field]: value.trim() === "" ? null : value });
+  };
 
   const enrichedReceivables = receivables.map(ri => {
     let effectiveStatus = ri.status;
@@ -824,14 +827,29 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><Key className="h-4 w-4" />{t("detail.keysMeters")}</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div><p className="text-xs text-muted-foreground">{t("detail.keysHandedOver")}</p><div className="flex items-center gap-2 mt-1"><Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyHandoverCount} onChange={e => handleUpdateKeys(parseInt(e.target.value) || 0, lease.keyReturnCount)} /></div></div>
-                <div><p className="text-xs text-muted-foreground">{t("detail.keysReturned")}</p><div className="flex items-center gap-2 mt-1"><Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyReturnCount} onChange={e => handleUpdateKeys(lease.keyHandoverCount, parseInt(e.target.value) || 0)} /></div></div>
-                <div><p className="text-xs text-muted-foreground">{t("detail.moveInMeter")}</p><p className="text-sm font-medium text-foreground">{lease.moveInMeterReading || "—"}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("detail.moveOutMeter")}</p><p className="text-sm font-medium text-foreground">{lease.moveOutMeterReading || "—"}</p></div>
-                {lease.moveInMeterReading && lease.moveOutMeterReading && (
-                  <div className="col-span-2"><p className="text-xs text-muted-foreground">{t("detail.consumption")}</p><p className="text-sm font-bold text-foreground">{(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading)).toLocaleString()} units</p></div>
-                )}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><p className="text-xs text-muted-foreground">{t("detail.keysHandedOver")}</p><div className="flex items-center gap-2 mt-1"><Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyHandoverCount} onChange={e => handleUpdateKeys(parseInt(e.target.value) || 0, lease.keyReturnCount)} /></div></div>
+                  <div><p className="text-xs text-muted-foreground">{t("detail.keysReturned")}</p><div className="flex items-center gap-2 mt-1"><Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyReturnCount} onChange={e => handleUpdateKeys(lease.keyHandoverCount, parseInt(e.target.value) || 0)} /></div></div>
+                </div>
+                <div className="border-t border-border pt-3">
+                  <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-x-3 gap-y-2 items-center text-xs">
+                    <div className="text-muted-foreground"></div>
+                    <div className="text-muted-foreground font-medium">{t("detail.moveInMeter")}</div>
+                    <div className="text-muted-foreground font-medium">{t("detail.moveOutMeter")}</div>
+                    <div className="text-muted-foreground font-medium text-right">{t("detail.consumption")}</div>
+
+                    <div className="flex items-center gap-1.5 text-foreground"><Zap className="h-3.5 w-3.5 text-warning" />{t("detail.electricity")}</div>
+                    <Input inputMode="decimal" placeholder="—" className="h-8 text-sm" value={lease.moveInMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInMeterReading", e.target.value)} />
+                    <Input inputMode="decimal" placeholder="—" className="h-8 text-sm" value={lease.moveOutMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutMeterReading", e.target.value)} />
+                    <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInMeterReading && lease.moveOutMeterReading ? `${(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading)).toLocaleString()} kWh` : "—"}</div>
+
+                    <div className="flex items-center gap-1.5 text-foreground"><Droplet className="h-3.5 w-3.5 text-primary" />{t("detail.water")}</div>
+                    <Input inputMode="decimal" placeholder="—" className="h-8 text-sm" value={lease.moveInWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInWaterMeterReading", e.target.value)} />
+                    <Input inputMode="decimal" placeholder="—" className="h-8 text-sm" value={lease.moveOutWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutWaterMeterReading", e.target.value)} />
+                    <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInWaterMeterReading && lease.moveOutWaterMeterReading ? `${(parseFloat(lease.moveOutWaterMeterReading) - parseFloat(lease.moveInWaterMeterReading)).toLocaleString()} m³` : "—"}</div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1083,7 +1101,10 @@ export default function LeaseDetail() {
           <DialogHeader><DialogTitle>Move-In</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Scheduled Date</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
-            <div><Label>Meter Reading</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Electricity Meter</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} placeholder="kWh" /></div>
+              <div><Label>Water Meter</Label><Input value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} placeholder="m³" /></div>
+            </div>
             <div><Label>Keys Handed Over</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
             <div className="flex gap-2">
               <Button onClick={handleScheduleMoveIn} variant="outline" className="flex-1">Schedule</Button>
@@ -1099,7 +1120,10 @@ export default function LeaseDetail() {
           <DialogHeader><DialogTitle>Move-Out</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Scheduled Date</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
-            <div><Label>Meter Reading</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Electricity Meter</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
+              <div><Label>Water Meter</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
+            </div>
             <div><Label>Notes</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
             <div className="flex gap-2">
               <Button onClick={handleScheduleMoveOut} variant="outline" className="flex-1">Schedule</Button>
