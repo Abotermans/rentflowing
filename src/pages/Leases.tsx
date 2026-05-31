@@ -318,7 +318,16 @@ export default function Leases() {
                     </TableCell>
                     <TableCell>
                       {guarantee ? (
-                        <StatusBadge status={guarantee.status} />
+                        (() => {
+                          const d = GUARANTEE_DISPLAY[guarantee.status];
+                          const Icon = d.icon;
+                          return (
+                            <div className={`flex items-center gap-1.5 text-xs ${d.className}`}>
+                              <Icon className="h-3.5 w-3.5" />
+                              <span>{t(d.labelKey)}</span>
+                            </div>
+                          );
+                        })()
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
