@@ -292,14 +292,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return created;
   }, []);
   const updateLease = useCallback((l: Lease) => {
+    const ts = now();
     setLeases(prev => {
       const old = prev.find(x => x.id === l.id);
-      const next = prev.map(x => x.id === l.id ? { ...l, updatedAt: now() } : x);
+      const next = prev.map(x => x.id === l.id ? { ...l, updatedAt: ts } : x);
       const affected = [
         ...(old ? [old.primaryTenantId, ...old.coTenantIds] : []),
         l.primaryTenantId, ...l.coTenantIds,
       ];
       setTenants(prevT => reconcileTenantStatuses(affected, next, prevT));
+
+      // Lifecycle transition cascade: when a lease moves to ended/terminated, close
+      // every open assignment and vacate the linked units so ancillary spaces (parking,
+      // cellar, …) don't stay flagged as occupied.
+      const becameClosed =
+        old &&
+        old.lifecycleStage === "active" &&
+        (l.lifecycleStage === "ended" || l.lifecycleStage === "terminated");
+      if (becameClosed) {
+        const endDate = l.endDate || ts;
+        setLeaseUnitAssignments(prevA => {
+          const openUnitIds = prevA
+            .filter(a => a.leaseId === l.id && !a.endDate)
+            .map(a => a.unitId);
+          if (openUnitIds.length > 0) {
+            setUnits(prevU => prevU.map(u =>
+              openUnitIds.includes(u.id)
+                ? { ...u, currentStatus: "vacant" as const, availableFrom: endDate, updatedAt: ts }
+                : u,
+            ));
+          }
+          return closeOpenAssignmentsForLease(l.id, endDate, prevA, ts);
+        });
+      }
       return next;
     });
   }, []);
@@ -323,13 +348,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTenants(prevT => reconcileTenantStatuses([lease.primaryTenantId, ...lease.coTenantIds], next, prevT));
       return next;
     });
-    setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts } : x));
-    // Close out all open assignments for this lease.
-    setLeaseUnitAssignments(prev => prev.map(a =>
-      a.leaseId === lease.id && !a.endDate
-        ? { ...a, endDate: moveOutDate, updatedAt: ts }
-        : a,
-    ));
+    // Vacate every unit that still had an open assignment on this lease
+    // (primary AND ancillary — parking/cellar/storage).
+    setLeaseUnitAssignments(prev => {
+      const openUnitIds = prev
+        .filter(a => a.leaseId === lease.id && !a.endDate)
+        .map(a => a.unitId);
+      // Always include the legacy unitId as a defensive fallback.
+      if (lease.unitId && !openUnitIds.includes(lease.unitId)) openUnitIds.push(lease.unitId);
+      if (openUnitIds.length > 0) {
+        setUnits(prevU => prevU.map(u =>
+          openUnitIds.includes(u.id)
+            ? { ...u, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts }
+            : u,
+        ));
+      }
+      return closeOpenAssignmentsForLease(lease.id, moveOutDate, prev, ts);
+    });
   }, []);
 
   // ===== Lease Unit Assignments =====
