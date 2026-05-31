@@ -43,9 +43,9 @@ const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: T
 };
 
 const MOVE_STATUS_DISPLAY: Record<"not-scheduled" | "scheduled" | "completed", { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
-  "not-scheduled": { icon: AlertTriangle, labelKey: "moveStatus.notScheduled", className: "text-muted-foreground" },
-  scheduled:       { icon: Clock,         labelKey: "moveStatus.scheduled",    className: "text-warning" },
-  completed:       { icon: CheckCircle2,  labelKey: "moveStatus.completed",    className: "text-success" },
+  "not-scheduled": { icon: AlertTriangle, labelKey: "status.notScheduled", className: "text-muted-foreground" },
+  scheduled:       { icon: Clock,         labelKey: "status.scheduled",    className: "text-warning" },
+  completed:       { icon: CheckCircle2,  labelKey: "status.completed",    className: "text-success" },
 };
 
 export default function LeaseDetail() {
