@@ -9,6 +9,11 @@ function activeLeasesForUnit(unitId: string, s: IntegrityState) {
       .filter(a => a.unitId === unitId && assignmentIsActiveOn(a, today))
       .map(a => a.leaseId),
   );
+  // Defensive fallback: include legacy lease.unitId so unmigrated data and tests
+  // that don't seed assignment rows still resolve correctly.
+  s.leases.forEach(l => {
+    if (l.unitId === unitId && l.lifecycleStage === "active") activeLeaseIds.add(l.id);
+  });
   return s.leases.filter(l => activeLeaseIds.has(l.id) && l.lifecycleStage === "active");
 }
 
