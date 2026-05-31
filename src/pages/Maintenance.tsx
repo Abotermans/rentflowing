@@ -32,6 +32,7 @@ export default function Maintenance() {
   const { tickets, properties, units, tenants, vendors, addTicket, updateTicket, deleteTicket } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [filterCategory, setFilterCategory] = useState<string[]>([]);
