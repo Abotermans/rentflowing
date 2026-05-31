@@ -959,6 +959,20 @@ const en = {
   "payments.allocType.reallocation": "Reallocation",
   "payments.allocType.reversal": "Reversal",
   "payments.allocType.writeOff": "Write-Off",
+
+  // Lease unit roles & multi-unit lease
+  "leases.role.primary": "Primary",
+  "leases.role.ancillary": "Ancillary",
+  "leases.additionalUnits": "Additional units",
+  "leases.additionalUnitsHelp": "Add parking, cellars or other ancillary units covered by the same contract.",
+  "leases.addUnit": "Add unit",
+  "leases.noAdditionalUnits": "No additional units",
+  "leases.assignmentType": "Role",
+  "leases.primaryUnit": "Primary unit",
+  "leases.ancillaryUnit": "Ancillary",
+  "dashboard.ancillaryLeased": "Ancillary units leased",
+  "reports.primaryUnits": "Primary",
+  "reports.ancillaryUnits": "Ancillary",
 };
 
 type TranslationKeys = typeof en;
@@ -1917,6 +1931,19 @@ const fr: TranslationKeys = {
   "payments.allocType.reallocation": "Réaffectation",
   "payments.allocType.reversal": "Annulation",
   "payments.allocType.writeOff": "Passation en perte",
+
+  "leases.role.primary": "Principal",
+  "leases.role.ancillary": "Annexe",
+  "leases.additionalUnits": "Lots complémentaires",
+  "leases.additionalUnitsHelp": "Ajoutez parkings, caves ou autres lots annexes couverts par ce contrat.",
+  "leases.addUnit": "Ajouter un lot",
+  "leases.noAdditionalUnits": "Aucun lot complémentaire",
+  "leases.assignmentType": "Rôle",
+  "leases.primaryUnit": "Lot principal",
+  "leases.ancillaryUnit": "Annexe",
+  "dashboard.ancillaryLeased": "Lots annexes loués",
+  "reports.primaryUnits": "Principaux",
+  "reports.ancillaryUnits": "Annexes",
 };
 
 export type TranslationKey = keyof typeof en;

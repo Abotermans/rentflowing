@@ -71,7 +71,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, confirmMoveOut } = useAppData();
+  const { units, properties, leases, leaseUnitAssignments, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, confirmMoveOut } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
   const integrityState = useIntegrityState();
@@ -282,7 +282,7 @@ export default function UnitDetail() {
   }
 
   const activeLease = getActiveLease(unit.id);
-  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases);
+  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases, leaseUnitAssignments);
   const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
   const lifecycle = activeLease ? getLeaseStatus(activeLease) : null;
   const moveIn = activeLease ? getMoveInStatus(activeLease) : null;
@@ -481,6 +481,16 @@ export default function UnitDetail() {
         <CardContent>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusBadge status={unit.currentStatus} />
+            {occupancy.occupancyRole === "ancillary" && (
+              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("leases.role.ancillary")}
+              </span>
+            )}
+            {occupancy.occupancyRole === "primary" && occupancy.activeAssignment && (
+              <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("leases.role.primary")}
+              </span>
+            )}
             {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && lifecycle !== occupancy.derived && <StatusBadge status={lifecycle} />}
             {activeLease && moveIn === "scheduled" && occupancy.derived !== "move-in-pending" && <StatusBadge status="scheduled" />}
             {activeLease && activeLease.returnStatus && activeLease.returnStatus !== "completed" && <StatusBadge status={activeLease.returnStatus} />}

@@ -10,7 +10,7 @@ import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 
 export default function Dashboard() {
-  const { properties, units, leases, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets, costEntries, costAllocationResults } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets, costEntries, costAllocationResults } = useAppData();
   const { t } = useSettings();
 
   // Maintenance KPIs
@@ -20,16 +20,28 @@ export default function Dashboard() {
   const completedThisMonth = tickets.filter(tk => tk.status === "completed" && tk.completedDate?.startsWith(thisMonth)).length;
 
   const totalUnits = units.length;
-  // Mutually exclusive occupancy: active lease → occupied (priority), then unavailable, then reserved, then vacant
-  let occupied = 0, unavailable = 0, reserved = 0;
+  // Mutually exclusive occupancy. Multi-unit lease aware:
+  //   - "occupied" counts only PRIMARY assignments (the actual home / main commercial unit)
+  //   - ancillary assignments (parking, cellar, storage) are tracked separately
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const activeAssignmentForUnit = (uid: string) => leaseUnitAssignments.find(a =>
+    a.unitId === uid &&
+    a.startDate <= todayISO &&
+    (!a.endDate || a.endDate >= todayISO) &&
+    leases.some(l => l.id === a.leaseId && l.lifecycleStage === "active"),
+  );
+  let occupied = 0, ancillaryLeased = 0, unavailable = 0, reserved = 0;
   units.forEach(u => {
-    const hasActiveLease = leases.some(l => l.unitId === u.id && l.lifecycleStage === "active");
-    if (hasActiveLease) { occupied++; }
+    const a = activeAssignmentForUnit(u.id);
+    if (a && a.isPrimary) { occupied++; }
+    else if (a) { ancillaryLeased++; }
     else if (u.currentStatus === "unavailable") { unavailable++; }
     else if (u.currentStatus === "reserved") { reserved++; }
   });
-  const vacant = totalUnits - occupied - reserved - unavailable;
-  const occupancyRate = totalUnits > 0 ? Math.round((occupied / totalUnits) * 100) : 0;
+  const vacant = totalUnits - occupied - ancillaryLeased - reserved - unavailable;
+  // Occupancy rate computed on units that can be a "home" (exclude ancillaries from denominator).
+  const primaryDenominator = totalUnits - ancillaryLeased;
+  const occupancyRate = primaryDenominator > 0 ? Math.round((occupied / primaryDenominator) * 100) : 0;
 
   const now = new Date();
   const today = now.toISOString().split("T")[0];
@@ -87,6 +99,7 @@ export default function Dashboard() {
         { label: t("dashboard.totalUnits"), value: totalUnits, icon: DoorOpen, color: "text-foreground" },
         { label: t("dashboard.occupied"), value: occupied, icon: CheckCircle2, color: "text-success" },
         { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
+        ...(ancillaryLeased > 0 ? [{ label: t("dashboard.ancillaryLeased"), value: ancillaryLeased, icon: DoorOpen, color: "text-muted-foreground" }] : []),
       ],
     },
     {

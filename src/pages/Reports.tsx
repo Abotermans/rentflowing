@@ -123,7 +123,7 @@ function RentRollReport() {
 
 // ─── Occupancy ───
 function OccupancyReport() {
-  const { units, properties, tenants, getActiveLease } = useAppData();
+  const { units, properties, tenants, getActiveLease, getActiveLeaseAssignmentForUnit } = useAppData();
   const [propFilter, setPropFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -135,13 +135,17 @@ function OccupancyReport() {
       const prop = properties.find(p => p.id === u.propertyId);
       const lease = getActiveLease(u.id);
       const tenant = lease ? tenants.find(t => t.id === lease.primaryTenantId) : null;
-      return { u, prop, lease, tenant };
+      const a = getActiveLeaseAssignmentForUnit(u.id);
+      const role: "primary" | "ancillary" | null = a ? (a.assignment.isPrimary ? "primary" : "ancillary") : null;
+      return { u, prop, lease, tenant, role };
     });
-  }, [units, properties, tenants, getActiveLease, propFilter, statusFilter]);
+  }, [units, properties, tenants, getActiveLease, getActiveLeaseAssignmentForUnit, propFilter, statusFilter]);
 
-  const occupied = data.filter(d => d.u.currentStatus === "occupied").length;
-  const vacant = data.filter(d => d.u.currentStatus === "vacant").length;
-  const rate = data.length > 0 ? Math.round((occupied / data.length) * 100) : 0;
+  const occupiedPrimary = data.filter(d => d.role === "primary").length;
+  const occupiedAncillary = data.filter(d => d.role === "ancillary").length;
+  const vacant = data.filter(d => d.u.currentStatus === "vacant" && !d.role).length;
+  const denom = data.length - occupiedAncillary;
+  const rate = denom > 0 ? Math.round((occupiedPrimary / denom) * 100) : 0;
 
   const doExport = () => exportToCSV("occupancy", ["Unit", "Property", "Type", "Status", "Tenant", "Rent"], data.map(d => [
     d.u.unitCode, d.prop?.name ?? "", d.u.unitType, d.u.currentStatus,
@@ -165,7 +169,8 @@ function OccupancyReport() {
       </FilterBar>
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Total Units" value={String(data.length)} />
-        <KpiCard label="Occupied" value={String(occupied)} />
+        <KpiCard label="Occupied (primary)" value={String(occupiedPrimary)} />
+        <KpiCard label="Ancillary leased" value={String(occupiedAncillary)} />
         <KpiCard label="Vacant" value={String(vacant)} />
         <KpiCard label="Occupancy Rate" value={`${rate}%`} />
       </div>
@@ -186,7 +191,14 @@ function OccupancyReport() {
                 <TableCell className="font-medium"><Link to={`/units/${d.u.id}`} className="hover:underline text-foreground">{d.u.unitCode}</Link></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
                 <TableCell className="text-xs capitalize">{d.u.unitType.replace(/-/g, " ")}</TableCell>
-                <TableCell><StatusBadge status={d.u.currentStatus} /></TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge status={d.u.currentStatus} />
+                    {d.role === "ancillary" && (
+                      <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">Ancillary</span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
                 <TableCell className="text-right text-sm">{d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{d.u.availableFrom ? formatDate(d.u.availableFrom, d.prop?.locale) : "—"}</TableCell>

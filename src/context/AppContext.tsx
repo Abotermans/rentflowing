@@ -73,7 +73,7 @@ interface AppState {
   deleteTenant: (id: string) => void;
 
   // Lease CRUD
-  addLease: (l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => void;
+  addLease: (l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => Lease;
   updateLease: (l: Lease) => void;
   deleteLease: (id: string) => void;
   confirmMoveOut: (lease: Lease) => void;
@@ -274,6 +274,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         },
       ]);
     }
+    return created;
   }, []);
   const updateLease = useCallback((l: Lease) => {
     setLeases(prev => {
