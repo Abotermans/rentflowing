@@ -69,7 +69,7 @@ const OCCUPANCY_FILTERS: { value: DerivedOccupancy | "all"; labelKey: Translatio
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function Units() {
-  const { properties, units, leases, addUnit, updateUnit, deleteUnit } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, addUnit, updateUnit, deleteUnit } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -169,7 +169,7 @@ export default function Units() {
   // Compute derived occupancy for each unit
   const unitsWithOccupancy = units.map(u => ({
     unit: u,
-    occupancy: getDerivedOccupancy(u.id, u.currentStatus, leases),
+    occupancy: getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments),
   }));
 
   const filtered = unitsWithOccupancy.filter(({ unit: u, occupancy }) => {
