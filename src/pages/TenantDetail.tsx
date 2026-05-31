@@ -100,16 +100,6 @@ export default function TenantDetail() {
         </CardContent>
       </Card>
 
-      {/* Integrity Summary */}
-      {id && (
-        <IntegritySummaryPanel
-          title="Tenant Dependencies"
-          deleteValidation={canDeleteTenant(id, integrityState)}
-          additionalWarnings={canChangeTenantStatus(id, "former", integrityState).warnings}
-        />
-      )}
-
-      {/* Financial Overview */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialOverview")}</CardTitle></CardHeader>
         <CardContent>
