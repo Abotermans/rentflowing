@@ -34,6 +34,12 @@ const en = {
   "action.back": "Back",
   "action.confirm": "Confirm",
   "action.create": "Create",
+  "action.next": "Next",
+  "leases.wizard.step": "Step",
+  "leases.wizard.of": "of",
+  "leases.wizard.leaseDetails": "Lease details",
+  "leases.wizard.tenantDetails": "Tenant details",
+  "leases.wizard.terms": "Terms & financials",
 
   // Filters
   "filter.all": "All",
@@ -983,6 +989,12 @@ const fr: TranslationKeys = {
   "action.back": "Retour",
   "action.confirm": "Confirmer",
   "action.create": "Créer",
+  "action.next": "Suivant",
+  "leases.wizard.step": "Étape",
+  "leases.wizard.of": "sur",
+  "leases.wizard.leaseDetails": "Détails du bail",
+  "leases.wizard.tenantDetails": "Détails du locataire",
+  "leases.wizard.terms": "Conditions et finances",
 
   // Filters
   "filter.all": "Tous",
