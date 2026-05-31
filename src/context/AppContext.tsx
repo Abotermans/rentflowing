@@ -49,7 +49,7 @@ interface AppState {
   deleteUnit: (id: string) => void;
 
   // Tenant CRUD
-  addTenant: (t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => void;
+  addTenant: (t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => Tenant;
   updateTenant: (t: Tenant) => void;
   deleteTenant: (id: string) => void;
 
@@ -198,9 +198,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ===== Tenant CRUD =====
-  const addTenant = useCallback((t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => {
+  const addTenant = useCallback((t: Omit<Tenant, "id" | "createdAt" | "updatedAt">): Tenant => {
     const ts = now();
-    setTenants(prev => [...prev, { ...t, id: genId("t"), createdAt: ts, updatedAt: ts }]);
+    const created: Tenant = { ...t, id: genId("t"), createdAt: ts, updatedAt: ts };
+    setTenants(prev => [...prev, created]);
+    return created;
   }, []);
   const updateTenant = useCallback((t: Tenant) => {
     setTenants(prev => prev.map(x => x.id === t.id ? { ...t, updatedAt: now() } : x));
