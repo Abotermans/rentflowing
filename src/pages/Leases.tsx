@@ -309,12 +309,7 @@ export default function Leases() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <StatusBadge status={getLeaseStatus(l)} />
-                        {getMoveInStatus(l) === "scheduled" && <StatusBadge status="scheduled" />}
-                        {getMoveOutStatus(l) === "scheduled" && !l.moveOutActualDate && <StatusBadge status="scheduled" />}
-                        {l.returnStatus && l.returnStatus !== "completed" && <StatusBadge status={l.returnStatus} />}
-                      </div>
+                      <StatusBadge status={getLeaseStatus(l)} />
                     </TableCell>
                     <TableCell>
                       {guarantee ? (
