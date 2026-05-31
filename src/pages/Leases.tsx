@@ -18,7 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, TenantStatus, Tenant, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, TenantStatus, Tenant, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS, ASSIGNMENT_TYPE_LABELS } from "@/types";
+import type { LeaseUnitAssignmentType } from "@/types";
+import { X as XIcon } from "lucide-react";
 import type { TranslationKey } from "@/i18n/translations";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +76,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 
 export default function Leases() {
   const navigate = useNavigate();
-  const { leases, tenants, units, properties, addLease, updateLease, deleteLease, addTenant, getActiveLease, getGuaranteeByLease } = useAppData();
+  const { leases, tenants, units, properties, addLease, updateLease, deleteLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -106,6 +108,8 @@ export default function Leases() {
     advanceAllocationDurationMonths: null, fixedMonthlyReductionAmount: null,
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
+  // Extra (non-primary) unit assignments attached to this lease.
+  const [extraUnits, setExtraUnits] = useState<{ unitId: string; assignmentType: LeaseUnitAssignmentType }[]>([]);
 
   const emptyTenantForm: TenantFormData = {
     firstName: "", lastName: "", email: "", phone: "",
@@ -120,6 +124,7 @@ export default function Leases() {
     setEditingLease(null);
     setForm({ ...emptyForm });
     setTenantForm({ ...emptyTenantForm });
+    setExtraUnits([]);
     setStep(1);
     setTenantMode(tenants.length > 0 ? "existing" : "new");
     setSheetOpen(true);
@@ -128,6 +133,11 @@ export default function Leases() {
     setEditingLease(l);
     const { id, createdAt, updatedAt, ...rest } = l;
     setForm(rest);
+    const today = new Date().toISOString().slice(0, 10);
+    const extras = getLeaseAssignments(l.id)
+      .filter(a => !a.isPrimary && (!a.endDate || a.endDate >= today))
+      .map(a => ({ unitId: a.unitId, assignmentType: a.assignmentType }));
+    setExtraUnits(extras);
     setSheetOpen(true);
   };
 
@@ -144,16 +154,28 @@ export default function Leases() {
   }, [editingLease]);
 
   const executeLeaseSave = () => {
+    const persistAssignments = (leaseId: string) => {
+      const draft = [
+        { unitId: form.unitId, assignmentType: "primary" as LeaseUnitAssignmentType, isPrimary: true, rentShare: null, chargesShare: null, startDate: form.startDate },
+        ...extraUnits
+          .filter(e => e.unitId && e.unitId !== form.unitId)
+          .map(e => ({ unitId: e.unitId, assignmentType: e.assignmentType, isPrimary: false, rentShare: null, chargesShare: null, startDate: form.startDate })),
+      ];
+      setLeaseUnits(leaseId, form.propertyId, draft);
+    };
     if (editingLease) {
       updateLease({ ...editingLease, ...form });
+      persistAssignments(editingLease.id);
       toast({ title: "Lease updated" });
     } else {
       if (tenantMode === "new") {
         const newTenant = addTenant(tenantForm);
-        addLease({ ...form, primaryTenantId: newTenant.id });
+        const created = addLease({ ...form, primaryTenantId: newTenant.id });
+        persistAssignments(created.id);
         toast({ title: "Lease added", description: `Tenant ${getTenantFullName(newTenant)} created` });
       } else {
-        addLease({ ...form });
+        const created = addLease({ ...form });
+        persistAssignments(created.id);
         toast({ title: "Lease added" });
       }
     }
