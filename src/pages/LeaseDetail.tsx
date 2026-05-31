@@ -601,6 +601,66 @@ export default function LeaseDetail() {
         </CardContent>
       </Card>
 
+      {/* Assigned Units (multi-unit lease) */}
+      {(() => {
+        const assignments = getLeaseAssignments(lease.id);
+        const active = assignments.filter(a => !a.endDate);
+        if (active.length === 0) return null;
+        const primaryCount = active.filter(a => a.isPrimary).length;
+        const ancillaryCount = active.length - primaryCount;
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <span>Assigned units</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  {primaryCount} primary · {ancillaryCount} ancillary
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Unit</TableHead>
+                    <TableHead className="text-xs">Role</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-xs">Start</TableHead>
+                    <TableHead className="text-xs text-right">Rent share</TableHead>
+                    <TableHead className="text-xs text-right">Charges share</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {active
+                    .slice()
+                    .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+                    .map(a => {
+                      const u = units.find(x => x.id === a.unitId);
+                      const isAnc = !a.isPrimary && isAncillaryAssignmentType(a.assignmentType);
+                      return (
+                        <TableRow key={a.id}>
+                          <TableCell className="font-mono text-xs">
+                            {u ? <Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode} — {u.unitLabel}</Link> : a.unitId}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${a.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                              {a.isPrimary ? "Primary" : (isAnc ? "Ancillary" : "Secondary")}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{ASSIGNMENT_TYPE_LABELS[a.assignmentType]}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Financial Summary */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialSummary")}</CardTitle></CardHeader>
