@@ -114,12 +114,14 @@ export default function Leases() {
   };
   const [tenantForm, setTenantForm] = useState<TenantFormData>({ ...emptyTenantForm });
   const [step, setStep] = useState(1);
+  const [tenantMode, setTenantMode] = useState<"existing" | "new">("existing");
 
   const openAdd = () => {
     setEditingLease(null);
     setForm({ ...emptyForm });
     setTenantForm({ ...emptyTenantForm });
     setStep(1);
+    setTenantMode(tenants.length > 0 ? "existing" : "new");
     setSheetOpen(true);
   };
   const openEdit = (l: Lease) => {
@@ -146,9 +148,14 @@ export default function Leases() {
       updateLease({ ...editingLease, ...form });
       toast({ title: "Lease updated" });
     } else {
-      const newTenant = addTenant(tenantForm);
-      addLease({ ...form, primaryTenantId: newTenant.id });
-      toast({ title: "Lease added", description: `Tenant ${getTenantFullName(newTenant)} created` });
+      if (tenantMode === "new") {
+        const newTenant = addTenant(tenantForm);
+        addLease({ ...form, primaryTenantId: newTenant.id });
+        toast({ title: "Lease added", description: `Tenant ${getTenantFullName(newTenant)} created` });
+      } else {
+        addLease({ ...form });
+        toast({ title: "Lease added" });
+      }
     }
     setSheetOpen(false);
   };
@@ -164,9 +171,16 @@ export default function Leases() {
         toast({ title: "Validation Error", description: "Reference, property, unit, start date, and end date are required.", variant: "destructive" });
         return;
       }
-      if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
-        toast({ title: "Validation Error", description: "Tenant first name, last name, and email are required.", variant: "destructive" });
-        return;
+      if (tenantMode === "new") {
+        if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
+          toast({ title: "Validation Error", description: "Tenant first name, last name, and email are required.", variant: "destructive" });
+          return;
+        }
+      } else {
+        if (!form.primaryTenantId) {
+          toast({ title: "Validation Error", description: "Please select a tenant.", variant: "destructive" });
+          return;
+        }
       }
     }
     const unitForSave = units.find(u => u.id === form.unitId);
