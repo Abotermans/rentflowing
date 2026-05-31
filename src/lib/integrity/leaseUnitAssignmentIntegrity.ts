@@ -1,7 +1,7 @@
-import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
+import type { LeaseUnitAssignmentType } from "@/types";
 import { isAncillaryAssignmentType } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
-import { assignmentIsActiveOn, checkInternalShareCoherence } from "@/lib/leaseAssignments";
+import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
 
 export interface DraftAssignment {
   unitId: string;
@@ -22,7 +22,7 @@ export function validateLeaseUnits(
   leaseId: string | null,
   propertyId: string,
   draft: DraftAssignment[],
-  totals: { monthlyRent: number; monthlyCharges: number },
+  _totals: { monthlyRent: number; monthlyCharges: number },
   s: IntegrityState,
 ): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
@@ -90,24 +90,23 @@ export function validateLeaseUnits(
     });
   }
 
-  // Internal split coherence
-  const coherence = checkInternalShareCoherence(
-    draft.map(d => ({
-      id: "", leaseId: leaseId ?? "", unitId: d.unitId,
-      assignmentType: d.assignmentType, isPrimary: d.isPrimary,
-      startDate: d.startDate, endDate: d.endDate,
-      rentShare: d.rentShare, chargesShare: d.chargesShare,
-      notes: "", createdAt: "", updatedAt: "",
-    } satisfies LeaseUnitAssignment)),
-    totals.monthlyRent,
-    totals.monthlyCharges,
-  );
-  if (coherence && !coherence.coherent) {
-    warnings.push({
-      code: "LUA_SHARE_MISMATCH",
-      message: `Internal rent/charges split does not match lease totals (rent Δ ${coherence.rentDelta.toFixed(0)}, charges Δ ${coherence.chargesDelta.toFixed(0)})`,
-      severity: "medium",
-    });
+  // Strict per-unit pricing: every unit must carry a non-negative rentShare and chargesShare.
+  for (const d of draft) {
+    const u = s.units.find(x => x.id === d.unitId);
+    const label = u?.unitCode ?? d.unitId;
+    if (d.rentShare == null || d.chargesShare == null) {
+      blockers.push({
+        code: "LUA_SHARE_MISSING",
+        message: `Unit ${label} is missing its rent or charges amount`,
+      });
+    } else {
+      if (d.rentShare < 0) {
+        blockers.push({ code: "LUA_SHARE_NEGATIVE", message: `Unit ${label} has a negative rent` });
+      }
+      if (d.chargesShare < 0) {
+        blockers.push({ code: "LUA_SHARE_NEGATIVE", message: `Unit ${label} has negative charges` });
+      }
+    }
   }
 
   // Unit availability soft warnings
