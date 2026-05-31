@@ -42,6 +42,12 @@ const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: T
   "partially-retained": { icon: AlertTriangle, labelKey: "guarantee.partiallyRetained", className: "text-warning" },
 };
 
+const MOVE_STATUS_DISPLAY: Record<"not-scheduled" | "scheduled" | "completed", { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
+  "not-scheduled": { icon: AlertTriangle, labelKey: "moveStatus.notScheduled", className: "text-muted-foreground" },
+  scheduled:       { icon: Clock,         labelKey: "moveStatus.scheduled",    className: "text-warning" },
+  completed:       { icon: CheckCircle2,  labelKey: "moveStatus.completed",    className: "text-success" },
+};
+
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -758,11 +764,21 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Home className="h-4 w-4" />{t("detail.moveIn")}</CardTitle>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={moveInStatus === "completed" ? "completed" : moveInStatus === "scheduled" ? "scheduled" : "not-scheduled"} />
-                  {moveInStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveInForm}>{moveInStatus === "not-scheduled" ? t("detail.schedule") : t("action.edit")}</Button>}
-                </div>
+                 <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                   <Home className="h-4 w-4" />
+                   {t("detail.moveIn")}
+                   {(() => {
+                     const d = MOVE_STATUS_DISPLAY[moveInStatus];
+                     const Icon = d.icon;
+                     return (
+                       <span className={`ml-1.5 inline-flex items-center gap-1 text-xs ${d.className}`}>
+                         <Icon className="h-3.5 w-3.5" />
+                         {t(d.labelKey)}
+                       </span>
+                     );
+                   })()}
+                 </CardTitle>
+                 {moveInStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveInForm}>{moveInStatus === "not-scheduled" ? t("detail.schedule") : t("action.edit")}</Button>}
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -792,11 +808,21 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><PackageCheck className="h-4 w-4" />{t("detail.moveOut")}</CardTitle>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={moveOutStatus === "completed" ? "completed" : moveOutStatus === "scheduled" ? "scheduled" : "not-scheduled"} />
-                  {moveOutStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveOutForm}>{moveOutStatus === "not-scheduled" ? t("detail.schedule") : t("action.edit")}</Button>}
-                </div>
+                 <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                   <PackageCheck className="h-4 w-4" />
+                   {t("detail.moveOut")}
+                   {(() => {
+                     const d = MOVE_STATUS_DISPLAY[moveOutStatus];
+                     const Icon = d.icon;
+                     return (
+                       <span className={`ml-1.5 inline-flex items-center gap-1 text-xs ${d.className}`}>
+                         <Icon className="h-3.5 w-3.5" />
+                         {t(d.labelKey)}
+                       </span>
+                     );
+                   })()}
+                 </CardTitle>
+                 {moveOutStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveOutForm}>{moveOutStatus === "not-scheduled" ? t("detail.schedule") : t("action.edit")}</Button>}
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
