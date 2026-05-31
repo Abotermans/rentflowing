@@ -220,17 +220,6 @@ export default function Payments() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <MultiSelectFilter
-          label={t("payments.filter.property")}
-          icon={PROPERTY_ICON}
-          values={propertyFilter}
-          onChange={setPropertyFilter}
-          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
-        />
-      </div>
-
       <Tabs defaultValue="receivables">
         <TabsList>
           <TabsTrigger value="receivables">{t("payments.tab.receivables")} ({filteredReceivables.length})</TabsTrigger>
@@ -241,6 +230,13 @@ export default function Payments() {
         {/* ===== TAB 1: RECEIVABLES ===== */}
         <TabsContent value="receivables">
           <div className="flex flex-wrap gap-2 mb-3">
+            <MultiSelectFilter
+              label={t("payments.filter.property")}
+              icon={PROPERTY_ICON}
+              values={propertyFilter}
+              onChange={setPropertyFilter}
+              options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+            />
             <MultiSelectFilter
               label={t("payments.filter.status")}
               icon={CircleDot}
@@ -309,6 +305,13 @@ export default function Payments() {
         {/* ===== TAB 2: CASH RECEIPTS ===== */}
         <TabsContent value="receipts">
           <div className="flex flex-wrap gap-2 mb-3">
+            <MultiSelectFilter
+              label={t("payments.filter.property")}
+              icon={PROPERTY_ICON}
+              values={propertyFilter}
+              onChange={setPropertyFilter}
+              options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+            />
             <MultiSelectFilter
               label={t("payments.filter.status")}
               icon={CircleDot}
