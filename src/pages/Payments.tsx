@@ -21,7 +21,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType, ReceivableItemType } from "@/types/receivables";
-import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote, FileText } from "lucide-react";
+import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSettings } from "@/context/SettingsContext";
 
