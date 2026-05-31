@@ -33,6 +33,83 @@ export function getPrimaryAssignment(
 }
 
 /**
+ * Resolve every Unit attached to a lease (with optional active-only filtering).
+ * Returns rows in primary-first order. Units missing from the units array are skipped.
+ */
+export function getLeaseAssignedUnits(
+  leaseId: string,
+  assignments: readonly LeaseUnitAssignment[],
+  units: readonly Unit[],
+  opts: { activeOnly?: boolean; onDate?: string } = {},
+): { unit: Unit; assignment: LeaseUnitAssignment }[] {
+  const onDate = opts.onDate ?? today();
+  const rows = assignments.filter(a => {
+    if (a.leaseId !== leaseId) return false;
+    if (opts.activeOnly && !assignmentIsActiveOn(a, onDate)) return false;
+    return true;
+  });
+  return rows
+    .map(a => {
+      const unit = units.find(u => u.id === a.unitId);
+      return unit ? { unit, assignment: a } : null;
+    })
+    .filter((r): r is { unit: Unit; assignment: LeaseUnitAssignment } => r !== null)
+    .sort((x, y) => (y.assignment.isPrimary ? 1 : 0) - (x.assignment.isPrimary ? 1 : 0));
+}
+
+/** Primary unit attached to a lease (active or historical). */
+export function getPrimaryLeaseUnit(
+  leaseId: string,
+  assignments: readonly LeaseUnitAssignment[],
+  units: readonly Unit[],
+): Unit | undefined {
+  const a = assignments.find(x => x.leaseId === leaseId && x.isPrimary);
+  return a ? units.find(u => u.id === a.unitId) : undefined;
+}
+
+/** Ancillary units for a lease (non-primary assignments). */
+export function getAncillaryLeaseUnits(
+  leaseId: string,
+  assignments: readonly LeaseUnitAssignment[],
+  units: readonly Unit[],
+  opts: { activeOnly?: boolean; onDate?: string } = {},
+): { unit: Unit; assignment: LeaseUnitAssignment }[] {
+  return getLeaseAssignedUnits(leaseId, assignments, units, opts)
+    .filter(r => !r.assignment.isPrimary);
+}
+
+/** True when a unit is currently attached to any active lease (primary OR ancillary). */
+export function isUnitAssignedToActiveLease(
+  unitId: string,
+  leases: readonly Lease[],
+  assignments: readonly LeaseUnitAssignment[],
+  onDate: string = today(),
+): boolean {
+  return assignments.some(a =>
+    a.unitId === unitId &&
+    assignmentIsActiveOn(a, onDate) &&
+    leases.some(l => l.id === a.leaseId && l.lifecycleStage === "active"),
+  );
+}
+
+/**
+ * Close (set endDate) every still-open assignment for a lease.
+ * Returns the next assignments array; no-op if none are open.
+ */
+export function closeOpenAssignmentsForLease(
+  leaseId: string,
+  endDate: string,
+  assignments: readonly LeaseUnitAssignment[],
+  ts: string,
+): LeaseUnitAssignment[] {
+  return assignments.map(a =>
+    a.leaseId === leaseId && !a.endDate
+      ? { ...a, endDate, updatedAt: ts }
+      : a,
+  );
+}
+
+/**
  * Look up the active lease + assignment covering a unit on a given date.
  * Returns the primary assignment first when multiple match.
  */
