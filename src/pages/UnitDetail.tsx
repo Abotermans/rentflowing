@@ -71,7 +71,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, confirmMoveOut } = useAppData();
+  const { units, properties, leases, leaseUnitAssignments, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, confirmMoveOut } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
   const integrityState = useIntegrityState();
@@ -282,7 +282,7 @@ export default function UnitDetail() {
   }
 
   const activeLease = getActiveLease(unit.id);
-  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases);
+  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases, leaseUnitAssignments);
   const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
   const lifecycle = activeLease ? getLeaseStatus(activeLease) : null;
   const moveIn = activeLease ? getMoveInStatus(activeLease) : null;
