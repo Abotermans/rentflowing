@@ -483,7 +483,10 @@ export default function Leases() {
             <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.property")} *</Label>
-                <Select value={form.propertyId} onValueChange={v => setForm(f => ({ ...f, propertyId: v, unitId: "" }))}>
+                <Select value={form.propertyId} onValueChange={v => {
+                  setForm(f => ({ ...f, propertyId: v, unitId: "" }));
+                  setExtraUnits([]);
+                }}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
                   <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
@@ -511,15 +514,17 @@ export default function Leases() {
                 }}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                   <SelectContent>
-                    {formUnits.map(u => {
-                      const existing = getActiveLease(u.id);
-                      const blocked = existing && existing.id !== editingLease?.id;
-                      return (
-                        <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                          {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
-                        </SelectItem>
-                      );
-                    })}
+                    {formUnits
+                      .filter(u => !extraUnits.some(e => e.unitId === u.id))
+                      .map(u => {
+                        const existing = getActiveLease(u.id);
+                        const blocked = existing && existing.id !== editingLease?.id;
+                        return (
+                          <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
+                            {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>
