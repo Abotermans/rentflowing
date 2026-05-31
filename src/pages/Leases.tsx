@@ -236,6 +236,51 @@ export default function Leases() {
         return;
       }
     }
+    // Validate the full assignment draft (primary + extras): property mismatch,
+    // duplicates, multi-primary, units already used on another active lease.
+    const draft: DraftAssignment[] = [
+      {
+        unitId: form.unitId,
+        assignmentType: "primary",
+        isPrimary: true,
+        startDate: form.startDate,
+        endDate: null,
+        rentShare: null,
+        chargesShare: null,
+      },
+      ...extraUnits
+        .filter(e => e.unitId && e.unitId !== form.unitId)
+        .map(e => ({
+          unitId: e.unitId,
+          assignmentType: e.assignmentType,
+          isPrimary: false,
+          startDate: form.startDate,
+          endDate: null as string | null,
+          rentShare: null,
+          chargesShare: null,
+        })),
+    ];
+    const unitsValidation = validateLeaseUnits(
+      editingLease?.id ?? null,
+      form.propertyId,
+      draft,
+      { monthlyRent: form.monthlyRent, monthlyCharges: form.monthlyCharges },
+      integrityState,
+    );
+    if (!unitsValidation.allowed) {
+      toast({
+        title: "Unit assignments blocked",
+        description: unitsValidation.blockers.map(b => b.message).join(". "),
+        variant: "destructive",
+      });
+      return;
+    }
+    if (unitsValidation.warnings.length > 0) {
+      toast({
+        title: "Lease saved with warnings",
+        description: unitsValidation.warnings.map(w => w.message).join(". "),
+      });
+    }
     executeLeaseSave();
   };
 
