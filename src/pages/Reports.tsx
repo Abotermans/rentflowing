@@ -132,6 +132,7 @@ function RentRollReport() {
 // ─── Occupancy ───
 function OccupancyReport() {
   const { units, properties, tenants, getActiveLease, getActiveLeaseAssignmentForUnit } = useAppData();
+  const { t } = useSettings();
   const [propFilter, setPropFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
