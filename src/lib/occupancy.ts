@@ -1,4 +1,6 @@
 import type { Lease, UnitStatus } from "@/types";
+import type { LeaseUnitAssignment } from "@/types";
+import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
 import type { TranslationKey } from "@/i18n/translations";
 
 export type DerivedOccupancy =
@@ -19,6 +21,9 @@ export interface OccupancyInfo {
   inconsistencyKey?: TranslationKey;
   activeLease?: Lease;
   availableFromDate?: string;
+  /** Role inside the active lease — 'ancillary' for parking/cellar/storage. */
+  occupancyRole?: "primary" | "ancillary";
+  activeAssignment?: LeaseUnitAssignment;
   suggestedFix?: {
     targetStatus: UnitStatus;
     labelKey: TranslationKey;
@@ -39,11 +44,27 @@ export interface OccupancyWarning {
 export function getDerivedOccupancy(
   unitId: string,
   manualStatus: UnitStatus,
-  leases: Lease[]
+  leases: Lease[],
+  assignments?: LeaseUnitAssignment[],
 ): OccupancyInfo {
-  const activeLease = leases.find(
-    (l) => l.unitId === unitId && l.lifecycleStage === "active"
-  );
+  // Prefer assignment-aware lookup when assignments are provided.
+  let activeLease: Lease | undefined;
+  let activeAssignment: LeaseUnitAssignment | undefined;
+  if (assignments && assignments.length > 0) {
+    const today = new Date().toISOString().slice(0, 10);
+    const matches = assignments.filter(a => a.unitId === unitId && assignmentIsActiveOn(a, today));
+    const sorted = [...matches].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    for (const a of sorted) {
+      const l = leases.find(x => x.id === a.leaseId && x.lifecycleStage === "active");
+      if (l) { activeLease = l; activeAssignment = a; break; }
+    }
+  }
+  if (!activeLease) {
+    activeLease = leases.find((l) => l.unitId === unitId && l.lifecycleStage === "active");
+  }
+  const occupancyRole: "primary" | "ancillary" | undefined = activeAssignment
+    ? (activeAssignment.isPrimary ? "primary" : "ancillary")
+    : activeLease ? "primary" : undefined;
 
   if (!activeLease) {
     if (manualStatus === "archived") {
@@ -131,6 +152,8 @@ export function getDerivedOccupancy(
     inconsistent,
     inconsistencyKey,
     activeLease,
+    activeAssignment,
+    occupancyRole,
     availableFromDate,
     suggestedFix,
   };
