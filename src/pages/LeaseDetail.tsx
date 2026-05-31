@@ -107,12 +107,14 @@ export default function LeaseDetail() {
   const [moveInSheetOpen, setMoveInSheetOpen] = useState(false);
   const [miScheduled, setMiScheduled] = useState("");
   const [miMeter, setMiMeter] = useState("");
+  const [miWaterMeter, setMiWaterMeter] = useState("");
   const [miKeys, setMiKeys] = useState("");
 
   // Move-out form
   const [moveOutSheetOpen, setMoveOutSheetOpen] = useState(false);
   const [moScheduled, setMoScheduled] = useState("");
   const [moMeter, setMoMeter] = useState("");
+  const [moWaterMeter, setMoWaterMeter] = useState("");
   const [moNotes, setMoNotes] = useState("");
 
   // Return form
@@ -386,18 +388,18 @@ export default function LeaseDetail() {
     setPendingOverrideAction("");
   };
 
-  const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
-  const handleScheduleMoveIn = () => { updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, keyHandoverCount: parseInt(miKeys) || 0 }); toast({ title: "Move-in scheduled" }); setMoveInSheetOpen(false); };
+  const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiWaterMeter(lease.moveInWaterMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
+  const handleScheduleMoveIn = () => { updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, moveInWaterMeterReading: miWaterMeter || null, keyHandoverCount: parseInt(miKeys) || 0 }); toast({ title: "Move-in scheduled" }); setMoveInSheetOpen(false); };
   const handleConfirmMoveIn = () => {
-    updateLease({ ...lease, moveInActualDate: today, moveInScheduledDate: lease.moveInScheduledDate || today, moveInMeterReading: miMeter || lease.moveInMeterReading, keyHandoverCount: parseInt(miKeys) || lease.keyHandoverCount,
+    updateLease({ ...lease, moveInActualDate: today, moveInScheduledDate: lease.moveInScheduledDate || today, moveInMeterReading: miMeter || lease.moveInMeterReading, moveInWaterMeterReading: miWaterMeter || lease.moveInWaterMeterReading, keyHandoverCount: parseInt(miKeys) || lease.keyHandoverCount,
       moveInChecklist: { leaseSigned: true, firstPaymentReceived: true, guaranteeConfirmed: true, keysHandedOver: true, meterReadingCaptured: true, tenantDocumentsComplete: true } });
     toast({ title: "Move-in confirmed" }); setMoveInSheetOpen(false);
   };
 
-  const openMoveOutForm = () => { setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? ""); setMoMeter(lease.moveOutMeterReading ?? ""); setMoNotes(lease.moveOutNotes); setMoveOutSheetOpen(true); };
-  const handleScheduleMoveOut = () => { updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutNotes: moNotes }); toast({ title: "Move-out scheduled" }); setMoveOutSheetOpen(false); };
+  const openMoveOutForm = () => { setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? ""); setMoMeter(lease.moveOutMeterReading ?? ""); setMoWaterMeter(lease.moveOutWaterMeterReading ?? ""); setMoNotes(lease.moveOutNotes); setMoveOutSheetOpen(true); };
+  const handleScheduleMoveOut = () => { updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutWaterMeterReading: moWaterMeter || null, moveOutNotes: moNotes }); toast({ title: "Move-out scheduled" }); setMoveOutSheetOpen(false); };
   const handleConfirmMoveOut = () => {
-    confirmMoveOut({ ...lease, moveOutScheduledDate: lease.moveOutScheduledDate || today, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
+    confirmMoveOut({ ...lease, moveOutScheduledDate: lease.moveOutScheduledDate || today, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
       moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
       returnStatus: lease.returnStatus || "pending" });
     toast({ title: "Move-out confirmed. Unit set to vacant." }); setMoveOutSheetOpen(false);
