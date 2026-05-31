@@ -602,6 +602,9 @@ export default function LeaseDetail() {
         </CardContent>
       </Card>
 
+      {/* Amendments / Avenants */}
+      <AmendmentsSection leaseId={lease.id} />
+
       {/* Assigned Units (multi-unit lease) */}
       {(() => {
         const assignments = getLeaseAssignments(lease.id);
