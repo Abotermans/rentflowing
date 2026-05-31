@@ -612,9 +612,9 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
-                <span>Assigned units</span>
+                <span>{t("leases.assignedUnits")}</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  {primaryCount} primary · {ancillaryCount} ancillary
+                  {t("leases.assignedUnitsSummary").replace("{primary}", String(primaryCount)).replace("{ancillary}", String(ancillaryCount))}
                 </span>
               </CardTitle>
             </CardHeader>
@@ -622,12 +622,12 @@ export default function LeaseDetail() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Unit</TableHead>
-                    <TableHead className="text-xs">Role</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Start</TableHead>
-                    <TableHead className="text-xs text-right">Rent share</TableHead>
-                    <TableHead className="text-xs text-right">Charges share</TableHead>
+                    <TableHead className="text-xs">{t("leases.col.unit")}</TableHead>
+                    <TableHead className="text-xs">{t("leases.col.role")}</TableHead>
+                    <TableHead className="text-xs">{t("leases.col.type")}</TableHead>
+                    <TableHead className="text-xs">{t("leases.col.start")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("leases.col.rentShare")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("leases.col.chargesShare")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -644,10 +644,10 @@ export default function LeaseDetail() {
                           </TableCell>
                           <TableCell>
                             <span className={`text-xs px-1.5 py-0.5 rounded ${a.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                              {a.isPrimary ? "Primary" : (isAnc ? "Ancillary" : "Secondary")}
+                              {a.isPrimary ? t("leases.role.primary") : (isAnc ? t("leases.role.ancillary") : t("leases.role.secondary"))}
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{ASSIGNMENT_TYPE_LABELS[a.assignmentType]}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{t(`leases.assignmentType.${a.assignmentType}` as TranslationKey)}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
                           <TableCell className="text-right text-xs text-muted-foreground">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
                           <TableCell className="text-right text-xs text-muted-foreground">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
