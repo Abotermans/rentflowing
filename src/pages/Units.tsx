@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAppData } from "@/context/AppContext";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { DoorOpen, Plus, Search, Eye, Pencil, AlertTriangle, HelpCircle } from "lucide-react";
+import { DoorOpen, Plus, Search, Pencil, AlertTriangle, HelpCircle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS } from "@/lib/formatters";
@@ -77,6 +77,7 @@ export default function Units() {
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState<string[]>([]);
   const [filterType, setFilterType] = useState<string[]>([]);
@@ -260,13 +261,13 @@ export default function Units() {
                 {filtered.map(({ unit: u, occupancy }) => {
                   const prop = properties.find(p => p.id === u.propertyId);
                   return (
-                    <TableRow key={u.id}>
+                    <TableRow key={u.id} className="cursor-pointer" onClick={() => navigate(`/units/${u.id}`)}>
                       <TableCell className="font-mono text-xs font-medium">
-                        <Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link>
+                        <Link to={`/units/${u.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{u.unitCode}</Link>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline">{prop.name}</Link> : "—"}
+                        {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
                       <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
@@ -296,8 +297,7 @@ export default function Units() {
                             : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                        <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
                           <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDelete} />
                         </div>
