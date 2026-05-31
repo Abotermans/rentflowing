@@ -57,7 +57,7 @@ function PropertyFilter({ value, onChange, properties }: { value: string; onChan
 
 // ─── Rent Roll ───
 function RentRollReport() {
-  const { leases, properties, units, tenants, getGuaranteeByLease } = useAppData();
+  const { leases, properties, units, tenants, getGuaranteeByLease, getAncillaryLeaseUnits } = useAppData();
   const [propFilter, setPropFilter] = useState("all");
 
   const data = useMemo(() => {
@@ -68,9 +68,10 @@ function RentRollReport() {
       const tenant = tenants.find(t => t.id === l.primaryTenantId);
       const guarantee = getGuaranteeByLease(l.id);
       const total = l.monthlyRent + l.monthlyCharges;
-      return { l, prop, unit, tenant, guarantee, total };
+      const ancillaryCount = getAncillaryLeaseUnits(l.id, { activeOnly: true }).length;
+      return { l, prop, unit, tenant, guarantee, total, ancillaryCount };
     });
-  }, [leases, properties, units, tenants, getGuaranteeByLease, propFilter]);
+  }, [leases, properties, units, tenants, getGuaranteeByLease, getAncillaryLeaseUnits, propFilter]);
 
   const totalRent = data.reduce((s, d) => s + d.l.monthlyRent, 0);
   const totalCharges = data.reduce((s, d) => s + d.l.monthlyCharges, 0);
@@ -106,7 +107,14 @@ function RentRollReport() {
               <TableRow key={d.l.id}>
                 <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {d.unit?.unitCode ?? "—"}
+                  {d.ancillaryCount > 0 && (
+                    <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      +{d.ancillaryCount}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
                 <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
                 <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
