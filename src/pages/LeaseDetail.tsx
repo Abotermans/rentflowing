@@ -709,7 +709,20 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Shield className="h-4 w-4" />{t("detail.depositGuarantee")}</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              <Shield className="h-4 w-4" />
+              {t("detail.depositGuarantee")}
+              {guarantee && (() => {
+                const d = GUARANTEE_DISPLAY[guarantee.status];
+                const Icon = d.icon;
+                return (
+                  <span className={`ml-1.5 inline-flex items-center gap-1 text-xs ${d.className}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                    {t(d.labelKey)}
+                  </span>
+                );
+              })()}
+            </CardTitle>
             <Button variant="outline" size="sm" onClick={openGuaranteeForm}>{guarantee ? t("detail.editGuarantee") : t("detail.addGuarantee")}</Button>
           </div>
         </CardHeader>
