@@ -176,6 +176,21 @@ export default function Payments() {
     setAllocAmounts({});
   };
 
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">{t("payments.pageTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{t("payments.pageSubtitle")}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative inline-flex">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
+          </div>
+          <Button onClick={() => setAddReceiptOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>
+        </div>
+      </div>
 
       <Tabs defaultValue="receivables">
         <TabsList>
