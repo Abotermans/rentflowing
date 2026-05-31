@@ -550,6 +550,38 @@ export default function Leases() {
             </>)}
             {!editingLease && step === 2 && (
               <div className="space-y-4">
+                <div className="inline-flex rounded-md border border-input p-0.5 bg-muted/30">
+                  <button
+                    type="button"
+                    onClick={() => setTenantMode("existing")}
+                    disabled={tenants.length === 0}
+                    className={`px-3 py-1.5 text-xs rounded-sm transition-colors ${tenantMode === "existing" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"} disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {t("leases.wizard.useExistingTenant")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTenantMode("new")}
+                    className={`px-3 py-1.5 text-xs rounded-sm transition-colors ${tenantMode === "new" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {t("leases.wizard.createNewTenant")}
+                  </button>
+                </div>
+                {tenantMode === "existing" ? (
+                  <div>
+                    <Label>{t("leases.primaryTenant")} *</Label>
+                    <Select value={form.primaryTenantId} onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))}>
+                      <SelectTrigger><SelectValue placeholder={t("leases.wizard.selectTenantPlaceholder")} /></SelectTrigger>
+                      <SelectContent>
+                        {tenants.map(tt => (
+                          <SelectItem key={tt.id} value={tt.id}>
+                            {getTenantFullName(tt)} — {tt.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (<>
                 <div className="grid grid-cols-2 gap-4">
                   <div><Label>{t("tenants.firstName")} *</Label><Input value={tenantForm.firstName} onChange={e => setTenantForm(f => ({ ...f, firstName: e.target.value }))} /></div>
                   <div><Label>{t("tenants.lastName")} *</Label><Input value={tenantForm.lastName} onChange={e => setTenantForm(f => ({ ...f, lastName: e.target.value }))} /></div>
@@ -568,6 +600,7 @@ export default function Leases() {
                 <div><Label>{t("tenants.identificationNumber")}</Label><Input value={tenantForm.identificationNumber ?? ""} onChange={e => setTenantForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>
                 <div><Label>{t("tenants.currentAddress")}</Label><Textarea value={tenantForm.currentAddress ?? ""} onChange={e => setTenantForm(f => ({ ...f, currentAddress: e.target.value || null }))} rows={2} /></div>
                 <div><Label>{t("common.notes")}</Label><Textarea value={tenantForm.notes} onChange={e => setTenantForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+                </>)}
               </div>
             )}
           </div>
@@ -592,8 +625,13 @@ export default function Leases() {
                         return;
                       }
                     } else if (step === 2) {
-                      if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
-                        toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+                      if (tenantMode === "new") {
+                        if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
+                          toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+                          return;
+                        }
+                      } else if (!form.primaryTenantId) {
+                        toast({ title: "Validation Error", description: "Please select a tenant.", variant: "destructive" });
                         return;
                       }
                     }
