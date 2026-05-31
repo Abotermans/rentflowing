@@ -959,6 +959,20 @@ const en = {
   "payments.allocType.reallocation": "Reallocation",
   "payments.allocType.reversal": "Reversal",
   "payments.allocType.writeOff": "Write-Off",
+
+  // Lease unit roles & multi-unit lease
+  "leases.role.primary": "Primary",
+  "leases.role.ancillary": "Ancillary",
+  "leases.additionalUnits": "Additional units",
+  "leases.additionalUnitsHelp": "Add parking, cellars or other ancillary units covered by the same contract.",
+  "leases.addUnit": "Add unit",
+  "leases.noAdditionalUnits": "No additional units",
+  "leases.assignmentType": "Role",
+  "leases.primaryUnit": "Primary unit",
+  "leases.ancillaryUnit": "Ancillary",
+  "dashboard.ancillaryLeased": "Ancillary units leased",
+  "reports.primaryUnits": "Primary",
+  "reports.ancillaryUnits": "Ancillary",
 };
 
 type TranslationKeys = typeof en;
