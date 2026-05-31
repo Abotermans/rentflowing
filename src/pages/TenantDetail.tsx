@@ -17,7 +17,6 @@ export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
   const { tenants, leases, units, properties, deleteTenant, getTenantOutstanding, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
   const { t } = useSettings();
-  const integrityState = useIntegrityState();
   const navigate = useNavigate();
   const { toast } = useToast();
 
