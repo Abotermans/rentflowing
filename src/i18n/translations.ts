@@ -40,9 +40,9 @@ const en = {
   "leases.wizard.leaseDetails": "Lease details",
   "leases.wizard.tenantDetails": "Tenant details",
   "leases.wizard.terms": "Terms & financials",
- "leases.wizard.useExistingTenant": "Select existing tenant",
- "leases.wizard.createNewTenant": "Create new tenant",
- "leases.wizard.selectTenantPlaceholder": "Choose a tenant…",
+  "leases.wizard.useExistingTenant": "Select existing tenant",
+  "leases.wizard.createNewTenant": "Create new tenant",
+  "leases.wizard.selectTenantPlaceholder": "Choose a tenant…",
 
   // Filters
   "filter.all": "All",
@@ -998,6 +998,9 @@ const fr: TranslationKeys = {
   "leases.wizard.leaseDetails": "Détails du bail",
   "leases.wizard.tenantDetails": "Détails du locataire",
   "leases.wizard.terms": "Conditions et finances",
+  "leases.wizard.useExistingTenant": "Sélectionner un locataire existant",
+  "leases.wizard.createNewTenant": "Créer un nouveau locataire",
+  "leases.wizard.selectTenantPlaceholder": "Choisir un locataire…",
 
   // Filters
   "filter.all": "Tous",
