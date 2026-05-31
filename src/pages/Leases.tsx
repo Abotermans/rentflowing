@@ -585,7 +585,7 @@ export default function Leases() {
                           <SelectTrigger className="h-8 w-[160px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {(["parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
-                              <SelectItem key={at} value={at}>{ASSIGNMENT_TYPE_LABELS[at]}</SelectItem>
+                              <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
