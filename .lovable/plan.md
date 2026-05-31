@@ -1,40 +1,52 @@
 ## Goal
 
-In Step 2 of the Create Lease wizard (`src/pages/Leases.tsx`), let the user either pick an existing tenant or create a new one inline. Steps 1 and 3 are unchanged.
+Tenant status should follow lease activity automatically:
 
-## Step 2 UI
+- **Applicant → Active**: when a lease becomes active for that tenant (primary or co-tenant).
+- **Active → Former**: when their last remaining active lease ends/terminates.
 
-At the top of the step, a segmented toggle (Tabs or two buttons) with two modes:
+Status changes from `former` back to `active` happen automatically as well if a former tenant gets a new active lease (symmetry, avoids stuck states). Manual edits on the Tenants page still work; this logic only reacts to lease lifecycle events.
 
-- **Existing tenant** (default if there are tenants in the system)
-  - Searchable Select listing all tenants (name + email), bound to `form.primaryTenantId`.
-  - Small helper text under it.
-- **New tenant**
-  - Current inline tenant form (firstName, lastName, email, phone, DOB, status, ID, address, notes), bound to `tenantForm`.
+## Where the logic lives
 
-State: `const [tenantMode, setTenantMode] = useState<"existing" | "new">(tenants.length ? "existing" : "new")`. Reset in `openAdd` and on dialog close.
+A single helper in `src/context/AppContext.tsx`:
 
-## Validation (gating Next on Step 2)
+```ts
+function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: Tenant[]): Tenant[]
+```
 
-- `existing`: require `form.primaryTenantId` to be set.
-- `new`: require `tenantForm.firstName`, `lastName`, `email` (current rule).
+For each affected tenant id, look at all leases where they are `primaryTenantId` or in `coTenantIds`:
+- If any lease has `lifecycleStage === "active"` → tenant status becomes `active` (only if currently `applicant` or `former`).
+- Else if they have at least one lease and none active → status becomes `former` (only if currently `active`).
+- Else (no leases at all) → leave status untouched (still an applicant / manually set).
 
-## Final submit
+Never touch a tenant whose target status equals current — keeps `updatedAt` stable.
 
-In `executeLeaseSave` (create branch):
+## Wiring
 
-- If `tenantMode === "new"`: call `addTenant(tenantForm)` and use the returned id as `primaryTenantId` (current behavior).
-- If `tenantMode === "existing"`: skip `addTenant`; use the already-selected `form.primaryTenantId`.
+Call `reconcileTenantStatuses` inside the three lease mutation paths in `AppContext.tsx`, right after `setLeases(...)`:
 
-Then run the existing `addLease` flow (conflict checks + override dialog) unchanged.
+1. **`addLease`** — affected tenants = `[primaryTenantId, ...coTenantIds]` of the new lease.
+2. **`updateLease`** — affected tenants = union of old lease tenants and new lease tenants (handles tenant reassignment + lifecycle change in one save).
+3. **`confirmMoveOut`** — affected tenants = lease's primary + co-tenants (lease flips to `ended`).
 
-## Translations
+`deleteLease` does NOT trigger the flip (deleting a lease record is an admin action, not a lifecycle event; integrity already blocks deletion of leases with history).
 
-Add EN/FR keys in `src/i18n/translations.ts`:
-- `leases.wizard.useExistingTenant` ("Select existing tenant" / "Sélectionner un locataire existant")
-- `leases.wizard.createNewTenant` ("Create new tenant" / "Créer un nouveau locataire")
-- `leases.wizard.selectTenantPlaceholder` ("Choose a tenant…" / "Choisir un locataire…")
+Implementation uses the functional `setTenants(prev => …)` form, reading the freshly-updated leases passed in as a parameter to avoid stale closures.
+
+## Integrity interaction
+
+`canChangeTenantStatus(..., "former")` blocks if the tenant has active leases. Our automatic `→ former` flip only runs after a lease has just been moved out of `active`, so the check naturally passes. We bypass the integrity helper for the automatic flip (system-driven, not user-driven) — same pattern as `confirmMoveOut` directly setting `lifecycleStage: "ended"`.
+
+Warnings about open balances / unresolved guarantees are surfaced elsewhere (lease end dialogs) and are not duplicated on the silent tenant flip.
 
 ## Out of scope
 
-Edit-lease flow, co-tenants, tenant integrity changes, Tenants page.
+- No UI changes, no toasts for the automatic flip.
+- No retroactive reconciliation of existing mock data on app load.
+- No changes to `Tenants.tsx` manual edit flow or `tenantIntegrity.ts`.
+- Lease deletion does not trigger reconciliation.
+
+## Files touched
+
+- `src/context/AppContext.tsx` — add `reconcileTenantStatuses` helper; call it from `addLease`, `updateLease`, `confirmMoveOut`.

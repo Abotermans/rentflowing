@@ -10,6 +10,22 @@ import { initialCostCategories, initialCostEntries, initialAllocationRules, init
 import { autoAllocate } from "@/lib/reconciliation";
 import { computeAllocations } from "@/lib/costAllocation";
 
+function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: Tenant[]): Tenant[] {
+  const affected = new Set(tenantIds.filter(Boolean));
+  if (affected.size === 0) return tenants;
+  const ts = new Date().toISOString();
+  return tenants.map(t => {
+    if (!affected.has(t.id)) return t;
+    const tenantLeases = leases.filter(l => l.primaryTenantId === t.id || l.coTenantIds.includes(t.id));
+    if (tenantLeases.length === 0) return t;
+    const hasActive = tenantLeases.some(l => l.lifecycleStage === "active");
+    const target = hasActive ? "active" : "former";
+    if (target === "former" && t.status !== "active") return t;
+    if (target === "active" && t.status === "active") return t;
+    return { ...t, status: target, updatedAt: ts };
+  });
+}
+
 interface PropertyStats {
   total: number;
   occupied: number;
@@ -214,10 +230,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Lease CRUD =====
   const addLease = useCallback((l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setLeases(prev => [...prev, { ...l, id: genId("l"), createdAt: ts, updatedAt: ts }]);
+    const created: Lease = { ...l, id: genId("l"), createdAt: ts, updatedAt: ts };
+    setLeases(prev => {
+      const next = [...prev, created];
+      setTenants(prevT => reconcileTenantStatuses([created.primaryTenantId, ...created.coTenantIds], next, prevT));
+      return next;
+    });
   }, []);
   const updateLease = useCallback((l: Lease) => {
-    setLeases(prev => prev.map(x => x.id === l.id ? { ...l, updatedAt: now() } : x));
+    setLeases(prev => {
+      const old = prev.find(x => x.id === l.id);
+      const next = prev.map(x => x.id === l.id ? { ...l, updatedAt: now() } : x);
+      const affected = [
+        ...(old ? [old.primaryTenantId, ...old.coTenantIds] : []),
+        l.primaryTenantId, ...l.coTenantIds,
+      ];
+      setTenants(prevT => reconcileTenantStatuses(affected, next, prevT));
+      return next;
+    });
   }, []);
   const deleteLease = useCallback((id: string) => {
     setLeases(prev => prev.filter(x => x.id !== id));
@@ -226,14 +256,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const confirmMoveOut = useCallback((lease: Lease) => {
     const ts = now();
     const moveOutDate = lease.moveOutActualDate ?? ts;
-    setLeases(prev => prev.map(x => x.id === lease.id ? {
-      ...lease,
-      lifecycleStage: "ended" as const,
-      moveOutActualDate: moveOutDate,
-      // Preserve an existing legal end date; only fill it from move-out if missing.
-      endDate: lease.endDate || moveOutDate,
-      updatedAt: ts,
-    } : x));
+    setLeases(prev => {
+      const next = prev.map(x => x.id === lease.id ? {
+        ...lease,
+        lifecycleStage: "ended" as const,
+        moveOutActualDate: moveOutDate,
+        // Preserve an existing legal end date; only fill it from move-out if missing.
+        endDate: lease.endDate || moveOutDate,
+        updatedAt: ts,
+      } : x);
+      setTenants(prevT => reconcileTenantStatuses([lease.primaryTenantId, ...lease.coTenantIds], next, prevT));
+      return next;
+    });
     setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts } : x));
   }, []);
 
