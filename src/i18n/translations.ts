@@ -1931,6 +1931,19 @@ const fr: TranslationKeys = {
   "payments.allocType.reallocation": "Réaffectation",
   "payments.allocType.reversal": "Annulation",
   "payments.allocType.writeOff": "Passation en perte",
+
+  "leases.role.primary": "Principal",
+  "leases.role.ancillary": "Annexe",
+  "leases.additionalUnits": "Lots complémentaires",
+  "leases.additionalUnitsHelp": "Ajoutez parkings, caves ou autres lots annexes couverts par ce contrat.",
+  "leases.addUnit": "Ajouter un lot",
+  "leases.noAdditionalUnits": "Aucun lot complémentaire",
+  "leases.assignmentType": "Rôle",
+  "leases.primaryUnit": "Lot principal",
+  "leases.ancillaryUnit": "Annexe",
+  "dashboard.ancillaryLeased": "Lots annexes loués",
+  "reports.primaryUnits": "Principaux",
+  "reports.ancillaryUnits": "Annexes",
 };
 
 export type TranslationKey = keyof typeof en;
