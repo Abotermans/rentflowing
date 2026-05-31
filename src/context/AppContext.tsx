@@ -4,7 +4,7 @@ import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
-import { initialProperties, initialUnits, initialTenants, initialLeases, initialGuarantees } from "@/data/mockData";
+import { initialProperties, initialUnits, initialTenants, initialLeases, initialGuarantees, initialLeaseUnitAssignments } from "@/data/mockData";
 import { initialReceivableItems, initialCashReceipts, initialAllocations } from "@/data/receivablesMockData";
 import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
@@ -191,7 +191,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [leases, setLeases] = useState<Lease[]>(initialLeases);
   const [guarantees, setGuarantees] = useState<Guarantee[]>(initialGuarantees);
   const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>(
-    () => migrateLegacyLeaseAssignments(initialLeases, []),
+    () => migrateLegacyLeaseAssignments(initialLeases, initialLeaseUnitAssignments),
   );
   const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
   const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
