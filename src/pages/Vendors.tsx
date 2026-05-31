@@ -26,6 +26,7 @@ export default function Vendors() {
   const { vendors, addVendor, updateVendor, deleteVendor } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
