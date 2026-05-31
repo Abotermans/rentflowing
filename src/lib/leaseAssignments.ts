@@ -110,6 +110,27 @@ export function closeOpenAssignmentsForLease(
 }
 
 /**
+ * Sum the rentShare/chargesShare across all assignments of a lease.
+ * `null` shares are treated as 0 (legacy / not yet split).
+ */
+export function sumLeaseShares(
+  leaseId: string,
+  assignments: readonly LeaseUnitAssignment[],
+  opts: { activeOnly?: boolean; onDate?: string } = {},
+): { rent: number; charges: number } {
+  const onDate = opts.onDate ?? new Date().toISOString().slice(0, 10);
+  const rows = assignments.filter(a => {
+    if (a.leaseId !== leaseId) return false;
+    if (opts.activeOnly && !assignmentIsActiveOn(a, onDate)) return false;
+    return true;
+  });
+  return {
+    rent: rows.reduce((s, a) => s + (a.rentShare ?? 0), 0),
+    charges: rows.reduce((s, a) => s + (a.chargesShare ?? 0), 0),
+  };
+}
+
+/**
  * Look up the active lease + assignment covering a unit on a given date.
  * Returns the primary assignment first when multiple match.
  */
@@ -140,12 +161,23 @@ export function migrateLegacyLeaseAssignments(
   leases: readonly Lease[],
   existing: readonly LeaseUnitAssignment[],
 ): LeaseUnitAssignment[] {
-  const seen = new Set(existing.map(a => a.leaseId));
+  // A lease is considered already migrated when it already has a primary row.
+  const hasPrimary = new Set(existing.filter(a => a.isPrimary).map(a => a.leaseId));
   const added: LeaseUnitAssignment[] = [];
   let counter = 0;
   for (const l of leases) {
-    if (seen.has(l.id)) continue;
+    if (hasPrimary.has(l.id)) continue;
     if (!l.unitId) continue;
+    // Backfill primary share: lease total minus whatever ancillary shares already exist
+    // (pre-seeded mockData rows). Floor at 0 to avoid negative shares from inconsistent data.
+    const ancRent = existing
+      .filter(a => a.leaseId === l.id)
+      .reduce((s, a) => s + (a.rentShare ?? 0), 0);
+    const ancCharges = existing
+      .filter(a => a.leaseId === l.id)
+      .reduce((s, a) => s + (a.chargesShare ?? 0), 0);
+    const primaryRent = Math.max(0, l.monthlyRent - ancRent);
+    const primaryCharges = Math.max(0, l.monthlyCharges - ancCharges);
     added.push({
       id: `lua-mig-${l.id}-${++counter}`,
       leaseId: l.id,
@@ -156,8 +188,8 @@ export function migrateLegacyLeaseAssignments(
       endDate: l.lifecycleStage === "ended" || l.lifecycleStage === "terminated"
         ? (l.moveOutActualDate || l.endDate || null)
         : null,
-      rentShare: null,
-      chargesShare: null,
+      rentShare: primaryRent,
+      chargesShare: primaryCharges,
       notes: "",
       createdAt: l.createdAt,
       updatedAt: l.updatedAt,
@@ -177,28 +209,4 @@ export function isAncillaryRole(
   if (isAncillaryAssignmentType(assignmentType)) return true;
   if (unit && ANCILLARY_UNIT_TYPES.has(unit.unitType)) return true;
   return false;
-}
-
-/**
- * Check whether the optional internal rent/charges split is coherent with the
- * lease contract totals. Returns null if any share is missing.
- */
-export function checkInternalShareCoherence(
-  assignments: LeaseUnitAssignment[],
-  totalRent: number,
-  totalCharges: number,
-): { rentDelta: number; chargesDelta: number; coherent: boolean } | null {
-  const definedRent = assignments.filter(a => a.rentShare != null);
-  const definedCharges = assignments.filter(a => a.chargesShare != null);
-  if (definedRent.length === 0 && definedCharges.length === 0) return null;
-
-  const sumRent = definedRent.reduce((s, a) => s + (a.rentShare ?? 0), 0);
-  const sumCharges = definedCharges.reduce((s, a) => s + (a.chargesShare ?? 0), 0);
-  const rentDelta = sumRent - totalRent;
-  const chargesDelta = sumCharges - totalCharges;
-  const eps = 0.5;
-  const coherent =
-    (definedRent.length === 0 || Math.abs(rentDelta) <= eps) &&
-    (definedCharges.length === 0 || Math.abs(chargesDelta) <= eps);
-  return { rentDelta, chargesDelta, coherent };
 }

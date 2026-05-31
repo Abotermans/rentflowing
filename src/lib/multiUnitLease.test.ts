@@ -161,16 +161,53 @@ describe("validateLeaseUnits — scenarios D/E/F/G", () => {
 
   it("Happy path A (1 apartment) is allowed", () => {
     const r = validateLeaseUnits(null, "p1", [
-      { unitId: "u1", assignmentType: "primary", isPrimary: true, startDate: "2024-01-01", endDate: null, rentShare: null, chargesShare: null },
+      { unitId: "u1", assignmentType: "primary", isPrimary: true, startDate: "2024-01-01", endDate: null, rentShare: 1000, chargesShare: 100 },
     ], { monthlyRent: 1000, monthlyCharges: 100 }, emptyState({ units: propUnits }));
     expect(r.allowed).toBe(true);
   });
 
   it("Happy path B (apartment + parking) is allowed", () => {
     const r = validateLeaseUnits(null, "p1", [
-      { unitId: "u1", assignmentType: "primary", isPrimary: true, startDate: "2024-01-01", endDate: null, rentShare: null, chargesShare: null },
-      { unitId: "u2", assignmentType: "parking", isPrimary: false, startDate: "2024-01-01", endDate: null, rentShare: null, chargesShare: null },
+      { unitId: "u1", assignmentType: "primary", isPrimary: true, startDate: "2024-01-01", endDate: null, rentShare: 900, chargesShare: 100 },
+      { unitId: "u2", assignmentType: "parking", isPrimary: false, startDate: "2024-01-01", endDate: null, rentShare: 100, chargesShare: 0 },
     ], { monthlyRent: 1000, monthlyCharges: 100 }, emptyState({ units: propUnits }));
     expect(r.allowed).toBe(true);
+  });
+
+  it("Strict per-unit: missing share is blocked", () => {
+    const r = validateLeaseUnits(null, "p1", [
+      { unitId: "u1", assignmentType: "primary", isPrimary: true, startDate: "2024-01-01", endDate: null, rentShare: null, chargesShare: 100 },
+    ], { monthlyRent: 1000, monthlyCharges: 100 }, emptyState({ units: propUnits }));
+    expect(r.allowed).toBe(false);
+    expect(r.blockers.some(b => b.code === "LUA_SHARE_MISSING")).toBe(true);
+  });
+
+  it("Strict per-unit: negative share is blocked", () => {
+    const r = validateLeaseUnits(null, "p1", [
+      { unitId: "u1", assignmentType: "primary", isPrimary: true, startDate: "2024-01-01", endDate: null, rentShare: -50, chargesShare: 0 },
+    ], { monthlyRent: 0, monthlyCharges: 0 }, emptyState({ units: propUnits }));
+    expect(r.allowed).toBe(false);
+    expect(r.blockers.some(b => b.code === "LUA_SHARE_NEGATIVE")).toBe(true);
+  });
+});
+
+describe("Multi-unit lease — share aggregation", () => {
+  it("migrateLegacyLeaseAssignments backfills primary share from lease totals", () => {
+    const legacy = makeLease({ id: "lleg", unitId: "u-legacy", monthlyRent: 1200, monthlyCharges: 150 });
+    const out = migrateLegacyLeaseAssignments([legacy], []);
+    expect(out[0].rentShare).toBe(1200);
+    expect(out[0].chargesShare).toBe(150);
+  });
+
+  it("migrateLegacyLeaseAssignments deducts pre-seeded ancillary shares from primary", () => {
+    const legacy = makeLease({ id: "lleg", unitId: "u-legacy", monthlyRent: 1200, monthlyCharges: 150 });
+    const anc = makeAssignment({
+      id: "a-anc", leaseId: "lleg", unitId: "u-park",
+      isPrimary: false, assignmentType: "parking", rentShare: 100, chargesShare: 0,
+    });
+    const out = migrateLegacyLeaseAssignments([legacy], [anc]);
+    const primary = out.find(a => a.isPrimary && a.leaseId === "lleg");
+    expect(primary?.rentShare).toBe(1100);
+    expect(primary?.chargesShare).toBe(150);
   });
 });

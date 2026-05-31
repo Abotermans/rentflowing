@@ -281,8 +281,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           isPrimary: true,
           startDate: created.startDate,
           endDate: null,
-          rentShare: null,
-          chargesShare: null,
+          // Strict per-unit pricing: seed the primary share from the lease totals so
+          // a freshly created single-unit lease is already coherent.
+          rentShare: created.monthlyRent,
+          chargesShare: created.monthlyCharges,
           notes: "",
           createdAt: ts,
           updatedAt: ts,
@@ -418,13 +420,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .map(a => a.endDate ? a : { ...a, endDate: ts, updatedAt: ts });
       return [...others, ...merged, ...closed];
     });
-    // Sync legacy lease.unitId to the new primary so existing call sites keep working.
+    // Sync legacy lease.unitId to the new primary AND mirror the sum of shares into
+    // lease.monthlyRent / lease.monthlyCharges so receivables, reports, exports keep
+    // working without changes. Lease totals are now derived from per-unit shares.
     const primary = draft.find(d => d.isPrimary);
-    if (primary) {
-      setLeases(prev => prev.map(l =>
-        l.id === leaseId ? { ...l, unitId: primary.unitId, propertyId, updatedAt: ts } : l,
-      ));
-    }
+    const sums = {
+      rent: draft.reduce((s, d) => s + (d.rentShare ?? 0), 0),
+      charges: draft.reduce((s, d) => s + (d.chargesShare ?? 0), 0),
+    };
+    setLeases(prev => prev.map(l =>
+      l.id === leaseId
+        ? {
+            ...l,
+            unitId: primary ? primary.unitId : l.unitId,
+            propertyId,
+            monthlyRent: sums.rent,
+            monthlyCharges: sums.charges,
+            updatedAt: ts,
+          }
+        : l,
+    ));
   }, []);
 
   const getLeaseAssignments = useCallback(
