@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Wrench, Plus, Search, Eye, Pencil, Trash2, ArrowDown, Minus, ArrowUp, AlertTriangle } from "lucide-react";
+import { Wrench, Plus, Search, Pencil, Trash2, ArrowDown, Minus, ArrowUp, AlertTriangle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatDate } from "@/lib/formatters";
