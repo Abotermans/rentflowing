@@ -437,6 +437,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [leases, leaseUnitAssignments],
   );
 
+  const getLeaseAssignedUnitsFn = useCallback(
+    (leaseId: string, opts: { activeOnly?: boolean } = {}) =>
+      libGetLeaseAssignedUnits(leaseId, leaseUnitAssignments, units, opts),
+    [leaseUnitAssignments, units],
+  );
+  const getPrimaryLeaseUnitFn = useCallback(
+    (leaseId: string) => libGetPrimaryLeaseUnit(leaseId, leaseUnitAssignments, units),
+    [leaseUnitAssignments, units],
+  );
+  const getAncillaryLeaseUnitsFn = useCallback(
+    (leaseId: string, opts: { activeOnly?: boolean } = {}) =>
+      libGetAncillaryLeaseUnits(leaseId, leaseUnitAssignments, units, opts),
+    [leaseUnitAssignments, units],
+  );
+  const isUnitAssignedToActiveLeaseFn = useCallback(
+    (unitId: string) => libIsUnitAssignedToActiveLease(unitId, leases, leaseUnitAssignments),
+    [leases, leaseUnitAssignments],
+  );
+
   // ===== Guarantee =====
   const addGuarantee = useCallback((g: Omit<Guarantee, "id">) => {
     setGuarantees(prev => [...prev, { ...g, id: genId("g") }]);
