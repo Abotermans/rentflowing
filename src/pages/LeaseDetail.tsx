@@ -654,6 +654,17 @@ export default function LeaseDetail() {
                         </TableRow>
                       );
                     })}
+                  {(() => {
+                    const sumR = active.reduce((s, a) => s + (a.rentShare ?? 0), 0);
+                    const sumC = active.reduce((s, a) => s + (a.chargesShare ?? 0), 0);
+                    return (
+                      <TableRow className="border-t border-border bg-muted/30">
+                        <TableCell colSpan={4} className="text-xs font-medium text-muted-foreground">Σ</TableCell>
+                        <TableCell className="text-right text-xs font-semibold text-foreground">{formatCurrency(sumR, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-xs font-semibold text-foreground">{formatCurrency(sumC, currency, locale)}</TableCell>
+                      </TableRow>
+                    );
+                  })()}
                 </TableBody>
               </Table>
             </CardContent>
