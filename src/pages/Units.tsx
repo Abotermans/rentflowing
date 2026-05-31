@@ -261,13 +261,13 @@ export default function Units() {
                 {filtered.map(({ unit: u, occupancy }) => {
                   const prop = properties.find(p => p.id === u.propertyId);
                   return (
-                    <TableRow key={u.id}>
+                    <TableRow key={u.id} className="cursor-pointer" onClick={() => navigate(`/units/${u.id}`)}>
                       <TableCell className="font-mono text-xs font-medium">
-                        <Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link>
+                        <Link to={`/units/${u.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{u.unitCode}</Link>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline">{prop.name}</Link> : "—"}
+                        {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
                       <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
@@ -297,8 +297,7 @@ export default function Units() {
                             : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                        <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
                           <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDelete} />
                         </div>
