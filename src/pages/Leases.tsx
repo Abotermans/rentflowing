@@ -109,8 +109,14 @@ export default function Leases() {
     advanceAllocationDurationMonths: null, fixedMonthlyReductionAmount: null,
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
-  // Extra (non-primary) unit assignments attached to this lease.
-  const [extraUnits, setExtraUnits] = useState<{ unitId: string; assignmentType: LeaseUnitAssignmentType }[]>([]);
+  // Extra (non-primary) unit assignments attached to this lease. Each carries its own
+  // rent and charges contribution — these are summed into the lease totals.
+  const [extraUnits, setExtraUnits] = useState<{
+    unitId: string;
+    assignmentType: LeaseUnitAssignmentType;
+    rentShare: number;
+    chargesShare: number;
+  }[]>([]);
 
   const emptyTenantForm: TenantFormData = {
     firstName: "", lastName: "", email: "", phone: "",
@@ -137,7 +143,12 @@ export default function Leases() {
     const today = new Date().toISOString().slice(0, 10);
     const extras = getLeaseAssignments(l.id)
       .filter(a => !a.isPrimary && (!a.endDate || a.endDate >= today))
-      .map(a => ({ unitId: a.unitId, assignmentType: a.assignmentType }));
+      .map(a => ({
+        unitId: a.unitId,
+        assignmentType: a.assignmentType,
+        rentShare: a.rentShare ?? 0,
+        chargesShare: a.chargesShare ?? 0,
+      }));
     setExtraUnits(extras);
     setSheetOpen(true);
   };
