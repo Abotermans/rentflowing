@@ -169,7 +169,8 @@ function OccupancyReport() {
       </FilterBar>
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Total Units" value={String(data.length)} />
-        <KpiCard label="Occupied" value={String(occupied)} />
+        <KpiCard label="Occupied (primary)" value={String(occupiedPrimary)} />
+        <KpiCard label="Ancillary leased" value={String(occupiedAncillary)} />
         <KpiCard label="Vacant" value={String(vacant)} />
         <KpiCard label="Occupancy Rate" value={`${rate}%`} />
       </div>
