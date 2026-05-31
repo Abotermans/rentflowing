@@ -451,9 +451,9 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setReceiptSheetOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
+            <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
             {(lease.lifecycleStage === "active" || lease.lifecycleStage === "draft") && (
-              <Button variant="outline" size="sm" onClick={openNoticeForm}>
+              <Button variant="outline" size="sm" className="h-9" onClick={openNoticeForm}>
                 <Bell className="h-4 w-4 mr-1" />
                 {lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}
               </Button>
