@@ -11,10 +11,10 @@ import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { PROPERTY_TYPE_ICONS, PROPERTY_STATUS_ICONS, COUNTRY_ICON } from "@/lib/filterIcons";
 import { Tag, CircleCheck } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Building2, Plus, Pencil, Trash2, Search, Eye } from "lucide-react";
+import { Building2, Plus, Pencil, Search } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Property } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
@@ -59,6 +59,7 @@ export default function Properties() {
   const { properties, units, leases, addProperty, updateProperty, deleteProperty, getPropertyStats } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const navigate = useNavigate();
   const integrityState = useIntegrityState();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
@@ -198,7 +199,7 @@ export default function Properties() {
               {filtered.map(p => {
                 const stats = getPropertyStats(p.id);
                 return (
-                  <TableRow key={p.id}>
+                  <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/properties/${p.id}`)}>
                     <TableCell className="font-medium">
                       <Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link>
                     </TableCell>
@@ -213,11 +214,8 @@ export default function Properties() {
                       <span className="text-muted-foreground text-xs ml-1">({stats.occupancyRate}%)</span>
                     </TableCell>
                     <TableCell><StatusBadge status={p.status} /></TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                          <Link to={`/properties/${p.id}`}><Eye className="h-3.5 w-3.5" /></Link>
-                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
                         <DeleteDialog entityType="property" entityId={p.id} entityLabel="property" onDelete={handleDelete} />
                       </div>
