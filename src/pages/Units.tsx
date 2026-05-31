@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAppData } from "@/context/AppContext";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { DoorOpen, Plus, Search, Eye, Pencil, AlertTriangle, HelpCircle } from "lucide-react";
+import { DoorOpen, Plus, Search, Pencil, AlertTriangle, HelpCircle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS } from "@/lib/formatters";
