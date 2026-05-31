@@ -12,6 +12,7 @@ export { canDeleteReceivable, canDeleteCashReceipt, canCreateAllocation } from "
 export { canDeleteCostCategory, canDeleteCostEntry, canDeleteAllocationRule, validateCostEntry, validateManualPercentageShares } from "./costIntegrity";
 export { validateLeaseUnits } from "./leaseUnitAssignmentIntegrity";
 export type { DraftAssignment } from "./leaseUnitAssignmentIntegrity";
+export { canActivateAmendment, validateAmendment } from "./amendmentIntegrity";
 
 // ===== Generic Dispatchers =====
 

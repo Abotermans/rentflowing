@@ -3,6 +3,7 @@ import type { LeaseUnitAssignment } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation } from "@/types/receivables";
 import { MaintenanceTicket } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
+import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
 
 // ===== Validation Result Types =====
 
@@ -37,6 +38,8 @@ export interface IntegrityState {
   leases: readonly Lease[];
   guarantees: readonly Guarantee[];
   leaseUnitAssignments: readonly LeaseUnitAssignment[];
+  amendments: readonly LeaseAmendment[];
+  amendmentChanges: readonly LeaseAmendmentChange[];
   receivableItems: readonly ReceivableItem[];
   cashReceipts: readonly CashReceipt[];
   allocations: readonly ReceiptAllocation[];
