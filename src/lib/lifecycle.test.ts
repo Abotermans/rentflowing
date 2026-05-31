@@ -63,6 +63,7 @@ function makeLease(overrides: Partial<Lease> = {}): Lease {
 function emptyState(over: Partial<IntegrityState> = {}): IntegrityState {
   return {
     properties: [], units: [], tenants: [], leases: [], guarantees: [],
+    leaseUnitAssignments: [],
     receivableItems: [], cashReceipts: [], allocations: [], tickets: [],
     costCategories: [], costEntries: [], allocationRules: [],
     allocationRuleUnitShares: [], costAllocationResults: [],

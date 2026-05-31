@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
 import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee } from "@/types";
+import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
@@ -9,6 +10,7 @@ import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
 import { autoAllocate } from "@/lib/reconciliation";
 import { computeAllocations } from "@/lib/costAllocation";
+import { migrateLegacyLeaseAssignments, getActiveLeaseForUnit as findActiveLeaseForUnit, assignmentIsActiveOn } from "@/lib/leaseAssignments";
 
 function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: Tenant[]): Tenant[] {
   const affected = new Set(tenantIds.filter(Boolean));
@@ -41,6 +43,7 @@ interface AppState {
   tenants: Tenant[];
   leases: Lease[];
   guarantees: Guarantee[];
+  leaseUnitAssignments: LeaseUnitAssignment[];
   receivableItems: ReceivableItem[];
   cashReceipts: CashReceipt[];
   allocations: ReceiptAllocation[];
@@ -74,6 +77,18 @@ interface AppState {
   updateLease: (l: Lease) => void;
   deleteLease: (id: string) => void;
   confirmMoveOut: (lease: Lease) => void;
+
+  // Lease unit assignments
+  setLeaseUnits: (leaseId: string, propertyId: string, units: {
+    unitId: string;
+    assignmentType: LeaseUnitAssignmentType;
+    isPrimary: boolean;
+    rentShare: number | null;
+    chargesShare: number | null;
+    startDate?: string;
+  }[]) => void;
+  getLeaseAssignments: (leaseId: string) => LeaseUnitAssignment[];
+  getActiveLeaseAssignmentForUnit: (unitId: string) => { lease: Lease; assignment: LeaseUnitAssignment } | undefined;
 
   // Guarantee
   addGuarantee: (g: Omit<Guarantee, "id">) => void;
@@ -175,6 +190,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
   const [leases, setLeases] = useState<Lease[]>(initialLeases);
   const [guarantees, setGuarantees] = useState<Guarantee[]>(initialGuarantees);
+  const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>(
+    () => migrateLegacyLeaseAssignments(initialLeases, []),
+  );
   const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
   const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
   const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
@@ -236,6 +254,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTenants(prevT => reconcileTenantStatuses([created.primaryTenantId, ...created.coTenantIds], next, prevT));
       return next;
     });
+    // Always seed a primary assignment from the legacy unitId so a lease is never unit-less.
+    if (created.unitId) {
+      setLeaseUnitAssignments(prev => [
+        ...prev,
+        {
+          id: genId("lua"),
+          leaseId: created.id,
+          unitId: created.unitId,
+          assignmentType: "primary",
+          isPrimary: true,
+          startDate: created.startDate,
+          endDate: null,
+          rentShare: null,
+          chargesShare: null,
+          notes: "",
+          createdAt: ts,
+          updatedAt: ts,
+        },
+      ]);
+    }
   }, []);
   const updateLease = useCallback((l: Lease) => {
     setLeases(prev => {
@@ -251,6 +289,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const deleteLease = useCallback((id: string) => {
     setLeases(prev => prev.filter(x => x.id !== id));
+    setLeaseUnitAssignments(prev => prev.filter(a => a.leaseId !== id));
   }, []);
 
   const confirmMoveOut = useCallback((lease: Lease) => {
@@ -269,7 +308,83 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
     setUnits(prev => prev.map(x => x.id === lease.unitId ? { ...x, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts } : x));
+    // Close out all open assignments for this lease.
+    setLeaseUnitAssignments(prev => prev.map(a =>
+      a.leaseId === lease.id && !a.endDate
+        ? { ...a, endDate: moveOutDate, updatedAt: ts }
+        : a,
+    ));
   }, []);
+
+  // ===== Lease Unit Assignments =====
+  const setLeaseUnitsFn = useCallback((leaseId: string, propertyId: string, draft: {
+    unitId: string;
+    assignmentType: LeaseUnitAssignmentType;
+    isPrimary: boolean;
+    rentShare: number | null;
+    chargesShare: number | null;
+    startDate?: string;
+  }[]) => {
+    const ts = now();
+    setLeaseUnitAssignments(prev => {
+      const others = prev.filter(a => a.leaseId !== leaseId);
+      const existing = prev.filter(a => a.leaseId === leaseId);
+      const keepIds = new Set<string>();
+      const merged: LeaseUnitAssignment[] = [];
+      for (const d of draft) {
+        const match = existing.find(a => a.unitId === d.unitId && !a.endDate);
+        if (match) {
+          keepIds.add(match.id);
+          merged.push({
+            ...match,
+            assignmentType: d.assignmentType,
+            isPrimary: d.isPrimary,
+            rentShare: d.rentShare,
+            chargesShare: d.chargesShare,
+            startDate: d.startDate ?? match.startDate,
+            updatedAt: ts,
+          });
+        } else {
+          merged.push({
+            id: genId("lua"),
+            leaseId,
+            unitId: d.unitId,
+            assignmentType: d.assignmentType,
+            isPrimary: d.isPrimary,
+            startDate: d.startDate ?? ts,
+            endDate: null,
+            rentShare: d.rentShare,
+            chargesShare: d.chargesShare,
+            notes: "",
+            createdAt: ts,
+            updatedAt: ts,
+          });
+        }
+      }
+      // Close (don't delete) assignments removed from the draft to preserve history.
+      const closed = existing
+        .filter(a => !keepIds.has(a.id))
+        .map(a => a.endDate ? a : { ...a, endDate: ts, updatedAt: ts });
+      return [...others, ...merged, ...closed];
+    });
+    // Sync legacy lease.unitId to the new primary so existing call sites keep working.
+    const primary = draft.find(d => d.isPrimary);
+    if (primary) {
+      setLeases(prev => prev.map(l =>
+        l.id === leaseId ? { ...l, unitId: primary.unitId, propertyId, updatedAt: ts } : l,
+      ));
+    }
+  }, []);
+
+  const getLeaseAssignments = useCallback(
+    (leaseId: string) => leaseUnitAssignments.filter(a => a.leaseId === leaseId),
+    [leaseUnitAssignments],
+  );
+
+  const getActiveLeaseAssignmentForUnit = useCallback(
+    (unitId: string) => findActiveLeaseForUnit(unitId, leases, leaseUnitAssignments),
+    [leases, leaseUnitAssignments],
+  );
 
   // ===== Guarantee =====
   const addGuarantee = useCallback((g: Omit<Guarantee, "id">) => {
@@ -536,7 +651,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getPropertyById = useCallback((id: string) => properties.find(p => p.id === id), [properties]);
   const getUnitById = useCallback((id: string) => units.find(u => u.id === id), [units]);
   const getTenantById = useCallback((id: string) => tenants.find(t => t.id === id), [tenants]);
-  const getActiveLease = useCallback((unitId: string) => leases.find(l => l.unitId === unitId && l.lifecycleStage === "active"), [leases]);
+  const getActiveLease = useCallback((unitId: string) => {
+    const found = findActiveLeaseForUnit(unitId, leases, leaseUnitAssignments);
+    return found?.lease;
+  }, [leases, leaseUnitAssignments]);
   const getLeasesByTenant = useCallback((tenantId: string) => leases.filter(l => l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId)), [leases]);
   const getLeasesByProperty = useCallback((propertyId: string) => leases.filter(l => l.propertyId === propertyId), [leases]);
   const getGuaranteeByLease = useCallback((leaseId: string) => guarantees.find(g => g.leaseId === leaseId), [guarantees]);
@@ -602,6 +720,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(() => ({
     properties, units, tenants, leases, guarantees,
+    leaseUnitAssignments,
     receivableItems, cashReceipts, allocations: allocationsState,
     tickets, vendors,
     costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
@@ -609,6 +728,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
     addLease, updateLease, deleteLease, confirmMoveOut,
+    setLeaseUnits: setLeaseUnitsFn,
+    getLeaseAssignments,
+    getActiveLeaseAssignmentForUnit,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
@@ -632,6 +754,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getCostCategoryById, getAllocationRuleById, getUnitSharesByRule,
   }), [
     properties, units, tenants, leases, guarantees,
+    leaseUnitAssignments,
     receivableItems, cashReceipts, allocationsState,
     tickets, vendors,
     costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
@@ -639,6 +762,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
     addLease, updateLease, deleteLease, confirmMoveOut,
+    setLeaseUnitsFn, getLeaseAssignments, getActiveLeaseAssignmentForUnit,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
