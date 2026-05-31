@@ -589,7 +589,7 @@ export default function Leases() {
                   size="sm"
                   className="h-8"
                   disabled={!form.propertyId}
-                  onClick={() => setExtraUnits(prev => [...prev, { unitId: "", assignmentType: "parking" }])}
+                  onClick={() => setExtraUnits(prev => [...prev, { unitId: "", assignmentType: "parking", rentShare: 0, chargesShare: 0 }])}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />{t("leases.addUnit")}
                 </Button>
@@ -603,7 +603,18 @@ export default function Leases() {
                     const options = formUnits.filter(u => !usedIds.has(u.id));
                     return (
                       <div key={idx} className="flex items-center gap-2">
-                        <Select value={e.unitId} onValueChange={v => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, unitId: v } : x))}>
+                        <Select
+                          value={e.unitId}
+                          onValueChange={v => setExtraUnits(prev => prev.map((x, i) => {
+                            if (i !== idx) return x;
+                            const u = units.find(uu => uu.id === v);
+                            // Pre-fill from the unit's base rent/charges (handy default).
+                            const next = { ...x, unitId: v };
+                            if (u && (x.rentShare === 0 || !x.unitId)) next.rentShare = u.baseRent;
+                            if (u && (x.chargesShare === 0 || !x.unitId)) next.chargesShare = u.baseCharges;
+                            return next;
+                          }))}
+                        >
                           <SelectTrigger className="h-8 flex-1"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                           <SelectContent>
                             {options.map(u => {
@@ -618,19 +629,51 @@ export default function Leases() {
                           </SelectContent>
                         </Select>
                         <Select value={e.assignmentType} onValueChange={v => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, assignmentType: v as LeaseUnitAssignmentType } : x))}>
-                          <SelectTrigger className="h-8 w-[160px]"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {(["parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
                               <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={e.rentShare}
+                          onChange={ev => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, rentShare: Number(ev.target.value) || 0 } : x))}
+                          className="h-8 w-[90px]"
+                          placeholder={t("leases.col.rentShare")}
+                          title={t("leases.col.rentShare")}
+                        />
+                        <Input
+                          type="number"
+                          min={0}
+                          value={e.chargesShare}
+                          onChange={ev => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, chargesShare: Number(ev.target.value) || 0 } : x))}
+                          className="h-8 w-[90px]"
+                          placeholder={t("leases.col.chargesShare")}
+                          title={t("leases.col.chargesShare")}
+                        />
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExtraUnits(prev => prev.filter((_, i) => i !== idx))}>
                           <XIcon className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     );
                   })}
+                  {/* Per-unit split summary: primary share is auto-computed as lease total minus ancillaries. */}
+                  {(() => {
+                    const ancRent = extraUnits.filter(e => e.unitId && e.unitId !== form.unitId).reduce((s, e) => s + (e.rentShare ?? 0), 0);
+                    const ancCharges = extraUnits.filter(e => e.unitId && e.unitId !== form.unitId).reduce((s, e) => s + (e.chargesShare ?? 0), 0);
+                    const primaryRent = form.monthlyRent - ancRent;
+                    const primaryCharges = form.monthlyCharges - ancCharges;
+                    const overflow = primaryRent < 0 || primaryCharges < 0;
+                    return (
+                      <div className="text-[11px] text-muted-foreground border-t border-border pt-2 mt-1 flex justify-between">
+                        <span>{t("leases.role.primary")}: <span className={overflow ? "text-destructive font-medium" : "text-foreground font-medium"}>{fmtCurrency(primaryRent, selectedProperty?.currencyCode, selectedProperty?.locale)} / {fmtCurrency(primaryCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span></span>
+                        <span>{t("leases.monthlyRent")} + {t("leases.monthlyCharges")}: {fmtCurrency(form.monthlyRent, selectedProperty?.currencyCode, selectedProperty?.locale)} / {fmtCurrency(form.monthlyCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
