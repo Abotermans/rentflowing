@@ -100,6 +100,10 @@ interface AppState {
   }[]) => void;
   getLeaseAssignments: (leaseId: string) => LeaseUnitAssignment[];
   getActiveLeaseAssignmentForUnit: (unitId: string) => { lease: Lease; assignment: LeaseUnitAssignment } | undefined;
+  getLeaseAssignedUnits: (leaseId: string, opts?: { activeOnly?: boolean }) => { unit: Unit; assignment: LeaseUnitAssignment }[];
+  getPrimaryLeaseUnit: (leaseId: string) => Unit | undefined;
+  getAncillaryLeaseUnits: (leaseId: string, opts?: { activeOnly?: boolean }) => { unit: Unit; assignment: LeaseUnitAssignment }[];
+  isUnitAssignedToActiveLease: (unitId: string) => boolean;
 
   // Guarantee
   addGuarantee: (g: Omit<Guarantee, "id">) => void;
