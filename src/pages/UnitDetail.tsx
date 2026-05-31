@@ -481,6 +481,16 @@ export default function UnitDetail() {
         <CardContent>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusBadge status={unit.currentStatus} />
+            {occupancy.occupancyRole === "ancillary" && (
+              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("leases.role.ancillary")}
+              </span>
+            )}
+            {occupancy.occupancyRole === "primary" && occupancy.activeAssignment && (
+              <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("leases.role.primary")}
+              </span>
+            )}
             {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && lifecycle !== occupancy.derived && <StatusBadge status={lifecycle} />}
             {activeLease && moveIn === "scheduled" && occupancy.derived !== "move-in-pending" && <StatusBadge status="scheduled" />}
             {activeLease && activeLease.returnStatus && activeLease.returnStatus !== "completed" && <StatusBadge status={activeLease.returnStatus} />}
