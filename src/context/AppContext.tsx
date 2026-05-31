@@ -10,6 +10,22 @@ import { initialCostCategories, initialCostEntries, initialAllocationRules, init
 import { autoAllocate } from "@/lib/reconciliation";
 import { computeAllocations } from "@/lib/costAllocation";
 
+function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: Tenant[]): Tenant[] {
+  const affected = new Set(tenantIds.filter(Boolean));
+  if (affected.size === 0) return tenants;
+  const ts = new Date().toISOString();
+  return tenants.map(t => {
+    if (!affected.has(t.id)) return t;
+    const tenantLeases = leases.filter(l => l.primaryTenantId === t.id || l.coTenantIds.includes(t.id));
+    if (tenantLeases.length === 0) return t;
+    const hasActive = tenantLeases.some(l => l.lifecycleStage === "active");
+    const target = hasActive ? "active" : "former";
+    if (target === "former" && t.status !== "active") return t;
+    if (target === "active" && t.status === "active") return t;
+    return { ...t, status: target, updatedAt: ts };
+  });
+}
+
 interface PropertyStats {
   total: number;
   occupied: number;
