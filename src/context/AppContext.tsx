@@ -19,7 +19,6 @@ import {
   getPrimaryLeaseUnit as libGetPrimaryLeaseUnit,
   getAncillaryLeaseUnits as libGetAncillaryLeaseUnits,
   isUnitAssignedToActiveLease as libIsUnitAssignedToActiveLease,
-  sumLeaseShares,
 } from "@/lib/leaseAssignments";
 
 function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: Tenant[]): Tenant[] {
