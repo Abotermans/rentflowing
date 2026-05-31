@@ -167,11 +167,20 @@ export default function Leases() {
 
   const executeLeaseSave = () => {
     const persistAssignments = (leaseId: string) => {
+      // Primary share = lease total - sum of ancillary shares.
+      const ancRent = extraUnits
+        .filter(e => e.unitId && e.unitId !== form.unitId)
+        .reduce((s, e) => s + (e.rentShare ?? 0), 0);
+      const ancCharges = extraUnits
+        .filter(e => e.unitId && e.unitId !== form.unitId)
+        .reduce((s, e) => s + (e.chargesShare ?? 0), 0);
+      const primaryRent = Math.max(0, form.monthlyRent - ancRent);
+      const primaryCharges = Math.max(0, form.monthlyCharges - ancCharges);
       const draft = [
-        { unitId: form.unitId, assignmentType: "primary" as LeaseUnitAssignmentType, isPrimary: true, rentShare: null, chargesShare: null, startDate: form.startDate },
+        { unitId: form.unitId, assignmentType: "primary" as LeaseUnitAssignmentType, isPrimary: true, rentShare: primaryRent, chargesShare: primaryCharges, startDate: form.startDate },
         ...extraUnits
           .filter(e => e.unitId && e.unitId !== form.unitId)
-          .map(e => ({ unitId: e.unitId, assignmentType: e.assignmentType, isPrimary: false, rentShare: null, chargesShare: null, startDate: form.startDate })),
+          .map(e => ({ unitId: e.unitId, assignmentType: e.assignmentType, isPrimary: false, rentShare: e.rentShare, chargesShare: e.chargesShare, startDate: form.startDate })),
       ];
       setLeaseUnits(leaseId, form.propertyId, draft);
     };
@@ -249,6 +258,22 @@ export default function Leases() {
     }
     // Validate the full assignment draft (primary + extras): property mismatch,
     // duplicates, multi-primary, units already used on another active lease.
+    const ancRentDraft = extraUnits
+      .filter(e => e.unitId && e.unitId !== form.unitId)
+      .reduce((s, e) => s + (e.rentShare ?? 0), 0);
+    const ancChargesDraft = extraUnits
+      .filter(e => e.unitId && e.unitId !== form.unitId)
+      .reduce((s, e) => s + (e.chargesShare ?? 0), 0);
+    const primaryRentDraft = form.monthlyRent - ancRentDraft;
+    const primaryChargesDraft = form.monthlyCharges - ancChargesDraft;
+    if (primaryRentDraft < 0 || primaryChargesDraft < 0) {
+      toast({
+        title: "Validation Error",
+        description: "Sum of ancillary rent / charges cannot exceed the lease total.",
+        variant: "destructive",
+      });
+      return;
+    }
     const draft: DraftAssignment[] = [
       {
         unitId: form.unitId,
@@ -256,8 +281,8 @@ export default function Leases() {
         isPrimary: true,
         startDate: form.startDate,
         endDate: null,
-        rentShare: null,
-        chargesShare: null,
+        rentShare: primaryRentDraft,
+        chargesShare: primaryChargesDraft,
       },
       ...extraUnits
         .filter(e => e.unitId && e.unitId !== form.unitId)
@@ -267,8 +292,8 @@ export default function Leases() {
           isPrimary: false,
           startDate: form.startDate,
           endDate: null as string | null,
-          rentShare: null,
-          chargesShare: null,
+          rentShare: e.rentShare,
+          chargesShare: e.chargesShare,
         })),
     ];
     const unitsValidation = validateLeaseUnits(
