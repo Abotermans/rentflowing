@@ -176,23 +176,22 @@ export default function Tenants() {
                 const activeLease = getActiveLease(tenant.id);
                 const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
                 return (
-                  <TableRow key={tenant.id}>
+                  <TableRow key={tenant.id} className="cursor-pointer" onClick={() => window.location.href = `/tenants/${tenant.id}`}>
                     <TableCell className="font-medium">
-                      <Link to={`/tenants/${tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(tenant)}</Link>
+                      <Link to={`/tenants/${tenant.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{getTenantFullName(tenant)}</Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{tenant.email}</TableCell>
                     <TableCell className="text-muted-foreground">{tenant.phone}</TableCell>
                     <TableCell><StatusBadge status={tenant.status} /></TableCell>
                     <TableCell className="text-muted-foreground">
-                      {unit ? <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link> : "—"}
+                      {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline">{activeLease.leaseReference}</Link> : "—"}
+                      {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{activeLease.leaseReference}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/tenants/${tenant.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(tenant)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openEdit(tenant); }}><Pencil className="h-3.5 w-3.5" /></Button>
                         <DeleteDialog entityType="tenant" entityId={tenant.id} entityLabel="tenant" onDelete={handleDelete} />
                       </div>
                     </TableCell>
