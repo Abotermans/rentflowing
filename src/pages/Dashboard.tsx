@@ -99,6 +99,7 @@ export default function Dashboard() {
         { label: t("dashboard.totalUnits"), value: totalUnits, icon: DoorOpen, color: "text-foreground" },
         { label: t("dashboard.occupied"), value: occupied, icon: CheckCircle2, color: "text-success" },
         { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
+        ...(ancillaryLeased > 0 ? [{ label: t("dashboard.ancillaryLeased"), value: ancillaryLeased, icon: DoorOpen, color: "text-muted-foreground" }] : []),
       ],
     },
     {
