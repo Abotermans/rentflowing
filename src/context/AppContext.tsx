@@ -59,6 +59,8 @@ interface AppState {
   leases: Lease[];
   guarantees: Guarantee[];
   leaseUnitAssignments: LeaseUnitAssignment[];
+  amendments: LeaseAmendment[];
+  amendmentChanges: LeaseAmendmentChange[];
   receivableItems: ReceivableItem[];
   cashReceipts: CashReceipt[];
   allocations: ReceiptAllocation[];
@@ -108,6 +110,20 @@ interface AppState {
   getPrimaryLeaseUnit: (leaseId: string) => Unit | undefined;
   getAncillaryLeaseUnits: (leaseId: string, opts?: { activeOnly?: boolean }) => { unit: Unit; assignment: LeaseUnitAssignment }[];
   isUnitAssignedToActiveLease: (unitId: string) => boolean;
+
+  // Amendments
+  addAmendment: (
+    a: Omit<LeaseAmendment, "id" | "amendmentNumber" | "status" | "createdAt" | "updatedAt"> & { status?: AmendmentStatus },
+    changes: Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">[],
+  ) => LeaseAmendment;
+  updateAmendment: (a: LeaseAmendment, changes: Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">[]) => void;
+  deleteAmendment: (id: string) => void;
+  setAmendmentStatus: (id: string, status: AmendmentStatus) => void;
+  activateAmendment: (id: string) => { ok: boolean; reason?: string };
+  cancelAmendment: (id: string) => void;
+  supersedeAmendment: (id: string, replacementId: string) => void;
+  getLeaseAmendments: (leaseId: string) => LeaseAmendment[];
+  getAmendmentChanges: (amendmentId: string) => LeaseAmendmentChange[];
 
   // Guarantee
   addGuarantee: (g: Omit<Guarantee, "id">) => void;
@@ -212,6 +228,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>(
     () => migrateLegacyLeaseAssignments(initialLeases, initialLeaseUnitAssignments),
   );
+  const [amendments, setAmendments] = useState<LeaseAmendment[]>(initialAmendments);
+  const [amendmentChanges, setAmendmentChanges] = useState<LeaseAmendmentChange[]>(initialAmendmentChanges);
   const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
   const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
   const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
