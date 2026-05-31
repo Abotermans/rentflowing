@@ -34,6 +34,7 @@ import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import type { TranslationKey } from "@/i18n/translations";
+import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
 
 const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
   active:               { icon: CheckCircle2,  labelKey: "guarantee.deposited",         className: "text-success" },
@@ -600,6 +601,9 @@ export default function LeaseDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Amendments / Avenants */}
+      <AmendmentsSection leaseId={lease.id} />
 
       {/* Assigned Units (multi-unit lease) */}
       {(() => {

@@ -5,6 +5,10 @@ import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
 import { initialProperties, initialUnits, initialTenants, initialLeases, initialGuarantees, initialLeaseUnitAssignments } from "@/data/mockData";
+import { initialAmendments, initialAmendmentChanges } from "@/data/mockData";
+import type { LeaseAmendment, LeaseAmendmentChange, AmendmentType, AmendmentStatus, AmendmentFieldName, AmendmentChangeType, AmendmentChangeMetadata } from "@/types/amendments";
+import { nextAmendmentNumber, getAmendmentChanges } from "@/lib/amendments";
+import { canActivateAmendment } from "@/lib/integrity/amendmentIntegrity";
 import { initialReceivableItems, initialCashReceipts, initialAllocations } from "@/data/receivablesMockData";
 import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
@@ -55,6 +59,8 @@ interface AppState {
   leases: Lease[];
   guarantees: Guarantee[];
   leaseUnitAssignments: LeaseUnitAssignment[];
+  amendments: LeaseAmendment[];
+  amendmentChanges: LeaseAmendmentChange[];
   receivableItems: ReceivableItem[];
   cashReceipts: CashReceipt[];
   allocations: ReceiptAllocation[];
@@ -104,6 +110,20 @@ interface AppState {
   getPrimaryLeaseUnit: (leaseId: string) => Unit | undefined;
   getAncillaryLeaseUnits: (leaseId: string, opts?: { activeOnly?: boolean }) => { unit: Unit; assignment: LeaseUnitAssignment }[];
   isUnitAssignedToActiveLease: (unitId: string) => boolean;
+
+  // Amendments
+  addAmendment: (
+    a: Omit<LeaseAmendment, "id" | "amendmentNumber" | "status" | "createdAt" | "updatedAt"> & { status?: AmendmentStatus },
+    changes: Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">[],
+  ) => LeaseAmendment;
+  updateAmendment: (a: LeaseAmendment, changes: Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">[]) => void;
+  deleteAmendment: (id: string) => void;
+  setAmendmentStatus: (id: string, status: AmendmentStatus) => void;
+  activateAmendment: (id: string) => { ok: boolean; reason?: string };
+  cancelAmendment: (id: string) => void;
+  supersedeAmendment: (id: string, replacementId: string) => void;
+  getLeaseAmendments: (leaseId: string) => LeaseAmendment[];
+  getAmendmentChanges: (amendmentId: string) => LeaseAmendmentChange[];
 
   // Guarantee
   addGuarantee: (g: Omit<Guarantee, "id">) => void;
@@ -208,6 +228,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>(
     () => migrateLegacyLeaseAssignments(initialLeases, initialLeaseUnitAssignments),
   );
+  const [amendments, setAmendments] = useState<LeaseAmendment[]>(initialAmendments);
+  const [amendmentChanges, setAmendmentChanges] = useState<LeaseAmendmentChange[]>(initialAmendmentChanges);
   const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
   const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
   const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
@@ -470,6 +492,155 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (unitId: string) => libIsUnitAssignedToActiveLease(unitId, leases, leaseUnitAssignments),
     [leases, leaseUnitAssignments],
   );
+
+  // ===== Amendments =====
+  const buildChanges = (amendmentId: string, draft: Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">[], ts: string): LeaseAmendmentChange[] =>
+    draft.map(d => ({ ...d, id: genId("amc"), amendmentId, createdAt: ts, updatedAt: ts }));
+
+  const addAmendment = useCallback(
+    (a: Omit<LeaseAmendment, "id" | "amendmentNumber" | "status" | "createdAt" | "updatedAt"> & { status?: AmendmentStatus }, changesDraft) => {
+      const ts = now();
+      const id = genId("am");
+      const number = nextAmendmentNumber(a.leaseId, amendments);
+      const created: LeaseAmendment = {
+        ...a,
+        id,
+        amendmentNumber: number,
+        status: a.status ?? "draft",
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      setAmendments(prev => [...prev, created]);
+      setAmendmentChanges(prev => [...prev, ...buildChanges(id, changesDraft, ts)]);
+      return created;
+    },
+    [amendments],
+  );
+
+  const updateAmendment = useCallback(
+    (a: LeaseAmendment, changesDraft: Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">[]) => {
+      const ts = now();
+      setAmendments(prev => prev.map(x => x.id === a.id ? { ...a, updatedAt: ts } : x));
+      setAmendmentChanges(prev => [
+        ...prev.filter(c => c.amendmentId !== a.id),
+        ...buildChanges(a.id, changesDraft, ts),
+      ]);
+    },
+    [],
+  );
+
+  const deleteAmendment = useCallback((id: string) => {
+    // Only safe for drafts; UI is expected to gate this. We still strip both rows.
+    setAmendments(prev => prev.filter(a => a.id !== id));
+    setAmendmentChanges(prev => prev.filter(c => c.amendmentId !== id));
+  }, []);
+
+  const setAmendmentStatus = useCallback((id: string, status: AmendmentStatus) => {
+    const ts = now();
+    setAmendments(prev => prev.map(a => a.id === id ? { ...a, status, updatedAt: ts } : a));
+  }, []);
+
+  /**
+   * Activate an amendment: validates, marks active, and writes the unit-assignment
+   * side effects prospectively (new rows from effectiveDate, existing rows closed
+   * at effectiveDate − 1 day per affected unit). Lease record fields are NOT
+   * mutated — current values are derived through getEffectiveLeaseTerms.
+   */
+  const activateAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
+    const am = amendments.find(a => a.id === id);
+    if (!am) return { ok: false, reason: "Amendment not found" };
+    const ts = now();
+    const eff = am.effectiveDate;
+    const dayBefore = (() => {
+      const d = new Date(eff + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() - 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    const changes = getAmendmentChanges(id, amendmentChanges);
+
+    setLeaseUnitAssignments(prev => {
+      let next = [...prev];
+      for (const c of changes) {
+        if (c.fieldName === "unitAssignments" && c.changeType === "add" && c.metadata?.unitId) {
+          const v = (c.newValue ?? {}) as { rentShare?: number; chargesShare?: number };
+          next.push({
+            id: genId("lua"),
+            leaseId: am.leaseId,
+            unitId: c.metadata.unitId,
+            assignmentType: c.metadata.assignmentType ?? "ancillary",
+            isPrimary: false,
+            startDate: c.metadata.startDate ?? eff,
+            endDate: null,
+            rentShare: Number(v.rentShare ?? 0),
+            chargesShare: Number(v.chargesShare ?? 0),
+            notes: `Added by amendment ${am.amendmentNumber}`,
+            createdAt: ts,
+            updatedAt: ts,
+          });
+        } else if (c.fieldName === "unitAssignments" && c.changeType === "remove" && c.metadata?.unitId) {
+          next = next.map(a =>
+            a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && !a.endDate
+              ? { ...a, endDate: dayBefore, updatedAt: ts }
+              : a,
+          );
+        } else if (c.fieldName === "primaryUnitId") {
+          const newId = String(c.newValue);
+          next = next.map(a =>
+            a.leaseId === am.leaseId
+              ? { ...a, isPrimary: a.unitId === newId, updatedAt: ts }
+              : a,
+          );
+        } else if (c.fieldName === "unitRentShare" && c.metadata?.unitId) {
+          next = next.map(a =>
+            a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && !a.endDate
+              ? { ...a, rentShare: Number(c.newValue) || 0, updatedAt: ts }
+              : a,
+          );
+        } else if (c.fieldName === "unitChargesShare" && c.metadata?.unitId) {
+          next = next.map(a =>
+            a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && !a.endDate
+              ? { ...a, chargesShare: Number(c.newValue) || 0, updatedAt: ts }
+              : a,
+          );
+        } else if (c.fieldName === "unitAssignmentType" && c.metadata?.unitId) {
+          next = next.map(a =>
+            a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && !a.endDate
+              ? { ...a, assignmentType: (c.newValue as LeaseUnitAssignmentType) ?? a.assignmentType, updatedAt: ts }
+              : a,
+          );
+        }
+      }
+      return next;
+    });
+
+    setAmendments(prev => prev.map(a => a.id === id ? { ...a, status: "active", updatedAt: ts } : a));
+    return { ok: true };
+  }, [amendments, amendmentChanges]);
+
+  const cancelAmendment = useCallback((id: string) => {
+    setAmendmentStatus(id, "cancelled");
+  }, [setAmendmentStatus]);
+
+  const supersedeAmendment = useCallback((id: string, replacementId: string) => {
+    const ts = now();
+    setAmendments(prev => prev.map(a => {
+      if (a.id === id) return { ...a, status: "superseded" as const, updatedAt: ts };
+      if (a.id === replacementId) return { ...a, supersedesAmendmentId: id, updatedAt: ts };
+      return a;
+    }));
+  }, []);
+
+  const getLeaseAmendmentsFn = useCallback(
+    (leaseId: string) => amendments.filter(a => a.leaseId === leaseId),
+    [amendments],
+  );
+  const getAmendmentChangesFn = useCallback(
+    (amendmentId: string) => amendmentChanges.filter(c => c.amendmentId === amendmentId),
+    [amendmentChanges],
+  );
+
+  // Silence unused-import lint when these helpers stay one-shot.
+  void canActivateAmendment;
 
   // ===== Guarantee =====
   const addGuarantee = useCallback((g: Omit<Guarantee, "id">) => {
@@ -822,6 +993,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({
     properties, units, tenants, leases, guarantees,
     leaseUnitAssignments,
+    amendments, amendmentChanges,
     receivableItems, cashReceipts, allocations: allocationsState,
     tickets, vendors,
     costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
@@ -836,6 +1008,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getPrimaryLeaseUnit: getPrimaryLeaseUnitFn,
     getAncillaryLeaseUnits: getAncillaryLeaseUnitsFn,
     isUnitAssignedToActiveLease: isUnitAssignedToActiveLeaseFn,
+    addAmendment, updateAmendment, deleteAmendment, setAmendmentStatus,
+    activateAmendment, cancelAmendment, supersedeAmendment,
+    getLeaseAmendments: getLeaseAmendmentsFn,
+    getAmendmentChanges: getAmendmentChangesFn,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
@@ -860,6 +1036,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }), [
     properties, units, tenants, leases, guarantees,
     leaseUnitAssignments,
+    amendments, amendmentChanges,
     receivableItems, cashReceipts, allocationsState,
     tickets, vendors,
     costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
@@ -869,6 +1046,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addLease, updateLease, deleteLease, confirmMoveOut,
     setLeaseUnitsFn, getLeaseAssignments, getActiveLeaseAssignmentForUnit,
     getLeaseAssignedUnitsFn, getPrimaryLeaseUnitFn, getAncillaryLeaseUnitsFn, isUnitAssignedToActiveLeaseFn,
+    addAmendment, updateAmendment, deleteAmendment, setAmendmentStatus,
+    activateAmendment, cancelAmendment, supersedeAmendment,
+    getLeaseAmendmentsFn, getAmendmentChangesFn,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,

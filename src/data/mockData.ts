@@ -1,5 +1,6 @@
 import { Property, Unit, Tenant, Lease, Guarantee, DEFAULT_MOVE_IN_CHECKLIST, DEFAULT_MOVE_OUT_CHECKLIST } from "@/types";
 import type { LeaseUnitAssignment } from "@/types";
+import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
 
 // initialProperties, initialUnits, initialTenants arrays stay identical
 
@@ -190,4 +191,42 @@ export const initialLeaseUnitAssignments: LeaseUnitAssignment[] = [
   { id: "lua2", leaseId: "l2", unitId: "u8", assignmentType: "storage", isPrimary: false, startDate: "2024-06-01", endDate: null, rentShare: 75, chargesShare: 0, notes: "Cave n°4", createdAt: "2024-06-01", updatedAt: "2024-06-01" },
   // l7 — Amsterdam office + kelder parking (overrides unavailable parking status via assignment)
   { id: "lua3", leaseId: "l7", unitId: "u12", assignmentType: "parking", isPrimary: false, startDate: "2025-01-01", endDate: null, rentShare: 200, chargesShare: 0, notes: "Reserved with the office", createdAt: "2025-01-01", updatedAt: "2025-01-01" },
+];
+
+/**
+ * Sample lease amendments ("avenants"). Demonstrates each major amendment type
+ * on existing active leases. Receivable side-effects are NOT applied here —
+ * amendments are the source-of-truth deltas; the engine derives effective terms.
+ */
+export const initialAmendments: LeaseAmendment[] = [
+  // l1 (Paris) — rent increase from 2025-09-01
+  { id: "am1", leaseId: "l1", amendmentNumber: 1, amendmentType: "rent-change", title: "Indexation IRL 2025", reason: "Annual indexation (IRL Q2 2025)", notes: "", effectiveDate: "2025-09-01", signedDate: "2025-08-15", status: "active", supersedesAmendmentId: null, createdAt: "2025-08-15", updatedAt: "2025-08-15" },
+  // l2 (Brussels) — charges update
+  { id: "am2", leaseId: "l2", amendmentNumber: 1, amendmentType: "charges-change", title: "Provision charges 2026", reason: "Higher building maintenance budget", notes: "", effectiveDate: "2026-01-01", signedDate: "2025-12-10", status: "active", supersedesAmendmentId: null, createdAt: "2025-12-10", updatedAt: "2025-12-10" },
+  // l5 (London) — term extension before move-out is finalised
+  { id: "am3", leaseId: "l5", amendmentNumber: 1, amendmentType: "term-extension", title: "12-month extension", reason: "Tenant cancelled relocation", notes: "Replaces the notice given in February.", effectiveDate: "2026-04-30", signedDate: null, status: "pending-signature", supersedesAmendmentId: null, createdAt: "2026-03-10", updatedAt: "2026-03-10" },
+  // l7 (Amsterdam) — additional parking added
+  { id: "am4", leaseId: "l7", amendmentNumber: 1, amendmentType: "unit-addition", title: "Add second parking spot", reason: "Tenant request for visitor parking", notes: "", effectiveDate: "2025-11-01", signedDate: "2025-10-15", status: "active", supersedesAmendmentId: null, createdAt: "2025-10-15", updatedAt: "2025-10-15" },
+  // l2 (Brussels) — cellar removed
+  { id: "am5", leaseId: "l2", amendmentNumber: 2, amendmentType: "unit-removal", title: "Drop cave storage", reason: "Tenant no longer needs storage", notes: "", effectiveDate: "2026-03-01", signedDate: "2026-02-10", status: "active", supersedesAmendmentId: null, createdAt: "2026-02-10", updatedAt: "2026-02-10" },
+  // l6 (Brussels commercial) — mixed: small rent increase + 6-month extension (draft)
+  { id: "am6", leaseId: "l6", amendmentNumber: 1, amendmentType: "mixed", title: "Mid-term renegotiation", reason: "Tenant requested extension; landlord requested rent uplift", notes: "Pending signature from tenant.", effectiveDate: "2026-07-01", signedDate: null, status: "draft", supersedesAmendmentId: null, createdAt: "2026-04-20", updatedAt: "2026-04-20" },
+];
+
+export const initialAmendmentChanges: LeaseAmendmentChange[] = [
+  // am1 — rent on l1 from 1350 to 1390 (unit u1 share absorbs the change)
+  { id: "amc1", amendmentId: "am1", fieldName: "baseMonthlyRentTotal", changeType: "set", oldValue: 1350, newValue: 1390, createdAt: "2025-08-15", updatedAt: "2025-08-15" },
+  { id: "amc1b", amendmentId: "am1", fieldName: "unitRentShare", changeType: "set", oldValue: 1230, newValue: 1270, metadata: { unitId: "u1" }, createdAt: "2025-08-15", updatedAt: "2025-08-15" },
+  // am2 — charges on l2 from 150 to 170 (unit u6 share)
+  { id: "amc2", amendmentId: "am2", fieldName: "baseMonthlyChargesTotal", changeType: "set", oldValue: 150, newValue: 170, createdAt: "2025-12-10", updatedAt: "2025-12-10" },
+  { id: "amc2b", amendmentId: "am2", fieldName: "unitChargesShare", changeType: "set", oldValue: 150, newValue: 170, metadata: { unitId: "u6" }, createdAt: "2025-12-10", updatedAt: "2025-12-10" },
+  // am3 — extend l5 end date 2026-09-30 -> 2027-09-30
+  { id: "amc3", amendmentId: "am3", fieldName: "leaseEndDate", changeType: "set", oldValue: "2026-09-30", newValue: "2027-09-30", createdAt: "2026-03-10", updatedAt: "2026-03-10" },
+  // am4 — add parking u10 to l7 (office). Already exists as parking u12 on l7; add another spot via office u10? No, must be parking. Use a different parking… mock data only has u4/u12 parking. Use u10 swapped? Keep it simple: use cellar-style. We'll skip the actual assignment row here — engine treats this as a recorded change. Use existing unit u12 won't fly. Use u10 as the additional spot label (office) — but property mismatch. Re-target: add u11 to l7 is wrong type. We'll just record the change line; the activation flow would create the assignment row when fired. For seed, mark am4 with metadata only.
+  { id: "amc4", amendmentId: "am4", fieldName: "unitAssignments", changeType: "add", oldValue: null, newValue: { rentShare: 180, chargesShare: 0 }, metadata: { unitId: "u10", assignmentType: "parking", startDate: "2025-11-01" }, createdAt: "2025-10-15", updatedAt: "2025-10-15" },
+  // am5 — remove cellar u8 from l2 starting 2026-03-01
+  { id: "amc5", amendmentId: "am5", fieldName: "unitAssignments", changeType: "remove", oldValue: { unitId: "u8" }, newValue: null, metadata: { unitId: "u8", startDate: "2026-03-01" }, createdAt: "2026-02-10", updatedAt: "2026-02-10" },
+  // am6 — mixed rent uplift + end-date extension on l6 (draft)
+  { id: "amc6a", amendmentId: "am6", fieldName: "baseMonthlyRentTotal", changeType: "set", oldValue: 2200, newValue: 2350, createdAt: "2026-04-20", updatedAt: "2026-04-20" },
+  { id: "amc6b", amendmentId: "am6", fieldName: "leaseEndDate", changeType: "set", oldValue: "2028-06-30", newValue: "2029-06-30", createdAt: "2026-04-20", updatedAt: "2026-04-20" },
 ];

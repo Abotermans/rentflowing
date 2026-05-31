@@ -64,6 +64,7 @@ function emptyState(over: Partial<IntegrityState> = {}): IntegrityState {
   return {
     properties: [], units: [], tenants: [], leases: [], guarantees: [],
     leaseUnitAssignments: [],
+    amendments: [], amendmentChanges: [],
     receivableItems: [], cashReceipts: [], allocations: [], tickets: [],
     costCategories: [], costEntries: [], allocationRules: [],
     allocationRuleUnitShares: [], costAllocationResults: [],

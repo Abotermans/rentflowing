@@ -1,0 +1,222 @@
+import type { Lease, LeaseUnitAssignment } from "@/types";
+import type {
+  LeaseAmendment,
+  LeaseAmendmentChange,
+  EffectiveLeaseTerms,
+} from "@/types/amendments";
+import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** All amendments of a lease, sorted by (effectiveDate, amendmentNumber). */
+export function getLeaseAmendments(
+  leaseId: string,
+  amendments: readonly LeaseAmendment[],
+): LeaseAmendment[] {
+  return amendments
+    .filter(a => a.leaseId === leaseId)
+    .slice()
+    .sort((x, y) => {
+      if (x.effectiveDate !== y.effectiveDate) return x.effectiveDate.localeCompare(y.effectiveDate);
+      return x.amendmentNumber - y.amendmentNumber;
+    });
+}
+
+/** Active amendments effective on `date` (status='active' AND effectiveDate ≤ date). */
+export function getActiveAmendmentsOn(
+  leaseId: string,
+  date: string,
+  amendments: readonly LeaseAmendment[],
+): LeaseAmendment[] {
+  return getLeaseAmendments(leaseId, amendments).filter(
+    a => a.status === "active" && a.effectiveDate <= date,
+  );
+}
+
+export function getAmendmentChanges(
+  amendmentId: string,
+  changes: readonly LeaseAmendmentChange[],
+): LeaseAmendmentChange[] {
+  return changes.filter(c => c.amendmentId === amendmentId);
+}
+
+/** Next amendment number to use for a lease (1-based, monotonically increasing). */
+export function nextAmendmentNumber(
+  leaseId: string,
+  amendments: readonly LeaseAmendment[],
+): number {
+  const max = amendments
+    .filter(a => a.leaseId === leaseId)
+    .reduce((m, a) => Math.max(m, a.amendmentNumber), 0);
+  return max + 1;
+}
+
+interface State {
+  leases: readonly Lease[];
+  leaseUnitAssignments: readonly LeaseUnitAssignment[];
+  amendments: readonly LeaseAmendment[];
+  amendmentChanges: readonly LeaseAmendmentChange[];
+}
+
+/**
+ * Baseline terms = lease record + assignments that started on or before lease.startDate.
+ * This is the "original contract" view, never mutated by amendments.
+ */
+export function getOriginalLeaseTerms(
+  leaseId: string,
+  s: State,
+): EffectiveLeaseTerms | null {
+  const lease = s.leases.find(l => l.id === leaseId);
+  if (!lease) return null;
+  const originalAssignments = s.leaseUnitAssignments.filter(
+    a => a.leaseId === leaseId && a.startDate <= lease.startDate,
+  );
+  return {
+    leaseId,
+    asOfDate: lease.startDate,
+    monthlyRent: lease.monthlyRent,
+    monthlyCharges: lease.monthlyCharges,
+    endDate: lease.endDate,
+    depositAmount: lease.depositOrGuaranteeAmount,
+    noticePeriodText: lease.noticePeriodText,
+    primaryTenantId: lease.primaryTenantId,
+    coTenantIds: [...lease.coTenantIds],
+    units: originalAssignments
+      .slice()
+      .sort((x, y) => (y.isPrimary ? 1 : 0) - (x.isPrimary ? 1 : 0))
+      .map(a => ({
+        unitId: a.unitId,
+        assignmentType: a.assignmentType,
+        isPrimary: a.isPrimary,
+        rentShare: a.rentShare ?? 0,
+        chargesShare: a.chargesShare ?? 0,
+      })),
+  };
+}
+
+/**
+ * Effective lease terms on `date`. Starts from the original baseline, then applies
+ * every active amendment in (effectiveDate, amendmentNumber) order whose
+ * effectiveDate ≤ date. Unit projection is rebuilt from the live assignment table
+ * (assignment rows are authoritative once an amendment is activated).
+ */
+export function getEffectiveLeaseTerms(
+  leaseId: string,
+  date: string,
+  s: State,
+): EffectiveLeaseTerms | null {
+  const lease = s.leases.find(l => l.id === leaseId);
+  if (!lease) return null;
+  const base = getOriginalLeaseTerms(leaseId, s);
+  if (!base) return null;
+
+  let terms: EffectiveLeaseTerms = { ...base, asOfDate: date };
+
+  // Live unit projection from assignment rows active on `date`.
+  const liveUnits = s.leaseUnitAssignments
+    .filter(a => a.leaseId === leaseId && assignmentIsActiveOn(a, date))
+    .sort((x, y) => (y.isPrimary ? 1 : 0) - (x.isPrimary ? 1 : 0))
+    .map(a => ({
+      unitId: a.unitId,
+      assignmentType: a.assignmentType,
+      isPrimary: a.isPrimary,
+      rentShare: a.rentShare ?? 0,
+      chargesShare: a.chargesShare ?? 0,
+    }));
+  terms = { ...terms, units: liveUnits };
+
+  for (const am of getActiveAmendmentsOn(leaseId, date, s.amendments)) {
+    const changes = getAmendmentChanges(am.id, s.amendmentChanges);
+    for (const c of changes) {
+      switch (c.fieldName) {
+        case "baseMonthlyRentTotal":
+          terms.monthlyRent = Number(c.newValue) || 0;
+          break;
+        case "baseMonthlyChargesTotal":
+          terms.monthlyCharges = Number(c.newValue) || 0;
+          break;
+        case "leaseEndDate":
+          terms.endDate = String(c.newValue);
+          break;
+        case "depositAmount":
+          terms.depositAmount = c.newValue == null ? null : Number(c.newValue);
+          break;
+        case "noticePeriodText":
+          terms.noticePeriodText = String(c.newValue ?? "");
+          break;
+        case "primaryTenantId":
+          terms.primaryTenantId = String(c.newValue);
+          break;
+        case "coTenantIds":
+          terms.coTenantIds = Array.isArray(c.newValue) ? (c.newValue as string[]) : [];
+          break;
+        default:
+          // Unit-related changes are already represented via live assignment rows
+          // because activateAmendment writes them through. clauseSummary and
+          // guaranteeSummary are documentary only.
+          break;
+      }
+    }
+  }
+
+  // Recompute rent/charges totals from live unit shares — assignments are the
+  // source of truth for per-unit pricing (strict-per-unit model).
+  if (liveUnits.length > 0) {
+    const sumRent = liveUnits.reduce((s2, u) => s2 + u.rentShare, 0);
+    const sumCharges = liveUnits.reduce((s2, u) => s2 + u.chargesShare, 0);
+    if (sumRent > 0) terms.monthlyRent = sumRent;
+    if (sumCharges > 0) terms.monthlyCharges = sumCharges;
+  }
+
+  return terms;
+}
+
+export function getCurrentLeaseTerms(leaseId: string, s: State): EffectiveLeaseTerms | null {
+  return getEffectiveLeaseTerms(leaseId, today(), s);
+}
+
+export interface AmendmentImpact {
+  amendmentId: string;
+  before: EffectiveLeaseTerms | null;
+  after: EffectiveLeaseTerms | null;
+  financialDelta: { rent: number; charges: number };
+  affectedUnitIds: string[];
+  changedFields: string[];
+}
+
+/**
+ * Compute before/after preview by simulating the amendment as active.
+ * Does not mutate state.
+ */
+export function getLeaseAmendmentImpact(amendmentId: string, s: State): AmendmentImpact | null {
+  const am = s.amendments.find(a => a.id === amendmentId);
+  if (!am) return null;
+  const eff = am.effectiveDate;
+
+  const before = getEffectiveLeaseTerms(am.leaseId, eff, s);
+
+  // Simulate: temporarily mark this amendment active in a shallow copy.
+  const simulated: State = {
+    ...s,
+    amendments: s.amendments.map(x => (x.id === amendmentId ? { ...x, status: "active" as const } : x)),
+  };
+  const after = getEffectiveLeaseTerms(am.leaseId, eff, simulated);
+
+  const changes = getAmendmentChanges(amendmentId, s.amendmentChanges);
+  const affectedUnitIds = Array.from(
+    new Set(changes.map(c => c.metadata?.unitId).filter((u): u is string => !!u)),
+  );
+  const changedFields = Array.from(new Set(changes.map(c => c.fieldName)));
+
+  return {
+    amendmentId,
+    before,
+    after,
+    financialDelta: {
+      rent: (after?.monthlyRent ?? 0) - (before?.monthlyRent ?? 0),
+      charges: (after?.monthlyCharges ?? 0) - (before?.monthlyCharges ?? 0),
+    },
+    affectedUnitIds,
+    changedFields,
+  };
+}
