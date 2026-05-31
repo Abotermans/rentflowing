@@ -1,62 +1,131 @@
 
-# Strict per-unit rent + charges on multi-unit leases
+# Lease Amendments ("Avenants") — Implementation Plan
 
-Today the lease form lets the user attach extra units (parking, cellar, …) but always writes `rentShare: null` / `chargesShare: null`. The data model already supports per-assignment shares — we'll make them mandatory ("strict per-unit"), derive the lease totals from the sum, and propagate this through display + validation. Receivables stay lease-level (one invoice, one receivable), shares are descriptive only.
+Adds professional amendment management on top of the existing multi-unit lease + LeaseUnitAssignment model. The Lease record stays the stable master; every contractual change becomes a structured `LeaseAmendment` with delta lines, applied prospectively from `effectiveDate`.
 
-## Data & business rules
+## 1. Data Model (`src/types/amendments.ts`)
 
-- Every active `LeaseUnitAssignment` MUST carry `rentShare ≥ 0` and `chargesShare ≥ 0`.
-- Lease totals become derived: `lease.monthlyRent = Σ rentShare`, `lease.monthlyCharges = Σ chargesShare` across active assignments.
-  - We keep the columns on `Lease` (mirror) so receivables, payments, reports, advance-pricing, CSV exports, and TenantDetail keep working with no change. `setLeaseUnits` rewrites them from the draft.
-- Single-unit (legacy) leases: migration seeds the primary row with `rentShare = lease.monthlyRent`, `chargesShare = lease.monthlyCharges`. Pure mirror, zero behaviour change.
-- `validateLeaseUnits` (in `leaseUnitAssignmentIntegrity.ts`) gets new blockers:
-  - `LUA_SHARE_MISSING` — any unit without a numeric `rentShare` or `chargesShare`.
-  - `LUA_SHARE_NEGATIVE` — negative value.
-  - The existing `LUA_SHARE_MISMATCH` warning is removed (sum is now the source of truth, mismatch is impossible by construction).
-- Rent tier check (`getMonthlyRentForMonths`) still validates the **primary** unit's tier against `primary.rentShare`, not against the lease total. The ancillary units don't have rent tiers.
+**`LeaseAmendment`**
+- `id`, `leaseId`, `amendmentNumber` (auto-incremented per lease)
+- `amendmentType`: `rent-change | charges-change | term-extension | term-shortening | unit-addition | unit-removal | unit-change | tenant-addition | tenant-removal | guarantee-change | deposit-change | notice-change | clause-change | mixed`
+- `title`, `reason`, `notes`
+- `effectiveDate` (drives system behaviour), `signedDate` (documentary only)
+- `status`: `draft | pending-signature | active | cancelled | superseded`
+- `supersedesAmendmentId?` (when replacing a prior amendment)
+- `createdAt`, `updatedAt`
 
-## UX in the lease form (`src/pages/Leases.tsx`)
+**`LeaseAmendmentChange`** (delta line, structured not free text)
+- `id`, `amendmentId`
+- `fieldName`: typed union — `baseMonthlyRentTotal | baseMonthlyChargesTotal | leaseEndDate | depositAmount | noticePeriodText | primaryTenantId | coTenantIds | guaranteeSummary | unitAssignments | unitRentShare | unitChargesShare | unitAssignmentType | primaryUnitId | clauseSummary`
+- `changeType`: `set | add | remove | replace`
+- `oldValue`, `newValue` (JSON-serialisable scalars or arrays)
+- `metadata?` (e.g. `{ unitId, assignmentType, startDate }` for unit-related changes)
+- `createdAt`, `updatedAt`
 
-The "Additional units" block becomes a small table:
+Stored on `AppState` as `amendments: LeaseAmendment[]` and `amendmentChanges: LeaseAmendmentChange[]`. Seeded in `src/data/mockData.ts` with the 8 sample cases from the brief.
 
-```text
-Unit              Role         Rent (€/mo)   Charges (€/mo)   [x]
-A2-PK01 Parking   Parking      [   80.00 ]   [    0.00 ]      [x]
-A2-CV03 Cellar    Cellar       [   20.00 ]   [    0.00 ]      [x]
-─────────────────────────────────────────────────────────────────
-Primary  3B Apt   Primary      [ 1 200.00]   [  150.00 ]
-─────────────────────────────────────────────────────────────────
-Lease total                      1 300.00       150.00
-```
+## 2. Effective Terms Engine (`src/lib/amendments.ts`)
 
-- The primary unit's rent & charges fields move **inside** this table (one row), so the rent/charges inputs that today sit at lease level are removed — the lease total is read-only and computed below the table.
-- Rent tier dropdown for the primary unit stays (drives `form.rentFormula`); selecting a tier auto-fills `primary.rentShare`. The user can still edit it after.
-- Adding an ancillary row defaults both shares to `0`.
-- `form.monthlyRent` / `form.monthlyCharges` are kept in sync with the sum on every change (single `useMemo`). Validation runs against the sum.
-- Cross-page editing pattern still works because `setLeaseUnits` writes the mirror back.
+Pure functions, no state mutation:
 
-## Display
+- `getLeaseAmendments(leaseId, amendments)` → sorted by `effectiveDate` then `amendmentNumber`
+- `getActiveAmendmentsOn(leaseId, date, amendments)` → only `status='active'` and `effectiveDate ≤ date`
+- `getEffectiveLeaseTerms(leaseId, date, state)` → `EffectiveLeaseTerms` shape (rent, charges, endDate, depositAmount, noticePeriodText, primaryTenantId, coTenantIds, units: derived view from assignments active on `date`)
+- `getCurrentLeaseTerms(leaseId, state)` = `getEffectiveLeaseTerms(leaseId, today)`
+- `getOriginalLeaseTerms(leaseId, state)` → baseline from Lease record + initial primary-included assignments (assignment rows created at or before lease `startDate`)
+- `getLeaseAmendmentImpact(amendmentId, state)` → `{ before, after, affectedUnits, financialDelta, warnings }`
+- `canActivateAmendment(amendmentId, state)` → ValidationResult
 
-- **LeaseDetail** (`src/pages/LeaseDetail.tsx` L629-653): the existing table already has Rent share / Charges share columns — they'll now always be populated. Add a totals footer row.
-- **UnitDetail**: where it shows the active lease info, append the unit's own `rentShare` + `chargesShare` ("Your contribution: 80€ rent / 0€ charges of lease L-2024-…").
-- **Rent Roll report** (`src/pages/Reports.tsx`): expand the unit column so each ancillary unit becomes its own row with its share, instead of being hidden behind a `+N` chip. CSV export gets a `rentShare` / `chargesShare` column. Keep an aggregated mode toggle.
-- **Lease list**: keep the `+N ancillary` chip as-is.
+Folding rule: start from original terms, apply each active amendment in `(effectiveDate, amendmentNumber)` order; each change line replaces a field or mutates the unit-assignment projection.
 
-## Files to change
+The engine never mutates `LeaseUnitAssignment` rows directly. Unit changes are projected on top of the assignment table; when an amendment is **activated**, real assignment rows are created/closed prospectively (see §4).
 
-- `src/types/index.ts` — narrow `LeaseUnitAssignment.rentShare/chargesShare` from `number | null` to `number` (with a one-loop migration to backfill nulls). Update mock data.
-- `src/lib/leaseAssignments.ts` — drop `checkInternalShareCoherence` (no longer needed) and add `sumLeaseShares(leaseId, assignments) → { rent, charges }`. Update `migrateLegacyLeaseAssignments` to seed shares from lease totals.
-- `src/lib/integrity/leaseUnitAssignmentIntegrity.ts` — replace the mismatch warning with the two blockers above; drop the totals param.
-- `src/context/AppContext.tsx` — `setLeaseUnits` accepts shares, writes them, and mirrors the sum into `lease.monthlyRent` / `lease.monthlyCharges`.
-- `src/pages/Leases.tsx` — refactor the "Additional units" block into the table described above; remove top-level rent/charges inputs; recompute totals; pass shares to `setLeaseUnits` and `validateLeaseUnits`.
-- `src/pages/LeaseDetail.tsx` — add totals footer row in the assignments table.
-- `src/pages/UnitDetail.tsx` — show this unit's contribution.
-- `src/pages/Reports.tsx` — per-unit Rent Roll rows + CSV column.
-- `src/i18n/translations.ts` — keys: `leases.totalRent`, `leases.totalCharges`, `leases.unitContribution`, blocker messages (EN/FR).
-- `src/lib/multiUnitLease.test.ts` — new scenarios: missing share blocked, negative share blocked, sum equals lease total, removing an ancillary updates lease total, legacy single-unit migration sets share = lease total.
+## 3. Validation (`src/lib/integrity/amendmentIntegrity.ts`)
 
-## Out of scope
+`validateAmendment(amendment, changes, state)` — blockers:
+- lease must exist; lease not in `draft` (amendments only meaningful on signed leases)
+- `active` requires `effectiveDate`
+- resulting state must keep exactly one primary unit and ≥1 unit while lease is active
+- added units belong to the same property
+- added unit must not overlap another active lease at `effectiveDate`
+- rent/charges resulting totals ≥ 0
+- assignment date coherence (`startDate ≤ endDate`)
+- cannot remove primary without designating a new one in the same amendment
 
-- Mid-lease price changes per unit (would need historised share rows).
-- Per-unit receivables / invoices (project scope explicitly excludes invoice-level accounting).
-- Owner-reporting allocation of revenue per cost center.
+Warnings:
+- `effectiveDate` in the past
+- overlaps unpaid receivables (any open ReceivableItem with `periodMonth ≥ effectiveDate`)
+- conflicts with another pending/active amendment touching same field
+- guarantee/deposit change while related receivables unpaid
+- tenant removal while balance > 0
+- primary unit change (reporting/occupancy heads-up)
+
+Wired into the existing integrity layer via `src/lib/integrity/index.ts` and surfaced through `IntegritySummaryPanel`.
+
+## 4. State / Activation (`src/context/AppContext.tsx`)
+
+New API:
+- `addAmendment(draft)`, `updateAmendment(a, changes)`, `deleteAmendment(id)` (draft only)
+- `setAmendmentStatus(id, status)` with controlled transitions
+- `activateAmendment(id)` — runs `canActivateAmendment`, on success:
+  - sets `status='active'`
+  - applies unit-assignment side effects prospectively: new rows with `startDate = effectiveDate`, existing rows closed via `endDate = effectiveDate - 1 day` (reuses existing `closeOpenAssignmentsForLease` pattern, scoped per unit)
+  - **never** edits the Lease record directly. `Lease.monthlyRent/monthlyCharges/endDate/...` remain the original baseline. UI reads current values through `getCurrentLeaseTerms`.
+- `cancelAmendment(id)`, `supersedeAmendment(id, replacementId)`
+
+Receivable generation hook (when/if generating future receivables) reads `getEffectiveLeaseTerms(leaseId, periodMonth)` instead of raw Lease fields. Past paid receivables untouched.
+
+## 5. UI
+
+**Lease Detail (`src/pages/LeaseDetail.tsx`)** — 4 sections (tabs or stacked cards):
+1. **Current effective terms** — rent, charges, term, tenants, units, guarantee/deposit (from `getCurrentLeaseTerms`)
+2. **Original contract terms** — baseline from `getOriginalLeaseTerms`
+3. **Amendments timeline** — chronological list with number, type icon, title, effective/signed dates, status badge, one-line change summary
+4. **Amendment impact preview** — selected amendment: before/after diff table, affected units chips, financial delta, warnings
+
+**Amendment dialog (`src/components/amendments/AmendmentDialog.tsx`)** — high-density centered Dialog (per project memory), guided steps inside a single form:
+- Step 1: type selector (radio cards)
+- Step 2: metadata (title, reason, effectiveDate, signedDate, notes)
+- Step 3: type-conditional fields:
+  - rent/charges-change: pricing inputs (per-unit table reused from Leases form for unit splits)
+  - term-extension/shortening: new endDate
+  - unit-addition: unit picker scoped to property + role + rentShare + chargesShare + startDate
+  - unit-removal: pick from current active units, confirms it isn't the only primary
+  - unit-change: combined remove+add with primary reassignment
+  - tenant-addition/removal: tenant picker
+  - guarantee/deposit/notice/clause: scalar inputs
+  - mixed: collapsible sections for each affected field group
+- Step 4: live impact preview (before/after) + warnings panel
+- Step 5: actions — Save draft / Mark pending signature / Activate (disabled when blockers)
+
+**Lease list (`src/pages/Leases.tsx`)** — small "+N amendments" chip next to lease reference, current effective rent shown instead of stored rent.
+
+## 6. i18n
+
+Add EN/FR keys in `src/i18n/translations.ts` for: section titles, amendment types, statuses, field labels, change summary verbs ("rent increased from … to …", "parking P012 added on DD/MM/YYYY"), warnings, and action buttons.
+
+## 7. Tests (`src/lib/amendments.test.ts`)
+
+- effective terms folding: original → rent-change → term-extension
+- unit-addition projects new assignment on activation; original stays open until effectiveDate
+- unit-removal closes assignment prospectively, never historically
+- primary unit change keeps exactly one primary at every point in time
+- past paid receivables stay; warning surfaced when effectiveDate hits unpaid period
+- supersede chain: superseded amendment ignored in effective terms
+- validation blockers: zero units, two primaries, cross-property, overlap
+
+## 8. Explicitly Out of Scope
+
+PDF/document generation, e-signature, AI drafting, full retroactive receivable rewrite, deep legal clause editor.
+
+## Technical Notes
+
+- All money fields stay EUR, dates DD/MM/YYYY in UI (European-first memory).
+- Reuse existing patterns: centered Dialog, `validateLeaseUnits`-style ValidationResult, `OverrideConfirmDialog` for any controlled-override actions.
+- No DB layer (project is client-side over mock data + AppContext) — purely typed in-memory model.
+- Lease record fields (`monthlyRent`, `monthlyCharges`, `endDate`, `depositOrGuaranteeAmount`, `primaryTenantId`, `coTenantIds`, `noticePeriodText`) become **baseline-only**; a follow-up pass replaces direct reads with `getCurrentLeaseTerms` in: Reports rent roll, Receivables generation, Dashboard KPIs, UnitDetail. Listed here so the change is visible, executed file-by-file during build.
+
+## Files Touched
+
+- new: `src/types/amendments.ts`, `src/lib/amendments.ts`, `src/lib/amendments.test.ts`, `src/lib/integrity/amendmentIntegrity.ts`, `src/components/amendments/AmendmentDialog.tsx`, `src/components/amendments/AmendmentTimeline.tsx`, `src/components/amendments/AmendmentImpactPreview.tsx`
+- edited: `src/types/index.ts` (re-export), `src/context/AppContext.tsx`, `src/lib/integrity/index.ts`, `src/hooks/use-integrity-state.ts`, `src/pages/LeaseDetail.tsx`, `src/pages/Leases.tsx`, `src/data/mockData.ts`, `src/i18n/translations.ts`
