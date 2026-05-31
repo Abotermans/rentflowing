@@ -31,6 +31,7 @@ import { canChangeLeaseStatus, canActivateLease, canRenewLease } from "@/lib/int
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
+import type { ValidationResult } from "@/lib/integrity/types";
 import type { TranslationKey } from "@/i18n/translations";
 
 const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
