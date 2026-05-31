@@ -1,23 +1,28 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Shield, Bell, Banknote } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Shield, Bell, Banknote, MoreVertical, Trash2 } from "lucide-react";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canDeleteTenant, canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
 import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
-  const { tenants, leases, units, properties, getTenantOutstanding, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
+  const { tenants, leases, units, properties, deleteTenant, getTenantOutstanding, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const tenant = tenants.find(tn => tn.id === id);
   if (!tenant) {
@@ -41,15 +46,43 @@ export default function TenantDetail() {
   const activeLifecycle = activeLease ? getLeaseStatus(activeLease) : undefined;
   const today = new Date().toISOString().split("T")[0];
 
+  const handleDeleteTenant = (tid: string) => {
+    deleteTenant(tid);
+    toast({ title: "Tenant deleted" });
+    navigate("/tenants");
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2">
           <Link to="/tenants"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.tenants")}</Link>
         </Button>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-foreground">{getTenantFullName(tenant)}</h1>
-          <StatusBadge status={tenant.status} />
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground">{getTenantFullName(tenant)}</h1>
+            <StatusBadge status={tenant.status} />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="More actions">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DeleteDialog
+                entityType="tenant"
+                entityId={tenant.id}
+                entityLabel={getTenantFullName(tenant)}
+                onDelete={handleDeleteTenant}
+                trigger={
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />{t("action.delete")}
+                  </DropdownMenuItem>
+                }
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
