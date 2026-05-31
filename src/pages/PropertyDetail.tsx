@@ -45,7 +45,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, leases, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -267,7 +267,7 @@ export default function PropertyDetail() {
                   {propertyUnits.map(u => {
                     const activeLease = getActiveLease(u.id);
                     const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
-                    const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases);
+                    const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments);
                     return (
                       <TableRow key={u.id}>
                         <TableCell className="font-mono text-xs font-medium text-foreground">
@@ -282,6 +282,11 @@ export default function PropertyDetail() {
                         <TableCell>
                           <div className="flex items-center gap-1.5">
                             <StatusBadge status={u.currentStatus} />
+                            {occupancy.occupancyRole === "ancillary" && (
+                              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                {t("leases.role.ancillary")}
+                              </span>
+                            )}
                             {occupancy.inconsistent && (
                               <Tooltip>
                                 <TooltipTrigger>
