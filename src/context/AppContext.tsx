@@ -379,7 +379,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     startDate?: string;
   }[]) => {
     const ts = now();
-    const nextAssignmentsRef: { value: LeaseUnitAssignment[] } = { value: [] };
     setLeaseUnitAssignments(prev => {
       const others = prev.filter(a => a.leaseId !== leaseId);
       const existing = prev.filter(a => a.leaseId === leaseId);
@@ -419,9 +418,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const closed = existing
         .filter(a => !keepIds.has(a.id))
         .map(a => a.endDate ? a : { ...a, endDate: ts, updatedAt: ts });
-      const nextAll = [...others, ...merged, ...closed];
-      nextAssignmentsRef.value = nextAll;
-      return nextAll;
+      return [...others, ...merged, ...closed];
     });
     // Sync legacy lease.unitId to the new primary AND mirror the sum of shares into
     // lease.monthlyRent / lease.monthlyCharges so receivables, reports, exports keep
