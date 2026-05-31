@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
+import { validateLeaseUnits, type DraftAssignment } from "@/lib/integrity/leaseUnitAssignmentIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
@@ -76,7 +77,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 
 export default function Leases() {
   const navigate = useNavigate();
-  const { leases, tenants, units, properties, addLease, updateLease, deleteLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits } = useAppData();
+  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, deleteLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
