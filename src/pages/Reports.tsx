@@ -191,7 +191,14 @@ function OccupancyReport() {
                 <TableCell className="font-medium"><Link to={`/units/${d.u.id}`} className="hover:underline text-foreground">{d.u.unitCode}</Link></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
                 <TableCell className="text-xs capitalize">{d.u.unitType.replace(/-/g, " ")}</TableCell>
-                <TableCell><StatusBadge status={d.u.currentStatus} /></TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge status={d.u.currentStatus} />
+                    {d.role === "ancillary" && (
+                      <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">Ancillary</span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
                 <TableCell className="text-right text-sm">{d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{d.u.availableFrom ? formatDate(d.u.availableFrom, d.prop?.locale) : "—"}</TableCell>
