@@ -381,8 +381,23 @@ export default function Leases() {
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle>
+            {!editingLease && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3].map(n => (
+                    <div key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? "bg-primary" : "bg-muted"}`} />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("leases.wizard.step")} {step} {t("leases.wizard.of")} 3 — {step === 1 ? t("leases.wizard.leaseDetails") : step === 2 ? t("leases.wizard.tenantDetails") : t("leases.wizard.terms")}
+                </p>
+              </div>
+            )}
+          </DialogHeader>
           <div className="space-y-4 mt-6">
+            {(editingLease || step === 1) && (<>
             <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.property")} *</Label>
@@ -427,12 +442,19 @@ export default function Leases() {
                 </Select>
               </div>
             </div>
+            </>)}
+            {(editingLease || step === 3) && (<>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.primaryTenant")} *</Label>
-                <Select value={form.primaryTenantId} onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))}>
+                <Select value={form.primaryTenantId} onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))} disabled={!editingLease}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectTenant")} /></SelectTrigger>
                   <SelectContent>{tenants.map(t => <SelectItem key={t.id} value={t.id}>{getTenantFullName(t)}</SelectItem>)}</SelectContent>
                 </Select>
+                {!editingLease && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {getTenantFullName({ ...tenantForm, id: "", createdAt: "", updatedAt: "" } as Tenant).trim() || "—"}
+                  </p>
+                )}
               </div>
             <div><Label>{t("leases.status")} *</Label>
                 <Select value={form.lifecycleStage} onValueChange={v => setForm(f => ({ ...f, lifecycleStage: v as LifecycleStage }))}>
@@ -446,6 +468,8 @@ export default function Leases() {
               <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
               <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
             </div>
+            </>)}
+            {(editingLease || step === 1) && (
             <div>
               <Label>{t("leases.formula")} *</Label>
               <Select
@@ -496,6 +520,8 @@ export default function Leases() {
                 </p>
               )}
             </div>
+            )}
+            {(editingLease || step === 3) && (<>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>{t("leases.monthlyRent")} *</Label><Input type="number" min={0} value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: Number(e.target.value) || 0 }))} /></div>
               <div><Label>{t("leases.monthlyCharges")} *</Label><Input type="number" min={0} value={form.monthlyCharges} onChange={e => setForm(f => ({ ...f, monthlyCharges: Number(e.target.value) || 0 }))} /></div>
@@ -507,10 +533,63 @@ export default function Leases() {
             </div>
             <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
+            </>)}
+            {!editingLease && step === 2 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>{t("tenants.firstName")} *</Label><Input value={tenantForm.firstName} onChange={e => setTenantForm(f => ({ ...f, firstName: e.target.value }))} /></div>
+                  <div><Label>{t("tenants.lastName")} *</Label><Input value={tenantForm.lastName} onChange={e => setTenantForm(f => ({ ...f, lastName: e.target.value }))} /></div>
+                </div>
+                <div><Label>{t("tenants.email")} *</Label><Input type="email" value={tenantForm.email} onChange={e => setTenantForm(f => ({ ...f, email: e.target.value }))} /></div>
+                <div><Label>{t("tenants.phone")}</Label><Input value={tenantForm.phone} onChange={e => setTenantForm(f => ({ ...f, phone: e.target.value }))} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>{t("tenants.dateOfBirth")}</Label><Input type="date" value={tenantForm.dateOfBirth ?? ""} onChange={e => setTenantForm(f => ({ ...f, dateOfBirth: e.target.value || null }))} /></div>
+                  <div><Label>{t("filter.status")} *</Label>
+                    <Select value={tenantForm.status} onValueChange={v => setTenantForm(f => ({ ...f, status: v as TenantStatus }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div><Label>{t("tenants.identificationNumber")}</Label><Input value={tenantForm.identificationNumber ?? ""} onChange={e => setTenantForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>
+                <div><Label>{t("tenants.currentAddress")}</Label><Textarea value={tenantForm.currentAddress ?? ""} onChange={e => setTenantForm(f => ({ ...f, currentAddress: e.target.value || null }))} rows={2} /></div>
+                <div><Label>{t("common.notes")}</Label><Textarea value={tenantForm.notes} onChange={e => setTenantForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+              </div>
+            )}
           </div>
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
-            <Button onClick={handleSave}>{editingLease ? t("action.save") : t("leases.add")}</Button>
+            {editingLease ? (
+              <>
+                <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
+                <Button onClick={handleSave}>{t("action.save")}</Button>
+              </>
+            ) : (
+              <>
+                {step > 1 ? (
+                  <Button variant="outline" onClick={() => setStep(s => s - 1)}>{t("action.back")}</Button>
+                ) : (
+                  <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
+                )}
+                {step < 3 ? (
+                  <Button onClick={() => {
+                    if (step === 1) {
+                      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId) {
+                        toast({ title: "Validation Error", description: "Reference, property, and unit are required.", variant: "destructive" });
+                        return;
+                      }
+                    } else if (step === 2) {
+                      if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
+                        toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+                        return;
+                      }
+                    }
+                    setStep(s => s + 1);
+                  }}>{t("action.next")}</Button>
+                ) : (
+                  <Button onClick={handleSave}>{t("leases.add")}</Button>
+                )}
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
