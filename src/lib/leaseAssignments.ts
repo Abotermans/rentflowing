@@ -1,0 +1,127 @@
+import type { Lease, LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
+import { isAncillaryAssignmentType, ANCILLARY_UNIT_TYPES, type Unit } from "@/types";
+
+/** True if assignment row covers the given ISO date. */
+export function assignmentIsActiveOn(a: LeaseUnitAssignment, isoDate: string): boolean {
+  if (a.startDate > isoDate) return false;
+  if (a.endDate && a.endDate < isoDate) return false;
+  return true;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+export function getAssignmentsForLease(
+  leaseId: string,
+  assignments: readonly LeaseUnitAssignment[],
+): LeaseUnitAssignment[] {
+  return assignments.filter(a => a.leaseId === leaseId);
+}
+
+export function getActiveAssignmentsForLease(
+  leaseId: string,
+  assignments: readonly LeaseUnitAssignment[],
+  onDate: string = today(),
+): LeaseUnitAssignment[] {
+  return assignments.filter(a => a.leaseId === leaseId && assignmentIsActiveOn(a, onDate));
+}
+
+export function getPrimaryAssignment(
+  leaseId: string,
+  assignments: readonly LeaseUnitAssignment[],
+): LeaseUnitAssignment | undefined {
+  return assignments.find(a => a.leaseId === leaseId && a.isPrimary);
+}
+
+/**
+ * Look up the active lease + assignment covering a unit on a given date.
+ * Returns the primary assignment first when multiple match.
+ */
+export function getActiveLeaseForUnit(
+  unitId: string,
+  leases: readonly Lease[],
+  assignments: readonly LeaseUnitAssignment[],
+  onDate: string = today(),
+): { lease: Lease; assignment: LeaseUnitAssignment } | undefined {
+  const matches = assignments.filter(a =>
+    a.unitId === unitId && assignmentIsActiveOn(a, onDate),
+  );
+  if (matches.length === 0) return undefined;
+  // Prefer primary then earliest
+  const sorted = [...matches].sort((x, y) => (y.isPrimary ? 1 : 0) - (x.isPrimary ? 1 : 0));
+  for (const a of sorted) {
+    const lease = leases.find(l => l.id === a.leaseId && l.lifecycleStage === "active");
+    if (lease) return { lease, assignment: a };
+  }
+  return undefined;
+}
+
+/**
+ * Migrate legacy single-unit leases into one primary LeaseUnitAssignment row each.
+ * Idempotent: only seeds a row when the lease has no assignment yet.
+ */
+export function migrateLegacyLeaseAssignments(
+  leases: readonly Lease[],
+  existing: readonly LeaseUnitAssignment[],
+): LeaseUnitAssignment[] {
+  const seen = new Set(existing.map(a => a.leaseId));
+  const added: LeaseUnitAssignment[] = [];
+  let counter = 0;
+  for (const l of leases) {
+    if (seen.has(l.id)) continue;
+    if (!l.unitId) continue;
+    added.push({
+      id: `lua-mig-${l.id}-${++counter}`,
+      leaseId: l.id,
+      unitId: l.unitId,
+      assignmentType: "primary",
+      isPrimary: true,
+      startDate: l.startDate,
+      endDate: l.lifecycleStage === "ended" || l.lifecycleStage === "terminated"
+        ? (l.moveOutActualDate || l.endDate || null)
+        : null,
+      rentShare: null,
+      chargesShare: null,
+      notes: "",
+      createdAt: l.createdAt,
+      updatedAt: l.updatedAt,
+    });
+  }
+  return [...existing, ...added];
+}
+
+/**
+ * Detect whether a unit, when assigned with a given assignmentType, should be
+ * considered ancillary for occupancy KPIs.
+ */
+export function isAncillaryRole(
+  assignmentType: LeaseUnitAssignmentType,
+  unit: Pick<Unit, "unitType"> | undefined,
+): boolean {
+  if (isAncillaryAssignmentType(assignmentType)) return true;
+  if (unit && ANCILLARY_UNIT_TYPES.has(unit.unitType)) return true;
+  return false;
+}
+
+/**
+ * Check whether the optional internal rent/charges split is coherent with the
+ * lease contract totals. Returns null if any share is missing.
+ */
+export function checkInternalShareCoherence(
+  assignments: LeaseUnitAssignment[],
+  totalRent: number,
+  totalCharges: number,
+): { rentDelta: number; chargesDelta: number; coherent: boolean } | null {
+  const definedRent = assignments.filter(a => a.rentShare != null);
+  const definedCharges = assignments.filter(a => a.chargesShare != null);
+  if (definedRent.length === 0 && definedCharges.length === 0) return null;
+
+  const sumRent = definedRent.reduce((s, a) => s + (a.rentShare ?? 0), 0);
+  const sumCharges = definedCharges.reduce((s, a) => s + (a.chargesShare ?? 0), 0);
+  const rentDelta = sumRent - totalRent;
+  const chargesDelta = sumCharges - totalCharges;
+  const eps = 0.5;
+  const coherent =
+    (definedRent.length === 0 || Math.abs(rentDelta) <= eps) &&
+    (definedCharges.length === 0 || Math.abs(chargesDelta) <= eps);
+  return { rentDelta, chargesDelta, coherent };
+}
