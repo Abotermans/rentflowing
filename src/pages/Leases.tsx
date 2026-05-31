@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { FileText, Plus, Search, Pencil, Trash2, Bell } from "lucide-react";
+import { FileText, Plus, Search, Pencil, Trash2, Bell, Clock, CheckCircle2, Undo2, AlertTriangle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -18,7 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { Lease, LifecycleStage, LeaseStatus, RentFormula, getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import type { TranslationKey } from "@/i18n/translations";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -47,6 +49,14 @@ const LEASE_STATUS_FILTERS: { value: LeaseStatus; label: string }[] = [
 ];
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
+
+const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
+  active:               { icon: CheckCircle2,  labelKey: "guarantee.deposited",         className: "text-success" },
+  released:             { icon: Undo2,         labelKey: "guarantee.released",          className: "text-muted-foreground" },
+  pending:              { icon: Clock,         labelKey: "guarantee.waiting",           className: "text-warning" },
+  incomplete:           { icon: Clock,         labelKey: "guarantee.waiting",           className: "text-warning" },
+  "partially-retained": { icon: AlertTriangle, labelKey: "guarantee.partiallyRetained", className: "text-warning" },
+};
 
 const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
   draft: ["draft", "active"],
@@ -308,7 +318,16 @@ export default function Leases() {
                     </TableCell>
                     <TableCell>
                       {guarantee ? (
-                        <StatusBadge status={guarantee.status} />
+                        (() => {
+                          const d = GUARANTEE_DISPLAY[guarantee.status];
+                          const Icon = d.icon;
+                          return (
+                            <div className={`flex items-center gap-1.5 text-xs ${d.className}`}>
+                              <Icon className="h-3.5 w-3.5" />
+                              <span>{t(d.labelKey)}</span>
+                            </div>
+                          );
+                        })()
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
