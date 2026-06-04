@@ -29,13 +29,36 @@ import type { TranslationKey } from "@/i18n/translations";
 
 type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">;
 
-const TYPES: AmendmentType[] = [
-  "rent-change", "charges-change", "term-extension", "term-shortening",
-  "unit-addition", "unit-removal", "tenant-addition", "tenant-removal",
-  "deposit-change", "notice-change", "clause-change", "mixed",
-];
-
 const ANC_ROLES: LeaseUnitAssignmentType[] = ["parking", "cellar", "storage", "office-secondary", "commercial-addon", "ancillary", "other"];
+
+function deriveAmendmentType(changes: ChangeDraft[], lease: Lease): AmendmentType {
+  const cats = new Set<AmendmentType>();
+  for (const c of changes) {
+    switch (c.fieldName) {
+      case "baseMonthlyRentTotal":
+      case "unitRentShare": cats.add("rent-change"); break;
+      case "baseMonthlyChargesTotal":
+      case "unitChargesShare": cats.add("charges-change"); break;
+      case "leaseEndDate":
+        cats.add(String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening"); break;
+      case "depositAmount": cats.add("deposit-change"); break;
+      case "noticePeriodText": cats.add("notice-change"); break;
+      case "clauseSummary": cats.add("clause-change"); break;
+      case "unitAssignments":
+        if (c.changeType === "add") cats.add("unit-addition");
+        else if (c.changeType === "remove") cats.add("unit-removal");
+        break;
+      case "coTenantIds":
+        if (c.changeType === "add") cats.add("tenant-addition");
+        else if (c.changeType === "remove") cats.add("tenant-removal");
+        break;
+      default: break;
+    }
+  }
+  if (cats.size === 0) return "rent-change";
+  if (cats.size === 1) return [...cats][0];
+  return "mixed";
+}
 
 interface Props {
   open: boolean;
