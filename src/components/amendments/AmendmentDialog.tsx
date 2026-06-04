@@ -238,7 +238,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{existing ? t("amendments.edit") : t("amendments.add")}</DialogTitle>
         </DialogHeader>
