@@ -2215,6 +2215,7 @@ const fr: TranslationKeys = {
   "amendments.newCharges": "Nouvelles charges mensuelles",
   "amendments.newEndDate": "Nouvelle date de fin",
   "amendments.newDeposit": "Nouveau dépôt",
+  "amendments.addUnit": "Ajouter un lot",
   "amendments.unitToAdd": "Lot à ajouter",
   "amendments.unitToRemove": "Lot à retirer",
   "amendments.rentShare": "Loyer (€/mois)",
