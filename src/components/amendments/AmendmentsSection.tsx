@@ -119,13 +119,49 @@ export function AmendmentsSection({ leaseId }: Props) {
                     const newEnd = newEndCh ? String(newEndCh.newValue) : null;
                     const hasGap = a.effectiveDate > currentEndDate;
                     return (
-                      <TableRow
-                        key={a.id}
-                        className="cursor-pointer hover:bg-accent/30"
-                        onClick={() => openEdit(a)}
-                      >
-                        <TableCell className="py-1.5">{a.amendmentNumber}</TableCell>
-                        <TableCell className="py-1.5">{t(`amendments.type.${a.amendmentType}` as any)}</TableCell>
+                       <TableRow
+                         key={a.id}
+                         className="cursor-pointer hover:bg-accent/30"
+                         onClick={() => openEdit(a)}
+                       >
+                         <TableCell className="py-1.5">{a.amendmentNumber}</TableCell>
+                         <TableCell className="py-1.5">
+                           {a.amendmentType === "mixed" ? (() => {
+                             const cats = Array.from(new Set(chs.map(c => {
+                               switch (c.fieldName) {
+                                 case "baseMonthlyRentTotal":
+                                 case "unitRentShare": return "rent-change";
+                                 case "baseMonthlyChargesTotal":
+                                 case "unitChargesShare": return "charges-change";
+                                 case "leaseEndDate":
+                                   return String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening";
+                                 case "depositAmount": return "deposit-change";
+                                 case "noticePeriodText": return "notice-change";
+                                 case "clauseSummary": return "clause-change";
+                                 case "unitAssignments":
+                                   return c.changeType === "add" ? "unit-addition" : "unit-removal";
+                                 case "coTenantIds":
+                                   return c.changeType === "add" ? "tenant-addition" : "tenant-removal";
+                                 default: return null;
+                               }
+                             }).filter(Boolean) as string[]));
+                             const list = cats.map(c => t(`amendments.type.${c}` as any)).join(", ");
+                             return (
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <span className="underline decoration-dotted underline-offset-2">
+                                     {t("amendments.type.mixed")}
+                                   </span>
+                                 </TooltipTrigger>
+                                 <TooltipContent>
+                                   <span className="text-xs">
+                                     {t("amendments.mixedCategories").replace("{list}", list)}
+                                   </span>
+                                 </TooltipContent>
+                               </Tooltip>
+                             );
+                           })() : t(`amendments.type.${a.amendmentType}` as any)}
+                         </TableCell>
                         <TableCell className="py-1.5">{a.title}</TableCell>
                         <TableCell className="py-1.5">
                           <span className="inline-flex items-center gap-1">

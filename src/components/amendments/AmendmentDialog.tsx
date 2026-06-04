@@ -29,13 +29,36 @@ import type { TranslationKey } from "@/i18n/translations";
 
 type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">;
 
-const TYPES: AmendmentType[] = [
-  "rent-change", "charges-change", "term-extension", "term-shortening",
-  "unit-addition", "unit-removal", "tenant-addition", "tenant-removal",
-  "deposit-change", "notice-change", "clause-change", "mixed",
-];
-
 const ANC_ROLES: LeaseUnitAssignmentType[] = ["parking", "cellar", "storage", "office-secondary", "commercial-addon", "ancillary", "other"];
+
+function deriveAmendmentType(changes: ChangeDraft[], lease: Lease): AmendmentType {
+  const cats = new Set<AmendmentType>();
+  for (const c of changes) {
+    switch (c.fieldName) {
+      case "baseMonthlyRentTotal":
+      case "unitRentShare": cats.add("rent-change"); break;
+      case "baseMonthlyChargesTotal":
+      case "unitChargesShare": cats.add("charges-change"); break;
+      case "leaseEndDate":
+        cats.add(String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening"); break;
+      case "depositAmount": cats.add("deposit-change"); break;
+      case "noticePeriodText": cats.add("notice-change"); break;
+      case "clauseSummary": cats.add("clause-change"); break;
+      case "unitAssignments":
+        if (c.changeType === "add") cats.add("unit-addition");
+        else if (c.changeType === "remove") cats.add("unit-removal");
+        break;
+      case "coTenantIds":
+        if (c.changeType === "add") cats.add("tenant-addition");
+        else if (c.changeType === "remove") cats.add("tenant-removal");
+        break;
+      default: break;
+    }
+  }
+  if (cats.size === 0) return "rent-change";
+  if (cats.size === 1) return [...cats][0];
+  return "mixed";
+}
 
 interface Props {
   open: boolean;
@@ -53,7 +76,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   } = useAppData();
   const integrityState = useIntegrityState();
 
-  const [type, setType] = useState<AmendmentType>("rent-change");
   const [title, setTitle] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
@@ -90,10 +112,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     [units, lease.propertyId, currentUnits, unitsToAdd],
   );
 
-  // Hydrate when editing
   useEffect(() => {
     if (existing) {
-      setType(existing.amendmentType);
       setTitle(existing.title);
       setReason(existing.reason);
       setNotes(existing.notes);
@@ -120,7 +140,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       const remChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "remove");
       setUnitsToRemove(remChs.map(c => c.metadata?.unitId ?? "").filter(Boolean));
     } else {
-      setType("rent-change");
       setTitle(""); setReason(""); setNotes("");
       setEffectiveDate(""); setSignedDate("");
       setNewRent(String(lease.monthlyRent));
@@ -143,52 +162,69 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       metadata?: AmendmentChangeMetadata,
     ) => out.push({ fieldName, changeType, oldValue, newValue, metadata });
 
-    const applies = (k: AmendmentType[]) => k.includes(type) || type === "mixed";
-
-    if (applies(["rent-change"]) && newRent && Number(newRent) !== lease.monthlyRent) {
+    if (newRent && Number(newRent) !== lease.monthlyRent) {
       push("baseMonthlyRentTotal", "set", lease.monthlyRent, Number(newRent));
     }
-    if (applies(["charges-change"]) && newCharges && Number(newCharges) !== lease.monthlyCharges) {
+    if (newCharges && Number(newCharges) !== lease.monthlyCharges) {
       push("baseMonthlyChargesTotal", "set", lease.monthlyCharges, Number(newCharges));
     }
-    if (applies(["term-extension", "term-shortening"]) && newEndDate && newEndDate !== lease.endDate) {
+    if (newEndDate && newEndDate !== lease.endDate) {
       push("leaseEndDate", "set", lease.endDate, newEndDate);
     }
-    if (applies(["deposit-change"]) && newDeposit && Number(newDeposit) !== (lease.depositOrGuaranteeAmount ?? 0)) {
+    if (newDeposit && Number(newDeposit) !== (lease.depositOrGuaranteeAmount ?? 0)) {
       push("depositAmount", "set", lease.depositOrGuaranteeAmount, Number(newDeposit));
     }
-    if (applies(["notice-change"]) && newNotice && newNotice !== lease.noticePeriodText) {
+    if (newNotice && newNotice !== lease.noticePeriodText) {
       push("noticePeriodText", "set", lease.noticePeriodText, newNotice);
     }
-    if (applies(["clause-change"]) && clauseSummary) {
+    if (clauseSummary) {
       push("clauseSummary", "set", "", clauseSummary);
     }
-    if (applies(["unit-addition"])) {
-      for (const a of unitsToAdd) {
-        if (!a.unitId) continue;
-        push("unitAssignments", "add", null,
-          { rentShare: Number(a.rentShare || 0), chargesShare: Number(a.chargesShare || 0) },
-          { unitId: a.unitId, assignmentType: a.assignmentType, startDate: effectiveDate });
-      }
+    for (const a of unitsToAdd) {
+      if (!a.unitId) continue;
+      push("unitAssignments", "add", null,
+        { rentShare: Number(a.rentShare || 0), chargesShare: Number(a.chargesShare || 0) },
+        { unitId: a.unitId, assignmentType: a.assignmentType, startDate: effectiveDate });
     }
-    if (applies(["unit-removal"])) {
-      for (const uid of unitsToRemove) {
-        push("unitAssignments", "remove", { unitId: uid }, null,
-          { unitId: uid, startDate: effectiveDate });
-      }
+    for (const uid of unitsToRemove) {
+      push("unitAssignments", "remove", { unitId: uid }, null,
+        { unitId: uid, startDate: effectiveDate });
     }
-    if (applies(["tenant-addition"]) && addTenantId) {
+    if (addTenantId) {
       push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, addTenantId],
         { tenantId: addTenantId });
     }
-    if (applies(["tenant-removal"]) && removeTenantId) {
+    if (removeTenantId) {
       push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== removeTenantId),
         { tenantId: removeTenantId });
     }
     return out;
-  }, [type, newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
+  }, [newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
       unitsToAdd, unitsToRemove, addTenantId, removeTenantId,
       lease, effectiveDate]);
+
+  const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
+  const derivedCategories = useMemo(() => {
+    const cats = new Set<AmendmentType>();
+    for (const c of changesDraft) {
+      switch (c.fieldName) {
+        case "baseMonthlyRentTotal":
+        case "unitRentShare": cats.add("rent-change"); break;
+        case "baseMonthlyChargesTotal":
+        case "unitChargesShare": cats.add("charges-change"); break;
+        case "leaseEndDate":
+          cats.add(String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening"); break;
+        case "depositAmount": cats.add("deposit-change"); break;
+        case "noticePeriodText": cats.add("notice-change"); break;
+        case "clauseSummary": cats.add("clause-change"); break;
+        case "unitAssignments":
+          cats.add(c.changeType === "add" ? "unit-addition" : "unit-removal"); break;
+        case "coTenantIds":
+          cats.add(c.changeType === "add" ? "tenant-addition" : "tenant-removal"); break;
+      }
+    }
+    return [...cats];
+  }, [changesDraft, lease]);
 
   // Live validation (uses a temp amendment record so validateAmendment can run).
   const liveValidation = useMemo(() => {
@@ -197,7 +233,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       id: existing?.id ?? "preview",
       leaseId: lease.id,
       amendmentNumber: existing?.amendmentNumber ?? 0,
-      amendmentType: type,
+      amendmentType: derivedType,
       title, reason, notes,
       effectiveDate,
       signedDate: signedDate || null,
@@ -208,7 +244,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     return validateAmendment(tempAm, changesDraft.map((c, i) => ({
       ...c, id: `p${i}`, amendmentId: tempAm.id, createdAt: "", updatedAt: "",
     })), integrityState);
-  }, [effectiveDate, type, title, reason, notes, signedDate, changesDraft, integrityState, lease.id, existing]);
+  }, [effectiveDate, derivedType, title, reason, notes, signedDate, changesDraft, integrityState, lease.id, existing]);
 
   const canSubmit = title.trim().length > 0 && effectiveDate;
   const canActivate = canSubmit && liveValidation?.allowed === true;
@@ -218,7 +254,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     if (existing) {
       updateAmendment({
         ...existing,
-        amendmentType: type, title, reason, notes,
+        amendmentType: derivedType, title, reason, notes,
         effectiveDate, signedDate: signedDate || null,
         status,
       }, changesDraft);
@@ -228,7 +264,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     } else {
       const created = addAmendment({
         leaseId: lease.id,
-        amendmentType: type, title, reason, notes,
+        amendmentType: derivedType, title, reason, notes,
         effectiveDate, signedDate: signedDate || null,
         supersedesAmendmentId: null,
         status,
@@ -248,14 +284,22 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <Label>{t("amendments.type")}</Label>
-            <Select value={type} onValueChange={(v) => setType(v as AmendmentType)}>
-              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TYPES.map(ty => (
-                  <SelectItem key={ty} value={ty}>{t(`amendments.type.${ty}` as any)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="rounded border bg-muted/30 px-2 py-1.5 min-h-8 flex flex-wrap items-center gap-1.5">
+              {derivedCategories.length === 0 ? (
+                <span className="text-xs text-muted-foreground">{t("amendments.noChangesYet")}</span>
+              ) : (
+                <>
+                  {derivedCategories.map(c => (
+                    <Badge key={c} variant="secondary" className="text-[10px]">
+                      {t(`amendments.type.${c}` as any)}
+                    </Badge>
+                  ))}
+                  {derivedCategories.length > 1 && (
+                    <span className="text-[11px] text-muted-foreground ml-1">{t("amendments.mixedHint")}</span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
           <div className="col-span-2">
             <Label>{t("amendments.titleField")}</Label>
@@ -274,45 +318,32 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             <Input className="h-8" value={reason} onChange={e => setReason(e.target.value)} />
           </div>
 
-          {(type === "rent-change" || type === "mixed") && (
-            <div>
+          <div>
               <Label>{t("amendments.newRent")}</Label>
               <Input className="h-8" type="number" value={newRent} onChange={e => setNewRent(e.target.value)} />
-            </div>
-          )}
-          {(type === "charges-change" || type === "mixed") && (
-            <div>
+          </div>
+          <div>
               <Label>{t("amendments.newCharges")}</Label>
               <Input className="h-8" type="number" value={newCharges} onChange={e => setNewCharges(e.target.value)} />
-            </div>
-          )}
-          {(type === "term-extension" || type === "term-shortening" || type === "mixed") && (
-            <div>
+          </div>
+          <div>
               <Label>{t("amendments.newEndDate")}</Label>
               <Input className="h-8" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
-            </div>
-          )}
-          {(type === "deposit-change" || type === "mixed") && (
-            <div>
+          </div>
+          <div>
               <Label>{t("amendments.newDeposit")}</Label>
               <Input className="h-8" type="number" value={newDeposit} onChange={e => setNewDeposit(e.target.value)} />
-            </div>
-          )}
-          {(type === "notice-change" || type === "mixed") && (
-            <div className="col-span-2">
+          </div>
+          <div className="col-span-2">
               <Label>{t("leases.noticePeriod")}</Label>
               <Input className="h-8" value={newNotice} onChange={e => setNewNotice(e.target.value)} />
-            </div>
-          )}
-          {(type === "clause-change" || type === "mixed") && (
-            <div className="col-span-2">
+          </div>
+          <div className="col-span-2">
               <Label>{t("amendments.clauseSummary")}</Label>
               <Textarea value={clauseSummary} onChange={e => setClauseSummary(e.target.value)} />
-            </div>
-          )}
+          </div>
 
-          {(type === "unit-addition" || type === "unit-removal" || type === "mixed") && (
-            <div className="col-span-2 border rounded p-3 space-y-2">
+          <div className="col-span-2 border rounded p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-medium">{t("amendments.unitChanges")}</div>
                 <Popover open={addUnitOpen} onOpenChange={setAddUnitOpen}>
@@ -445,28 +476,30 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                   .replace("{add}", String(unitsToAdd.length))
                   .replace("{remove}", String(unitsToRemove.length))}
               </div>
-            </div>
-          )}
+          </div>
 
-          {(type === "tenant-addition" || type === "tenant-removal") && (
-            <div className="col-span-2">
-              <Label>{t("tenants.name")}</Label>
-              <Select
-                value={type === "tenant-addition" ? addTenantId : removeTenantId}
-                onValueChange={(v) => type === "tenant-addition" ? setAddTenantId(v) : setRemoveTenantId(v)}
-              >
-                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(type === "tenant-addition"
-                    ? tenants.filter(tn => tn.id !== lease.primaryTenantId && !lease.coTenantIds.includes(tn.id))
-                    : tenants.filter(tn => lease.coTenantIds.includes(tn.id))
-                  ).map(tn => (
-                    <SelectItem key={tn.id} value={tn.id}>{tn.firstName} {tn.lastName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div>
+            <Label>{t("amendments.addCoTenant")}</Label>
+            <Select value={addTenantId} onValueChange={setAddTenantId}>
+              <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                {tenants.filter(tn => tn.id !== lease.primaryTenantId && !lease.coTenantIds.includes(tn.id)).map(tn => (
+                  <SelectItem key={tn.id} value={tn.id}>{tn.firstName} {tn.lastName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>{t("amendments.removeCoTenant")}</Label>
+            <Select value={removeTenantId} onValueChange={setRemoveTenantId}>
+              <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                {tenants.filter(tn => lease.coTenantIds.includes(tn.id)).map(tn => (
+                  <SelectItem key={tn.id} value={tn.id}>{tn.firstName} {tn.lastName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="col-span-2">
             <Label>{t("amendments.notes")}</Label>
