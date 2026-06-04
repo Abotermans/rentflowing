@@ -13,6 +13,7 @@ import { initialReceivableItems, initialCashReceipts, initialAllocations } from 
 import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
 import { autoAllocate } from "@/lib/reconciliation";
+import { generateLeaseReceivables } from "@/lib/leaseReceivables";
 import { computeAllocations } from "@/lib/costAllocation";
 import {
   migrateLegacyLeaseAssignments,
@@ -313,8 +314,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         },
       ]);
     }
+    // Auto-generate the monthly rent/charges receivables, plus a prepayment
+    // CashReceipt + allocations if the lease carries an advance. This is what
+    // makes "Rent paid until X" real — the prepayment satisfies actual receivables
+    // instead of being a phantom discount on the lease record.
+    const property = properties.find(p => p.id === created.propertyId);
+    const currencyCode = property?.currencyCode ?? "EUR";
+    const { receivables, prepaymentReceipt, allocations } = generateLeaseReceivables(created, {
+      currencyCode, genId, today: ts,
+    });
+    if (receivables.length > 0) setReceivableItems(prev => [...prev, ...receivables]);
+    if (prepaymentReceipt) setCashReceipts(prev => [...prev, prepaymentReceipt]);
+    if (allocations.length > 0) setAllocations(prev => [...prev, ...allocations]);
     return created;
-  }, []);
+  }, [properties]);
   const updateLease = useCallback((l: Lease) => {
     const ts = now();
     setLeases(prev => {
