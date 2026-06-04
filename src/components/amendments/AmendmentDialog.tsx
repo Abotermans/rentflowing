@@ -13,6 +13,7 @@ import type {
   AmendmentChangeMetadata,
 } from "@/types/amendments";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
