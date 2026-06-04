@@ -1172,10 +1172,10 @@ export default function LeaseDetail() {
       {/* Record Cash Receipt Sheet */}
       <Dialog open={receiptSheetOpen} onOpenChange={setReceiptSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Record Cash Receipt</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.recordReceipt")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
-              <Label>Source Type</Label>
+              <Label>{t("payments.dialog.sourceType")}</Label>
               <Select value={formSourceType} onValueChange={v => setFormSourceType(v as CashReceiptSourceType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1185,15 +1185,15 @@ export default function LeaseDetail() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Payment Date</Label><Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} /></div>
-            <div><Label>Amount ({currency})</Label><Input type="number" step="0.01" min="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" /></div>
-            <div><Label>Reference</Label><Input value={formRef} onChange={e => setFormRef(e.target.value)} /></div>
-            <div><Label>Notes</Label><Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2} /></div>
+            <div><Label>{t("payments.dialog.paymentDate")}</Label><Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.amountWithCurrency").replace("{currency}", currency)}</Label><Input type="number" step="0.01" min="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" /></div>
+            <div><Label>{t("payments.dialog.reference")}</Label><Input value={formRef} onChange={e => setFormRef(e.target.value)} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2} /></div>
             <div className="flex items-center justify-between">
-              <Label>Auto-allocate</Label>
+              <Label>{t("payments.dialog.autoAllocate")}</Label>
               <Switch checked={formAutoAllocate} onCheckedChange={setFormAutoAllocate} />
             </div>
-            <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">Record Cash Receipt</Button>
+            <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">{t("leaseDialog.recordReceipt")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1201,23 +1201,23 @@ export default function LeaseDetail() {
       {/* Guarantee Sheet */}
       <Dialog open={guaranteeSheetOpen} onOpenChange={setGuaranteeSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{guarantee ? t("leaseDialog.editGuarantee") : t("leaseDialog.addGuarantee")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Type</Label>
+            <div><Label>{t("table.type")}</Label>
               <Select value={gType} onValueChange={v => setGType(v as GuaranteeType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(GUARANTEE_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  {(Object.keys(GUARANTEE_TYPE_KEY) as GuaranteeType[]).map(k => <SelectItem key={k} value={k}>{t(GUARANTEE_TYPE_KEY[k])}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Expected Amount</Label><Input type="number" step="0.01" value={gExpected} onChange={e => setGExpected(e.target.value)} /></div>
-            <div><Label>Received Amount</Label><Input type="number" step="0.01" value={gReceived} onChange={e => setGReceived(e.target.value)} /></div>
-            <div><Label>Received Date</Label><Input type="date" value={gReceivedDate} onChange={e => setGReceivedDate(e.target.value)} /></div>
-            <div><Label>Release Date</Label><Input type="date" value={gReleaseDate} onChange={e => setGReleaseDate(e.target.value)} /></div>
-            <div><Label>Retention Amount</Label><Input type="number" step="0.01" value={gRetention} onChange={e => setGRetention(e.target.value)} /></div>
-            <div><Label>Notes</Label><Textarea value={gNotes} onChange={e => setGNotes(e.target.value)} rows={2} /></div>
-            <Button onClick={handleSaveGuarantee} className="w-full">Save Guarantee</Button>
+            <div><Label>{t("leaseDialog.expectedAmount")}</Label><Input type="number" step="0.01" value={gExpected} onChange={e => setGExpected(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.receivedAmount")}</Label><Input type="number" step="0.01" value={gReceived} onChange={e => setGReceived(e.target.value)} /></div>
+            <div><Label>{t("detail.receivedDate")}</Label><Input type="date" value={gReceivedDate} onChange={e => setGReceivedDate(e.target.value)} /></div>
+            <div><Label>{t("detail.releaseDate")}</Label><Input type="date" value={gReleaseDate} onChange={e => setGReleaseDate(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.retentionAmount")}</Label><Input type="number" step="0.01" value={gRetention} onChange={e => setGRetention(e.target.value)} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={gNotes} onChange={e => setGNotes(e.target.value)} rows={2} /></div>
+            <Button onClick={handleSaveGuarantee} className="w-full">{t("leaseDialog.saveGuarantee")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1225,12 +1225,12 @@ export default function LeaseDetail() {
       {/* Notice Sheet */}
       <Dialog open={noticeSheetOpen} onOpenChange={setNoticeSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Register Notice</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.registerNotice")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Notice Date</Label><Input type="date" value={nDate} onChange={e => setNDate(e.target.value)} /></div>
-            <div><Label>Intended Move-Out</Label><Input type="date" value={nMoveOut} onChange={e => setNMoveOut(e.target.value)} /></div>
-            <div><Label>Reason</Label><Textarea value={nReason} onChange={e => setNReason(e.target.value)} rows={2} /></div>
-            <Button onClick={handleSaveNotice} className="w-full">Save Notice</Button>
+            <div><Label>{t("detail.noticeDate")}</Label><Input type="date" value={nDate} onChange={e => setNDate(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.intendedMoveOut")}</Label><Input type="date" value={nMoveOut} onChange={e => setNMoveOut(e.target.value)} /></div>
+            <div><Label>{t("detail.reason")}</Label><Textarea value={nReason} onChange={e => setNReason(e.target.value)} rows={2} /></div>
+            <Button onClick={handleSaveNotice} className="w-full">{t("leaseDialog.saveNotice")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1238,17 +1238,17 @@ export default function LeaseDetail() {
       {/* Move-In Sheet */}
       <Dialog open={moveInSheetOpen} onOpenChange={setMoveInSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Move-In</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.moveIn")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Scheduled Date</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Electricity Meter</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} placeholder="kWh" /></div>
-              <div><Label>Water Meter</Label><Input value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} placeholder="m³" /></div>
+              <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} placeholder="kWh" /></div>
+              <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} placeholder="m³" /></div>
             </div>
-            <div><Label>Keys Handed Over</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
             <div className="flex gap-2">
-              <Button onClick={handleScheduleMoveIn} variant="outline" className="flex-1">Schedule</Button>
-              <Button onClick={handleConfirmMoveIn} className="flex-1">Confirm Move-In</Button>
+              <Button onClick={handleScheduleMoveIn} variant="outline" className="flex-1">{t("leaseDialog.schedule")}</Button>
+              <Button onClick={handleConfirmMoveIn} className="flex-1">{t("leaseDialog.confirmMoveIn")}</Button>
             </div>
           </div>
         </DialogContent>
@@ -1257,17 +1257,17 @@ export default function LeaseDetail() {
       {/* Move-Out Sheet */}
       <Dialog open={moveOutSheetOpen} onOpenChange={setMoveOutSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Move-Out</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.moveOut")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Scheduled Date</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Electricity Meter</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
-              <div><Label>Water Meter</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
+              <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
+              <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
             </div>
-            <div><Label>Notes</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
             <div className="flex gap-2">
-              <Button onClick={handleScheduleMoveOut} variant="outline" className="flex-1">Schedule</Button>
-              <Button onClick={handleConfirmMoveOut} className="flex-1">Confirm Move-Out</Button>
+              <Button onClick={handleScheduleMoveOut} variant="outline" className="flex-1">{t("leaseDialog.schedule")}</Button>
+              <Button onClick={handleConfirmMoveOut} className="flex-1">{t("leaseDialog.confirmMoveOut")}</Button>
             </div>
           </div>
         </DialogContent>
@@ -1276,20 +1276,20 @@ export default function LeaseDetail() {
       {/* Return Sheet */}
       <Dialog open={returnSheetOpen} onOpenChange={setReturnSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Return Status</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.returnStatus")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Status</Label>
+            <div><Label>{t("table.status")}</Label>
               <Select value={retStatus} onValueChange={v => setRetStatus(v as ReturnStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in-review">In Review</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">{t("status.pending")}</SelectItem>
+                  <SelectItem value="in-review">{t("status.inReview")}</SelectItem>
+                  <SelectItem value="completed">{t("status.completed")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Notes</Label><Textarea value={retNotes} onChange={e => setRetNotes(e.target.value)} rows={2} /></div>
-            <Button onClick={handleSaveReturn} className="w-full">Save</Button>
+            <div><Label>{t("common.notes")}</Label><Textarea value={retNotes} onChange={e => setRetNotes(e.target.value)} rows={2} /></div>
+            <Button onClick={handleSaveReturn} className="w-full">{t("action.save")}</Button>
           </div>
         </DialogContent>
       </Dialog>
