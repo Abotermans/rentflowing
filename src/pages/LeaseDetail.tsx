@@ -854,7 +854,7 @@ export default function LeaseDetail() {
         <CardContent>
           {guarantee ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div><p className="text-xs text-muted-foreground">{t("units.type")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[guarantee.type]}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("units.type")}</p><p className="text-sm font-medium text-foreground">{t(GUARANTEE_TYPE_KEY[guarantee.type])}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("table.expected")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.expectedAmount, currency, locale)}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("table.received")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.receivedAmount, currency, locale)}</p></div>
               {guarantee.receivedDate && <div><p className="text-xs text-muted-foreground">{t("detail.receivedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.receivedDate, locale)}</p></div>}
@@ -910,7 +910,7 @@ export default function LeaseDetail() {
                       disabled={moveInStatus === "completed"}
                     />
                     <span className={`text-sm ${lease.moveInChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                      {MOVE_IN_CHECKLIST_LABELS[key]}
+                      {t(MOVE_IN_CHECKLIST_KEY[key])}
                     </span>
                   </label>
                 ))}
@@ -954,7 +954,7 @@ export default function LeaseDetail() {
                       disabled={moveOutStatus === "completed"}
                     />
                     <span className={`text-sm ${lease.moveOutChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                      {MOVE_OUT_CHECKLIST_LABELS[key]}
+                      {t(MOVE_OUT_CHECKLIST_KEY[key])}
                     </span>
                   </label>
                 ))}
@@ -1030,7 +1030,7 @@ export default function LeaseDetail() {
                 <div><p className="text-xs text-muted-foreground">{t("tenants.email")}</p><p className="text-sm text-foreground">{tenant.email}</p></div>
                 <div><p className="text-xs text-muted-foreground">{t("tenants.phone")}</p><p className="text-sm text-foreground">{tenant.phone || "—"}</p></div>
               </div>
-            ) : <p className="text-sm text-muted-foreground">Tenant not found.</p>}
+            ) : <p className="text-sm text-muted-foreground">{t("leaseDetail.tenantNotFound")}</p>}
           </CardContent>
         </Card>
         <Card>
