@@ -405,7 +405,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
           {(type === "tenant-addition" || type === "tenant-removal") && (
             <div className="col-span-2">
-              <Label>{t("tenants.tenant")}</Label>
+              <Label>{t("tenants.name")}</Label>
               <Select
                 value={type === "tenant-addition" ? addTenantId : removeTenantId}
                 onValueChange={(v) => type === "tenant-addition" ? setAddTenantId(v) : setRemoveTenantId(v)}
