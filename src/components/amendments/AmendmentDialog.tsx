@@ -73,6 +73,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
   const [addTenantId, setAddTenantId] = useState("");
   const [removeTenantId, setRemoveTenantId] = useState("");
+  const [addUnitOpen, setAddUnitOpen] = useState(false);
 
   const currentUnits = useMemo(
     () => getLeaseAssignedUnits(lease.id, { activeOnly: true }),
