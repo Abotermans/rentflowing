@@ -35,6 +35,7 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
+import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
 
 const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
   "cash-deposit": "guarantee.type.cashDeposit",
