@@ -1051,21 +1051,21 @@ export default function LeaseDetail() {
 
       {/* Receivables */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Open Receivables</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.openReceivables")}</CardTitle></CardHeader>
         <CardContent>
           {enrichedReceivables.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No receivable items.</p>
+            <p className="text-sm text-muted-foreground">{t("leaseDetail.noReceivables")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Period</TableHead>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs">Due Date</TableHead>
-                  <TableHead className="text-xs text-right">Expected</TableHead>
-                  <TableHead className="text-xs text-right">Allocated</TableHead>
-                  <TableHead className="text-xs text-right">Outstanding</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">{t("leaseDetail.period")}</TableHead>
+                  <TableHead className="text-xs">{t("table.type")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.dueDate")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.expected")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.allocated")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.outstanding")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1088,20 +1088,20 @@ export default function LeaseDetail() {
 
       {/* Cash Receipts */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Cash Receipts</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.cashReceipts")}</CardTitle></CardHeader>
         <CardContent>
           {receipts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No cash receipts recorded.</p>
+            <p className="text-sm text-muted-foreground">{t("leaseDetail.noCashReceipts")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Date</TableHead>
-                  <TableHead className="text-xs text-right">Received</TableHead>
-                  <TableHead className="text-xs text-right">Unmatched</TableHead>
-                  <TableHead className="text-xs">Source</TableHead>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.received")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.unmatched")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.source")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1128,15 +1128,15 @@ export default function LeaseDetail() {
         if (leaseAllocations.length === 0) return null;
         return (
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Allocation History</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.allocationHistory")}</CardTitle></CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">Receivable</TableHead>
-                    <TableHead className="text-xs text-right">Amount</TableHead>
-                    <TableHead className="text-xs">Method</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.receivable")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("payments.table.amount")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.method")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
