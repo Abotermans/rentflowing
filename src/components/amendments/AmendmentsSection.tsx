@@ -105,7 +105,7 @@ export function AmendmentsSection({ leaseId }: Props) {
                   <TableRow>
                     <TableHead className="h-8">#</TableHead>
                     <TableHead className="h-8">{t("amendments.type")}</TableHead>
-                    <TableHead className="h-8">Title</TableHead>
+                    <TableHead className="h-8">{t("amendments.titleField")}</TableHead>
                     <TableHead className="h-8">{t("amendments.effectiveDate")}</TableHead>
                     <TableHead className="h-8">{t("amendments.newEndDateCol")}</TableHead>
                     <TableHead className="h-8">{t("amendments.status")}</TableHead>
