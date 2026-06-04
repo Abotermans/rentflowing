@@ -2,22 +2,43 @@ import type { Lease, AdvanceAllocationMethod, AdvanceAppliedTo, AdvanceStatus } 
 
 export interface AdvanceScheduleRow {
   month: string;
-  baseDue: number;
-  adjustment: number;
-  effectiveDue: number;
-  advanceRemaining: number;
+  /** Monthly rent due for this month (already at the chosen tier rate). */
+  rentDue: number;
+  /** Portion of this month's rent that the prepayment covers. */
+  prepaidShare: number;
+  /** Whether the month is fully covered by the prepayment. */
+  fullyCovered: boolean;
+  /** Remaining prepayment balance after this month is allocated. */
+  prepaidRemaining: number;
 }
 
 export interface AdvancePricingResult {
-  pricingAdjustmentPerMonth: number;
+  /** Effective monthly rent for this lease (= tier price, NOT discounted by the prepayment). */
   effectiveMonthlyRent: number;
+  /** Effective monthly charges (unchanged by prepayment). */
   effectiveMonthlyCharges: number;
+  /** Effective monthly due = rent + charges (tier price). */
   effectiveMonthlyDue: number;
+  /** Total prepayment received. */
+  advanceAmount: number;
+  /** Amount of the prepayment consumed by months on or before referenceDate. */
   advanceConsumed: number;
+  /** Prepayment left to cover future months. */
   advanceRemaining: number;
   advanceStatus: AdvanceStatus;
+  /** First month covered (YYYY-MM). */
+  allocationStartMonth: string | null;
+  /** Last month covered (YYYY-MM). */
   allocationEndDate: string | null;
+  /**
+   * Last calendar date covered by the prepayment (end of last covered month).
+   * Display as "Rent paid until {prepaidUntilDate}" in the UI.
+   */
+  prepaidUntilDate: string | null;
+  /** Total number of months the prepayment covers. */
   durationMonths: number;
+  monthsCovered: number;
+  monthsRemaining: number;
   monthlySchedule: AdvanceScheduleRow[];
 }
 
@@ -41,15 +62,19 @@ export function computeAdvancePricing(
   const baseDue = baseRent + baseCharges;
 
   const empty: AdvancePricingResult = {
-    pricingAdjustmentPerMonth: 0,
     effectiveMonthlyRent: baseRent,
     effectiveMonthlyCharges: baseCharges,
     effectiveMonthlyDue: baseDue,
+    advanceAmount: 0,
     advanceConsumed: 0,
     advanceRemaining: 0,
     advanceStatus: 'not-applicable',
+    allocationStartMonth: null,
     allocationEndDate: null,
+    prepaidUntilDate: null,
     durationMonths: 0,
+    monthsCovered: 0,
+    monthsRemaining: 0,
     monthlySchedule: [],
   };
 
@@ -61,36 +86,28 @@ export function computeAdvancePricing(
   const method = lease.advanceAllocationMethod;
   if (!method) return empty;
 
-  let adjustmentPerMonth: number;
+  // What the prepayment is applied against per month (rent, charges, or both).
+  const appliedTo = lease.advanceAppliedTo || 'rent';
+  const targetPerMonth =
+    appliedTo === 'rent' ? baseRent :
+    appliedTo === 'charges' ? baseCharges :
+    baseRent + baseCharges;
+
+  if (targetPerMonth <= 0) return empty;
+
+  let perMonthAllocation: number;
   let durationMonths: number;
 
   if (method === 'spread-evenly') {
     durationMonths = lease.advanceAllocationDurationMonths || 0;
     if (durationMonths <= 0) return empty;
-    adjustmentPerMonth = Math.round((amount / durationMonths) * 100) / 100;
+    // Cap at one month's target — the prepayment covers months, never inflates them.
+    perMonthAllocation = Math.min(targetPerMonth, Math.round((amount / durationMonths) * 100) / 100);
   } else {
-    adjustmentPerMonth = lease.fixedMonthlyReductionAmount || 0;
-    if (adjustmentPerMonth <= 0) return empty;
-    durationMonths = Math.ceil(amount / adjustmentPerMonth);
+    perMonthAllocation = Math.min(targetPerMonth, lease.fixedMonthlyReductionAmount || 0);
+    if (perMonthAllocation <= 0) return empty;
+    durationMonths = Math.ceil(amount / perMonthAllocation);
   }
-
-  const appliedTo = lease.advanceAppliedTo || 'rent';
-  let rentReduction = 0;
-  let chargesReduction = 0;
-
-  if (appliedTo === 'rent') {
-    rentReduction = Math.min(adjustmentPerMonth, baseRent);
-  } else if (appliedTo === 'charges') {
-    chargesReduction = Math.min(adjustmentPerMonth, baseCharges);
-  } else {
-    rentReduction = Math.min(adjustmentPerMonth, baseRent);
-    const leftover = adjustmentPerMonth - rentReduction;
-    chargesReduction = Math.min(leftover, baseCharges);
-  }
-
-  const effectiveRent = Math.max(0, baseRent - rentReduction);
-  const effectiveCharges = Math.max(0, baseCharges - chargesReduction);
-  const effectiveDue = effectiveRent + effectiveCharges;
 
   const startDate = lease.advanceAllocationStartDate || lease.startDate;
   const startYear = parseInt(startDate.slice(0, 4));
@@ -100,6 +117,15 @@ export function computeAdvancePricing(
 
   const lastAllocMonth = new Date(startYear, startMonth + durationMonths - 1, 1);
   const allocationEndDate = `${lastAllocMonth.getFullYear()}-${String(lastAllocMonth.getMonth() + 1).padStart(2, '0')}`;
+  // End of last covered month (e.g. 2026-12 → 2026-12-31).
+  const prepaidUntilDate = (() => {
+    const lastDay = new Date(lastAllocMonth.getFullYear(), lastAllocMonth.getMonth() + 1, 0);
+    const y = lastDay.getFullYear();
+    const m = String(lastDay.getMonth() + 1).padStart(2, '0');
+    const d = String(lastDay.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  })();
+  const allocationStartMonth = `${startYear}-${String(startMonth + 1).padStart(2, '0')}`;
 
   const ref = referenceDate || new Date();
   const refMonthIndex = ref.getFullYear() * 12 + ref.getMonth();
@@ -122,7 +148,7 @@ export function computeAdvancePricing(
     monthsConsumed = refMonthIndex - startMonthIndex + 1;
   }
 
-  const consumed = Math.min(adjustmentPerMonth * monthsConsumed, amount);
+  const consumed = Math.min(perMonthAllocation * monthsConsumed, amount);
   const remaining = Math.max(0, amount - consumed);
 
   const schedule: AdvanceScheduleRow[] = [];
@@ -130,27 +156,33 @@ export function computeAdvancePricing(
   for (let i = 0; i < durationMonths; i++) {
     const d = new Date(startYear, startMonth + i, 1);
     const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const adj = Math.min(adjustmentPerMonth, runningRemaining);
+    const adj = Math.min(perMonthAllocation, runningRemaining);
     runningRemaining = Math.max(0, runningRemaining - adj);
     schedule.push({
       month: monthStr,
-      baseDue,
-      adjustment: adj,
-      effectiveDue: baseDue - adj,
-      advanceRemaining: runningRemaining,
+      rentDue: appliedTo === 'charges' ? baseCharges : baseRent,
+      prepaidShare: adj,
+      fullyCovered: adj >= targetPerMonth - 0.005,
+      prepaidRemaining: runningRemaining,
     });
   }
 
   return {
-    pricingAdjustmentPerMonth: adjustmentPerMonth,
-    effectiveMonthlyRent: status === 'fully-consumed' ? baseRent : effectiveRent,
-    effectiveMonthlyCharges: status === 'fully-consumed' ? baseCharges : effectiveCharges,
-    effectiveMonthlyDue: status === 'fully-consumed' ? baseDue : effectiveDue,
+    // Prepayment never discounts the rent — rent is the tier price and the
+    // prepayment is real money that satisfies future rent receivables.
+    effectiveMonthlyRent: baseRent,
+    effectiveMonthlyCharges: baseCharges,
+    effectiveMonthlyDue: baseDue,
+    advanceAmount: amount,
     advanceConsumed: consumed,
     advanceRemaining: remaining,
     advanceStatus: status,
+    allocationStartMonth,
     allocationEndDate,
+    prepaidUntilDate,
     durationMonths,
+    monthsCovered: monthsConsumed,
+    monthsRemaining: Math.max(0, durationMonths - monthsConsumed),
     monthlySchedule: schedule,
   };
 }

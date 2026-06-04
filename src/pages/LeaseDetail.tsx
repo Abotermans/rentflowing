@@ -581,16 +581,9 @@ export default function LeaseDetail() {
             <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{lease.dueDayOfMonth}th of each month</p></div>
-            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Rent" : t("leases.monthlyRent")}</p><p className={`font-bold text-foreground ${hasAdvance ? "text-sm line-through opacity-60" : "text-lg"}`}>{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Charges" : t("leases.monthlyCharges")}</p><p className={`font-bold text-foreground ${hasAdvance ? "text-sm line-through opacity-60" : "text-lg"}`}>{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{hasAdvance ? "Base Total" : t("detail.totalMonthly")}</p><p className={`font-bold ${hasAdvance ? "text-sm line-through opacity-60 text-foreground" : "text-lg text-primary"}`}>{formatCurrency(totalMonthly, currency, locale)}</p></div>
-            {hasAdvance && (
-              <>
-                <div><p className="text-xs text-muted-foreground">Effective Rent</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.effectiveMonthlyRent, currency, locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Effective Charges</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.effectiveMonthlyCharges, currency, locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Effective Total</p><p className="text-lg font-bold text-primary">{formatCurrency(advancePricing.effectiveMonthlyDue, currency, locale)}</p></div>
-              </>
-            )}
+            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{lease.depositOrGuaranteeAmount != null ? formatCurrency(lease.depositOrGuaranteeAmount, currency, locale) : "—"}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
             {lease.signedDate && <div><p className="text-xs text-muted-foreground">{t("leases.signedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.signedDate, locale)}</p></div>}
@@ -709,16 +702,30 @@ export default function LeaseDetail() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />Advance Payment</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />Rent prepayment</CardTitle>
               <StatusBadge status={advancePricing.advanceStatus} />
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Hero: Rent paid until */}
+            {advancePricing.prepaidUntilDate && (
+              <div className="rounded-md border bg-muted/30 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Rent paid until</p>
+                  <p className="text-xl font-bold text-foreground">{formatDate(advancePricing.prepaidUntilDate, locale)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Months remaining</p>
+                  <p className="text-xl font-bold text-primary">{advancePricing.monthsRemaining} / {advancePricing.durationMonths}</p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div><p className="text-xs text-muted-foreground">Advance Amount</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.advancePaymentAmount!, currency, locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Prepayment amount</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.advanceAmount, currency, locale)}</p></div>
               <div><p className="text-xs text-muted-foreground">Method</p><p className="text-sm font-medium text-foreground">{ADVANCE_METHOD_LABELS[lease.advanceAllocationMethod!]}</p></div>
-              <div><p className="text-xs text-muted-foreground">Applied To</p><p className="text-sm font-medium text-foreground">{ADVANCE_APPLIED_LABELS[lease.advanceAppliedTo || 'rent']}</p></div>
-              <div><p className="text-xs text-muted-foreground">Reduction / Month</p><p className="text-sm font-medium text-foreground">{formatCurrency(advancePricing.pricingAdjustmentPerMonth, currency, locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Applied to</p><p className="text-sm font-medium text-foreground">{ADVANCE_APPLIED_LABELS[lease.advanceAppliedTo || 'rent']}</p></div>
+              <div><p className="text-xs text-muted-foreground">Payment date</p><p className="text-sm font-medium text-foreground">{lease.advancePaymentDate ? formatDate(lease.advancePaymentDate, locale) : "—"}</p></div>
             </div>
 
             <div className="space-y-1.5">
@@ -726,12 +733,12 @@ export default function LeaseDetail() {
                 <span>Consumed: {formatCurrency(advancePricing.advanceConsumed, currency, locale)}</span>
                 <span>Remaining: {formatCurrency(advancePricing.advanceRemaining, currency, locale)}</span>
               </div>
-              <Progress value={lease.advancePaymentAmount! > 0 ? (advancePricing.advanceConsumed / lease.advancePaymentAmount!) * 100 : 0} className="h-2" />
+              <Progress value={advancePricing.advanceAmount > 0 ? (advancePricing.advanceConsumed / advancePricing.advanceAmount) * 100 : 0} className="h-2" />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div><p className="text-xs text-muted-foreground">Allocation Start</p><p className="font-medium text-foreground">{lease.advanceAllocationStartDate ? formatDate(lease.advanceAllocationStartDate + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
-              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">Allocation End</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
+              <div><p className="text-xs text-muted-foreground">First month covered</p><p className="font-medium text-foreground">{advancePricing.allocationStartMonth ? formatDate(advancePricing.allocationStartMonth + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
+              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">Last month covered</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
               <div><p className="text-xs text-muted-foreground">Duration</p><p className="font-medium text-foreground">{advancePricing.durationMonths} months</p></div>
             </div>
 
@@ -740,7 +747,7 @@ export default function LeaseDetail() {
               <Collapsible>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground hover:text-foreground">
-                    Monthly Allocation Schedule
+                    Monthly prepayment schedule
                     <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
                   </Button>
                 </CollapsibleTrigger>
@@ -750,10 +757,9 @@ export default function LeaseDetail() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-xs">Month</TableHead>
-                          <TableHead className="text-xs text-right">Base Due</TableHead>
-                          <TableHead className="text-xs text-right">Adjustment</TableHead>
-                          <TableHead className="text-xs text-right">Effective Due</TableHead>
-                          <TableHead className="text-xs text-right">Remaining</TableHead>
+                          <TableHead className="text-xs text-right">Rent due</TableHead>
+                          <TableHead className="text-xs text-right">Covered by prepayment</TableHead>
+                          <TableHead className="text-xs text-right">Prepayment remaining</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -761,7 +767,7 @@ export default function LeaseDetail() {
                           const now = new Date();
                           const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                           const isCurrent = row.month === currentMonth;
-                          const isPaidViaAdvance = row.adjustment >= row.baseDue || row.effectiveDue === 0;
+                          const isPaidViaAdvance = row.fullyCovered;
                           const isPast = row.month < currentMonth;
                           return (
                             <TableRow key={row.month} className={isCurrent ? "bg-primary/5 font-medium" : ""}>
@@ -772,14 +778,13 @@ export default function LeaseDetail() {
                                     <span className="inline-flex items-center rounded-full bg-success/15 text-success px-1.5 py-0.5 text-[10px] font-semibold">Paid</span>
                                   )}
                                   {isPaidViaAdvance && !isPast && !isCurrent && (
-                                    <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">Covered</span>
+                                    <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">Prepaid</span>
                                   )}
                                 </span>
                               </TableCell>
-                              <TableCell className="text-xs text-right">{formatCurrency(row.baseDue, currency, locale)}</TableCell>
-                              <TableCell className="text-xs text-right text-success">-{formatCurrency(row.adjustment, currency, locale)}</TableCell>
-                              <TableCell className="text-xs text-right font-medium">{formatCurrency(row.effectiveDue, currency, locale)}</TableCell>
-                              <TableCell className="text-xs text-right text-muted-foreground">{formatCurrency(row.advanceRemaining, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right">{formatCurrency(row.rentDue, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right text-success">{formatCurrency(row.prepaidShare, currency, locale)}</TableCell>
+                              <TableCell className="text-xs text-right text-muted-foreground">{formatCurrency(row.prepaidRemaining, currency, locale)}</TableCell>
                             </TableRow>
                           );
                         })}

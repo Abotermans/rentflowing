@@ -1,131 +1,92 @@
+# Rework "Advance payment" on leases
 
-# Lease Amendments ("Avenants") — Implementation Plan
+## What's wrong today
 
-Adds professional amendment management on top of the existing multi-unit lease + LeaseUnitAssignment model. The Lease record stays the stable master; every contractual change becomes a structured `LeaseAmendment` with delta lines, applied prospectively from `effectiveDate`.
+After tracing `rentFormula`, `computeAdvancePricing`, and the receivables module:
 
-## 1. Data Model (`src/types/amendments.ts`)
+- `rentFormula` only picks a **pricing tier** (a cheaper monthly rent when the tenant commits to 6 or 12 months). It has no effect on receivables or payments.
+- Picking a formula > 1 month auto-fills `hasAdvancePayment = true` with amount = `monthlyRent × months`, then `computeAdvancePricing` treats it as a **discount spread over those months** (`effectiveMonthlyRent` becomes ~0). That's the wrong mental model — it looks like the landlord is gifting the rent, not like the tenant has prepaid it.
+- Receivables (`receivableItems`) are pure mock data. Nothing reads `rentFormula` or the advance fields when producing receivables. There is no monthly receivable generator.
+- There is no `CashReceipt` automatically created for the prepayment, and no auto-allocation against future months.
+- The LeaseDetail "Advance" card shows a schedule with an "Allocation End", but never a clear **"Rent paid until DD/MM/YYYY"** statement, and the schedule is decoupled from real receivables/receipts the user sees on the Payments / Reconciliation pages.
 
-**`LeaseAmendment`**
-- `id`, `leaseId`, `amendmentNumber` (auto-incremented per lease)
-- `amendmentType`: `rent-change | charges-change | term-extension | term-shortening | unit-addition | unit-removal | unit-change | tenant-addition | tenant-removal | guarantee-change | deposit-change | notice-change | clause-change | mixed`
-- `title`, `reason`, `notes`
-- `effectiveDate` (drives system behaviour), `signedDate` (documentary only)
-- `status`: `draft | pending-signature | active | cancelled | superseded`
-- `supersedesAmendmentId?` (when replacing a prior amendment)
-- `createdAt`, `updatedAt`
+In short: today the system stores the *intent* of an advance, not the *event* of the tenant paying it, and the receivables ledger doesn't reflect it.
 
-**`LeaseAmendmentChange`** (delta line, structured not free text)
-- `id`, `amendmentId`
-- `fieldName`: typed union — `baseMonthlyRentTotal | baseMonthlyChargesTotal | leaseEndDate | depositAmount | noticePeriodText | primaryTenantId | coTenantIds | guaranteeSummary | unitAssignments | unitRentShare | unitChargesShare | unitAssignmentType | primaryUnitId | clauseSummary`
-- `changeType`: `set | add | remove | replace`
-- `oldValue`, `newValue` (JSON-serialisable scalars or arrays)
-- `metadata?` (e.g. `{ unitId, assignmentType, startDate }` for unit-related changes)
-- `createdAt`, `updatedAt`
+## Target model
 
-Stored on `AppState` as `amendments: LeaseAmendment[]` and `amendmentChanges: LeaseAmendmentChange[]`. Seeded in `src/data/mockData.ts` with the 8 sample cases from the brief.
+Treat the advance as **two distinct things**, both first-class:
 
-## 2. Effective Terms Engine (`src/lib/amendments.ts`)
+1. **Pricing model** — `rentFormula` keeps selecting the monthly rent tier (unchanged). `monthlyRent` on the lease is the *effective* per-month price for the chosen formula.
+2. **Prepayment event** — when the formula is > 1 month (or the user manually toggles "rent paid in advance"), the tenant has prepaid `monthlyRent × N` at lease start. This must be recorded as:
+   - a **CashReceipt** dated `advancePaymentDate` (default = lease start), amount = `monthlyRent × N`, source = "advance prepayment", linked to the lease + primary tenant.
+   - the **monthly rent receivables** for those N months are generated at the effective tier rent (charges remain monthly, billed normally).
+   - the receipt is **auto-allocated** to those N rent receivables in chronological order, so they immediately show as **paid**.
+   - any leftover (e.g. rounding, or method = `fixed-monthly-reduction`) stays as `unmatchedAmount` on the receipt.
 
-Pure functions, no state mutation:
+This way the prepayment is real money in the ledger, the months it covers are visibly paid, and "rent paid until" is just a query on the last fully-allocated rent receivable.
 
-- `getLeaseAmendments(leaseId, amendments)` → sorted by `effectiveDate` then `amendmentNumber`
-- `getActiveAmendmentsOn(leaseId, date, amendments)` → only `status='active'` and `effectiveDate ≤ date`
-- `getEffectiveLeaseTerms(leaseId, date, state)` → `EffectiveLeaseTerms` shape (rent, charges, endDate, depositAmount, noticePeriodText, primaryTenantId, coTenantIds, units: derived view from assignments active on `date`)
-- `getCurrentLeaseTerms(leaseId, state)` = `getEffectiveLeaseTerms(leaseId, today)`
-- `getOriginalLeaseTerms(leaseId, state)` → baseline from Lease record + initial primary-included assignments (assignment rows created at or before lease `startDate`)
-- `getLeaseAmendmentImpact(amendmentId, state)` → `{ before, after, affectedUnits, financialDelta, warnings }`
-- `canActivateAmendment(amendmentId, state)` → ValidationResult
+## What to build
 
-Folding rule: start from original terms, apply each active amendment in `(effectiveDate, amendmentNumber)` order; each change line replaces a field or mutates the unit-assignment projection.
+### 1. Lease-driven receivable generator (`src/lib/leaseReceivables.ts`)
 
-The engine never mutates `LeaseUnitAssignment` rows directly. Unit changes are projected on top of the assignment table; when an amendment is **activated**, real assignment rows are created/closed prospectively (see §4).
+```text
+generateLeaseReceivables(lease, propertyCurrency)
+  → { receivables: ReceivableItem[], prepaymentReceipt?: CashReceipt, allocations: ReceiptAllocation[] }
+```
 
-## 3. Validation (`src/lib/integrity/amendmentIntegrity.ts`)
+- For an active/draft lease, generate one rent receivable + one charges receivable per month between `startDate` and `endDate` (or first renewal anchor), using `lease.monthlyRent` and `lease.monthlyCharges` (already the tier price).
+- If `hasAdvancePayment`:
+  - Build the prepayment `CashReceipt` (date = `advancePaymentDate ?? startDate`, amount = `advancePaymentAmount`).
+  - Auto-allocate against the first N months of rent (or rent+charges if `advanceAppliedTo === 'rent-and-charges'`) using the same priority logic as `autoAllocate`.
+  - Leftover (if `fixed-monthly-reduction` over-prepays the last month) stays unmatched.
 
-`validateAmendment(amendment, changes, state)` — blockers:
-- lease must exist; lease not in `draft` (amendments only meaningful on signed leases)
-- `active` requires `effectiveDate`
-- resulting state must keep exactly one primary unit and ≥1 unit while lease is active
-- added units belong to the same property
-- added unit must not overlap another active lease at `effectiveDate`
-- rent/charges resulting totals ≥ 0
-- assignment date coherence (`startDate ≤ endDate`)
-- cannot remove primary without designating a new one in the same amendment
+This function is the single source of truth. It's called:
+- once when a lease is created or its financial terms change (rent, formula, dates, advance fields, amendments activated);
+- by an amendment activation to generate forward-looking receivables under new terms (existing paid past receivables untouched — already a constraint in the amendment engine).
 
-Warnings:
-- `effectiveDate` in the past
-- overlaps unpaid receivables (any open ReceivableItem with `periodMonth ≥ effectiveDate`)
-- conflicts with another pending/active amendment touching same field
-- guarantee/deposit change while related receivables unpaid
-- tenant removal while balance > 0
-- primary unit change (reporting/occupancy heads-up)
+### 2. AppContext wiring (`src/context/AppContext.tsx`)
 
-Wired into the existing integrity layer via `src/lib/integrity/index.ts` and surfaced through `IntegritySummaryPanel`.
+- After `addLease` / `updateLease` (when financial fields changed) / `activateAmendment`, diff existing receivables for the affected forward periods, replace only the unpaid future ones, and append the prepayment receipt + allocations if missing.
+- Keep historical paid receivables and their allocations intact (never delete a paid line).
+- Update `migrateLegacy…` helpers to backfill prepayment receipts for existing mock leases on first load so the demo data stays coherent.
 
-## 4. State / Activation (`src/context/AppContext.tsx`)
+### 3. Reframe `computeAdvancePricing` (`src/lib/advancePricing.ts`)
 
-New API:
-- `addAmendment(draft)`, `updateAmendment(a, changes)`, `deleteAmendment(id)` (draft only)
-- `setAmendmentStatus(id, status)` with controlled transitions
-- `activateAmendment(id)` — runs `canActivateAmendment`, on success:
-  - sets `status='active'`
-  - applies unit-assignment side effects prospectively: new rows with `startDate = effectiveDate`, existing rows closed via `endDate = effectiveDate - 1 day` (reuses existing `closeOpenAssignmentsForLease` pattern, scoped per unit)
-  - **never** edits the Lease record directly. `Lease.monthlyRent/monthlyCharges/endDate/...` remain the original baseline. UI reads current values through `getCurrentLeaseTerms`.
-- `cancelAmendment(id)`, `supersedeAmendment(id, replacementId)`
+- Stop treating the advance as a per-month rent discount. `effectiveMonthlyRent` and `effectiveMonthlyCharges` should equal the base values (the tier already encodes the discount).
+- Keep the function as a **read model**: it returns
+  - `prepaidUntilDate` — last day covered by the prepayment (derived from the allocated rent receivables, not recomputed independently);
+  - `monthsCovered`, `monthsRemaining`, `amountRemaining`;
+  - the same monthly schedule, but each row now means "rent for this month is prepaid", not "rent is discounted this month".
+- All consumers updated to the new field names. Remove the misleading "Effective Rent / Effective Total" KPIs on LeaseDetail.
 
-Receivable generation hook (when/if generating future receivables) reads `getEffectiveLeaseTerms(leaseId, periodMonth)` instead of raw Lease fields. Past paid receivables untouched.
+### 4. LeaseDetail UI (`src/pages/LeaseDetail.tsx`)
 
-## 5. UI
+- Rename the section to **"Rent prepayment"** (FR: "Loyer payé d'avance").
+- Top line, large: **"Rent paid until DD/MM/YYYY"** + chip with months remaining.
+- Secondary row: prepayment amount, payment date, linked CashReceipt (clickable → Payments page).
+- Schedule table: month / rent due / status (Paid via prepayment / Current / Future) — sourced from real receivables, not from a parallel calculation.
+- Remove the "Reduction / Month" and "Effective Rent" cards.
 
-**Lease Detail (`src/pages/LeaseDetail.tsx`)** — 4 sections (tabs or stacked cards):
-1. **Current effective terms** — rent, charges, term, tenants, units, guarantee/deposit (from `getCurrentLeaseTerms`)
-2. **Original contract terms** — baseline from `getOriginalLeaseTerms`
-3. **Amendments timeline** — chronological list with number, type icon, title, effective/signed dates, status badge, one-line change summary
-4. **Amendment impact preview** — selected amendment: before/after diff table, affected units chips, financial delta, warnings
+### 5. Lease form (`src/pages/Leases.tsx`)
 
-**Amendment dialog (`src/components/amendments/AmendmentDialog.tsx`)** — high-density centered Dialog (per project memory), guided steps inside a single form:
-- Step 1: type selector (radio cards)
-- Step 2: metadata (title, reason, effectiveDate, signedDate, notes)
-- Step 3: type-conditional fields:
-  - rent/charges-change: pricing inputs (per-unit table reused from Leases form for unit splits)
-  - term-extension/shortening: new endDate
-  - unit-addition: unit picker scoped to property + role + rentShare + chargesShare + startDate
-  - unit-removal: pick from current active units, confirms it isn't the only primary
-  - unit-change: combined remove+add with primary reassignment
-  - tenant-addition/removal: tenant picker
-  - guarantee/deposit/notice/clause: scalar inputs
-  - mixed: collapsible sections for each affected field group
-- Step 4: live impact preview (before/after) + warnings panel
-- Step 5: actions — Save draft / Mark pending signature / Activate (disabled when blockers)
+- When the user picks a formula > 1 month, keep auto-filling the prepayment but reword the helper text: "Tenant prepays X for N months (rent paid until DD/MM/YYYY)".
+- Allow the user to override the payment date, and to switch between `rent` / `rent-and-charges` for what the prepayment covers.
+- Block save (integrity) if `hasAdvancePayment` and the resulting prepayment would conflict with already-paid receivables on the same months (only relevant for edits).
 
-**Lease list (`src/pages/Leases.tsx`)** — small "+N amendments" chip next to lease reference, current effective rent shown instead of stored rent.
+### 6. Integrity rules (`src/lib/integrity/leaseIntegrity.ts`)
 
-## 6. i18n
+- `LEASE_ADVANCE_AMOUNT_MISMATCH` (warning): `advancePaymentAmount` ≠ `monthlyRent × durationMonths` when method is `spread-evenly` and applied-to is `rent`.
+- `LEASE_ADVANCE_OVERLAPS_PAID` (blocker): editing advance terms when one of the covered months is already allocated by another receipt.
 
-Add EN/FR keys in `src/i18n/translations.ts` for: section titles, amendment types, statuses, field labels, change summary verbs ("rent increased from … to …", "parking P012 added on DD/MM/YYYY"), warnings, and action buttons.
+### 7. Tests
 
-## 7. Tests (`src/lib/amendments.test.ts`)
+Extend `src/lib/multiUnitLease.test.ts` and add `src/lib/leaseReceivables.test.ts`:
+- 12-month formula generates 12 rent receivables, all paid by a single prepayment receipt; `prepaidUntilDate` = last day of month 12.
+- 6-month formula on a 12-month lease: months 1–6 paid, months 7–12 outstanding.
+- Mid-lease amendment changing rent doesn't touch already-paid months; new monthly amount applied from `effectiveDate`.
+- `rent-and-charges` mode allocates against both line types in priority order.
 
-- effective terms folding: original → rent-change → term-extension
-- unit-addition projects new assignment on activation; original stays open until effectiveDate
-- unit-removal closes assignment prospectively, never historically
-- primary unit change keeps exactly one primary at every point in time
-- past paid receivables stay; warning surfaced when effectiveDate hits unpaid period
-- supersede chain: superseded amendment ignored in effective terms
-- validation blockers: zero units, two primaries, cross-property, overlap
+## Out of scope
 
-## 8. Explicitly Out of Scope
-
-PDF/document generation, e-signature, AI drafting, full retroactive receivable rewrite, deep legal clause editor.
-
-## Technical Notes
-
-- All money fields stay EUR, dates DD/MM/YYYY in UI (European-first memory).
-- Reuse existing patterns: centered Dialog, `validateLeaseUnits`-style ValidationResult, `OverrideConfirmDialog` for any controlled-override actions.
-- No DB layer (project is client-side over mock data + AppContext) — purely typed in-memory model.
-- Lease record fields (`monthlyRent`, `monthlyCharges`, `endDate`, `depositOrGuaranteeAmount`, `primaryTenantId`, `coTenantIds`, `noticePeriodText`) become **baseline-only**; a follow-up pass replaces direct reads with `getCurrentLeaseTerms` in: Reports rent roll, Receivables generation, Dashboard KPIs, UnitDetail. Listed here so the change is visible, executed file-by-file during build.
-
-## Files Touched
-
-- new: `src/types/amendments.ts`, `src/lib/amendments.ts`, `src/lib/amendments.test.ts`, `src/lib/integrity/amendmentIntegrity.ts`, `src/components/amendments/AmendmentDialog.tsx`, `src/components/amendments/AmendmentTimeline.tsx`, `src/components/amendments/AmendmentImpactPreview.tsx`
-- edited: `src/types/index.ts` (re-export), `src/context/AppContext.tsx`, `src/lib/integrity/index.ts`, `src/hooks/use-integrity-state.ts`, `src/pages/LeaseDetail.tsx`, `src/pages/Leases.tsx`, `src/data/mockData.ts`, `src/i18n/translations.ts`
+- Refunds of unused prepayment on early termination — handled separately when we wire the move-out balance flow.
+- Indexation / renewal of the prepayment — covered by the amendments module already in place.
