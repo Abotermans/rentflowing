@@ -233,7 +233,29 @@ export function AmendmentsSection({ leaseId }: Props) {
           </TabsContent>
 
           <TabsContent value="current" className="pt-3">
-            {current && renderTerms(current)}
+            {current && (() => {
+              const today = new Date().toISOString().slice(0, 10);
+              const activeApplied = ams
+                .filter(a => a.status === "active" && a.effectiveDate <= today)
+                .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate))[0];
+              return (
+                <div className="space-y-3">
+                  {activeApplied ? (
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <FileEdit className="h-3.5 w-3.5" />
+                      <span>
+                        {t("amendments.basedOn").replace("{n}", String(activeApplied.amendmentNumber))}
+                        {" · "}
+                        {t("amendments.effectiveDate")}: {formatDate(activeApplied.effectiveDate, locale)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">{t("amendments.originalTerms")}</div>
+                  )}
+                  {renderTerms(current)}
+                </div>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="original" className="pt-3">
