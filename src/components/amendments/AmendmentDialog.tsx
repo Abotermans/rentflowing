@@ -254,7 +254,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             </Select>
           </div>
           <div className="col-span-2">
-            <Label>Title</Label>
+            <Label>{t("amendments.titleField")}</Label>
             <Input className="h-8" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
           <div>
