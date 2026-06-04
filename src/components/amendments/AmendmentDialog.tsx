@@ -13,13 +13,14 @@ import type {
   AmendmentChangeMetadata,
 } from "@/types/amendments";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Plus, Minus, X } from "lucide-react";
+import { AlertTriangle, Plus, Minus, X, ChevronDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { Lease, LeaseUnitAssignmentType } from "@/types";
@@ -72,6 +73,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
   const [addTenantId, setAddTenantId] = useState("");
   const [removeTenantId, setRemoveTenantId] = useState("");
+  const [addUnitOpen, setAddUnitOpen] = useState(false);
 
   const currentUnits = useMemo(
     () => getLeaseAssignedUnits(lease.id, { activeOnly: true }),
@@ -311,7 +313,39 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
           {(type === "unit-addition" || type === "unit-removal" || type === "mixed") && (
             <div className="col-span-2 border rounded p-3 space-y-2">
-              <div className="text-xs font-medium">{t("amendments.unitChanges")}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-medium">{t("amendments.unitChanges")}</div>
+                <Popover open={addUnitOpen} onOpenChange={setAddUnitOpen}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Plus className="h-3.5 w-3.5" />
+                      {t("amendments.addUnit")}
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" align="end">
+                    {propertyUnits.length === 0 ? (
+                      <div className="text-xs text-muted-foreground py-2 text-center">{t("amendments.noUnitsAvailable")}</div>
+                    ) : (
+                      <div className="space-y-1 max-h-60 overflow-y-auto">
+                        {propertyUnits.map(u => (
+                          <button
+                            key={u.id}
+                            className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
+                            onClick={() => {
+                              setUnitsToAdd(arr => [...arr, { unitId: u.id, assignmentType: "parking", rentShare: "", chargesShare: "0" }]);
+                              setAddUnitOpen(false);
+                            }}
+                          >
+                            <span>{u.unitCode} — {u.unitLabel}</span>
+                            <Plus className="h-3 w-3 text-success" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
               <div className="rounded border overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -400,25 +434,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                         </TableRow>
                       );
                     })}
-                    {propertyUnits.map(u => (
-                      <TableRow key={`avail-${u.id}`} className="h-9">
-                        <TableCell className="py-1 text-xs">{u.unitCode} — {u.unitLabel}</TableCell>
-                        <TableCell className="py-1 text-xs text-muted-foreground">—</TableCell>
-                        <TableCell className="py-1 text-xs text-right text-muted-foreground">—</TableCell>
-                        <TableCell className="py-1 text-xs text-right text-muted-foreground">—</TableCell>
-                        <TableCell className="py-1 text-xs">
-                          <Badge variant="outline" className="text-[10px]">{t("amendments.statusAvailable")}</Badge>
-                        </TableCell>
-                        <TableCell className="py-1 text-right">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-success"
-                            onClick={() => setUnitsToAdd(arr => [...arr, { unitId: u.id, assignmentType: "parking", rentShare: "", chargesShare: "0" }])}
-                            aria-label="add">
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {currentUnits.length === 0 && unitsToAdd.length === 0 && propertyUnits.length === 0 && (
+                    {currentUnits.length === 0 && unitsToAdd.length === 0 && (
                       <TableRow><TableCell colSpan={6} className="py-3 text-center text-xs text-muted-foreground">{t("amendments.noUnitsAvailable")}</TableCell></TableRow>
                     )}
                   </TableBody>
