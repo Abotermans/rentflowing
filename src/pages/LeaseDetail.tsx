@@ -20,7 +20,7 @@ import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
-import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus, type GuaranteeStatus } from "@/types";
+import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseStatus, getMoveInStatus, getMoveOutStatus, computeGuaranteeStatus, type GuaranteeStatus } from "@/types";
 import { ASSIGNMENT_TYPE_LABELS, isAncillaryAssignmentType } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
@@ -35,6 +35,38 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
+
+const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
+  "cash-deposit": "guarantee.type.cashDeposit",
+  "bank-guarantee": "guarantee.type.bankGuarantee",
+  "insurance-guarantee": "guarantee.type.insuranceGuarantee",
+  "corporate-guarantee": "guarantee.type.corporateGuarantee",
+};
+const MOVE_IN_CHECKLIST_KEY: Record<keyof MoveInChecklist, TranslationKey> = {
+  leaseSigned: "checklist.moveIn.leaseSigned",
+  firstPaymentReceived: "checklist.moveIn.firstPaymentReceived",
+  guaranteeConfirmed: "checklist.moveIn.guaranteeConfirmed",
+  keysHandedOver: "checklist.moveIn.keysHandedOver",
+  meterReadingCaptured: "checklist.moveIn.meterReadingCaptured",
+  tenantDocumentsComplete: "checklist.moveIn.tenantDocumentsComplete",
+};
+const MOVE_OUT_CHECKLIST_KEY: Record<keyof MoveOutChecklist, TranslationKey> = {
+  noticeConfirmed: "checklist.moveOut.noticeConfirmed",
+  moveOutDateConfirmed: "checklist.moveOut.moveOutDateConfirmed",
+  keysReturned: "checklist.moveOut.keysReturned",
+  moveOutMeterReadingCaptured: "checklist.moveOut.moveOutMeterReadingCaptured",
+  balanceReviewed: "checklist.moveOut.balanceReviewed",
+  guaranteeReviewCompleted: "checklist.moveOut.guaranteeReviewCompleted",
+};
+const ADVANCE_METHOD_KEY: Record<"spread-evenly" | "fixed-monthly-reduction", TranslationKey> = {
+  "spread-evenly": "advance.method.spreadEvenly",
+  "fixed-monthly-reduction": "advance.method.fixedMonthly",
+};
+const ADVANCE_APPLIED_KEY: Record<"rent" | "charges" | "rent-and-charges", TranslationKey> = {
+  "rent": "advance.appliedTo.rent",
+  "charges": "advance.appliedTo.charges",
+  "rent-and-charges": "advance.appliedTo.rentAndCharges",
+};
 
 const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
   active:               { icon: CheckCircle2,  labelKey: "guarantee.deposited",         className: "text-success" },
@@ -207,27 +239,27 @@ export default function LeaseDetail() {
     const status = computeGuaranteeStatus({ expectedAmount: expected, receivedAmount: received, releaseDate: gReleaseDate || null, retentionAmount: retention });
     if (guarantee) {
       updateGuarantee({ ...guarantee, type: gType, expectedAmount: expected, receivedAmount: received, status, receivedDate: gReceivedDate || null, releaseDate: gReleaseDate || null, retentionAmount: retention, notes: gNotes });
-      toast({ title: "Guarantee updated" });
+      toast({ title: t("leaseToast.guaranteeUpdated") });
     } else {
       addGuarantee({ leaseId: lease.id, type: gType, expectedAmount: expected, receivedAmount: received, status, receivedDate: gReceivedDate || null, releaseDate: gReleaseDate || null, retentionAmount: retention, notes: gNotes });
-      toast({ title: "Guarantee added" });
+      toast({ title: t("leaseToast.guaranteeAdded") });
     }
     setGuaranteeSheetOpen(false);
   };
 
   const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
-  const handleSaveNotice = () => { updateLease({ ...lease, noticeGiven: true, noticeDate: nDate || null, intendedMoveOutDate: nMoveOut || null, terminationReason: nReason || null }); toast({ title: "Notice registered" }); setNoticeSheetOpen(false); };
+  const handleSaveNotice = () => { updateLease({ ...lease, noticeGiven: true, noticeDate: nDate || null, intendedMoveOutDate: nMoveOut || null, terminationReason: nReason || null }); toast({ title: t("leaseToast.noticeRegistered") }); setNoticeSheetOpen(false); };
   const handleActivateLease = () => {
     const validation = canActivateLease(lease.id, integrityState);
     if (!validation.allowed) {
-      toast({ title: "Cannot activate lease", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      toast({ title: t("leaseToast.cannotActivate"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
     updateLease({ ...lease, lifecycleStage: "active" });
     if (validation.warnings.length > 0) {
-      toast({ title: "Lease activated with warnings", description: validation.warnings.map(w => w.message).join(". ") });
+      toast({ title: t("leaseToast.activatedWithWarnings"), description: validation.warnings.map(w => w.message).join(". ") });
     } else {
-      toast({ title: "Lease activated" });
+      toast({ title: t("leaseToast.activated") });
     }
   };
 
@@ -398,27 +430,27 @@ export default function LeaseDetail() {
   };
 
   const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiWaterMeter(lease.moveInWaterMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
-  const handleScheduleMoveIn = () => { updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, moveInWaterMeterReading: miWaterMeter || null, keyHandoverCount: parseInt(miKeys) || 0 }); toast({ title: "Move-in scheduled" }); setMoveInSheetOpen(false); };
+  const handleScheduleMoveIn = () => { updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, moveInWaterMeterReading: miWaterMeter || null, keyHandoverCount: parseInt(miKeys) || 0 }); toast({ title: t("leaseToast.moveInScheduled") }); setMoveInSheetOpen(false); };
   const handleConfirmMoveIn = () => {
     updateLease({ ...lease, moveInActualDate: today, moveInScheduledDate: lease.moveInScheduledDate || today, moveInMeterReading: miMeter || lease.moveInMeterReading, moveInWaterMeterReading: miWaterMeter || lease.moveInWaterMeterReading, keyHandoverCount: parseInt(miKeys) || lease.keyHandoverCount,
       moveInChecklist: { leaseSigned: true, firstPaymentReceived: true, guaranteeConfirmed: true, keysHandedOver: true, meterReadingCaptured: true, tenantDocumentsComplete: true } });
-    toast({ title: "Move-in confirmed" }); setMoveInSheetOpen(false);
+    toast({ title: t("leaseToast.moveInConfirmed") }); setMoveInSheetOpen(false);
   };
 
   const openMoveOutForm = () => { setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? ""); setMoMeter(lease.moveOutMeterReading ?? ""); setMoWaterMeter(lease.moveOutWaterMeterReading ?? ""); setMoNotes(lease.moveOutNotes); setMoveOutSheetOpen(true); };
-  const handleScheduleMoveOut = () => { updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutWaterMeterReading: moWaterMeter || null, moveOutNotes: moNotes }); toast({ title: "Move-out scheduled" }); setMoveOutSheetOpen(false); };
+  const handleScheduleMoveOut = () => { updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutWaterMeterReading: moWaterMeter || null, moveOutNotes: moNotes }); toast({ title: t("leaseToast.moveOutScheduled") }); setMoveOutSheetOpen(false); };
   const handleConfirmMoveOut = () => {
     confirmMoveOut({ ...lease, moveOutScheduledDate: lease.moveOutScheduledDate || today, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
       moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
       returnStatus: lease.returnStatus || "pending" });
-    toast({ title: "Move-out confirmed. Unit set to vacant." }); setMoveOutSheetOpen(false);
+    toast({ title: t("leaseToast.moveOutConfirmed") }); setMoveOutSheetOpen(false);
   };
 
   const toggleMoveInChecklist = (key: keyof MoveInChecklist) => { updateLease({ ...lease, moveInChecklist: { ...lease.moveInChecklist, [key]: !lease.moveInChecklist[key] } }); };
   const toggleMoveOutChecklist = (key: keyof MoveOutChecklist) => { updateLease({ ...lease, moveOutChecklist: { ...lease.moveOutChecklist, [key]: !lease.moveOutChecklist[key] } }); };
 
   const openReturnForm = () => { setRetStatus(lease.returnStatus || "pending"); setRetNotes(lease.returnNotes); setReturnSheetOpen(true); };
-  const handleSaveReturn = () => { updateLease({ ...lease, returnStatus: retStatus, returnNotes: retNotes }); toast({ title: "Return status updated" }); setReturnSheetOpen(false); };
+  const handleSaveReturn = () => { updateLease({ ...lease, returnStatus: retStatus, returnNotes: retNotes }); toast({ title: t("leaseToast.returnStatusUpdated") }); setReturnSheetOpen(false); };
   const handleUpdateKeys = (keyHandover: number, keyReturn: number) => { updateLease({ ...lease, keyHandoverCount: keyHandover, keyReturnCount: keyReturn }); };
   const handleUpdateMeter = (field: "moveInMeterReading" | "moveOutMeterReading" | "moveInWaterMeterReading" | "moveOutWaterMeterReading", value: string) => {
     updateLease({ ...lease, [field]: value.trim() === "" ? null : value });
@@ -472,7 +504,7 @@ export default function LeaseDetail() {
                   const activationCheck = canActivateLease(lease.id, integrityState);
                   return (
                     <DropdownMenuItem onSelect={() => handleActivateLease()} disabled={!activationCheck.allowed}>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />Activate Lease
+                      <CheckCircle2 className="h-4 w-4 mr-2" />{t("leaseDetail.activateLease")}
                     </DropdownMenuItem>
                   );
                 })()}
@@ -526,7 +558,7 @@ export default function LeaseDetail() {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Guarantee is <strong>{guarantee.status}</strong>. Expected: {formatCurrency(guarantee.expectedAmount, currency, locale)}, Received: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
+            {t("leaseDetail.guaranteeBannerPrefix")} <strong>{guarantee.status}</strong>. {t("leaseDetail.guaranteeBannerExpected")}: {formatCurrency(guarantee.expectedAmount, currency, locale)}, {t("leaseDetail.guaranteeBannerReceived")}: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
           </AlertDescription>
         </Alert>
       )}
@@ -534,8 +566,8 @@ export default function LeaseDetail() {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            No guarantee record found. Expected deposit: {formatCurrency(lease.depositOrGuaranteeAmount, currency, locale)}.
-            <Button variant="link" size="sm" className="ml-2 h-auto p-0" onClick={openGuaranteeForm}>Add Guarantee</Button>
+            {t("leaseDetail.noGuaranteeBanner").replace("{amount}", formatCurrency(lease.depositOrGuaranteeAmount, currency, locale))}
+            <Button variant="link" size="sm" className="ml-2 h-auto p-0" onClick={openGuaranteeForm}>{t("leaseDetail.addGuaranteeLink")}</Button>
           </AlertDescription>
         </Alert>
       )}
@@ -545,9 +577,9 @@ export default function LeaseDetail() {
           <AlertDescription>
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <span>
-                This lease is <strong>under notice</strong>.
-                {lease.noticeDate && <> Notice given on {formatDate(lease.noticeDate, locale)}.</>}
-                {lease.intendedMoveOutDate && <> Intended move-out: {formatDate(lease.intendedMoveOutDate, locale)}.</>}
+                {t("leaseDetail.underNotice")}
+                {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
+                {lease.intendedMoveOutDate && <> {t("leaseDetail.intendedMoveOutOn").replace("{date}", formatDate(lease.intendedMoveOutDate, locale))}</>}
               </span>
               {!lease.moveOutActualDate && (
                 <Button variant="outline" size="sm" onClick={handleCancelNotice}>{t("lease.cancelNotice")}</Button>
@@ -580,7 +612,7 @@ export default function LeaseDetail() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{lease.dueDayOfMonth}th of each month</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{t("leaseDetail.dueDayOfMonth").replace("{day}", String(lease.dueDayOfMonth))}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
@@ -674,7 +706,7 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div><p className="text-xs text-muted-foreground">Total Allocated</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("table.outstanding")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p></div>
             <div>
               <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
@@ -685,7 +717,7 @@ export default function LeaseDetail() {
             </div>
             {unappliedCredit > 0 && (
               <div>
-                <p className="text-xs text-muted-foreground">Unapplied Credit</p>
+                <p className="text-xs text-muted-foreground">{t("leaseDetail.unappliedCredit")}</p>
                 <p className="text-lg font-bold text-primary">
                   <Banknote className="h-4 w-4 inline mr-1" />
                   {formatCurrency(unappliedCredit, currency, locale)}
@@ -702,7 +734,7 @@ export default function LeaseDetail() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />Rent prepayment</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />{t("rentPrepayment.title")}</CardTitle>
               <StatusBadge status={advancePricing.advanceStatus} />
             </div>
           </CardHeader>
@@ -711,35 +743,35 @@ export default function LeaseDetail() {
             {advancePricing.prepaidUntilDate && (
               <div className="rounded-md border bg-muted/30 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <p className="text-xs text-muted-foreground">Rent paid until</p>
+                  <p className="text-xs text-muted-foreground">{t("rentPrepayment.rentPaidUntil")}</p>
                   <p className="text-xl font-bold text-foreground">{formatDate(advancePricing.prepaidUntilDate, locale)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Months remaining</p>
+                  <p className="text-xs text-muted-foreground">{t("rentPrepayment.monthsRemaining")}</p>
                   <p className="text-xl font-bold text-primary">{advancePricing.monthsRemaining} / {advancePricing.durationMonths}</p>
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div><p className="text-xs text-muted-foreground">Prepayment amount</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.advanceAmount, currency, locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">Method</p><p className="text-sm font-medium text-foreground">{ADVANCE_METHOD_LABELS[lease.advanceAllocationMethod!]}</p></div>
-              <div><p className="text-xs text-muted-foreground">Applied to</p><p className="text-sm font-medium text-foreground">{ADVANCE_APPLIED_LABELS[lease.advanceAppliedTo || 'rent']}</p></div>
-              <div><p className="text-xs text-muted-foreground">Payment date</p><p className="text-sm font-medium text-foreground">{lease.advancePaymentDate ? formatDate(lease.advancePaymentDate, locale) : "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.amount")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.advanceAmount, currency, locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.method")}</p><p className="text-sm font-medium text-foreground">{lease.advanceAllocationMethod ? t(ADVANCE_METHOD_KEY[lease.advanceAllocationMethod]) : "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.appliedTo")}</p><p className="text-sm font-medium text-foreground">{t(ADVANCE_APPLIED_KEY[lease.advanceAppliedTo || 'rent'])}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.paymentDate")}</p><p className="text-sm font-medium text-foreground">{lease.advancePaymentDate ? formatDate(lease.advancePaymentDate, locale) : "—"}</p></div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Consumed: {formatCurrency(advancePricing.advanceConsumed, currency, locale)}</span>
-                <span>Remaining: {formatCurrency(advancePricing.advanceRemaining, currency, locale)}</span>
+                <span>{t("rentPrepayment.consumed")}: {formatCurrency(advancePricing.advanceConsumed, currency, locale)}</span>
+                <span>{t("rentPrepayment.remaining")}: {formatCurrency(advancePricing.advanceRemaining, currency, locale)}</span>
               </div>
               <Progress value={advancePricing.advanceAmount > 0 ? (advancePricing.advanceConsumed / advancePricing.advanceAmount) * 100 : 0} className="h-2" />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div><p className="text-xs text-muted-foreground">First month covered</p><p className="font-medium text-foreground">{advancePricing.allocationStartMonth ? formatDate(advancePricing.allocationStartMonth + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
-              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">Last month covered</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
-              <div><p className="text-xs text-muted-foreground">Duration</p><p className="font-medium text-foreground">{advancePricing.durationMonths} months</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.firstMonthCovered")}</p><p className="font-medium text-foreground">{advancePricing.allocationStartMonth ? formatDate(advancePricing.allocationStartMonth + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
+              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.lastMonthCovered")}</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.duration")}</p><p className="font-medium text-foreground">{advancePricing.durationMonths} {t("rentPrepayment.monthsSuffix")}</p></div>
             </div>
 
             {/* Collapsible Monthly Schedule */}
@@ -747,7 +779,7 @@ export default function LeaseDetail() {
               <Collapsible>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground hover:text-foreground">
-                    Monthly prepayment schedule
+                    {t("rentPrepayment.schedule")}
                     <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
                   </Button>
                 </CollapsibleTrigger>
@@ -756,10 +788,10 @@ export default function LeaseDetail() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Month</TableHead>
-                          <TableHead className="text-xs text-right">Rent due</TableHead>
-                          <TableHead className="text-xs text-right">Covered by prepayment</TableHead>
-                          <TableHead className="text-xs text-right">Prepayment remaining</TableHead>
+                          <TableHead className="text-xs">{t("rentPrepayment.col.month")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.rentDue")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.covered")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.remaining")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -775,10 +807,10 @@ export default function LeaseDetail() {
                                 <span className="flex items-center gap-1.5">
                                   {row.month}{isCurrent && <span className="text-primary text-[10px]">●</span>}
                                   {isPaidViaAdvance && (isPast || isCurrent) && (
-                                    <span className="inline-flex items-center rounded-full bg-success/15 text-success px-1.5 py-0.5 text-[10px] font-semibold">Paid</span>
+                                    <span className="inline-flex items-center rounded-full bg-success/15 text-success px-1.5 py-0.5 text-[10px] font-semibold">{t("rentPrepayment.tag.paid")}</span>
                                   )}
                                   {isPaidViaAdvance && !isPast && !isCurrent && (
-                                    <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">Prepaid</span>
+                                    <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">{t("rentPrepayment.tag.prepaid")}</span>
                                   )}
                                 </span>
                               </TableCell>
@@ -822,7 +854,7 @@ export default function LeaseDetail() {
         <CardContent>
           {guarantee ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div><p className="text-xs text-muted-foreground">{t("units.type")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[guarantee.type]}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("units.type")}</p><p className="text-sm font-medium text-foreground">{t(GUARANTEE_TYPE_KEY[guarantee.type])}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("table.expected")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.expectedAmount, currency, locale)}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("table.received")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(guarantee.receivedAmount, currency, locale)}</p></div>
               {guarantee.receivedDate && <div><p className="text-xs text-muted-foreground">{t("detail.receivedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(guarantee.receivedDate, locale)}</p></div>}
@@ -878,7 +910,7 @@ export default function LeaseDetail() {
                       disabled={moveInStatus === "completed"}
                     />
                     <span className={`text-sm ${lease.moveInChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                      {MOVE_IN_CHECKLIST_LABELS[key]}
+                      {t(MOVE_IN_CHECKLIST_KEY[key])}
                     </span>
                   </label>
                 ))}
@@ -922,7 +954,7 @@ export default function LeaseDetail() {
                       disabled={moveOutStatus === "completed"}
                     />
                     <span className={`text-sm ${lease.moveOutChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                      {MOVE_OUT_CHECKLIST_LABELS[key]}
+                      {t(MOVE_OUT_CHECKLIST_KEY[key])}
                     </span>
                   </label>
                 ))}
@@ -998,7 +1030,7 @@ export default function LeaseDetail() {
                 <div><p className="text-xs text-muted-foreground">{t("tenants.email")}</p><p className="text-sm text-foreground">{tenant.email}</p></div>
                 <div><p className="text-xs text-muted-foreground">{t("tenants.phone")}</p><p className="text-sm text-foreground">{tenant.phone || "—"}</p></div>
               </div>
-            ) : <p className="text-sm text-muted-foreground">Tenant not found.</p>}
+            ) : <p className="text-sm text-muted-foreground">{t("leaseDetail.tenantNotFound")}</p>}
           </CardContent>
         </Card>
         <Card>
@@ -1019,21 +1051,21 @@ export default function LeaseDetail() {
 
       {/* Receivables */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Open Receivables</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.openReceivables")}</CardTitle></CardHeader>
         <CardContent>
           {enrichedReceivables.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No receivable items.</p>
+            <p className="text-sm text-muted-foreground">{t("leaseDetail.noReceivables")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Period</TableHead>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs">Due Date</TableHead>
-                  <TableHead className="text-xs text-right">Expected</TableHead>
-                  <TableHead className="text-xs text-right">Allocated</TableHead>
-                  <TableHead className="text-xs text-right">Outstanding</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">{t("leaseDetail.period")}</TableHead>
+                  <TableHead className="text-xs">{t("table.type")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.dueDate")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.expected")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.allocated")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.outstanding")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1056,20 +1088,20 @@ export default function LeaseDetail() {
 
       {/* Cash Receipts */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Cash Receipts</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.cashReceipts")}</CardTitle></CardHeader>
         <CardContent>
           {receipts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No cash receipts recorded.</p>
+            <p className="text-sm text-muted-foreground">{t("leaseDetail.noCashReceipts")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Date</TableHead>
-                  <TableHead className="text-xs text-right">Received</TableHead>
-                  <TableHead className="text-xs text-right">Unmatched</TableHead>
-                  <TableHead className="text-xs">Source</TableHead>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.received")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("payments.table.unmatched")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.source")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1096,15 +1128,15 @@ export default function LeaseDetail() {
         if (leaseAllocations.length === 0) return null;
         return (
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Allocation History</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.allocationHistory")}</CardTitle></CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">Receivable</TableHead>
-                    <TableHead className="text-xs text-right">Amount</TableHead>
-                    <TableHead className="text-xs">Method</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.receivable")}</TableHead>
+                    <TableHead className="text-xs text-right">{t("payments.table.amount")}</TableHead>
+                    <TableHead className="text-xs">{t("payments.table.method")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1140,10 +1172,10 @@ export default function LeaseDetail() {
       {/* Record Cash Receipt Sheet */}
       <Dialog open={receiptSheetOpen} onOpenChange={setReceiptSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Record Cash Receipt</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.recordReceipt")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
-              <Label>Source Type</Label>
+              <Label>{t("payments.dialog.sourceType")}</Label>
               <Select value={formSourceType} onValueChange={v => setFormSourceType(v as CashReceiptSourceType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1153,15 +1185,15 @@ export default function LeaseDetail() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Payment Date</Label><Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} /></div>
-            <div><Label>Amount ({currency})</Label><Input type="number" step="0.01" min="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" /></div>
-            <div><Label>Reference</Label><Input value={formRef} onChange={e => setFormRef(e.target.value)} /></div>
-            <div><Label>Notes</Label><Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2} /></div>
+            <div><Label>{t("payments.dialog.paymentDate")}</Label><Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.amountWithCurrency").replace("{currency}", currency)}</Label><Input type="number" step="0.01" min="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" /></div>
+            <div><Label>{t("payments.dialog.reference")}</Label><Input value={formRef} onChange={e => setFormRef(e.target.value)} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2} /></div>
             <div className="flex items-center justify-between">
-              <Label>Auto-allocate</Label>
+              <Label>{t("payments.dialog.autoAllocate")}</Label>
               <Switch checked={formAutoAllocate} onCheckedChange={setFormAutoAllocate} />
             </div>
-            <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">Record Cash Receipt</Button>
+            <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">{t("leaseDialog.recordReceipt")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1169,23 +1201,23 @@ export default function LeaseDetail() {
       {/* Guarantee Sheet */}
       <Dialog open={guaranteeSheetOpen} onOpenChange={setGuaranteeSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{guarantee ? "Edit Guarantee" : "Add Guarantee"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{guarantee ? t("leaseDialog.editGuarantee") : t("leaseDialog.addGuarantee")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Type</Label>
+            <div><Label>{t("table.type")}</Label>
               <Select value={gType} onValueChange={v => setGType(v as GuaranteeType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(GUARANTEE_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  {(Object.keys(GUARANTEE_TYPE_KEY) as GuaranteeType[]).map(k => <SelectItem key={k} value={k}>{t(GUARANTEE_TYPE_KEY[k])}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Expected Amount</Label><Input type="number" step="0.01" value={gExpected} onChange={e => setGExpected(e.target.value)} /></div>
-            <div><Label>Received Amount</Label><Input type="number" step="0.01" value={gReceived} onChange={e => setGReceived(e.target.value)} /></div>
-            <div><Label>Received Date</Label><Input type="date" value={gReceivedDate} onChange={e => setGReceivedDate(e.target.value)} /></div>
-            <div><Label>Release Date</Label><Input type="date" value={gReleaseDate} onChange={e => setGReleaseDate(e.target.value)} /></div>
-            <div><Label>Retention Amount</Label><Input type="number" step="0.01" value={gRetention} onChange={e => setGRetention(e.target.value)} /></div>
-            <div><Label>Notes</Label><Textarea value={gNotes} onChange={e => setGNotes(e.target.value)} rows={2} /></div>
-            <Button onClick={handleSaveGuarantee} className="w-full">Save Guarantee</Button>
+            <div><Label>{t("leaseDialog.expectedAmount")}</Label><Input type="number" step="0.01" value={gExpected} onChange={e => setGExpected(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.receivedAmount")}</Label><Input type="number" step="0.01" value={gReceived} onChange={e => setGReceived(e.target.value)} /></div>
+            <div><Label>{t("detail.receivedDate")}</Label><Input type="date" value={gReceivedDate} onChange={e => setGReceivedDate(e.target.value)} /></div>
+            <div><Label>{t("detail.releaseDate")}</Label><Input type="date" value={gReleaseDate} onChange={e => setGReleaseDate(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.retentionAmount")}</Label><Input type="number" step="0.01" value={gRetention} onChange={e => setGRetention(e.target.value)} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={gNotes} onChange={e => setGNotes(e.target.value)} rows={2} /></div>
+            <Button onClick={handleSaveGuarantee} className="w-full">{t("leaseDialog.saveGuarantee")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1193,12 +1225,12 @@ export default function LeaseDetail() {
       {/* Notice Sheet */}
       <Dialog open={noticeSheetOpen} onOpenChange={setNoticeSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Register Notice</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.registerNotice")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Notice Date</Label><Input type="date" value={nDate} onChange={e => setNDate(e.target.value)} /></div>
-            <div><Label>Intended Move-Out</Label><Input type="date" value={nMoveOut} onChange={e => setNMoveOut(e.target.value)} /></div>
-            <div><Label>Reason</Label><Textarea value={nReason} onChange={e => setNReason(e.target.value)} rows={2} /></div>
-            <Button onClick={handleSaveNotice} className="w-full">Save Notice</Button>
+            <div><Label>{t("detail.noticeDate")}</Label><Input type="date" value={nDate} onChange={e => setNDate(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.intendedMoveOut")}</Label><Input type="date" value={nMoveOut} onChange={e => setNMoveOut(e.target.value)} /></div>
+            <div><Label>{t("detail.reason")}</Label><Textarea value={nReason} onChange={e => setNReason(e.target.value)} rows={2} /></div>
+            <Button onClick={handleSaveNotice} className="w-full">{t("leaseDialog.saveNotice")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1206,17 +1238,17 @@ export default function LeaseDetail() {
       {/* Move-In Sheet */}
       <Dialog open={moveInSheetOpen} onOpenChange={setMoveInSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Move-In</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.moveIn")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Scheduled Date</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Electricity Meter</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} placeholder="kWh" /></div>
-              <div><Label>Water Meter</Label><Input value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} placeholder="m³" /></div>
+              <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} placeholder="kWh" /></div>
+              <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} placeholder="m³" /></div>
             </div>
-            <div><Label>Keys Handed Over</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
             <div className="flex gap-2">
-              <Button onClick={handleScheduleMoveIn} variant="outline" className="flex-1">Schedule</Button>
-              <Button onClick={handleConfirmMoveIn} className="flex-1">Confirm Move-In</Button>
+              <Button onClick={handleScheduleMoveIn} variant="outline" className="flex-1">{t("leaseDialog.schedule")}</Button>
+              <Button onClick={handleConfirmMoveIn} className="flex-1">{t("leaseDialog.confirmMoveIn")}</Button>
             </div>
           </div>
         </DialogContent>
@@ -1225,17 +1257,17 @@ export default function LeaseDetail() {
       {/* Move-Out Sheet */}
       <Dialog open={moveOutSheetOpen} onOpenChange={setMoveOutSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Move-Out</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.moveOut")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Scheduled Date</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
+            <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Electricity Meter</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
-              <div><Label>Water Meter</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
+              <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
+              <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
             </div>
-            <div><Label>Notes</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
+            <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
             <div className="flex gap-2">
-              <Button onClick={handleScheduleMoveOut} variant="outline" className="flex-1">Schedule</Button>
-              <Button onClick={handleConfirmMoveOut} className="flex-1">Confirm Move-Out</Button>
+              <Button onClick={handleScheduleMoveOut} variant="outline" className="flex-1">{t("leaseDialog.schedule")}</Button>
+              <Button onClick={handleConfirmMoveOut} className="flex-1">{t("leaseDialog.confirmMoveOut")}</Button>
             </div>
           </div>
         </DialogContent>
@@ -1244,20 +1276,20 @@ export default function LeaseDetail() {
       {/* Return Sheet */}
       <Dialog open={returnSheetOpen} onOpenChange={setReturnSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Return Status</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("leaseDialog.returnStatus")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>Status</Label>
+            <div><Label>{t("table.status")}</Label>
               <Select value={retStatus} onValueChange={v => setRetStatus(v as ReturnStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in-review">In Review</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">{t("status.pending")}</SelectItem>
+                  <SelectItem value="in-review">{t("status.inReview")}</SelectItem>
+                  <SelectItem value="completed">{t("status.completed")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Notes</Label><Textarea value={retNotes} onChange={e => setRetNotes(e.target.value)} rows={2} /></div>
-            <Button onClick={handleSaveReturn} className="w-full">Save</Button>
+            <div><Label>{t("common.notes")}</Label><Textarea value={retNotes} onChange={e => setRetNotes(e.target.value)} rows={2} /></div>
+            <Button onClick={handleSaveReturn} className="w-full">{t("action.save")}</Button>
           </div>
         </DialogContent>
       </Dialog>
