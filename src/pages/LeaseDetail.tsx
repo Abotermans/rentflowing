@@ -504,7 +504,7 @@ export default function LeaseDetail() {
                   const activationCheck = canActivateLease(lease.id, integrityState);
                   return (
                     <DropdownMenuItem onSelect={() => handleActivateLease()} disabled={!activationCheck.allowed}>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />Activate Lease
+                      <CheckCircle2 className="h-4 w-4 mr-2" />{t("leaseDetail.activateLease")}
                     </DropdownMenuItem>
                   );
                 })()}
@@ -558,7 +558,7 @@ export default function LeaseDetail() {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Guarantee is <strong>{guarantee.status}</strong>. Expected: {formatCurrency(guarantee.expectedAmount, currency, locale)}, Received: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
+            {t("leaseDetail.guaranteeBannerPrefix")} <strong>{guarantee.status}</strong>. {t("leaseDetail.guaranteeBannerExpected")}: {formatCurrency(guarantee.expectedAmount, currency, locale)}, {t("leaseDetail.guaranteeBannerReceived")}: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
           </AlertDescription>
         </Alert>
       )}
@@ -566,8 +566,8 @@ export default function LeaseDetail() {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            No guarantee record found. Expected deposit: {formatCurrency(lease.depositOrGuaranteeAmount, currency, locale)}.
-            <Button variant="link" size="sm" className="ml-2 h-auto p-0" onClick={openGuaranteeForm}>Add Guarantee</Button>
+            {t("leaseDetail.noGuaranteeBanner").replace("{amount}", formatCurrency(lease.depositOrGuaranteeAmount, currency, locale))}
+            <Button variant="link" size="sm" className="ml-2 h-auto p-0" onClick={openGuaranteeForm}>{t("leaseDetail.addGuaranteeLink")}</Button>
           </AlertDescription>
         </Alert>
       )}
@@ -577,9 +577,9 @@ export default function LeaseDetail() {
           <AlertDescription>
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <span>
-                This lease is <strong>under notice</strong>.
-                {lease.noticeDate && <> Notice given on {formatDate(lease.noticeDate, locale)}.</>}
-                {lease.intendedMoveOutDate && <> Intended move-out: {formatDate(lease.intendedMoveOutDate, locale)}.</>}
+                {t("leaseDetail.underNotice")}
+                {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
+                {lease.intendedMoveOutDate && <> {t("leaseDetail.intendedMoveOutOn").replace("{date}", formatDate(lease.intendedMoveOutDate, locale))}</>}
               </span>
               {!lease.moveOutActualDate && (
                 <Button variant="outline" size="sm" onClick={handleCancelNotice}>{t("lease.cancelNotice")}</Button>
