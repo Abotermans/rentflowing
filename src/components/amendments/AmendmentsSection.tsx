@@ -7,10 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, FileEdit, CheckCircle2, XCircle, Trash2, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
   getEffectiveLeaseTerms, getOriginalLeaseTerms, getLeaseAmendments,
-  getLeaseAmendmentImpact,
 } from "@/lib/amendments";
 import { AmendmentDialog } from "./AmendmentDialog";
 import type { LeaseAmendment, AmendmentStatus } from "@/types/amendments";
@@ -36,7 +36,6 @@ export function AmendmentsSection({ leaseId }: Props) {
   const lease = leases.find(l => l.id === leaseId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LeaseAmendment | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const ams = useMemo(() => getLeaseAmendments(leaseId, s.amendments), [leaseId, s.amendments]);
   const current = useMemo(
@@ -44,11 +43,10 @@ export function AmendmentsSection({ leaseId }: Props) {
     [lease, leaseId, s],
   );
   const original = useMemo(() => lease ? getOriginalLeaseTerms(leaseId, s) : null, [lease, leaseId, s]);
-  const selected = selectedId ? ams.find(a => a.id === selectedId) ?? null : (ams.find(a => a.status !== "cancelled" && a.status !== "superseded") ?? null);
-  const impact = useMemo(() => selected ? getLeaseAmendmentImpact(selected.id, s) : null, [selected, s]);
 
   if (!lease) return null;
   const currency = "EUR";
+  const currentEndDate = current?.endDate ?? lease.endDate;
 
   const unitLabel = (id: string) => units.find(u => u.id === id)?.unitCode ?? id;
   const tenantLabel = (id: string) => {
@@ -78,6 +76,8 @@ export function AmendmentsSection({ leaseId }: Props) {
     </div>
   );
 
+  const openEdit = (a: LeaseAmendment) => { setEditing(a); setDialogOpen(true); };
+
   return (
     <Card>
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -94,7 +94,6 @@ export function AmendmentsSection({ leaseId }: Props) {
             <TabsTrigger value="timeline" className="text-xs">{t("amendments.timeline")}</TabsTrigger>
             <TabsTrigger value="current" className="text-xs">{t("amendments.currentTerms")}</TabsTrigger>
             <TabsTrigger value="original" className="text-xs">{t("amendments.originalTerms")}</TabsTrigger>
-            <TabsTrigger value="impact" className="text-xs">{t("amendments.impact")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="timeline" className="pt-3">
@@ -106,58 +105,86 @@ export function AmendmentsSection({ leaseId }: Props) {
                   <TableRow>
                     <TableHead className="h-8">#</TableHead>
                     <TableHead className="h-8">{t("amendments.type")}</TableHead>
-                    <TableHead className="h-8">Title</TableHead>
+                    <TableHead className="h-8">{t("amendments.titleField")}</TableHead>
                     <TableHead className="h-8">{t("amendments.effectiveDate")}</TableHead>
+                    <TableHead className="h-8">{t("amendments.newEndDateCol")}</TableHead>
                     <TableHead className="h-8">{t("amendments.status")}</TableHead>
-                    <TableHead className="h-8">{t("amendments.summary")}</TableHead>
                     <TableHead className="h-8 w-1" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {ams.map(a => {
                     const chs = getAmendmentChanges(a.id);
-                    const summary = chs.map(c => {
-                      if (c.fieldName === "baseMonthlyRentTotal") return `Rent ${c.oldValue}→${c.newValue}`;
-                      if (c.fieldName === "baseMonthlyChargesTotal") return `Charges ${c.oldValue}→${c.newValue}`;
-                      if (c.fieldName === "leaseEndDate") return `End ${c.oldValue}→${c.newValue}`;
-                      if (c.fieldName === "depositAmount") return `Deposit ${c.oldValue}→${c.newValue}`;
-                      if (c.fieldName === "noticePeriodText") return `Notice "${c.newValue}"`;
-                      if (c.fieldName === "unitAssignments" && c.changeType === "add") return `+${unitLabel(c.metadata?.unitId ?? "")}`;
-                      if (c.fieldName === "unitAssignments" && c.changeType === "remove") return `−${unitLabel(c.metadata?.unitId ?? "")}`;
-                      if (c.fieldName === "primaryUnitId") return `Primary→${unitLabel(String(c.newValue))}`;
-                      return c.fieldName;
-                    }).join(" · ");
+                    const newEndCh = chs.find(c => c.fieldName === "leaseEndDate");
+                    const newEnd = newEndCh ? String(newEndCh.newValue) : null;
+                    const hasGap = a.effectiveDate > currentEndDate;
                     return (
-                      <TableRow key={a.id} className={selected?.id === a.id ? "bg-accent/30" : ""} onClick={() => setSelectedId(a.id)}>
+                      <TableRow
+                        key={a.id}
+                        className="cursor-pointer hover:bg-accent/30"
+                        onClick={() => openEdit(a)}
+                      >
                         <TableCell className="py-1.5">{a.amendmentNumber}</TableCell>
                         <TableCell className="py-1.5">{t(`amendments.type.${a.amendmentType}` as any)}</TableCell>
                         <TableCell className="py-1.5">{a.title}</TableCell>
-                        <TableCell className="py-1.5">{formatDate(a.effectiveDate, locale)}</TableCell>
+                        <TableCell className="py-1.5">
+                          <span className="inline-flex items-center gap-1">
+                            {formatDate(a.effectiveDate, locale)}
+                            {hasGap && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                                </TooltipTrigger>
+                                <TooltipContent><span className="text-xs">{t("amendments.gapWarning")}</span></TooltipContent>
+                              </Tooltip>
+                            )}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-1.5">{newEnd ? formatDate(newEnd, locale) : "—"}</TableCell>
                         <TableCell className="py-1.5">
                           <Badge className={STATUS_CLS[a.status]} variant="outline">{t(`amendments.statusLabel.${a.status}` as any)}</Badge>
                         </TableCell>
-                        <TableCell className="py-1.5 text-xs text-muted-foreground max-w-[200px] truncate" title={summary}>{summary}</TableCell>
                         <TableCell className="py-1.5">
                           <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                             {(a.status === "draft" || a.status === "pending-signature") && (
-                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(a); setDialogOpen(true); }} aria-label="Edit">
-                                <FileEdit className="h-3.5 w-3.5" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label={t("amendments.tooltip.edit")}>
+                                    <FileEdit className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t("amendments.tooltip.edit")}</TooltipContent>
+                              </Tooltip>
                             )}
                             {(a.status === "draft" || a.status === "pending-signature") && (
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => activateAmendment(a.id)} aria-label="Activate">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => activateAmendment(a.id)} aria-label={t("amendments.tooltip.activate")}>
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t("amendments.tooltip.activate")}</TooltipContent>
+                              </Tooltip>
                             )}
                             {a.status === "active" && (
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-warning" onClick={() => cancelAmendment(a.id)} aria-label="Cancel">
-                                <XCircle className="h-3.5 w-3.5" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-warning" onClick={() => cancelAmendment(a.id)} aria-label={t("amendments.tooltip.cancel")}>
+                                    <XCircle className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t("amendments.tooltip.cancel")}</TooltipContent>
+                              </Tooltip>
                             )}
                             {a.status === "draft" && (
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => { if (confirm(t("amendments.confirmDelete"))) deleteAmendment(a.id); }} aria-label="Delete">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => { if (confirm(t("amendments.confirmDelete"))) deleteAmendment(a.id); }} aria-label={t("amendments.tooltip.delete")}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t("amendments.tooltip.delete")}</TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                         </TableCell>
@@ -175,42 +202,6 @@ export function AmendmentsSection({ leaseId }: Props) {
 
           <TabsContent value="original" className="pt-3">
             {original && renderTerms(original)}
-          </TabsContent>
-
-          <TabsContent value="impact" className="pt-3">
-            {!selected || !impact ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">Select an amendment in the timeline.</p>
-            ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="border rounded p-2">
-                    <p className="text-xs text-muted-foreground mb-2">{t("amendments.before")}</p>
-                    {impact.before && renderTerms(impact.before)}
-                  </div>
-                  <div className="border rounded p-2">
-                    <p className="text-xs text-muted-foreground mb-2">{t("amendments.after")}</p>
-                    {impact.after && renderTerms(impact.after)}
-                  </div>
-                </div>
-                <div className="text-sm">
-                  <strong>{t("amendments.financialDelta")}:</strong>{" "}
-                  Rent {impact.financialDelta.rent >= 0 ? "+" : ""}{formatCurrency(impact.financialDelta.rent, currency, locale)} ·{" "}
-                  Charges {impact.financialDelta.charges >= 0 ? "+" : ""}{formatCurrency(impact.financialDelta.charges, currency, locale)}
-                </div>
-                {impact.affectedUnitIds.length > 0 && (
-                  <div className="text-sm">
-                    <strong>{t("amendments.affectedUnits")}:</strong>{" "}
-                    {impact.affectedUnitIds.map(unitLabel).join(", ")}
-                  </div>
-                )}
-                {s.receivableItems.some(ri => ri.leaseId === leaseId && ri.outstandingAmount > 0 && ri.periodMonth >= selected.effectiveDate.slice(0, 7)) && (
-                  <div className="flex items-start gap-2 text-warning text-xs">
-                    <AlertTriangle className="h-4 w-4 mt-0.5" />
-                    <span>This amendment overlaps unpaid receivable periods — review before activation.</span>
-                  </div>
-                )}
-              </div>
-            )}
           </TabsContent>
         </Tabs>
 

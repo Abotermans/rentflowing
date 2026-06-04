@@ -35,6 +35,7 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
+import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
 
 const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
   "cash-deposit": "guarantee.type.cashDeposit",
@@ -183,7 +184,32 @@ export default function LeaseDetail() {
   const moveInStatus = getMoveInStatus(lease);
   const moveOutStatus = getMoveOutStatus(lease);
 
-  const totalMonthly = lease.monthlyRent + lease.monthlyCharges;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const effectiveTerms = getEffectiveLeaseTerms(lease.id, todayIso, integrityState);
+  const effRent = effectiveTerms?.monthlyRent ?? lease.monthlyRent;
+  const effCharges = effectiveTerms?.monthlyCharges ?? lease.monthlyCharges;
+  const effEndDate = effectiveTerms?.endDate ?? lease.endDate;
+  const effDeposit = effectiveTerms?.depositAmount ?? lease.depositOrGuaranteeAmount;
+  const effNotice = effectiveTerms?.noticePeriodText ?? lease.noticePeriodText;
+  const totalMonthly = effRent + effCharges;
+  // Find the latest active amendment that touched each field for the "(amendment n°X)" suffix.
+  const activeAms = getLeaseAmendments(lease.id, integrityState.amendments)
+    .filter(a => a.status === "active" && a.effectiveDate <= todayIso);
+  const latestAmTouching = (field: string): number | null => {
+    for (let i = activeAms.length - 1; i >= 0; i--) {
+      const chs = integrityState.amendmentChanges.filter(c => c.amendmentId === activeAms[i].id);
+      if (chs.some(c => c.fieldName === field)) return activeAms[i].amendmentNumber;
+    }
+    return null;
+  };
+  const rentAmNum = effRent !== lease.monthlyRent ? latestAmTouching("baseMonthlyRentTotal") : null;
+  const chargesAmNum = effCharges !== lease.monthlyCharges ? latestAmTouching("baseMonthlyChargesTotal") : null;
+  const endAmNum = effEndDate !== lease.endDate ? latestAmTouching("leaseEndDate") : null;
+  const depositAmNum = effDeposit !== lease.depositOrGuaranteeAmount ? latestAmTouching("depositAmount") : null;
+  const noticeAmNum = effNotice !== lease.noticePeriodText ? latestAmTouching("noticePeriodText") : null;
+  const amSuffix = (n: number | null) => n != null
+    ? <span className="text-[10px] text-muted-foreground ml-1">({t("amendments.basedOn").replace("{n}", String(n))})</span>
+    : null;
   const advancePricing = computeAdvancePricing(lease);
   const hasAdvance = lease.hasAdvancePayment && advancePricing.advanceStatus !== 'not-applicable';
   const receivables = getReceivableItemsByLease(lease.id).sort((a, b) => b.dueDate.localeCompare(a.dueDate));
@@ -611,13 +637,13 @@ export default function LeaseDetail() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.endDate, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(effEndDate, locale)}{amSuffix(endAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{t("leaseDetail.dueDayOfMonth").replace("{day}", String(lease.dueDayOfMonth))}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyRent, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(lease.monthlyCharges, currency, locale)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(effRent, currency, locale)}{amSuffix(rentAmNum)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(effCharges, currency, locale)}{amSuffix(chargesAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{lease.depositOrGuaranteeAmount != null ? formatCurrency(lease.depositOrGuaranteeAmount, currency, locale) : "—"}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{lease.noticePeriodText || "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{effDeposit != null ? formatCurrency(effDeposit, currency, locale) : "—"}{amSuffix(depositAmNum)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{effNotice || "—"}{amSuffix(noticeAmNum)}</p></div>
             {lease.signedDate && <div><p className="text-xs text-muted-foreground">{t("leases.signedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.signedDate, locale)}</p></div>}
             <div><p className="text-xs text-muted-foreground">{t("detail.noticeGiven")}</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? t("common.yes") : t("common.no")}</p></div>
             {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
