@@ -476,28 +476,30 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                   .replace("{add}", String(unitsToAdd.length))
                   .replace("{remove}", String(unitsToRemove.length))}
               </div>
-            </div>
-          )}
+          </div>
 
-          {(type === "tenant-addition" || type === "tenant-removal") && (
-            <div className="col-span-2">
-              <Label>{t("tenants.name")}</Label>
-              <Select
-                value={type === "tenant-addition" ? addTenantId : removeTenantId}
-                onValueChange={(v) => type === "tenant-addition" ? setAddTenantId(v) : setRemoveTenantId(v)}
-              >
-                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(type === "tenant-addition"
-                    ? tenants.filter(tn => tn.id !== lease.primaryTenantId && !lease.coTenantIds.includes(tn.id))
-                    : tenants.filter(tn => lease.coTenantIds.includes(tn.id))
-                  ).map(tn => (
-                    <SelectItem key={tn.id} value={tn.id}>{tn.firstName} {tn.lastName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div>
+            <Label>{t("amendments.addCoTenant")}</Label>
+            <Select value={addTenantId} onValueChange={setAddTenantId}>
+              <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                {tenants.filter(tn => tn.id !== lease.primaryTenantId && !lease.coTenantIds.includes(tn.id)).map(tn => (
+                  <SelectItem key={tn.id} value={tn.id}>{tn.firstName} {tn.lastName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>{t("amendments.removeCoTenant")}</Label>
+            <Select value={removeTenantId} onValueChange={setRemoveTenantId}>
+              <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                {tenants.filter(tn => lease.coTenantIds.includes(tn.id)).map(tn => (
+                  <SelectItem key={tn.id} value={tn.id}>{tn.firstName} {tn.lastName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="col-span-2">
             <Label>{t("amendments.notes")}</Label>
