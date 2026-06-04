@@ -434,8 +434,16 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               <ul className="list-disc ml-4 text-xs">
-                {liveValidation.blockers.map(b => <li key={b.code}><strong>{b.code}</strong>: {b.message}</li>)}
-                {liveValidation.warnings.map(w => <li key={w.code} className="text-warning">{w.message}</li>)}
+                {liveValidation.blockers.map(b => {
+                  const k = `amendments.error.${b.code}` as TranslationKey;
+                  const tr = (t as (key: TranslationKey) => string)(k);
+                  return <li key={b.code}>{tr && tr !== k ? tr : b.message}</li>;
+                })}
+                {liveValidation.warnings.map(w => {
+                  const k = `amendments.error.${w.code}` as TranslationKey;
+                  const tr = (t as (key: TranslationKey) => string)(k);
+                  return <li key={w.code} className="text-warning">{tr && tr !== k ? tr : w.message}</li>;
+                })}
               </ul>
             </AlertDescription>
           </Alert>
