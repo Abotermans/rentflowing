@@ -76,7 +76,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   } = useAppData();
   const integrityState = useIntegrityState();
 
-  const [type, setType] = useState<AmendmentType>("rent-change");
   const [title, setTitle] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
@@ -113,10 +112,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     [units, lease.propertyId, currentUnits, unitsToAdd],
   );
 
-  // Hydrate when editing
   useEffect(() => {
     if (existing) {
-      setType(existing.amendmentType);
       setTitle(existing.title);
       setReason(existing.reason);
       setNotes(existing.notes);
@@ -143,7 +140,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       const remChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "remove");
       setUnitsToRemove(remChs.map(c => c.metadata?.unitId ?? "").filter(Boolean));
     } else {
-      setType("rent-change");
       setTitle(""); setReason(""); setNotes("");
       setEffectiveDate(""); setSignedDate("");
       setNewRent(String(lease.monthlyRent));
@@ -166,52 +162,69 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       metadata?: AmendmentChangeMetadata,
     ) => out.push({ fieldName, changeType, oldValue, newValue, metadata });
 
-    const applies = (k: AmendmentType[]) => k.includes(type) || type === "mixed";
-
-    if (applies(["rent-change"]) && newRent && Number(newRent) !== lease.monthlyRent) {
+    if (newRent && Number(newRent) !== lease.monthlyRent) {
       push("baseMonthlyRentTotal", "set", lease.monthlyRent, Number(newRent));
     }
-    if (applies(["charges-change"]) && newCharges && Number(newCharges) !== lease.monthlyCharges) {
+    if (newCharges && Number(newCharges) !== lease.monthlyCharges) {
       push("baseMonthlyChargesTotal", "set", lease.monthlyCharges, Number(newCharges));
     }
-    if (applies(["term-extension", "term-shortening"]) && newEndDate && newEndDate !== lease.endDate) {
+    if (newEndDate && newEndDate !== lease.endDate) {
       push("leaseEndDate", "set", lease.endDate, newEndDate);
     }
-    if (applies(["deposit-change"]) && newDeposit && Number(newDeposit) !== (lease.depositOrGuaranteeAmount ?? 0)) {
+    if (newDeposit && Number(newDeposit) !== (lease.depositOrGuaranteeAmount ?? 0)) {
       push("depositAmount", "set", lease.depositOrGuaranteeAmount, Number(newDeposit));
     }
-    if (applies(["notice-change"]) && newNotice && newNotice !== lease.noticePeriodText) {
+    if (newNotice && newNotice !== lease.noticePeriodText) {
       push("noticePeriodText", "set", lease.noticePeriodText, newNotice);
     }
-    if (applies(["clause-change"]) && clauseSummary) {
+    if (clauseSummary) {
       push("clauseSummary", "set", "", clauseSummary);
     }
-    if (applies(["unit-addition"])) {
-      for (const a of unitsToAdd) {
-        if (!a.unitId) continue;
-        push("unitAssignments", "add", null,
-          { rentShare: Number(a.rentShare || 0), chargesShare: Number(a.chargesShare || 0) },
-          { unitId: a.unitId, assignmentType: a.assignmentType, startDate: effectiveDate });
-      }
+    for (const a of unitsToAdd) {
+      if (!a.unitId) continue;
+      push("unitAssignments", "add", null,
+        { rentShare: Number(a.rentShare || 0), chargesShare: Number(a.chargesShare || 0) },
+        { unitId: a.unitId, assignmentType: a.assignmentType, startDate: effectiveDate });
     }
-    if (applies(["unit-removal"])) {
-      for (const uid of unitsToRemove) {
-        push("unitAssignments", "remove", { unitId: uid }, null,
-          { unitId: uid, startDate: effectiveDate });
-      }
+    for (const uid of unitsToRemove) {
+      push("unitAssignments", "remove", { unitId: uid }, null,
+        { unitId: uid, startDate: effectiveDate });
     }
-    if (applies(["tenant-addition"]) && addTenantId) {
+    if (addTenantId) {
       push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, addTenantId],
         { tenantId: addTenantId });
     }
-    if (applies(["tenant-removal"]) && removeTenantId) {
+    if (removeTenantId) {
       push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== removeTenantId),
         { tenantId: removeTenantId });
     }
     return out;
-  }, [type, newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
+  }, [newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
       unitsToAdd, unitsToRemove, addTenantId, removeTenantId,
       lease, effectiveDate]);
+
+  const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
+  const derivedCategories = useMemo(() => {
+    const cats = new Set<AmendmentType>();
+    for (const c of changesDraft) {
+      switch (c.fieldName) {
+        case "baseMonthlyRentTotal":
+        case "unitRentShare": cats.add("rent-change"); break;
+        case "baseMonthlyChargesTotal":
+        case "unitChargesShare": cats.add("charges-change"); break;
+        case "leaseEndDate":
+          cats.add(String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening"); break;
+        case "depositAmount": cats.add("deposit-change"); break;
+        case "noticePeriodText": cats.add("notice-change"); break;
+        case "clauseSummary": cats.add("clause-change"); break;
+        case "unitAssignments":
+          cats.add(c.changeType === "add" ? "unit-addition" : "unit-removal"); break;
+        case "coTenantIds":
+          cats.add(c.changeType === "add" ? "tenant-addition" : "tenant-removal"); break;
+      }
+    }
+    return [...cats];
+  }, [changesDraft, lease]);
 
   // Live validation (uses a temp amendment record so validateAmendment can run).
   const liveValidation = useMemo(() => {
@@ -220,7 +233,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       id: existing?.id ?? "preview",
       leaseId: lease.id,
       amendmentNumber: existing?.amendmentNumber ?? 0,
-      amendmentType: type,
+      amendmentType: derivedType,
       title, reason, notes,
       effectiveDate,
       signedDate: signedDate || null,
@@ -231,7 +244,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     return validateAmendment(tempAm, changesDraft.map((c, i) => ({
       ...c, id: `p${i}`, amendmentId: tempAm.id, createdAt: "", updatedAt: "",
     })), integrityState);
-  }, [effectiveDate, type, title, reason, notes, signedDate, changesDraft, integrityState, lease.id, existing]);
+  }, [effectiveDate, derivedType, title, reason, notes, signedDate, changesDraft, integrityState, lease.id, existing]);
 
   const canSubmit = title.trim().length > 0 && effectiveDate;
   const canActivate = canSubmit && liveValidation?.allowed === true;
@@ -241,7 +254,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     if (existing) {
       updateAmendment({
         ...existing,
-        amendmentType: type, title, reason, notes,
+        amendmentType: derivedType, title, reason, notes,
         effectiveDate, signedDate: signedDate || null,
         status,
       }, changesDraft);
@@ -251,7 +264,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     } else {
       const created = addAmendment({
         leaseId: lease.id,
-        amendmentType: type, title, reason, notes,
+        amendmentType: derivedType, title, reason, notes,
         effectiveDate, signedDate: signedDate || null,
         supersedesAmendmentId: null,
         status,
