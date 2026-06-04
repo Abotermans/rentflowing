@@ -19,9 +19,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plus, Minus, X } from "lucide-react";
 import type { Lease, LeaseUnitAssignmentType } from "@/types";
 import { ASSIGNMENT_TYPE_LABELS } from "@/types";
+import type { TranslationKey } from "@/i18n/translations";
 
 type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">;
 
@@ -63,11 +64,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const [newDeposit, setNewDeposit] = useState("");
   const [newNotice, setNewNotice] = useState("");
   const [clauseSummary, setClauseSummary] = useState("");
-  const [addUnitId, setAddUnitId] = useState("");
-  const [addRole, setAddRole] = useState<LeaseUnitAssignmentType>("parking");
-  const [addRent, setAddRent] = useState("");
-  const [addCharges, setAddCharges] = useState("0");
-  const [removeUnitId, setRemoveUnitId] = useState("");
+  // Unit-change drafts (multi-row, intuitive add/remove UX)
+  type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string };
+  const [unitsToAdd, setUnitsToAdd] = useState<AddDraft[]>([]);
+  const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
   const [addTenantId, setAddTenantId] = useState("");
   const [removeTenantId, setRemoveTenantId] = useState("");
 
@@ -76,8 +76,14 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     [getLeaseAssignedUnits, lease.id],
   );
   const propertyUnits = useMemo(
-    () => units.filter(u => u.propertyId === lease.propertyId && !currentUnits.find(r => r.unit.id === u.id)),
-    [units, lease.propertyId, currentUnits],
+    () =>
+      units.filter(
+        u =>
+          u.propertyId === lease.propertyId &&
+          !currentUnits.find(r => r.unit.id === u.id) &&
+          !unitsToAdd.find(a => a.unitId === u.id),
+      ),
+    [units, lease.propertyId, currentUnits, unitsToAdd],
   );
 
   // Hydrate when editing
@@ -97,16 +103,18 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setNewDeposit(String(find("depositAmount")?.newValue ?? ""));
       setNewNotice(String(find("noticePeriodText")?.newValue ?? ""));
       setClauseSummary(String(find("clauseSummary")?.newValue ?? ""));
-      const addCh = chs.find(c => c.fieldName === "unitAssignments" && c.changeType === "add");
-      if (addCh) {
-        setAddUnitId(addCh.metadata?.unitId ?? "");
-        setAddRole(addCh.metadata?.assignmentType ?? "parking");
-        const nv = (addCh.newValue ?? {}) as { rentShare?: number; chargesShare?: number };
-        setAddRent(String(nv.rentShare ?? ""));
-        setAddCharges(String(nv.chargesShare ?? "0"));
-      }
-      const remCh = chs.find(c => c.fieldName === "unitAssignments" && c.changeType === "remove");
-      if (remCh) setRemoveUnitId(remCh.metadata?.unitId ?? "");
+      const addChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "add");
+      setUnitsToAdd(addChs.map(c => {
+        const nv = (c.newValue ?? {}) as { rentShare?: number; chargesShare?: number };
+        return {
+          unitId: c.metadata?.unitId ?? "",
+          assignmentType: c.metadata?.assignmentType ?? "parking",
+          rentShare: String(nv.rentShare ?? ""),
+          chargesShare: String(nv.chargesShare ?? "0"),
+        };
+      }));
+      const remChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "remove");
+      setUnitsToRemove(remChs.map(c => c.metadata?.unitId ?? "").filter(Boolean));
     } else {
       setType("rent-change");
       setTitle(""); setReason(""); setNotes("");
@@ -116,8 +124,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setNewEndDate(lease.endDate);
       setNewDeposit(String(lease.depositOrGuaranteeAmount ?? ""));
       setNewNotice(lease.noticePeriodText);
-      setClauseSummary(""); setAddUnitId(""); setAddRole("parking");
-      setAddRent(""); setAddCharges("0"); setRemoveUnitId("");
+      setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]);
       setAddTenantId(""); setRemoveTenantId("");
     }
   }, [existing, open, lease, getAmendmentChanges]);
@@ -152,14 +159,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     if (applies(["clause-change"]) && clauseSummary) {
       push("clauseSummary", "set", "", clauseSummary);
     }
-    if (applies(["unit-addition"]) && addUnitId) {
-      push("unitAssignments", "add", null,
-        { rentShare: Number(addRent || 0), chargesShare: Number(addCharges || 0) },
-        { unitId: addUnitId, assignmentType: addRole, startDate: effectiveDate });
+    if (applies(["unit-addition"])) {
+      for (const a of unitsToAdd) {
+        if (!a.unitId) continue;
+        push("unitAssignments", "add", null,
+          { rentShare: Number(a.rentShare || 0), chargesShare: Number(a.chargesShare || 0) },
+          { unitId: a.unitId, assignmentType: a.assignmentType, startDate: effectiveDate });
+      }
     }
-    if (applies(["unit-removal"]) && removeUnitId) {
-      push("unitAssignments", "remove", { unitId: removeUnitId }, null,
-        { unitId: removeUnitId, startDate: effectiveDate });
+    if (applies(["unit-removal"])) {
+      for (const uid of unitsToRemove) {
+        push("unitAssignments", "remove", { unitId: uid }, null,
+          { unitId: uid, startDate: effectiveDate });
+      }
     }
     if (applies(["tenant-addition"]) && addTenantId) {
       push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, addTenantId],
@@ -171,7 +183,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     }
     return out;
   }, [type, newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
-      addUnitId, addRole, addRent, addCharges, removeUnitId, addTenantId, removeTenantId,
+      unitsToAdd, unitsToRemove, addTenantId, removeTenantId,
       lease, effectiveDate]);
 
   // Live validation (uses a temp amendment record so validateAmendment can run).
