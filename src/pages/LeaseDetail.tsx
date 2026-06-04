@@ -20,7 +20,7 @@ import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
-import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseStatus, getMoveInStatus, getMoveOutStatus, GUARANTEE_TYPE_LABELS, MOVE_IN_CHECKLIST_LABELS, MOVE_OUT_CHECKLIST_LABELS, computeGuaranteeStatus, type GuaranteeStatus } from "@/types";
+import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseStatus, getMoveInStatus, getMoveOutStatus, computeGuaranteeStatus, type GuaranteeStatus } from "@/types";
 import { ASSIGNMENT_TYPE_LABELS, isAncillaryAssignmentType } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
@@ -35,6 +35,38 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
+
+const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
+  "cash-deposit": "guarantee.type.cashDeposit",
+  "bank-guarantee": "guarantee.type.bankGuarantee",
+  "insurance-guarantee": "guarantee.type.insuranceGuarantee",
+  "corporate-guarantee": "guarantee.type.corporateGuarantee",
+};
+const MOVE_IN_CHECKLIST_KEY: Record<keyof MoveInChecklist, TranslationKey> = {
+  leaseSigned: "checklist.moveIn.leaseSigned",
+  firstPaymentReceived: "checklist.moveIn.firstPaymentReceived",
+  guaranteeConfirmed: "checklist.moveIn.guaranteeConfirmed",
+  keysHandedOver: "checklist.moveIn.keysHandedOver",
+  meterReadingCaptured: "checklist.moveIn.meterReadingCaptured",
+  tenantDocumentsComplete: "checklist.moveIn.tenantDocumentsComplete",
+};
+const MOVE_OUT_CHECKLIST_KEY: Record<keyof MoveOutChecklist, TranslationKey> = {
+  noticeConfirmed: "checklist.moveOut.noticeConfirmed",
+  moveOutDateConfirmed: "checklist.moveOut.moveOutDateConfirmed",
+  keysReturned: "checklist.moveOut.keysReturned",
+  moveOutMeterReadingCaptured: "checklist.moveOut.moveOutMeterReadingCaptured",
+  balanceReviewed: "checklist.moveOut.balanceReviewed",
+  guaranteeReviewCompleted: "checklist.moveOut.guaranteeReviewCompleted",
+};
+const ADVANCE_METHOD_KEY: Record<"spread-evenly" | "fixed-monthly-reduction", TranslationKey> = {
+  "spread-evenly": "advance.method.spreadEvenly",
+  "fixed-monthly-reduction": "advance.method.fixedMonthly",
+};
+const ADVANCE_APPLIED_KEY: Record<"rent" | "charges" | "rent-and-charges", TranslationKey> = {
+  "rent": "advance.appliedTo.rent",
+  "charges": "advance.appliedTo.charges",
+  "rent-and-charges": "advance.appliedTo.rentAndCharges",
+};
 
 const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
   active:               { icon: CheckCircle2,  labelKey: "guarantee.deposited",         className: "text-success" },
