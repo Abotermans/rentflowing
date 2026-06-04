@@ -184,7 +184,32 @@ export default function LeaseDetail() {
   const moveInStatus = getMoveInStatus(lease);
   const moveOutStatus = getMoveOutStatus(lease);
 
-  const totalMonthly = lease.monthlyRent + lease.monthlyCharges;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const effectiveTerms = getEffectiveLeaseTerms(lease.id, todayIso, integrityState);
+  const effRent = effectiveTerms?.monthlyRent ?? lease.monthlyRent;
+  const effCharges = effectiveTerms?.monthlyCharges ?? lease.monthlyCharges;
+  const effEndDate = effectiveTerms?.endDate ?? lease.endDate;
+  const effDeposit = effectiveTerms?.depositAmount ?? lease.depositOrGuaranteeAmount;
+  const effNotice = effectiveTerms?.noticePeriodText ?? lease.noticePeriodText;
+  const totalMonthly = effRent + effCharges;
+  // Find the latest active amendment that touched each field for the "(amendment n°X)" suffix.
+  const activeAms = getLeaseAmendments(lease.id, integrityState.amendments)
+    .filter(a => a.status === "active" && a.effectiveDate <= todayIso);
+  const latestAmTouching = (field: string): number | null => {
+    for (let i = activeAms.length - 1; i >= 0; i--) {
+      const chs = integrityState.amendmentChanges.filter(c => c.amendmentId === activeAms[i].id);
+      if (chs.some(c => c.fieldName === field)) return activeAms[i].amendmentNumber;
+    }
+    return null;
+  };
+  const rentAmNum = effRent !== lease.monthlyRent ? latestAmTouching("baseMonthlyRentTotal") : null;
+  const chargesAmNum = effCharges !== lease.monthlyCharges ? latestAmTouching("baseMonthlyChargesTotal") : null;
+  const endAmNum = effEndDate !== lease.endDate ? latestAmTouching("leaseEndDate") : null;
+  const depositAmNum = effDeposit !== lease.depositOrGuaranteeAmount ? latestAmTouching("depositAmount") : null;
+  const noticeAmNum = effNotice !== lease.noticePeriodText ? latestAmTouching("noticePeriodText") : null;
+  const amSuffix = (n: number | null) => n != null
+    ? <span className="text-[10px] text-muted-foreground ml-1">({t("amendments.basedOn").replace("{n}", String(n))})</span>
+    : null;
   const advancePricing = computeAdvancePricing(lease);
   const hasAdvance = lease.hasAdvancePayment && advancePricing.advanceStatus !== 'not-applicable';
   const receivables = getReceivableItemsByLease(lease.id).sort((a, b) => b.dueDate.localeCompare(a.dueDate));
