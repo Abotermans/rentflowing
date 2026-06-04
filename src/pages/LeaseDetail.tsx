@@ -734,7 +734,7 @@ export default function LeaseDetail() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />Rent prepayment</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />{t("rentPrepayment.title")}</CardTitle>
               <StatusBadge status={advancePricing.advanceStatus} />
             </div>
           </CardHeader>
@@ -743,35 +743,35 @@ export default function LeaseDetail() {
             {advancePricing.prepaidUntilDate && (
               <div className="rounded-md border bg-muted/30 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <p className="text-xs text-muted-foreground">Rent paid until</p>
+                  <p className="text-xs text-muted-foreground">{t("rentPrepayment.rentPaidUntil")}</p>
                   <p className="text-xl font-bold text-foreground">{formatDate(advancePricing.prepaidUntilDate, locale)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Months remaining</p>
+                  <p className="text-xs text-muted-foreground">{t("rentPrepayment.monthsRemaining")}</p>
                   <p className="text-xl font-bold text-primary">{advancePricing.monthsRemaining} / {advancePricing.durationMonths}</p>
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div><p className="text-xs text-muted-foreground">Prepayment amount</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.advanceAmount, currency, locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">Method</p><p className="text-sm font-medium text-foreground">{ADVANCE_METHOD_LABELS[lease.advanceAllocationMethod!]}</p></div>
-              <div><p className="text-xs text-muted-foreground">Applied to</p><p className="text-sm font-medium text-foreground">{ADVANCE_APPLIED_LABELS[lease.advanceAppliedTo || 'rent']}</p></div>
-              <div><p className="text-xs text-muted-foreground">Payment date</p><p className="text-sm font-medium text-foreground">{lease.advancePaymentDate ? formatDate(lease.advancePaymentDate, locale) : "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.amount")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.advanceAmount, currency, locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.method")}</p><p className="text-sm font-medium text-foreground">{lease.advanceAllocationMethod ? t(ADVANCE_METHOD_KEY[lease.advanceAllocationMethod]) : "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.appliedTo")}</p><p className="text-sm font-medium text-foreground">{t(ADVANCE_APPLIED_KEY[lease.advanceAppliedTo || 'rent'])}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.paymentDate")}</p><p className="text-sm font-medium text-foreground">{lease.advancePaymentDate ? formatDate(lease.advancePaymentDate, locale) : "—"}</p></div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Consumed: {formatCurrency(advancePricing.advanceConsumed, currency, locale)}</span>
-                <span>Remaining: {formatCurrency(advancePricing.advanceRemaining, currency, locale)}</span>
+                <span>{t("rentPrepayment.consumed")}: {formatCurrency(advancePricing.advanceConsumed, currency, locale)}</span>
+                <span>{t("rentPrepayment.remaining")}: {formatCurrency(advancePricing.advanceRemaining, currency, locale)}</span>
               </div>
               <Progress value={advancePricing.advanceAmount > 0 ? (advancePricing.advanceConsumed / advancePricing.advanceAmount) * 100 : 0} className="h-2" />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div><p className="text-xs text-muted-foreground">First month covered</p><p className="font-medium text-foreground">{advancePricing.allocationStartMonth ? formatDate(advancePricing.allocationStartMonth + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
-              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">Last month covered</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
-              <div><p className="text-xs text-muted-foreground">Duration</p><p className="font-medium text-foreground">{advancePricing.durationMonths} months</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.firstMonthCovered")}</p><p className="font-medium text-foreground">{advancePricing.allocationStartMonth ? formatDate(advancePricing.allocationStartMonth + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
+              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.lastMonthCovered")}</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
+              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.duration")}</p><p className="font-medium text-foreground">{advancePricing.durationMonths} {t("rentPrepayment.monthsSuffix")}</p></div>
             </div>
 
             {/* Collapsible Monthly Schedule */}
@@ -779,7 +779,7 @@ export default function LeaseDetail() {
               <Collapsible>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground hover:text-foreground">
-                    Monthly prepayment schedule
+                    {t("rentPrepayment.schedule")}
                     <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
                   </Button>
                 </CollapsibleTrigger>
@@ -788,10 +788,10 @@ export default function LeaseDetail() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Month</TableHead>
-                          <TableHead className="text-xs text-right">Rent due</TableHead>
-                          <TableHead className="text-xs text-right">Covered by prepayment</TableHead>
-                          <TableHead className="text-xs text-right">Prepayment remaining</TableHead>
+                          <TableHead className="text-xs">{t("rentPrepayment.col.month")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.rentDue")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.covered")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.remaining")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -807,10 +807,10 @@ export default function LeaseDetail() {
                                 <span className="flex items-center gap-1.5">
                                   {row.month}{isCurrent && <span className="text-primary text-[10px]">●</span>}
                                   {isPaidViaAdvance && (isPast || isCurrent) && (
-                                    <span className="inline-flex items-center rounded-full bg-success/15 text-success px-1.5 py-0.5 text-[10px] font-semibold">Paid</span>
+                                    <span className="inline-flex items-center rounded-full bg-success/15 text-success px-1.5 py-0.5 text-[10px] font-semibold">{t("rentPrepayment.tag.paid")}</span>
                                   )}
                                   {isPaidViaAdvance && !isPast && !isCurrent && (
-                                    <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">Prepaid</span>
+                                    <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">{t("rentPrepayment.tag.prepaid")}</span>
                                   )}
                                 </span>
                               </TableCell>
