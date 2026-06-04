@@ -284,14 +284,22 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <Label>{t("amendments.type")}</Label>
-            <Select value={type} onValueChange={(v) => setType(v as AmendmentType)}>
-              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TYPES.map(ty => (
-                  <SelectItem key={ty} value={ty}>{t(`amendments.type.${ty}` as any)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="rounded border bg-muted/30 px-2 py-1.5 min-h-8 flex flex-wrap items-center gap-1.5">
+              {derivedCategories.length === 0 ? (
+                <span className="text-xs text-muted-foreground">{t("amendments.noChangesYet")}</span>
+              ) : (
+                <>
+                  {derivedCategories.map(c => (
+                    <Badge key={c} variant="secondary" className="text-[10px]">
+                      {t(`amendments.type.${c}` as any)}
+                    </Badge>
+                  ))}
+                  {derivedCategories.length > 1 && (
+                    <span className="text-[11px] text-muted-foreground ml-1">{t("amendments.mixedHint")}</span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
           <div className="col-span-2">
             <Label>{t("amendments.titleField")}</Label>
@@ -310,45 +318,32 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             <Input className="h-8" value={reason} onChange={e => setReason(e.target.value)} />
           </div>
 
-          {(type === "rent-change" || type === "mixed") && (
-            <div>
+          <div>
               <Label>{t("amendments.newRent")}</Label>
               <Input className="h-8" type="number" value={newRent} onChange={e => setNewRent(e.target.value)} />
-            </div>
-          )}
-          {(type === "charges-change" || type === "mixed") && (
-            <div>
+          </div>
+          <div>
               <Label>{t("amendments.newCharges")}</Label>
               <Input className="h-8" type="number" value={newCharges} onChange={e => setNewCharges(e.target.value)} />
-            </div>
-          )}
-          {(type === "term-extension" || type === "term-shortening" || type === "mixed") && (
-            <div>
+          </div>
+          <div>
               <Label>{t("amendments.newEndDate")}</Label>
               <Input className="h-8" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
-            </div>
-          )}
-          {(type === "deposit-change" || type === "mixed") && (
-            <div>
+          </div>
+          <div>
               <Label>{t("amendments.newDeposit")}</Label>
               <Input className="h-8" type="number" value={newDeposit} onChange={e => setNewDeposit(e.target.value)} />
-            </div>
-          )}
-          {(type === "notice-change" || type === "mixed") && (
-            <div className="col-span-2">
+          </div>
+          <div className="col-span-2">
               <Label>{t("leases.noticePeriod")}</Label>
               <Input className="h-8" value={newNotice} onChange={e => setNewNotice(e.target.value)} />
-            </div>
-          )}
-          {(type === "clause-change" || type === "mixed") && (
-            <div className="col-span-2">
+          </div>
+          <div className="col-span-2">
               <Label>{t("amendments.clauseSummary")}</Label>
               <Textarea value={clauseSummary} onChange={e => setClauseSummary(e.target.value)} />
-            </div>
-          )}
+          </div>
 
-          {(type === "unit-addition" || type === "unit-removal" || type === "mixed") && (
-            <div className="col-span-2 border rounded p-3 space-y-2">
+          <div className="col-span-2 border rounded p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-medium">{t("amendments.unitChanges")}</div>
                 <Popover open={addUnitOpen} onOpenChange={setAddUnitOpen}>
