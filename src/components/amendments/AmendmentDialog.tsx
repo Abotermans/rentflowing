@@ -20,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, Plus, Minus, X } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import type { Lease, LeaseUnitAssignmentType } from "@/types";
 import { ASSIGNMENT_TYPE_LABELS } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
@@ -236,7 +238,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{existing ? t("amendments.edit") : t("amendments.add")}</DialogTitle>
         </DialogHeader>
@@ -308,92 +310,119 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           )}
 
           {(type === "unit-addition" || type === "unit-removal" || type === "mixed") && (
-            <div className="col-span-2 border rounded p-3 space-y-3">
+            <div className="col-span-2 border rounded p-3 space-y-2">
               <div className="text-xs font-medium">{t("amendments.unitChanges")}</div>
-              <div className="grid grid-cols-2 gap-3">
-                {/* Current units (remove side) */}
-                <div className="space-y-1.5">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("amendments.currentUnits")}</div>
-                  {currentUnits.length === 0 && <p className="text-xs text-muted-foreground">—</p>}
-                  {currentUnits.map(r => {
-                    const marked = unitsToRemove.includes(r.unit.id);
-                    const canRemove = !r.assignment.isPrimary;
-                    return (
-                      <div key={r.unit.id} className={`flex items-center justify-between rounded border px-2 py-1.5 text-xs ${marked ? "bg-destructive/10 border-destructive/40 line-through" : ""}`}>
-                        <span className="truncate">
-                          {r.unit.unitCode} — {r.unit.unitLabel}
-                          {r.assignment.isPrimary && <span className="ml-1 text-[10px] text-muted-foreground">(primary)</span>}
-                          {marked && <span className="ml-1 not-italic no-underline text-[10px] text-destructive font-medium">· {t("amendments.toRemove")}</span>}
-                        </span>
-                        {canRemove && (
-                          marked ? (
-                            <Button size="icon" variant="ghost" className="h-6 w-6"
-                              onClick={() => setUnitsToRemove(arr => arr.filter(x => x !== r.unit.id))}
+              <div className="rounded border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="h-8">
+                      <TableHead className="h-8 text-xs">{t("amendments.unitName")}</TableHead>
+                      <TableHead className="h-8 text-xs">{t("amendments.role")}</TableHead>
+                      <TableHead className="h-8 text-xs text-right">{t("amendments.rentShare")}</TableHead>
+                      <TableHead className="h-8 text-xs text-right">{t("amendments.chargesShare")}</TableHead>
+                      <TableHead className="h-8 text-xs">{t("amendments.status")}</TableHead>
+                      <TableHead className="h-8 text-xs text-right w-12">{t("amendments.action")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentUnits.map(r => {
+                      const marked = unitsToRemove.includes(r.unit.id);
+                      const canRemove = !r.assignment.isPrimary;
+                      return (
+                        <TableRow key={r.unit.id} className={`h-9 ${marked ? "bg-destructive/5" : ""}`}>
+                          <TableCell className={`py-1 text-xs ${marked ? "line-through text-muted-foreground" : ""}`}>
+                            {r.unit.unitCode} — {r.unit.unitLabel}
+                          </TableCell>
+                          <TableCell className="py-1 text-xs text-muted-foreground">
+                            {r.assignment.isPrimary ? "primary" : ASSIGNMENT_TYPE_LABELS[r.assignment.assignmentType as LeaseUnitAssignmentType] ?? "—"}
+                          </TableCell>
+                          <TableCell className="py-1 text-xs text-right tabular-nums">{r.assignment.rentShare ?? "—"}</TableCell>
+                          <TableCell className="py-1 text-xs text-right tabular-nums">{r.assignment.chargesShare ?? "—"}</TableCell>
+                          <TableCell className="py-1 text-xs">
+                            {marked
+                              ? <Badge variant="destructive" className="text-[10px]">{t("amendments.toRemove")}</Badge>
+                              : <Badge variant="secondary" className="text-[10px]">{t("amendments.statusCurrent")}</Badge>}
+                          </TableCell>
+                          <TableCell className="py-1 text-right">
+                            {canRemove && (marked ? (
+                              <Button size="icon" variant="ghost" className="h-7 w-7"
+                                onClick={() => setUnitsToRemove(arr => arr.filter(x => x !== r.unit.id))}
+                                aria-label="undo">
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : (
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
+                                onClick={() => setUnitsToRemove(arr => [...arr, r.unit.id])}
+                                aria-label="remove">
+                                <Minus className="h-3.5 w-3.5" />
+                              </Button>
+                            ))}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {unitsToAdd.map((a, idx) => {
+                      const u = units.find(x => x.id === a.unitId);
+                      return (
+                        <TableRow key={`add-${a.unitId}-${idx}`} className="h-9 bg-success/5">
+                          <TableCell className="py-1 text-xs font-medium">
+                            {u ? `${u.unitCode} — ${u.unitLabel}` : a.unitId}
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Select value={a.assignmentType}
+                              onValueChange={(v) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, assignmentType: v as LeaseUnitAssignmentType } : x))}>
+                              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {ANC_ROLES.map(r => <SelectItem key={r} value={r}>{ASSIGNMENT_TYPE_LABELS[r]}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Input className="h-7 text-xs text-right tabular-nums" type="number"
+                              value={a.rentShare}
+                              onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, rentShare: e.target.value } : x))} />
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Input className="h-7 text-xs text-right tabular-nums" type="number"
+                              value={a.chargesShare}
+                              onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, chargesShare: e.target.value } : x))} />
+                          </TableCell>
+                          <TableCell className="py-1 text-xs">
+                            <Badge className="text-[10px] bg-success text-success-foreground hover:bg-success">{t("amendments.toAdd")}</Badge>
+                          </TableCell>
+                          <TableCell className="py-1 text-right">
+                            <Button size="icon" variant="ghost" className="h-7 w-7"
+                              onClick={() => setUnitsToAdd(arr => arr.filter((_, i) => i !== idx))}
                               aria-label="undo">
                               <X className="h-3.5 w-3.5" />
                             </Button>
-                          ) : (
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive"
-                              onClick={() => setUnitsToRemove(arr => [...arr, r.unit.id])}
-                              aria-label="remove">
-                              <Minus className="h-3.5 w-3.5" />
-                            </Button>
-                          )
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Available units (add side) */}
-                <div className="space-y-1.5">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("amendments.availableUnits")}</div>
-                  {propertyUnits.length === 0 && unitsToAdd.length === 0 && (
-                    <p className="text-xs text-muted-foreground">—</p>
-                  )}
-                  {propertyUnits.map(u => (
-                    <div key={u.id} className="flex items-center justify-between rounded border px-2 py-1.5 text-xs">
-                      <span className="truncate">{u.unitCode} — {u.unitLabel}</span>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 text-success"
-                        onClick={() => setUnitsToAdd(arr => [...arr, { unitId: u.id, assignmentType: "parking", rentShare: "", chargesShare: "0" }])}
-                        aria-label="add">
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                  {unitsToAdd.map((a, idx) => {
-                    const u = units.find(x => x.id === a.unitId);
-                    return (
-                      <div key={`${a.unitId}-${idx}`} className="rounded border border-success/40 bg-success/10 p-2 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="truncate font-medium">
-                            {u ? `${u.unitCode} — ${u.unitLabel}` : a.unitId}
-                            <span className="ml-1 text-[10px] text-success">· {t("amendments.toAdd")}</span>
-                          </span>
-                          <Button size="icon" variant="ghost" className="h-6 w-6"
-                            onClick={() => setUnitsToAdd(arr => arr.filter((_, i) => i !== idx))}
-                            aria-label="undo">
-                            <X className="h-3.5 w-3.5" />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {propertyUnits.map(u => (
+                      <TableRow key={`avail-${u.id}`} className="h-9">
+                        <TableCell className="py-1 text-xs">{u.unitCode} — {u.unitLabel}</TableCell>
+                        <TableCell className="py-1 text-xs text-muted-foreground">—</TableCell>
+                        <TableCell className="py-1 text-xs text-right text-muted-foreground">—</TableCell>
+                        <TableCell className="py-1 text-xs text-right text-muted-foreground">—</TableCell>
+                        <TableCell className="py-1 text-xs">
+                          <Badge variant="outline" className="text-[10px]">{t("amendments.statusAvailable")}</Badge>
+                        </TableCell>
+                        <TableCell className="py-1 text-right">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-success"
+                            onClick={() => setUnitsToAdd(arr => [...arr, { unitId: u.id, assignmentType: "parking", rentShare: "", chargesShare: "0" }])}
+                            aria-label="add">
+                            <Plus className="h-3.5 w-3.5" />
                           </Button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <Select value={a.assignmentType}
-                            onValueChange={(v) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, assignmentType: v as LeaseUnitAssignmentType } : x))}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {ANC_ROLES.map(r => <SelectItem key={r} value={r}>{ASSIGNMENT_TYPE_LABELS[r]}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                          <Input className="h-7 text-xs" type="number" placeholder={t("amendments.rentShare")}
-                            value={a.rentShare}
-                            onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, rentShare: e.target.value } : x))} />
-                          <Input className="h-7 text-xs" type="number" placeholder={t("amendments.chargesShare")}
-                            value={a.chargesShare}
-                            onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, chargesShare: e.target.value } : x))} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {currentUnits.length === 0 && unitsToAdd.length === 0 && propertyUnits.length === 0 && (
+                      <TableRow><TableCell colSpan={6} className="py-3 text-center text-xs text-muted-foreground">{t("amendments.noUnitsAvailable")}</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
               <div className="text-xs text-muted-foreground">
                 {t("amendments.unitChangesSummary")
