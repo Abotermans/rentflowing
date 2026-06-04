@@ -296,60 +296,116 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           )}
           {(type === "notice-change" || type === "mixed") && (
             <div className="col-span-2">
-              <Label>Notice period</Label>
+              <Label>{t("leases.noticePeriod")}</Label>
               <Input className="h-8" value={newNotice} onChange={e => setNewNotice(e.target.value)} />
             </div>
           )}
           {(type === "clause-change" || type === "mixed") && (
             <div className="col-span-2">
-              <Label>Clause summary</Label>
+              <Label>{t("amendments.clauseSummary")}</Label>
               <Textarea value={clauseSummary} onChange={e => setClauseSummary(e.target.value)} />
             </div>
           )}
 
-          {(type === "unit-addition" || type === "mixed") && (
-            <div className="col-span-2 border rounded p-3 space-y-2">
-              <div className="text-xs font-medium">{t("amendments.unitToAdd")}</div>
-              <div className="grid grid-cols-2 gap-2">
-                <Select value={addUnitId} onValueChange={setAddUnitId}>
-                  <SelectTrigger className="h-8"><SelectValue placeholder="Unit" /></SelectTrigger>
-                  <SelectContent>
-                    {propertyUnits.map(u => (
-                      <SelectItem key={u.id} value={u.id}>{u.unitCode} — {u.unitLabel}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={addRole} onValueChange={(v) => setAddRole(v as LeaseUnitAssignmentType)}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {ANC_ROLES.map(r => (
-                      <SelectItem key={r} value={r}>{ASSIGNMENT_TYPE_LABELS[r]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input className="h-8" type="number" placeholder={t("amendments.rentShare")} value={addRent} onChange={e => setAddRent(e.target.value)} />
-                <Input className="h-8" type="number" placeholder={t("amendments.chargesShare")} value={addCharges} onChange={e => setAddCharges(e.target.value)} />
-              </div>
-            </div>
-          )}
-
-          {(type === "unit-removal" || type === "mixed") && (
-            <div className="col-span-2 border rounded p-3 space-y-2">
-              <div className="text-xs font-medium">{t("amendments.unitToRemove")}</div>
-              <Select value={removeUnitId} onValueChange={setRemoveUnitId}>
-                <SelectTrigger className="h-8"><SelectValue placeholder="Unit" /></SelectTrigger>
-                <SelectContent>
-                  {currentUnits.filter(r => !r.assignment.isPrimary).map(r => (
-                    <SelectItem key={r.unit.id} value={r.unit.id}>{r.unit.unitCode} — {r.unit.unitLabel}</SelectItem>
+          {(type === "unit-addition" || type === "unit-removal" || type === "mixed") && (
+            <div className="col-span-2 border rounded p-3 space-y-3">
+              <div className="text-xs font-medium">{t("amendments.unitChanges")}</div>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Current units (remove side) */}
+                <div className="space-y-1.5">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("amendments.currentUnits")}</div>
+                  {currentUnits.length === 0 && <p className="text-xs text-muted-foreground">—</p>}
+                  {currentUnits.map(r => {
+                    const marked = unitsToRemove.includes(r.unit.id);
+                    const canRemove = !r.assignment.isPrimary;
+                    return (
+                      <div key={r.unit.id} className={`flex items-center justify-between rounded border px-2 py-1.5 text-xs ${marked ? "bg-destructive/10 border-destructive/40 line-through" : ""}`}>
+                        <span className="truncate">
+                          {r.unit.unitCode} — {r.unit.unitLabel}
+                          {r.assignment.isPrimary && <span className="ml-1 text-[10px] text-muted-foreground">(primary)</span>}
+                          {marked && <span className="ml-1 not-italic no-underline text-[10px] text-destructive font-medium">· {t("amendments.toRemove")}</span>}
+                        </span>
+                        {canRemove && (
+                          marked ? (
+                            <Button size="icon" variant="ghost" className="h-6 w-6"
+                              onClick={() => setUnitsToRemove(arr => arr.filter(x => x !== r.unit.id))}
+                              aria-label="undo">
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive"
+                              onClick={() => setUnitsToRemove(arr => [...arr, r.unit.id])}
+                              aria-label="remove">
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Available units (add side) */}
+                <div className="space-y-1.5">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("amendments.availableUnits")}</div>
+                  {propertyUnits.length === 0 && unitsToAdd.length === 0 && (
+                    <p className="text-xs text-muted-foreground">—</p>
+                  )}
+                  {propertyUnits.map(u => (
+                    <div key={u.id} className="flex items-center justify-between rounded border px-2 py-1.5 text-xs">
+                      <span className="truncate">{u.unitCode} — {u.unitLabel}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-success"
+                        onClick={() => setUnitsToAdd(arr => [...arr, { unitId: u.id, assignmentType: "parking", rentShare: "", chargesShare: "0" }])}
+                        aria-label="add">
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
+                  {unitsToAdd.map((a, idx) => {
+                    const u = units.find(x => x.id === a.unitId);
+                    return (
+                      <div key={`${a.unitId}-${idx}`} className="rounded border border-success/40 bg-success/10 p-2 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="truncate font-medium">
+                            {u ? `${u.unitCode} — ${u.unitLabel}` : a.unitId}
+                            <span className="ml-1 text-[10px] text-success">· {t("amendments.toAdd")}</span>
+                          </span>
+                          <Button size="icon" variant="ghost" className="h-6 w-6"
+                            onClick={() => setUnitsToAdd(arr => arr.filter((_, i) => i !== idx))}
+                            aria-label="undo">
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <Select value={a.assignmentType}
+                            onValueChange={(v) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, assignmentType: v as LeaseUnitAssignmentType } : x))}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {ANC_ROLES.map(r => <SelectItem key={r} value={r}>{ASSIGNMENT_TYPE_LABELS[r]}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <Input className="h-7 text-xs" type="number" placeholder={t("amendments.rentShare")}
+                            value={a.rentShare}
+                            onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, rentShare: e.target.value } : x))} />
+                          <Input className="h-7 text-xs" type="number" placeholder={t("amendments.chargesShare")}
+                            value={a.chargesShare}
+                            onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, chargesShare: e.target.value } : x))} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {t("amendments.unitChangesSummary")
+                  .replace("{add}", String(unitsToAdd.length))
+                  .replace("{remove}", String(unitsToRemove.length))}
+              </div>
             </div>
           )}
 
           {(type === "tenant-addition" || type === "tenant-removal") && (
             <div className="col-span-2">
-              <Label>Tenant</Label>
+              <Label>{t("tenants.tenant")}</Label>
               <Select
                 value={type === "tenant-addition" ? addTenantId : removeTenantId}
                 onValueChange={(v) => type === "tenant-addition" ? setAddTenantId(v) : setRemoveTenantId(v)}
