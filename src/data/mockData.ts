@@ -202,13 +202,13 @@ export const initialAmendments: LeaseAmendment[] = [
   // l1 (Paris) — rent increase from 2025-09-01
   { id: "am1", leaseId: "l1", amendmentNumber: 1, amendmentType: "rent-change", title: "Indexation IRL 2025", reason: "Annual indexation (IRL Q2 2025)", notes: "", effectiveDate: "2025-09-01", signedDate: "2025-08-15", status: "active", supersedesAmendmentId: null, createdAt: "2025-08-15", updatedAt: "2025-08-15" },
   // l2 (Brussels) — charges update
-  { id: "am2", leaseId: "l2", amendmentNumber: 1, amendmentType: "charges-change", title: "Provision charges 2026", reason: "Higher building maintenance budget", notes: "", effectiveDate: "2026-01-01", signedDate: "2025-12-10", status: "active", supersedesAmendmentId: null, createdAt: "2025-12-10", updatedAt: "2025-12-10" },
+  { id: "am2", leaseId: "l2", amendmentNumber: 1, amendmentType: "charges-change", title: "Provision charges 2026", reason: "Higher building maintenance budget", notes: "", effectiveDate: "2026-01-01", signedDate: "2025-12-10", status: "ended", supersedesAmendmentId: null, createdAt: "2025-12-10", updatedAt: "2026-02-10" },
   // l5 (London) — term extension before move-out is finalised
   { id: "am3", leaseId: "l5", amendmentNumber: 1, amendmentType: "term-extension", title: "12-month extension", reason: "Tenant cancelled relocation", notes: "Replaces the notice given in February.", effectiveDate: "2026-04-30", signedDate: null, status: "scheduled", supersedesAmendmentId: null, createdAt: "2026-03-10", updatedAt: "2026-03-10" },
   // l7 (Amsterdam) — additional parking added
   { id: "am4", leaseId: "l7", amendmentNumber: 1, amendmentType: "unit-addition", title: "Add second parking spot", reason: "Tenant request for visitor parking", notes: "", effectiveDate: "2025-11-01", signedDate: "2025-10-15", status: "active", supersedesAmendmentId: null, createdAt: "2025-10-15", updatedAt: "2025-10-15" },
   // l2 (Brussels) — cellar removed
-  { id: "am5", leaseId: "l2", amendmentNumber: 2, amendmentType: "unit-removal", title: "Drop cave storage", reason: "Tenant no longer needs storage", notes: "", effectiveDate: "2026-03-01", signedDate: "2026-02-10", status: "active", supersedesAmendmentId: null, createdAt: "2026-02-10", updatedAt: "2026-02-10" },
+  { id: "am5", leaseId: "l2", amendmentNumber: 2, amendmentType: "unit-removal", title: "Drop cave storage", reason: "Tenant no longer needs storage", notes: "", effectiveDate: "2026-03-01", signedDate: "2026-02-10", status: "active", supersedesAmendmentId: "am2", createdAt: "2026-02-10", updatedAt: "2026-02-10" },
   // l6 (Brussels commercial) — mixed: small rent increase + 6-month extension (draft)
   { id: "am6", leaseId: "l6", amendmentNumber: 1, amendmentType: "mixed", title: "Mid-term renegotiation", reason: "Tenant requested extension; landlord requested rent uplift", notes: "Pending signature from tenant.", effectiveDate: "2026-07-01", signedDate: null, status: "draft", supersedesAmendmentId: null, createdAt: "2026-04-20", updatedAt: "2026-04-20" },
 ];

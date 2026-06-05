@@ -1106,6 +1106,8 @@ const en = {
   "amendments.error.AMD_UNPAID_OVERLAP": "Unpaid receivables overlap the effective date — review before activation",
   "amendments.error.AMD_CONFLICT_PENDING": "Another pending/active amendment changes the same field(s)",
   "amendments.error.AMD_PRIMARY_CHANGE": "Changing the primary unit affects occupancy and reporting",
+  "amendments.error.AMD_WILL_END_PREVIOUS": "Activating this amendment will end the amendment currently in force",
+  "amendments.badge.current": "Current",
 
   // Lease detail page (extra)
   "leaseDetail.totalAllocated": "Total Allocated",
@@ -2316,6 +2318,8 @@ const fr: TranslationKeys = {
   "amendments.error.AMD_UNPAID_OVERLAP": "Des créances impayées chevauchent la date d'effet — à vérifier avant activation",
   "amendments.error.AMD_CONFLICT_PENDING": "Un autre avenant en cours modifie les mêmes champs",
   "amendments.error.AMD_PRIMARY_CHANGE": "Changer le lot principal affecte l'occupation et le reporting",
+  "amendments.error.AMD_WILL_END_PREVIOUS": "Activer cet avenant clôturera l'avenant en vigueur",
+  "amendments.badge.current": "En vigueur",
 
   // Lease detail page (extra)
   "leaseDetail.totalAllocated": "Total alloué",

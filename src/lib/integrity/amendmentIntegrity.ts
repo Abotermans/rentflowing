@@ -174,18 +174,16 @@ export function validateAmendment(
     });
   }
 
-  // Conflicts with another pending/active amendment touching the same fields.
-  const touched = new Set(changes.map(c => c.fieldName));
-  const conflicting = s.amendments.filter(o =>
+  // Single-active invariant: warn if activating this amendment will end another.
+  const previousActive = s.amendments.find(o =>
     o.id !== amendment.id &&
     o.leaseId === lease.id &&
-    (o.status === "scheduled" || o.status === "active") &&
-    s.amendmentChanges.some(cc => cc.amendmentId === o.id && touched.has(cc.fieldName)),
+    o.status === "active",
   );
-  if (conflicting.length > 0) {
+  if (previousActive) {
     warnings.push({
-      code: "AMD_CONFLICT_PENDING",
-      message: `Another pending/active amendment changes the same field(s)`,
+      code: "AMD_WILL_END_PREVIOUS",
+      message: `Activating this amendment will end Amendment #${previousActive.amendmentNumber} currently in force`,
       severity: "medium",
     });
   }

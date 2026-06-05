@@ -122,7 +122,7 @@ export function AmendmentsSection({ leaseId }: Props) {
                     return (
                        <TableRow
                          key={a.id}
-                         className="cursor-pointer hover:bg-accent/30"
+                         className={`cursor-pointer hover:bg-accent/30 ${a.status === "active" ? "border-l-2 border-l-success bg-success/5" : ""}`}
                          onClick={() => openEdit(a)}
                        >
                          <TableCell className="py-1.5">{a.amendmentNumber}</TableCell>
@@ -179,7 +179,9 @@ export function AmendmentsSection({ leaseId }: Props) {
                         </TableCell>
                         <TableCell className="py-1.5">{newEnd ? formatDate(newEnd, locale) : "—"}</TableCell>
                         <TableCell className="py-1.5">
-                          <Badge className={STATUS_CLS[a.status]} variant="outline">{t(`amendments.statusLabel.${a.status}` as any)}</Badge>
+                          <Badge className={STATUS_CLS[a.status]} variant="outline">
+                            {a.status === "active" ? t("amendments.badge.current") : t(`amendments.statusLabel.${a.status}` as any)}
+                          </Badge>
                         </TableCell>
                         <TableCell className="py-1.5">
                           <div className="flex gap-1" onClick={e => e.stopPropagation()}>
@@ -206,7 +208,11 @@ export function AmendmentsSection({ leaseId }: Props) {
                             {a.status === "scheduled" && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => activateAmendment(a.id)} aria-label={t("amendments.tooltip.activate")}>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => {
+                                    const prev = ams.find(x => x.id !== a.id && x.status === "active");
+                                    if (prev && !confirm(t("amendments.error.AMD_WILL_END_PREVIOUS").replace("{n}", String(prev.amendmentNumber)))) return;
+                                    activateAmendment(a.id);
+                                  }} aria-label={t("amendments.tooltip.activate")}>
                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </TooltipTrigger>

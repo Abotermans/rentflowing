@@ -28,9 +28,31 @@ export function getActiveAmendmentsOn(
   date: string,
   amendments: readonly LeaseAmendment[],
 ): LeaseAmendment[] {
-  return getLeaseAmendments(leaseId, amendments).filter(
+  const result = getLeaseAmendments(leaseId, amendments).filter(
     a => a.status === "active" && a.effectiveDate <= date,
   );
+  if (result.length > 1 && typeof console !== "undefined") {
+    // Single-active invariant — surface accidental violations during development.
+    console.warn(
+      `[amendments] lease ${leaseId} has ${result.length} active amendments on ${date} — expected at most 1`,
+    );
+  }
+  return result;
+}
+
+/** Convenience: the single active amendment on `date` (or null). */
+export function getActiveAmendmentOn(
+  leaseId: string,
+  date: string,
+  amendments: readonly LeaseAmendment[],
+): LeaseAmendment | null {
+  const list = getActiveAmendmentsOn(leaseId, date, amendments);
+  if (list.length === 0) return null;
+  // Latest effectiveDate / amendmentNumber wins if the invariant is briefly violated.
+  return list.slice().sort((x, y) => {
+    if (x.effectiveDate !== y.effectiveDate) return y.effectiveDate.localeCompare(x.effectiveDate);
+    return y.amendmentNumber - x.amendmentNumber;
+  })[0];
 }
 
 export function getAmendmentChanges(
