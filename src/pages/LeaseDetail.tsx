@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet, MoreVertical, Trash2, Undo2, Zap, Droplet } from "lucide-react";
+import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
@@ -538,7 +538,7 @@ export default function LeaseDetail() {
                   return (
                     <>
                       <DropdownMenuItem onSelect={() => openRenewDialog()}>
-                        <Clock className="h-4 w-4 mr-2" />{t("lease.renew")}
+                        <RefreshCw className="h-4 w-4 mr-2" />{t("lease.renew")}
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleMarkEnded()} disabled={endDisabled}>
                         <CheckCircle2 className="h-4 w-4 mr-2" />{t("detail.markEnded")}
