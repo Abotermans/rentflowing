@@ -350,7 +350,26 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           <div className="col-span-2 grid grid-cols-3 gap-3">
             <div>
               <Label>{t("amendments.effectiveDate")}</Label>
-              <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
+              <div className="flex items-center gap-2">
+                <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
+                {(() => {
+                  if (!effectiveDate) return null;
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const eff = new Date(effectiveDate);
+                  if (eff >= today) return null;
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertTriangle className="h-4 w-4 text-warning shrink-0 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs max-w-[280px]">{t("amendments.error.AMD_EFFECTIVE_IN_PAST")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })()}
+              </div>
             </div>
             <div>
               <Label>{t("amendments.signedDate")}</Label>
