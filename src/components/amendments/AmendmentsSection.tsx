@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, FileEdit, CheckCircle2, XCircle, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, FileEdit, CheckCircle2, XCircle, Trash2, AlertTriangle, CalendarClock, Undo2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
@@ -20,17 +20,18 @@ interface Props { leaseId: string }
 
 const STATUS_CLS: Record<AmendmentStatus, string> = {
   draft: "bg-muted text-muted-foreground",
-  "pending-signature": "bg-warning/15 text-warning border-warning/30",
+  scheduled: "bg-primary/15 text-primary border-primary/30",
   active: "bg-success/15 text-success border-success/30",
-  cancelled: "bg-muted text-muted-foreground line-through",
-  superseded: "bg-muted text-muted-foreground",
+  ended: "bg-muted text-muted-foreground",
+  terminated: "bg-muted text-muted-foreground line-through",
 };
 
 export function AmendmentsSection({ leaseId }: Props) {
   const { t, locale } = useSettings();
   const {
     leases, units, tenants,
-    deleteAmendment, cancelAmendment, activateAmendment, getAmendmentChanges,
+    deleteAmendment, terminateAmendment, scheduleAmendment, activateAmendment,
+    revertAmendmentToDraft, getAmendmentChanges,
   } = useAppData();
   const s = useIntegrityState();
   const lease = leases.find(l => l.id === leaseId);
@@ -182,7 +183,7 @@ export function AmendmentsSection({ leaseId }: Props) {
                         </TableCell>
                         <TableCell className="py-1.5">
                           <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                            {(a.status === "draft" || a.status === "pending-signature") && (
+                            {(a.status === "draft" || a.status === "scheduled") && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label={t("amendments.tooltip.edit")}>
@@ -192,7 +193,17 @@ export function AmendmentsSection({ leaseId }: Props) {
                                 <TooltipContent>{t("amendments.tooltip.edit")}</TooltipContent>
                               </Tooltip>
                             )}
-                            {(a.status === "draft" || a.status === "pending-signature") && (
+                            {a.status === "draft" && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={() => scheduleAmendment(a.id)} aria-label={t("amendments.tooltip.schedule")}>
+                                    <CalendarClock className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t("amendments.tooltip.schedule")}</TooltipContent>
+                              </Tooltip>
+                            )}
+                            {a.status === "scheduled" && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => activateAmendment(a.id)} aria-label={t("amendments.tooltip.activate")}>
@@ -202,14 +213,24 @@ export function AmendmentsSection({ leaseId }: Props) {
                                 <TooltipContent>{t("amendments.tooltip.activate")}</TooltipContent>
                               </Tooltip>
                             )}
-                            {a.status === "active" && (
+                            {a.status === "scheduled" && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-warning" onClick={() => cancelAmendment(a.id)} aria-label={t("amendments.tooltip.cancel")}>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => revertAmendmentToDraft(a.id)} aria-label={t("amendments.tooltip.revertDraft")}>
+                                    <Undo2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t("amendments.tooltip.revertDraft")}</TooltipContent>
+                              </Tooltip>
+                            )}
+                            {(a.status === "active" || a.status === "scheduled") && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-warning" onClick={() => terminateAmendment(a.id)} aria-label={t("amendments.tooltip.terminate")}>
                                     <XCircle className="h-3.5 w-3.5" />
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>{t("amendments.tooltip.cancel")}</TooltipContent>
+                                <TooltipContent>{t("amendments.tooltip.terminate")}</TooltipContent>
                               </Tooltip>
                             )}
                             {a.status === "draft" && (

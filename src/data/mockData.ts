@@ -204,7 +204,7 @@ export const initialAmendments: LeaseAmendment[] = [
   // l2 (Brussels) — charges update
   { id: "am2", leaseId: "l2", amendmentNumber: 1, amendmentType: "charges-change", title: "Provision charges 2026", reason: "Higher building maintenance budget", notes: "", effectiveDate: "2026-01-01", signedDate: "2025-12-10", status: "active", supersedesAmendmentId: null, createdAt: "2025-12-10", updatedAt: "2025-12-10" },
   // l5 (London) — term extension before move-out is finalised
-  { id: "am3", leaseId: "l5", amendmentNumber: 1, amendmentType: "term-extension", title: "12-month extension", reason: "Tenant cancelled relocation", notes: "Replaces the notice given in February.", effectiveDate: "2026-04-30", signedDate: null, status: "pending-signature", supersedesAmendmentId: null, createdAt: "2026-03-10", updatedAt: "2026-03-10" },
+  { id: "am3", leaseId: "l5", amendmentNumber: 1, amendmentType: "term-extension", title: "12-month extension", reason: "Tenant cancelled relocation", notes: "Replaces the notice given in February.", effectiveDate: "2026-04-30", signedDate: null, status: "scheduled", supersedesAmendmentId: null, createdAt: "2026-03-10", updatedAt: "2026-03-10" },
   // l7 (Amsterdam) — additional parking added
   { id: "am4", leaseId: "l7", amendmentNumber: 1, amendmentType: "unit-addition", title: "Add second parking spot", reason: "Tenant request for visitor parking", notes: "", effectiveDate: "2025-11-01", signedDate: "2025-10-15", status: "active", supersedesAmendmentId: null, createdAt: "2025-10-15", updatedAt: "2025-10-15" },
   // l2 (Brussels) — cellar removed

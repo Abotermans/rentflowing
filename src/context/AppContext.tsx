@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee } from "@/types";
 import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
@@ -121,8 +121,9 @@ interface AppState {
   deleteAmendment: (id: string) => void;
   setAmendmentStatus: (id: string, status: AmendmentStatus) => void;
   activateAmendment: (id: string) => { ok: boolean; reason?: string };
-  cancelAmendment: (id: string) => void;
-  supersedeAmendment: (id: string, replacementId: string) => void;
+  scheduleAmendment: (id: string) => { ok: boolean; reason?: string };
+  terminateAmendment: (id: string) => void;
+  revertAmendmentToDraft: (id: string) => void;
   getLeaseAmendments: (leaseId: string) => LeaseAmendment[];
   getAmendmentChanges: (amendmentId: string) => LeaseAmendmentChange[];
 
@@ -630,18 +631,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { ok: true };
   }, [amendments, amendmentChanges]);
 
-  const cancelAmendment = useCallback((id: string) => {
-    setAmendmentStatus(id, "cancelled");
+  const scheduleAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
+    const am = amendments.find(a => a.id === id);
+    if (!am) return { ok: false, reason: "Amendment not found" };
+    if (!am.effectiveDate) return { ok: false, reason: "Effective date is required" };
+    setAmendmentStatus(id, "scheduled");
+    return { ok: true };
+  }, [amendments, setAmendmentStatus]);
+
+  const terminateAmendment = useCallback((id: string) => {
+    setAmendmentStatus(id, "terminated");
   }, [setAmendmentStatus]);
 
-  const supersedeAmendment = useCallback((id: string, replacementId: string) => {
-    const ts = now();
-    setAmendments(prev => prev.map(a => {
-      if (a.id === id) return { ...a, status: "superseded" as const, updatedAt: ts };
-      if (a.id === replacementId) return { ...a, supersedesAmendmentId: id, updatedAt: ts };
-      return a;
-    }));
-  }, []);
+  const revertAmendmentToDraft = useCallback((id: string) => {
+    setAmendmentStatus(id, "draft");
+  }, [setAmendmentStatus]);
+
+  // Auto-activate scheduled amendments once their effectiveDate is reached.
+  useEffect(() => {
+    const tick = () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const due = amendments.filter(a => a.status === "scheduled" && a.effectiveDate <= today);
+      due.forEach(a => activateAmendment(a.id));
+    };
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, [amendments, activateAmendment]);
 
   const getLeaseAmendmentsFn = useCallback(
     (leaseId: string) => amendments.filter(a => a.leaseId === leaseId),
@@ -1022,7 +1038,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getAncillaryLeaseUnits: getAncillaryLeaseUnitsFn,
     isUnitAssignedToActiveLease: isUnitAssignedToActiveLeaseFn,
     addAmendment, updateAmendment, deleteAmendment, setAmendmentStatus,
-    activateAmendment, cancelAmendment, supersedeAmendment,
+    activateAmendment, scheduleAmendment, terminateAmendment, revertAmendmentToDraft,
     getLeaseAmendments: getLeaseAmendmentsFn,
     getAmendmentChanges: getAmendmentChangesFn,
     addGuarantee, updateGuarantee, deleteGuarantee,
@@ -1060,7 +1076,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLeaseUnitsFn, getLeaseAssignments, getActiveLeaseAssignmentForUnit,
     getLeaseAssignedUnitsFn, getPrimaryLeaseUnitFn, getAncillaryLeaseUnitsFn, isUnitAssignedToActiveLeaseFn,
     addAmendment, updateAmendment, deleteAmendment, setAmendmentStatus,
-    activateAmendment, cancelAmendment, supersedeAmendment,
+    activateAmendment, scheduleAmendment, terminateAmendment, revertAmendmentToDraft,
     getLeaseAmendmentsFn, getAmendmentChangesFn,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,

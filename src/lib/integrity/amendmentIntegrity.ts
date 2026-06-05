@@ -179,7 +179,7 @@ export function validateAmendment(
   const conflicting = s.amendments.filter(o =>
     o.id !== amendment.id &&
     o.leaseId === lease.id &&
-    (o.status === "pending-signature" || o.status === "active") &&
+    (o.status === "scheduled" || o.status === "active") &&
     s.amendmentChanges.some(cc => cc.amendmentId === o.id && touched.has(cc.fieldName)),
   );
   if (conflicting.length > 0) {

@@ -1,48 +1,102 @@
-# Amendment edit modal — rent source of truth, date layout, coverage warning
+## Goal
 
-Scope: `src/components/amendments/AmendmentDialog.tsx` (+ a couple of i18n keys, + `getLeaseAmendments` already exists in `src/lib/amendments.ts`).
+Rework the amendment ("avenant") workflow so it mirrors the lease lifecycle:
 
-## 1. Unit rent/charges become the source of truth
+```text
+draft  ──►  scheduled  ──►  active  ──►  ended (auto, superseded by a later amendment)
+                                    └►  terminated (manually stopped)
+```
 
-Remove the two standalone fields **New rent** and **New charges** from the form. The lease-level `monthlyRent` / `monthlyCharges` are already recomputed from active assignment shares in `getEffectiveLeaseTerms` (see `src/lib/amendments.ts`), so they don't need a separate input.
+- **draft** — being prepared / edited.
+- **scheduled** — signed and locked, waiting for `effectiveDate`.
+- **active** — `effectiveDate ≤ today`; the amendment's changes are in force. Transition from `scheduled` is automatic.
+- **ended** — a later amendment took over (today's `superseded`, renamed for parity with lease `ended`).
+- **terminated** — operator stopped it. Historical effect is preserved (no rollback of assignments); future periods revert to whatever the next-most-recent active amendment / original lease dictates.
 
-Replace with: a read-only **Total rent / Total charges** summary line above the units table that lives-sums the editable per-unit shares (current units minus removed + added + edited).
+## 1. Type & data model (`src/types/amendments.ts`)
 
-Make every row in the units table editable for `rentShare` and `chargesShare`:
-- Current units: today the table shows the assignment's existing `rentShare` / `chargesShare` as plain text. Convert them to `<Input type="number">` (matching the to-add rows' styling). Track edits in a new local map `editedShares: Record<unitId, { rentShare?: string; chargesShare?: string }>`.
-- Removed-marked rows: keep inputs disabled.
-- Added rows: unchanged (already editable).
+- `AmendmentStatus = "draft" | "scheduled" | "active" | "ended" | "terminated"`.
+- Drop `"pending-signature"`, `"cancelled"`, `"superseded"` (no real persistence layer yet, just mock data — straight rename in `src/data/mockData.ts`: `pending-signature → scheduled`, `cancelled → terminated`, `superseded → ended`).
+- Update `AMENDMENT_STATUS_LABELS` accordingly.
 
-`changesDraft` updates:
-- Drop the `baseMonthlyRentTotal` and `baseMonthlyChargesTotal` blocks entirely.
-- For each entry in `editedShares` that differs from the current assignment, emit a `unitRentShare` or `unitChargesShare` change with `metadata.unitId` and `newValue = Number`.
+## 2. State transitions (`src/context/AppContext.tsx`)
 
-Activation side-effect — "modifying it on the avenant updates the unit itself":
-- In `save()`, after the amendment is created/updated, if `status === "active"` walk the final per-unit shares (current edits + added rows' shares) and call `updateUnit` for each affected unit, setting `baseRent` to its new rentShare. This mirrors the rent back onto the unit so the unit page stays consistent. (Charges live on the assignment, not the unit, so we only sync rent.)
+Replace the current ad-hoc helpers with a single coherent set:
 
-Derived-type logic in `deriveAmendmentType` already handles `unitRentShare` / `unitChargesShare`, no change needed.
+- `addAmendment` — always creates in `draft`.
+- `scheduleAmendment(id)` — `draft → scheduled`. Requires `effectiveDate` set and integrity check (reuse `validateAmendment`, blockers must be empty).
+- `activateAmendment(id)` — `scheduled → active`. Writes the assignment side-effects (existing logic in lines 562–631). Also fires when auto-activation runs.
+- `terminateAmendment(id)` — `active → terminated` (and `scheduled → terminated` allowed too). No assignment rollback per decision.
+- `revertAmendmentToDraft(id)` — `scheduled → draft` for edits before activation.
+- `deleteAmendment` — restricted to `draft` only (UI already gates this; keep guard).
 
-## 2. Dates on one line
+Remove `cancelAmendment` and `supersedeAmendment` from the public API. Replace internal supersession with: when an amendment activates, every other `active` amendment on the same lease whose touched-field set overlaps gets moved to `ended` and `supersedesAmendmentId` is set on the new one.
 
-Wrap **Effective date**, **Signed date**, and **New end date** in a single `grid grid-cols-3 gap-3 col-span-2` row. Remove `newEndDate` from its current standalone slot lower in the form.
+### Auto-activation on date crossing
 
-## 3. Coverage-gap warning
+Add an effect inside `AppProvider`:
 
-Add a soft warning (non-blocking, rendered in the existing live-validation alert area) when `effectiveDate` is strictly greater than the current coverage end:
+```text
+useEffect(() => {
+  const tick = () => {
+    const today = new Date().toISOString().slice(0,10);
+    amendments
+      .filter(a => a.status === "scheduled" && a.effectiveDate <= today)
+      .forEach(a => activateAmendment(a.id));
+  };
+  tick();
+  const id = setInterval(tick, 60_000); // re-check every minute while app is open
+  return () => clearInterval(id);
+}, [amendments, activateAmendment]);
+```
 
-- Coverage end = max(`lease.endDate`, latest active amendment's `effectiveDate`'s resulting `endDate`). Easiest: read `getCurrentLeaseTerms(lease.id, integrityState).endDate` — already imported pattern. Fallback to `lease.endDate`.
-- If `effectiveDate > coverageEnd` and there is no `newEndDate` already extending past `effectiveDate`, push a warning entry into the alert list with key `amendments.warning.coverageGap` and a message like *"Effective date is after the current lease/amendment end date — there will be uncovered days. Extend the end date to cover the gap."*
+This guarantees a `scheduled` amendment becomes `active` without user action once its date passes.
 
-Implementation: compute it in a local `useMemo` and render an extra `<li className="text-warning">` inside the existing `Alert` block (or render the Alert when only this warning exists). No backend / no `validateAmendment` change.
+## 3. Integrity (`src/lib/integrity/amendmentIntegrity.ts`)
 
-## 4. i18n
+- Rename status references (`pending-signature` → `scheduled`, `active` unchanged) in `validateAmendment` conflict detection.
+- Add a new helper `canScheduleAmendment` = `validateAmendment` with `effectiveDate` required blocker.
+- Existing `canActivateAmendment` is still used (now called by the scheduler before flipping to `active`, and by the auto-activation tick — auto-activation should silently keep amendment as `scheduled` and surface a warning toast if blockers appear, rather than activating into a broken state).
 
-Add to `src/i18n/translations.ts`:
-- `amendments.totalRent`, `amendments.totalCharges`
-- `amendments.warning.coverageGap` (EN + FR)
+## 4. UI (`src/components/amendments/AmendmentsSection.tsx` + `AmendmentDialog.tsx`)
+
+Row action buttons by status:
+
+| Status      | Actions                              |
+|-------------|--------------------------------------|
+| draft       | Edit · Schedule · Delete             |
+| scheduled   | Edit (→ revert to draft + reopen) · Activate now · Terminate |
+| active      | Terminate                            |
+| ended       | (read-only)                          |
+| terminated  | (read-only)                          |
+
+- Replace the current "Activate" icon for `draft` with "Schedule" (calendar icon). Activation icon only on `scheduled` rows (manual override; auto-tick usually beats the user).
+- Replace "Cancel" tooltip/icon (currently shown for `active`) with "Terminate".
+- `STATUS_CLS` map: extend with `scheduled` (info/blue) and `terminated` (destructive muted). Keep `active` (success), `ended` (muted), `draft` (secondary).
+- `AmendmentDialog` save button: when creating/editing a `draft`, primary action stays "Save draft"; add a secondary "Save & schedule" that runs `addAmendment` then `scheduleAmendment`.
+- Read-only mode for `scheduled` (locked; user must revert-to-draft to edit).
+
+## 5. Lifecycle filtering (`src/lib/amendments.ts`)
+
+- `getActiveAmendmentsOn` already keys on `status === "active"`. No change in filter, but the renamed statuses just propagate.
+- `getLeaseAmendmentImpact` simulation already flips to `"active"` — unchanged.
+
+## 6. i18n (`src/i18n/translations.ts`)
+
+Rename / add keys (EN + FR):
+- `amendments.statusLabel.scheduled`, `amendments.statusLabel.terminated`, `amendments.statusLabel.ended`.
+- `amendments.tooltip.schedule`, `amendments.tooltip.terminate`, `amendments.tooltip.revertDraft`.
+- `amendments.action.saveAndSchedule`.
+- Remove old `pending-signature` / `cancelled` / `superseded` keys.
+
+## 7. Tests
+
+- `src/lib/lifecycle.test.ts` — update or add a case asserting `scheduled` → `active` transition via the auto-activation effect (or extract the predicate so it can be unit-tested without timers).
+- `src/lib/multiUnitLease.test.ts` — update any status string literals.
 
 ## Out of scope
 
-- `AmendmentsSection.tsx`, financial recompute logic, integrity layer, backend.
-- Charges-on-unit modelling (charges remain on assignments).
-- Hiding the rent/charges fields outside the amendment dialog.
+- Auth/permissions on who can schedule vs terminate.
+- Surfacing scheduled amendments in dashboards.
+- Backend persistence (still mock state).
+- Receivable rewrites at termination.

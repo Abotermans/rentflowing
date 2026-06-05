@@ -22,10 +22,10 @@ export type AmendmentType =
 
 export type AmendmentStatus =
   | "draft"
-  | "pending-signature"
+  | "scheduled"
   | "active"
-  | "cancelled"
-  | "superseded";
+  | "ended"
+  | "terminated";
 
 /**
  * Structured fields an amendment can change. Free-text clauses fall under
@@ -138,8 +138,8 @@ export const AMENDMENT_TYPE_LABELS: Record<AmendmentType, string> = {
 
 export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {
   draft: "Draft",
-  "pending-signature": "Pending signature",
+  scheduled: "Scheduled",
   active: "Active",
-  cancelled: "Cancelled",
-  superseded: "Superseded",
+  ended: "Ended",
+  terminated: "Terminated",
 };
