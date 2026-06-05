@@ -263,8 +263,35 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const canSubmit = title.trim().length > 0 && effectiveDate;
   const canActivate = canSubmit && liveValidation?.allowed === true;
 
+  const coverageGap = useMemo(() => {
+    if (!effectiveDate) return false;
+    const currentTerms = getCurrentLeaseTerms(lease.id, integrityState);
+    const coverageEnd = currentTerms?.endDate ?? lease.endDate;
+    if (!coverageEnd) return false;
+    if (effectiveDate <= coverageEnd) return false;
+    if (newEndDate && newEndDate >= effectiveDate) return false;
+    return true;
+  }, [effectiveDate, newEndDate, lease, integrityState]);
+
   const save = (status: AmendmentStatus) => {
     if (!canSubmit) return;
+    // Sync edited per-unit rent back to the Unit record on activation
+    // (charges live on assignments, not units, so only rent is mirrored).
+    if (status === "active") {
+      for (const r of currentUnits) {
+        if (unitsToRemove.includes(r.unit.id)) continue;
+        const e = editedShares[r.unit.id];
+        if (e?.rentShare !== undefined && e.rentShare !== "" && Number(e.rentShare) !== (r.assignment.rentShare ?? 0)) {
+          updateUnit({ ...r.unit, baseRent: Number(e.rentShare) });
+        }
+      }
+      for (const a of unitsToAdd) {
+        const u = units.find(x => x.id === a.unitId);
+        if (u && a.rentShare !== "" && Number(a.rentShare) !== (u.baseRent ?? 0)) {
+          updateUnit({ ...u, baseRent: Number(a.rentShare) });
+        }
+      }
+    }
     if (existing) {
       updateAmendment({
         ...existing,
