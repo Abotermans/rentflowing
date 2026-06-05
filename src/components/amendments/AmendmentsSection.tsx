@@ -20,7 +20,7 @@ interface Props { leaseId: string }
 
 const STATUS_CLS: Record<AmendmentStatus, string> = {
   draft: "bg-muted text-muted-foreground",
-  scheduled: "bg-info/15 text-info border-info/30",
+  scheduled: "bg-primary/15 text-primary border-primary/30",
   active: "bg-success/15 text-success border-success/30",
   ended: "bg-muted text-muted-foreground",
   terminated: "bg-muted text-muted-foreground line-through",
@@ -196,7 +196,7 @@ export function AmendmentsSection({ leaseId }: Props) {
                             {a.status === "draft" && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-info" onClick={() => scheduleAmendment(a.id)} aria-label={t("amendments.tooltip.schedule")}>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={() => scheduleAmendment(a.id)} aria-label={t("amendments.tooltip.schedule")}>
                                     <CalendarClock className="h-3.5 w-3.5" />
                                   </Button>
                                 </TooltipTrigger>
