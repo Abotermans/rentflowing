@@ -2263,6 +2263,8 @@ const fr: TranslationKeys = {
   "amendments.newEndDateCol": "Nouvelle date de fin",
   "amendments.gapWarning": "L'avenant commence après la fin actuelle du bail — certains jours ne seront pas couverts.",
   "amendments.unitChanges": "Modifications de lots",
+  "amendments.totalRent": "Loyer total (somme des lots)",
+  "amendments.totalCharges": "Charges totales (somme des lots)",
   "amendments.currentUnits": "Lots actuels",
   "amendments.availableUnits": "Lots disponibles",
   "amendments.toAdd": "À ajouter",
