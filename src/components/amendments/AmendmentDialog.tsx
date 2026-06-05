@@ -3,6 +3,7 @@ import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { validateAmendment } from "@/lib/integrity/amendmentIntegrity";
+import { getCurrentLeaseTerms } from "@/lib/amendments";
 import type {
   AmendmentType,
   AmendmentStatus,
@@ -71,7 +72,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const { t } = useSettings();
   const {
     units, tenants, getLeaseAssignedUnits,
-    addAmendment, updateAmendment, activateAmendment,
+    addAmendment, updateAmendment, activateAmendment, updateUnit,
     getAmendmentChanges,
   } = useAppData();
   const integrityState = useIntegrityState();
@@ -83,8 +84,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const [signedDate, setSignedDate] = useState("");
 
   // Per-type fields
-  const [newRent, setNewRent] = useState("");
-  const [newCharges, setNewCharges] = useState("");
   const [newEndDate, setNewEndDate] = useState("");
   const [newDeposit, setNewDeposit] = useState("");
   const [newNotice, setNewNotice] = useState("");
@@ -93,6 +92,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string };
   const [unitsToAdd, setUnitsToAdd] = useState<AddDraft[]>([]);
   const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
+  const [editedShares, setEditedShares] = useState<Record<string, { rentShare?: string; chargesShare?: string }>>({});
   const [tenantsToAdd, setTenantsToAdd] = useState<string[]>([]);
   const [tenantsToRemove, setTenantsToRemove] = useState<string[]>([]);
   const [addTenantOpen, setAddTenantOpen] = useState(false);
@@ -122,12 +122,18 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setSignedDate(existing.signedDate ?? "");
       const chs = getAmendmentChanges(existing.id);
       const find = (f: AmendmentFieldName) => chs.find(c => c.fieldName === f);
-      setNewRent(String(find("baseMonthlyRentTotal")?.newValue ?? ""));
-      setNewCharges(String(find("baseMonthlyChargesTotal")?.newValue ?? ""));
       setNewEndDate(String(find("leaseEndDate")?.newValue ?? ""));
       setNewDeposit(String(find("depositAmount")?.newValue ?? ""));
       setNewNotice(String(find("noticePeriodText")?.newValue ?? ""));
       setClauseSummary(String(find("clauseSummary")?.newValue ?? ""));
+      const edits: Record<string, { rentShare?: string; chargesShare?: string }> = {};
+      for (const c of chs) {
+        const uid = c.metadata?.unitId;
+        if (!uid) continue;
+        if (c.fieldName === "unitRentShare") edits[uid] = { ...edits[uid], rentShare: String(c.newValue ?? "") };
+        if (c.fieldName === "unitChargesShare") edits[uid] = { ...edits[uid], chargesShare: String(c.newValue ?? "") };
+      }
+      setEditedShares(edits);
       const addChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "add");
       setUnitsToAdd(addChs.map(c => {
         const nv = (c.newValue ?? {}) as { rentShare?: number; chargesShare?: number };
@@ -147,12 +153,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     } else {
       setTitle(""); setReason(""); setNotes("");
       setEffectiveDate(""); setSignedDate("");
-      setNewRent(String(lease.monthlyRent));
-      setNewCharges(String(lease.monthlyCharges));
       setNewEndDate(lease.endDate);
       setNewDeposit(String(lease.depositOrGuaranteeAmount ?? ""));
       setNewNotice(lease.noticePeriodText);
-      setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]);
+      setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]); setEditedShares({});
       setTenantsToAdd([]); setTenantsToRemove([]);
     }
   }, [existing, open, lease, getAmendmentChanges]);
@@ -167,12 +171,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       metadata?: AmendmentChangeMetadata,
     ) => out.push({ fieldName, changeType, oldValue, newValue, metadata });
 
-    if (newRent && Number(newRent) !== lease.monthlyRent) {
-      push("baseMonthlyRentTotal", "set", lease.monthlyRent, Number(newRent));
-    }
-    if (newCharges && Number(newCharges) !== lease.monthlyCharges) {
-      push("baseMonthlyChargesTotal", "set", lease.monthlyCharges, Number(newCharges));
-    }
     if (newEndDate && newEndDate !== lease.endDate) {
       push("leaseEndDate", "set", lease.endDate, newEndDate);
     }
@@ -184,6 +182,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     }
     if (clauseSummary) {
       push("clauseSummary", "set", "", clauseSummary);
+    }
+    for (const r of currentUnits) {
+      if (unitsToRemove.includes(r.unit.id)) continue;
+      const e = editedShares[r.unit.id];
+      if (!e) continue;
+      const oldRent = r.assignment.rentShare ?? 0;
+      const oldCh = r.assignment.chargesShare ?? 0;
+      if (e.rentShare !== undefined && e.rentShare !== "" && Number(e.rentShare) !== oldRent) {
+        push("unitRentShare", "set", oldRent, Number(e.rentShare), { unitId: r.unit.id });
+      }
+      if (e.chargesShare !== undefined && e.chargesShare !== "" && Number(e.chargesShare) !== oldCh) {
+        push("unitChargesShare", "set", oldCh, Number(e.chargesShare), { unitId: r.unit.id });
+      }
     }
     for (const a of unitsToAdd) {
       if (!a.unitId) continue;
@@ -202,8 +213,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
     }
     return out;
-  }, [newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
-      unitsToAdd, unitsToRemove, tenantsToAdd, tenantsToRemove,
+  }, [newEndDate, newDeposit, newNotice, clauseSummary,
+      unitsToAdd, unitsToRemove, editedShares, currentUnits, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
   const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
@@ -252,8 +263,35 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const canSubmit = title.trim().length > 0 && effectiveDate;
   const canActivate = canSubmit && liveValidation?.allowed === true;
 
+  const coverageGap = useMemo(() => {
+    if (!effectiveDate) return false;
+    const currentTerms = getCurrentLeaseTerms(lease.id, integrityState);
+    const coverageEnd = currentTerms?.endDate ?? lease.endDate;
+    if (!coverageEnd) return false;
+    if (effectiveDate <= coverageEnd) return false;
+    if (newEndDate && newEndDate >= effectiveDate) return false;
+    return true;
+  }, [effectiveDate, newEndDate, lease, integrityState]);
+
   const save = (status: AmendmentStatus) => {
     if (!canSubmit) return;
+    // Sync edited per-unit rent back to the Unit record on activation
+    // (charges live on assignments, not units, so only rent is mirrored).
+    if (status === "active") {
+      for (const r of currentUnits) {
+        if (unitsToRemove.includes(r.unit.id)) continue;
+        const e = editedShares[r.unit.id];
+        if (e?.rentShare !== undefined && e.rentShare !== "" && Number(e.rentShare) !== (r.assignment.rentShare ?? 0)) {
+          updateUnit({ ...r.unit, baseRent: Number(e.rentShare) });
+        }
+      }
+      for (const a of unitsToAdd) {
+        const u = units.find(x => x.id === a.unitId);
+        if (u && a.rentShare !== "" && Number(a.rentShare) !== (u.baseRent ?? 0)) {
+          updateUnit({ ...u, baseRent: Number(a.rentShare) });
+        }
+      }
+    }
     if (existing) {
       updateAmendment({
         ...existing,
@@ -308,13 +346,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             <Label>{t("amendments.titleField")}</Label>
             <Input className="h-8" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
-          <div>
-            <Label>{t("amendments.effectiveDate")}</Label>
-            <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
-          </div>
-          <div>
-            <Label>{t("amendments.signedDate")}</Label>
-            <Input className="h-8" type="date" value={signedDate} onChange={e => setSignedDate(e.target.value)} />
+          <div className="col-span-2 grid grid-cols-3 gap-3">
+            <div>
+              <Label>{t("amendments.effectiveDate")}</Label>
+              <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>{t("amendments.signedDate")}</Label>
+              <Input className="h-8" type="date" value={signedDate} onChange={e => setSignedDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>{t("amendments.newEndDate")}</Label>
+              <Input className="h-8" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
+            </div>
           </div>
           <div className="col-span-2">
             <Label>{t("amendments.reason")}</Label>
@@ -322,22 +366,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           </div>
 
           <div>
-              <Label>{t("amendments.newRent")}</Label>
-              <Input className="h-8" type="number" value={newRent} onChange={e => setNewRent(e.target.value)} />
-          </div>
-          <div>
-              <Label>{t("amendments.newCharges")}</Label>
-              <Input className="h-8" type="number" value={newCharges} onChange={e => setNewCharges(e.target.value)} />
-          </div>
-          <div>
-              <Label>{t("amendments.newEndDate")}</Label>
-              <Input className="h-8" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
-          </div>
-          <div>
               <Label>{t("amendments.newDeposit")}</Label>
               <Input className="h-8" type="number" value={newDeposit} onChange={e => setNewDeposit(e.target.value)} />
           </div>
-          <div className="col-span-2">
+          <div>
               <Label>{t("leases.noticePeriod")}</Label>
               <Input className="h-8" value={newNotice} onChange={e => setNewNotice(e.target.value)} />
           </div>
@@ -380,6 +412,26 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                   </PopoverContent>
                 </Popover>
               </div>
+              {(() => {
+                let totalRent = 0;
+                let totalCharges = 0;
+                for (const r of currentUnits) {
+                  if (unitsToRemove.includes(r.unit.id)) continue;
+                  const e = editedShares[r.unit.id];
+                  totalRent += e?.rentShare !== undefined && e.rentShare !== "" ? Number(e.rentShare) : (r.assignment.rentShare ?? 0);
+                  totalCharges += e?.chargesShare !== undefined && e.chargesShare !== "" ? Number(e.chargesShare) : (r.assignment.chargesShare ?? 0);
+                }
+                for (const a of unitsToAdd) {
+                  totalRent += Number(a.rentShare || 0);
+                  totalCharges += Number(a.chargesShare || 0);
+                }
+                return (
+                  <div className="flex gap-4 text-xs bg-muted/30 rounded px-2 py-1.5">
+                    <div><span className="text-muted-foreground">{t("amendments.totalRent")}: </span><span className="font-medium tabular-nums">{totalRent.toFixed(2)}</span></div>
+                    <div><span className="text-muted-foreground">{t("amendments.totalCharges")}: </span><span className="font-medium tabular-nums">{totalCharges.toFixed(2)}</span></div>
+                  </div>
+                );
+              })()}
               <div className="rounded border overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -396,6 +448,9 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                     {currentUnits.map(r => {
                       const marked = unitsToRemove.includes(r.unit.id);
                       const canRemove = !r.assignment.isPrimary;
+                      const ed = editedShares[r.unit.id] ?? {};
+                      const rentVal = ed.rentShare !== undefined ? ed.rentShare : String(r.assignment.rentShare ?? "");
+                      const chargesVal = ed.chargesShare !== undefined ? ed.chargesShare : String(r.assignment.chargesShare ?? "");
                       return (
                         <TableRow key={r.unit.id} className={`h-9 ${marked ? "bg-destructive/5" : ""}`}>
                           <TableCell className={`py-1 text-xs ${marked ? "line-through text-muted-foreground" : ""}`}>
@@ -404,8 +459,16 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                           <TableCell className="py-1 text-xs text-muted-foreground">
                             {r.assignment.isPrimary ? "primary" : ASSIGNMENT_TYPE_LABELS[r.assignment.assignmentType as LeaseUnitAssignmentType] ?? "—"}
                           </TableCell>
-                          <TableCell className="py-1 text-xs text-right tabular-nums">{r.assignment.rentShare ?? "—"}</TableCell>
-                          <TableCell className="py-1 text-xs text-right tabular-nums">{r.assignment.chargesShare ?? "—"}</TableCell>
+                          <TableCell className="py-1">
+                            <Input className="h-7 text-xs text-right tabular-nums" type="number" disabled={marked}
+                              value={rentVal}
+                              onChange={(e) => setEditedShares(m => ({ ...m, [r.unit.id]: { ...m[r.unit.id], rentShare: e.target.value } }))} />
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Input className="h-7 text-xs text-right tabular-nums" type="number" disabled={marked}
+                              value={chargesVal}
+                              onChange={(e) => setEditedShares(m => ({ ...m, [r.unit.id]: { ...m[r.unit.id], chargesShare: e.target.value } }))} />
+                          </TableCell>
                           <TableCell className="py-1 text-xs">
                             {marked
                               ? <Badge variant="destructive" className="text-[10px]">{t("amendments.toRemove")}</Badge>
@@ -603,21 +666,24 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           </div>
         </div>
 
-        {liveValidation && (liveValidation.blockers.length > 0 || liveValidation.warnings.length > 0) && (
-          <Alert variant={liveValidation.blockers.length > 0 ? "destructive" : "default"}>
+        {((liveValidation && (liveValidation.blockers.length > 0 || liveValidation.warnings.length > 0)) || coverageGap) && (
+          <Alert variant={liveValidation?.blockers.length ? "destructive" : "default"}>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               <ul className="list-disc ml-4 text-xs">
-                {liveValidation.blockers.map(b => {
+                {liveValidation?.blockers.map(b => {
                   const k = `amendments.error.${b.code}` as TranslationKey;
                   const tr = (t as (key: TranslationKey) => string)(k);
                   return <li key={b.code}>{tr && tr !== k ? tr : b.message}</li>;
                 })}
-                {liveValidation.warnings.map(w => {
+                {liveValidation?.warnings.map(w => {
                   const k = `amendments.error.${w.code}` as TranslationKey;
                   const tr = (t as (key: TranslationKey) => string)(k);
                   return <li key={w.code} className="text-warning">{tr && tr !== k ? tr : w.message}</li>;
                 })}
+                {coverageGap && (
+                  <li className="text-warning">{t("amendments.gapWarning")}</li>
+                )}
               </ul>
             </AlertDescription>
           </Alert>
