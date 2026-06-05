@@ -1056,6 +1056,8 @@ const en = {
   "amendments.newEndDateCol": "New end date",
   "amendments.gapWarning": "Amendment starts after the current lease end — some days will not be covered.",
   "amendments.unitChanges": "Unit changes",
+  "amendments.totalRent": "Total rent (sum of units)",
+  "amendments.totalCharges": "Total charges (sum of units)",
   "amendments.currentUnits": "Current units",
   "amendments.availableUnits": "Available units",
   "amendments.toAdd": "To add",
