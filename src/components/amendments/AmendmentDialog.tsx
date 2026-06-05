@@ -688,13 +688,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             </AlertDescription>
           </Alert>
         )}
-                  const tr = (t as (key: TranslationKey) => string)(k);
-                  return <li key={w.code} className="text-warning">{tr && tr !== k ? tr : w.message}</li>;
-                })}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
