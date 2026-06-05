@@ -2318,6 +2318,8 @@ const fr: TranslationKeys = {
   "amendments.error.AMD_UNPAID_OVERLAP": "Des créances impayées chevauchent la date d'effet — à vérifier avant activation",
   "amendments.error.AMD_CONFLICT_PENDING": "Un autre avenant en cours modifie les mêmes champs",
   "amendments.error.AMD_PRIMARY_CHANGE": "Changer le lot principal affecte l'occupation et le reporting",
+  "amendments.error.AMD_WILL_END_PREVIOUS": "Activer cet avenant clôturera l'avenant en vigueur",
+  "amendments.badge.current": "En vigueur",
 
   // Lease detail page (extra)
   "leaseDetail.totalAllocated": "Total alloué",
