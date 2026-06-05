@@ -627,7 +627,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
 
-    setAmendments(prev => prev.map(a => a.id === id ? { ...a, status: "active", updatedAt: ts } : a));
+    // Enforce single-active invariant: any other currently-active amendment on
+    // the same lease is moved to "ended". The newly activated amendment records
+    // the most recent previous active one as the one it supersedes.
+    const previousActives = amendments
+      .filter(a => a.leaseId === am.leaseId && a.id !== id && a.status === "active")
+      .slice()
+      .sort((x, y) => {
+        if (x.effectiveDate !== y.effectiveDate) return y.effectiveDate.localeCompare(x.effectiveDate);
+        return y.amendmentNumber - x.amendmentNumber;
+      });
+    const supersededId = previousActives[0]?.id ?? am.supersedesAmendmentId ?? null;
+    const endedIds = new Set(previousActives.map(a => a.id));
+    setAmendments(prev => prev.map(a => {
+      if (a.id === id) return { ...a, status: "active", supersedesAmendmentId: supersededId, updatedAt: ts };
+      if (endedIds.has(a.id)) return { ...a, status: "ended", updatedAt: ts };
+      return a;
+    }));
     return { ok: true };
   }, [amendments, amendmentChanges]);
 
