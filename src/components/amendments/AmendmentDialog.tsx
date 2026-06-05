@@ -319,13 +319,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             <Label>{t("amendments.titleField")}</Label>
             <Input className="h-8" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
-          <div>
-            <Label>{t("amendments.effectiveDate")}</Label>
-            <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
-          </div>
-          <div>
-            <Label>{t("amendments.signedDate")}</Label>
-            <Input className="h-8" type="date" value={signedDate} onChange={e => setSignedDate(e.target.value)} />
+          <div className="col-span-2 grid grid-cols-3 gap-3">
+            <div>
+              <Label>{t("amendments.effectiveDate")}</Label>
+              <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>{t("amendments.signedDate")}</Label>
+              <Input className="h-8" type="date" value={signedDate} onChange={e => setSignedDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>{t("amendments.newEndDate")}</Label>
+              <Input className="h-8" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
+            </div>
           </div>
           <div className="col-span-2">
             <Label>{t("amendments.reason")}</Label>
@@ -333,22 +339,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           </div>
 
           <div>
-              <Label>{t("amendments.newRent")}</Label>
-              <Input className="h-8" type="number" value={newRent} onChange={e => setNewRent(e.target.value)} />
-          </div>
-          <div>
-              <Label>{t("amendments.newCharges")}</Label>
-              <Input className="h-8" type="number" value={newCharges} onChange={e => setNewCharges(e.target.value)} />
-          </div>
-          <div>
-              <Label>{t("amendments.newEndDate")}</Label>
-              <Input className="h-8" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
-          </div>
-          <div>
               <Label>{t("amendments.newDeposit")}</Label>
               <Input className="h-8" type="number" value={newDeposit} onChange={e => setNewDeposit(e.target.value)} />
           </div>
-          <div className="col-span-2">
+          <div>
               <Label>{t("leases.noticePeriod")}</Label>
               <Input className="h-8" value={newNotice} onChange={e => setNewNotice(e.target.value)} />
           </div>
