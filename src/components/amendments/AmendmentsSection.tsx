@@ -122,7 +122,7 @@ export function AmendmentsSection({ leaseId }: Props) {
                     return (
                        <TableRow
                          key={a.id}
-                         className={`cursor-pointer hover:bg-accent/30 ${a.status === "active" ? "border-l-2 border-l-success bg-success/5" : ""}`}
+                         className="cursor-pointer hover:bg-accent/30"
                          onClick={() => openEdit(a)}
                        >
                          <TableCell className="py-1.5">{a.amendmentNumber}</TableCell>

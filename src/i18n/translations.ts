@@ -2319,7 +2319,7 @@ const fr: TranslationKeys = {
   "amendments.error.AMD_CONFLICT_PENDING": "Un autre avenant en cours modifie les mêmes champs",
   "amendments.error.AMD_PRIMARY_CHANGE": "Changer le lot principal affecte l'occupation et le reporting",
   "amendments.error.AMD_WILL_END_PREVIOUS": "Activer cet avenant clôturera l'avenant en vigueur",
-  "amendments.badge.current": "En vigueur",
+  "amendments.badge.current": "Actif",
 
   // Lease detail page (extra)
   "leaseDetail.totalAllocated": "Total alloué",
