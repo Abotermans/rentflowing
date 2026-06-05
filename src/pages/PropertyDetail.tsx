@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,16 +12,15 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote, AlertTriangle, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, UNIT_TYPE_KEYS } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
-import { canDeleteProperty, canArchiveProperty } from "@/lib/integrity/propertyIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
-import { IntegritySummaryPanel } from "@/components/shared/IntegritySummaryPanel";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
@@ -45,9 +44,10 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const navigate = useNavigate();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
@@ -129,6 +129,12 @@ export default function PropertyDetail() {
     toast({ title: "Unit deleted" });
   };
 
+  const handleDeleteProperty = (propertyId: string) => {
+    deleteProperty(propertyId);
+    toast({ title: "Property deleted" });
+    navigate("/properties");
+  };
+
   if (!property) {
     return (
       <div className="text-center py-12">
@@ -172,6 +178,28 @@ export default function PropertyDetail() {
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{property.currencyCode}</span>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="More actions">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DeleteDialog
+                  entityType="property"
+                  entityId={property.id}
+                  entityLabel={property.name}
+                  onDelete={handleDeleteProperty}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />{t("action.delete")}
+                    </DropdownMenuItem>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -196,15 +224,6 @@ export default function PropertyDetail() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Integrity Summary */}
-      {id && (
-        <IntegritySummaryPanel
-          title="Property Dependencies"
-          deleteValidation={canDeleteProperty(id, integrityState)}
-          additionalWarnings={canArchiveProperty(id, integrityState).warnings}
-        />
-      )}
 
       {/* KPI cards */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
