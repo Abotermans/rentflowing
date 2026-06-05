@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, StickyNote, Clock, Plus, AlertTriangle, Shield, Bell, CheckCircle2, XCircle, Key, Gauge, PackageCheck, Truck, Home, Banknote, ChevronDown, Wallet, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
@@ -812,7 +812,7 @@ export default function LeaseDetail() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Wallet className="h-4 w-4" />{t("rentPrepayment.title")}</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("rentPrepayment.title")}</CardTitle>
               <StatusBadge status={advancePricing.advanceStatus} />
             </div>
           </CardHeader>
@@ -913,7 +913,6 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-              <Shield className="h-4 w-4" />
               {t("detail.depositGuarantee")}
               {guarantee && (() => {
                 const d = GUARANTEE_DISPLAY[guarantee.status];
@@ -950,14 +949,13 @@ export default function LeaseDetail() {
 
       {/* Occupancy Operations */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2"><Truck className="h-5 w-5" />{t("detail.occupancyOps")}</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("detail.occupancyOps")}</h2>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Move-In Panel */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                  <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                   <Home className="h-4 w-4" />
                    {t("detail.moveIn")}
                    {(() => {
                      const d = MOVE_STATUS_DISPLAY[moveInStatus];
@@ -1001,7 +999,6 @@ export default function LeaseDetail() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                  <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                   <PackageCheck className="h-4 w-4" />
                    {t("detail.moveOut")}
                    {(() => {
                      const d = MOVE_STATUS_DISPLAY[moveOutStatus];
@@ -1043,7 +1040,7 @@ export default function LeaseDetail() {
 
           {/* Keys & Meters */}
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><Key className="h-4 w-4" />{t("detail.keysMeters")}</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.keysMeters")}</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1076,7 +1073,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Gauge className="h-4 w-4" />{t("detail.returnStatus")}</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("detail.returnStatus")}</CardTitle>
                 <div className="flex items-center gap-2">
                   {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
                   <Button variant="outline" size="sm" onClick={openReturnForm}>{lease.returnStatus ? t("detail.update") : t("detail.setStatus")}</Button>
@@ -1237,7 +1234,7 @@ export default function LeaseDetail() {
       })()}
       {lease.notes && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{lease.notes}</p></CardContent>
         </Card>
       )}
