@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee } from "@/types";
 import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
@@ -121,8 +121,9 @@ interface AppState {
   deleteAmendment: (id: string) => void;
   setAmendmentStatus: (id: string, status: AmendmentStatus) => void;
   activateAmendment: (id: string) => { ok: boolean; reason?: string };
-  cancelAmendment: (id: string) => void;
-  supersedeAmendment: (id: string, replacementId: string) => void;
+  scheduleAmendment: (id: string) => { ok: boolean; reason?: string };
+  terminateAmendment: (id: string) => void;
+  revertAmendmentToDraft: (id: string) => void;
   getLeaseAmendments: (leaseId: string) => LeaseAmendment[];
   getAmendmentChanges: (amendmentId: string) => LeaseAmendmentChange[];
 
