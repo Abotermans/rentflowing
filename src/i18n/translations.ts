@@ -1001,6 +1001,7 @@ const en = {
   "amendments.activate": "Activate",
   "amendments.cancel": "Cancel amendment",
   "amendments.markPending": "Mark pending signature",
+  "amendments.schedule": "Schedule",
   "amendments.saveDraft": "Save draft",
   "amendments.currentTerms": "Current effective terms",
   "amendments.originalTerms": "Original contract terms",
