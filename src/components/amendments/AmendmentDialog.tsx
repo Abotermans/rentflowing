@@ -93,8 +93,9 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string };
   const [unitsToAdd, setUnitsToAdd] = useState<AddDraft[]>([]);
   const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
-  const [addTenantId, setAddTenantId] = useState("");
-  const [removeTenantId, setRemoveTenantId] = useState("");
+  const [tenantsToAdd, setTenantsToAdd] = useState<string[]>([]);
+  const [tenantsToRemove, setTenantsToRemove] = useState<string[]>([]);
+  const [addTenantOpen, setAddTenantOpen] = useState(false);
   const [addUnitOpen, setAddUnitOpen] = useState(false);
 
   const currentUnits = useMemo(
@@ -139,6 +140,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       }));
       const remChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "remove");
       setUnitsToRemove(remChs.map(c => c.metadata?.unitId ?? "").filter(Boolean));
+      const addTen = chs.filter(c => c.fieldName === "coTenantIds" && c.changeType === "add");
+      setTenantsToAdd(addTen.map(c => c.metadata?.tenantId ?? "").filter(Boolean));
+      const remTen = chs.filter(c => c.fieldName === "coTenantIds" && c.changeType === "remove");
+      setTenantsToRemove(remTen.map(c => c.metadata?.tenantId ?? "").filter(Boolean));
     } else {
       setTitle(""); setReason(""); setNotes("");
       setEffectiveDate(""); setSignedDate("");
@@ -148,7 +153,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setNewDeposit(String(lease.depositOrGuaranteeAmount ?? ""));
       setNewNotice(lease.noticePeriodText);
       setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]);
-      setAddTenantId(""); setRemoveTenantId("");
+      setTenantsToAdd([]); setTenantsToRemove([]);
     }
   }, [existing, open, lease, getAmendmentChanges]);
 
@@ -190,17 +195,15 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       push("unitAssignments", "remove", { unitId: uid }, null,
         { unitId: uid, startDate: effectiveDate });
     }
-    if (addTenantId) {
-      push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, addTenantId],
-        { tenantId: addTenantId });
+    for (const tid of tenantsToAdd) {
+      push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, tid], { tenantId: tid });
     }
-    if (removeTenantId) {
-      push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== removeTenantId),
-        { tenantId: removeTenantId });
+    for (const tid of tenantsToRemove) {
+      push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
     }
     return out;
   }, [newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
-      unitsToAdd, unitsToRemove, addTenantId, removeTenantId,
+      unitsToAdd, unitsToRemove, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
   const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
@@ -478,27 +481,120 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
               </div>
           </div>
 
-          <div>
-            <Label>{t("amendments.addCoTenant")}</Label>
-            <Select value={addTenantId} onValueChange={setAddTenantId}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                {tenants.filter(tn => tn.id !== lease.primaryTenantId && !lease.coTenantIds.includes(tn.id)).map(tn => (
-                  <SelectItem key={tn.id} value={tn.id}>{tn.firstName} {tn.lastName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>{t("amendments.removeCoTenant")}</Label>
-            <Select value={removeTenantId} onValueChange={setRemoveTenantId}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                {tenants.filter(tn => lease.coTenantIds.includes(tn.id)).map(tn => (
-                  <SelectItem key={tn.id} value={tn.id}>{tn.firstName} {tn.lastName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="col-span-2 border rounded p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium">{t("amendments.coTenants")}</div>
+              <Popover open={addTenantOpen} onOpenChange={setAddTenantOpen}>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                    <Plus className="h-3.5 w-3.5" />
+                    {t("amendments.addCoTenant")}
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2" align="end">
+                  {(() => {
+                    const available = tenants.filter(tn =>
+                      tn.id !== lease.primaryTenantId &&
+                      !lease.coTenantIds.includes(tn.id) &&
+                      !tenantsToAdd.includes(tn.id));
+                    if (available.length === 0) {
+                      return <div className="text-xs text-muted-foreground py-2 text-center">{t("amendments.noTenantsAvailable")}</div>;
+                    }
+                    return (
+                      <div className="space-y-1 max-h-60 overflow-y-auto">
+                        {available.map(tn => (
+                          <button
+                            key={tn.id}
+                            className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
+                            onClick={() => {
+                              setTenantsToAdd(arr => [...arr, tn.id]);
+                              setAddTenantOpen(false);
+                            }}
+                          >
+                            <span>{tn.firstName} {tn.lastName}</span>
+                            <Plus className="h-3 w-3 text-success" />
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="rounded border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="h-8">
+                    <TableHead className="h-8 text-xs">{t("amendments.tenantName")}</TableHead>
+                    <TableHead className="h-8 text-xs">{t("amendments.tenantEmail")}</TableHead>
+                    <TableHead className="h-8 text-xs">{t("amendments.tenantPhone")}</TableHead>
+                    <TableHead className="h-8 text-xs">{t("amendments.status")}</TableHead>
+                    <TableHead className="h-8 text-xs text-right w-12">{t("amendments.action")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {lease.coTenantIds.map(tid => {
+                    const tn = tenants.find(x => x.id === tid);
+                    const marked = tenantsToRemove.includes(tid);
+                    return (
+                      <TableRow key={tid} className={`h-9 ${marked ? "bg-destructive/5" : ""}`}>
+                        <TableCell className={`py-1 text-xs ${marked ? "line-through text-muted-foreground" : ""}`}>
+                          {tn ? `${tn.firstName} ${tn.lastName}` : tid}
+                        </TableCell>
+                        <TableCell className="py-1 text-xs text-muted-foreground">{tn?.email ?? "—"}</TableCell>
+                        <TableCell className="py-1 text-xs text-muted-foreground">{tn?.phone ?? "—"}</TableCell>
+                        <TableCell className="py-1 text-xs">
+                          {marked
+                            ? <Badge variant="destructive" className="text-[10px]">{t("amendments.toRemove")}</Badge>
+                            : <Badge variant="secondary" className="text-[10px]">{t("amendments.statusCurrent")}</Badge>}
+                        </TableCell>
+                        <TableCell className="py-1 text-right">
+                          {marked ? (
+                            <Button size="icon" variant="ghost" className="h-7 w-7"
+                              onClick={() => setTenantsToRemove(arr => arr.filter(x => x !== tid))}
+                              aria-label="undo">
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
+                              onClick={() => setTenantsToRemove(arr => [...arr, tid])}
+                              aria-label="remove">
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {tenantsToAdd.map((tid, idx) => {
+                    const tn = tenants.find(x => x.id === tid);
+                    return (
+                      <TableRow key={`add-${tid}-${idx}`} className="h-9 bg-success/5">
+                        <TableCell className="py-1 text-xs font-medium">
+                          {tn ? `${tn.firstName} ${tn.lastName}` : tid}
+                        </TableCell>
+                        <TableCell className="py-1 text-xs text-muted-foreground">{tn?.email ?? "—"}</TableCell>
+                        <TableCell className="py-1 text-xs text-muted-foreground">{tn?.phone ?? "—"}</TableCell>
+                        <TableCell className="py-1 text-xs">
+                          <Badge className="text-[10px] bg-success text-success-foreground hover:bg-success">{t("amendments.toAdd")}</Badge>
+                        </TableCell>
+                        <TableCell className="py-1 text-right">
+                          <Button size="icon" variant="ghost" className="h-7 w-7"
+                            onClick={() => setTenantsToAdd(arr => arr.filter((_, i) => i !== idx))}
+                            aria-label="undo">
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {lease.coTenantIds.length === 0 && tenantsToAdd.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="py-3 text-center text-xs text-muted-foreground">{t("amendments.noCoTenants")}</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           <div className="col-span-2">
