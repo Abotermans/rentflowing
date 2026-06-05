@@ -660,6 +660,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAmendmentStatus(id, "draft");
   }, [setAmendmentStatus]);
 
+  // Auto-activate scheduled amendments once their effectiveDate is reached.
+  useEffect(() => {
+    const tick = () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const due = amendments.filter(a => a.status === "scheduled" && a.effectiveDate <= today);
+      due.forEach(a => activateAmendment(a.id));
+    };
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, [amendments, activateAmendment]);
+
   const getLeaseAmendmentsFn = useCallback(
     (leaseId: string) => amendments.filter(a => a.leaseId === leaseId),
     [amendments],
