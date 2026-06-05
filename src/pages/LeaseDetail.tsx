@@ -630,7 +630,63 @@ export default function LeaseDetail() {
       {/* Lease Summary */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.leaseSummary")}</CardTitle></CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {(() => {
+            const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
+            const sortedAssignments = assignments.length > 0
+              ? assignments.slice().sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+              : (unit ? [{ id: "fallback", unitId: unit.id, isPrimary: true, assignmentType: "primary" as const }] : []);
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-border">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1.5">{t("leases.tenant")}</p>
+                  <div className="space-y-1">
+                    {tenant && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Link to={`/tenants/${tenant.id}`} className="font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
+                      </div>
+                    )}
+                    {coTenants.map(ct => (
+                      <div key={ct.id} className="text-sm">
+                        <Link to={`/tenants/${ct.id}`} className="font-medium text-primary hover:underline">{getTenantFullName(ct)}</Link>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-2">{t("amendments.coTenants")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1.5">
+                    {sortedAssignments.length > 1 ? `${t("table.unit")}s · ${sortedAssignments.length}` : t("table.unit")}
+                  </p>
+                  <div className="space-y-1">
+                    {sortedAssignments.map(a => {
+                      const u = units.find(x => x.id === a.unitId);
+                      const prop = u ? properties.find(p => p.id === u.propertyId) : property;
+                      if (!u) return null;
+                      return (
+                        <div key={a.id} className="flex items-center gap-2 text-sm flex-wrap">
+                          <Link to={`/units/${u.id}`} className="font-medium text-primary hover:underline">{u.unitCode} — {u.unitLabel}</Link>
+                          {a.isPrimary && sortedAssignments.length > 1 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.role.primary")}</span>
+                          )}
+                          {!a.isPrimary && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t(`leases.assignmentType.${a.assignmentType}` as TranslationKey)}</span>
+                          )}
+                          {prop && (
+                            <>
+                              <span className="text-muted-foreground">·</span>
+                              <Link to={`/properties/${prop.id}`} className="text-muted-foreground hover:text-primary hover:underline text-xs">{prop.name}</Link>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(effEndDate, locale)}{amSuffix(endAmNum)}</p></div>
