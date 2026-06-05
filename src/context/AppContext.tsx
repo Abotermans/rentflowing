@@ -632,17 +632,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [amendments, amendmentChanges]);
 
   const cancelAmendment = useCallback((id: string) => {
-    setAmendmentStatus(id, "cancelled");
+    setAmendmentStatus(id, "terminated");
   }, [setAmendmentStatus]);
 
-  const supersedeAmendment = useCallback((id: string, replacementId: string) => {
+  const _supersedeAmendment = useCallback((id: string, replacementId: string) => {
     const ts = now();
     setAmendments(prev => prev.map(a => {
-      if (a.id === id) return { ...a, status: "superseded" as const, updatedAt: ts };
+      if (a.id === id) return { ...a, status: "ended" as const, updatedAt: ts };
       if (a.id === replacementId) return { ...a, supersedesAmendmentId: id, updatedAt: ts };
       return a;
     }));
   }, []);
+
+  const scheduleAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
+    const am = amendments.find(a => a.id === id);
+    if (!am) return { ok: false, reason: "Amendment not found" };
+    if (!am.effectiveDate) return { ok: false, reason: "Effective date is required" };
+    setAmendmentStatus(id, "scheduled");
+    return { ok: true };
+  }, [amendments, setAmendmentStatus]);
+
+  const terminateAmendment = useCallback((id: string) => {
+    setAmendmentStatus(id, "terminated");
+  }, [setAmendmentStatus]);
+
+  const revertAmendmentToDraft = useCallback((id: string) => {
+    setAmendmentStatus(id, "draft");
+  }, [setAmendmentStatus]);
 
   const getLeaseAmendmentsFn = useCallback(
     (leaseId: string) => amendments.filter(a => a.leaseId === leaseId),
