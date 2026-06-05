@@ -385,6 +385,26 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                   </PopoverContent>
                 </Popover>
               </div>
+              {(() => {
+                let totalRent = 0;
+                let totalCharges = 0;
+                for (const r of currentUnits) {
+                  if (unitsToRemove.includes(r.unit.id)) continue;
+                  const e = editedShares[r.unit.id];
+                  totalRent += e?.rentShare !== undefined && e.rentShare !== "" ? Number(e.rentShare) : (r.assignment.rentShare ?? 0);
+                  totalCharges += e?.chargesShare !== undefined && e.chargesShare !== "" ? Number(e.chargesShare) : (r.assignment.chargesShare ?? 0);
+                }
+                for (const a of unitsToAdd) {
+                  totalRent += Number(a.rentShare || 0);
+                  totalCharges += Number(a.chargesShare || 0);
+                }
+                return (
+                  <div className="flex gap-4 text-xs bg-muted/30 rounded px-2 py-1.5">
+                    <div><span className="text-muted-foreground">{t("amendments.totalRent")}: </span><span className="font-medium tabular-nums">{totalRent.toFixed(2)}</span></div>
+                    <div><span className="text-muted-foreground">{t("amendments.totalCharges")}: </span><span className="font-medium tabular-nums">{totalCharges.toFixed(2)}</span></div>
+                  </div>
+                );
+              })()}
               <div className="rounded border overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -401,6 +421,9 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                     {currentUnits.map(r => {
                       const marked = unitsToRemove.includes(r.unit.id);
                       const canRemove = !r.assignment.isPrimary;
+                      const ed = editedShares[r.unit.id] ?? {};
+                      const rentVal = ed.rentShare !== undefined ? ed.rentShare : String(r.assignment.rentShare ?? "");
+                      const chargesVal = ed.chargesShare !== undefined ? ed.chargesShare : String(r.assignment.chargesShare ?? "");
                       return (
                         <TableRow key={r.unit.id} className={`h-9 ${marked ? "bg-destructive/5" : ""}`}>
                           <TableCell className={`py-1 text-xs ${marked ? "line-through text-muted-foreground" : ""}`}>
@@ -409,8 +432,16 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                           <TableCell className="py-1 text-xs text-muted-foreground">
                             {r.assignment.isPrimary ? "primary" : ASSIGNMENT_TYPE_LABELS[r.assignment.assignmentType as LeaseUnitAssignmentType] ?? "—"}
                           </TableCell>
-                          <TableCell className="py-1 text-xs text-right tabular-nums">{r.assignment.rentShare ?? "—"}</TableCell>
-                          <TableCell className="py-1 text-xs text-right tabular-nums">{r.assignment.chargesShare ?? "—"}</TableCell>
+                          <TableCell className="py-1">
+                            <Input className="h-7 text-xs text-right tabular-nums" type="number" disabled={marked}
+                              value={rentVal}
+                              onChange={(e) => setEditedShares(m => ({ ...m, [r.unit.id]: { ...m[r.unit.id], rentShare: e.target.value } }))} />
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Input className="h-7 text-xs text-right tabular-nums" type="number" disabled={marked}
+                              value={chargesVal}
+                              onChange={(e) => setEditedShares(m => ({ ...m, [r.unit.id]: { ...m[r.unit.id], chargesShare: e.target.value } }))} />
+                          </TableCell>
                           <TableCell className="py-1 text-xs">
                             {marked
                               ? <Badge variant="destructive" className="text-[10px]">{t("amendments.toRemove")}</Badge>
