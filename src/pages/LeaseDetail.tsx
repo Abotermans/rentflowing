@@ -176,6 +176,9 @@ export default function LeaseDetail() {
 
   const tenant = tenants.find(tn => tn.id === lease.primaryTenantId);
   const unit = units.find(u => u.id === lease.unitId);
+  const coTenants = (lease.coTenantIds ?? [])
+    .map(tid => tenants.find(tn => tn.id === tid))
+    .filter((x): x is NonNullable<typeof x> => !!x);
   const property = properties.find(p => p.id === lease.propertyId);
   const locale = property?.locale ?? "fr-FR";
   const currency = property?.currencyCode ?? "EUR";
@@ -502,13 +505,6 @@ export default function LeaseDetail() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{lease.leaseReference}</h1>
               <StatusBadge status={lifecycle} />
-            </div>
-            <div className="flex gap-2 mt-1 text-sm text-muted-foreground">
-              {tenant && <Link to={`/tenants/${tenant.id}`} className="hover:underline text-primary">{getTenantFullName(tenant)}</Link>}
-              <span>·</span>
-              {unit && <Link to={`/units/${unit.id}`} className="hover:underline text-primary">{unit.unitCode}</Link>}
-              <span>·</span>
-              {property && <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>}
             </div>
           </div>
           <div className="flex items-center gap-2">
