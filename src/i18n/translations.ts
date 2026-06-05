@@ -2211,6 +2211,7 @@ const fr: TranslationKeys = {
   "amendments.activate": "Activer",
   "amendments.cancel": "Annuler l'avenant",
   "amendments.markPending": "Marquer à signer",
+  "amendments.schedule": "Planifier",
   "amendments.saveDraft": "Enregistrer le brouillon",
   "amendments.currentTerms": "Conditions en vigueur",
   "amendments.originalTerms": "Conditions initiales",
