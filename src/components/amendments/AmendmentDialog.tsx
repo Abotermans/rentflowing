@@ -692,7 +692,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
           <Button variant="outline" disabled={!canSubmit} onClick={() => save("draft")}>{t("amendments.saveDraft")}</Button>
-          <Button variant="outline" disabled={!canSubmit} onClick={() => save("pending-signature")}>{t("amendments.markPending")}</Button>
+          <Button variant="outline" disabled={!canSubmit} onClick={() => save("scheduled")}>{t("amendments.schedule")}</Button>
           <Button disabled={!canActivate} onClick={() => save("active")}>{t("amendments.activate")}</Button>
         </DialogFooter>
       </DialogContent>
