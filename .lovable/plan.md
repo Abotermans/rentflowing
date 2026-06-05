@@ -1,50 +1,53 @@
-## Problem
+## Goal
+Replace the two single-select "Add co-tenant / Remove co-tenant" dropdowns in the amendment dialog with a unified table that mirrors the units table pattern.
 
-The amendment ("avenant") dialog forces the user to pick a single `AmendmentType` upfront (rent-change, charges-change, unit-addition, …). That type then gates which form sections are usable (`applies()` in `AmendmentDialog.tsx`). A real-world avenant often combines several changes at once (e.g. rent increase + term extension + add a unit), and the only way to express that today is to manually select "Mixed" — which most users won't think to do, and which still doesn't communicate *what* is mixed.
+## UI (AmendmentDialog.tsx)
 
-## Proposed change
+Replace the two `<div>` blocks (lines 481–502) with a bordered section containing:
 
-Stop treating `amendmentType` as user input. Derive it from the changes the user actually enters in the dialog:
+- Header row: title `Co-tenants` + an `Add co-tenant` button (top-right) opening a Popover. The Popover lists tenants of the property who are not the primary tenant, not already a co-tenant, and not already queued to be added. Clicking one appends it to `tenantsToAdd`.
+- Table columns: Name · Email · Phone · Status (Current / To remove / To add badge) · Action (remove/undo icon button).
+- Rows:
+  - Existing co-tenants from `lease.coTenantIds`. Each row has a minus button → adds to `tenantsToRemove`. If marked, row is struck through with destructive tint and the action becomes an undo (X).
+  - New co-tenants from `tenantsToAdd` (success tint), each removable via X.
+- Empty state when no current co-tenants and nothing queued.
 
-- 0 categories touched → keep current draft type (or default `rent-change`), no impact, save still allowed for draft.
-- 1 category touched → that category (e.g. only rent edited → `rent-change`).
-- 2+ categories touched → `mixed`.
+Reuse the same `Table`, `Badge`, `Popover`, `Button` styling and `h-8/h-7/h-9` sizing as the units table for visual consistency.
 
-Category mapping (one per group of related fields):
-- `rent-change` ← `baseMonthlyRentTotal` or any `unitRentShare`
-- `charges-change` ← `baseMonthlyChargesTotal` or any `unitChargesShare`
-- `term-extension` / `term-shortening` ← `leaseEndDate` (compare new vs old to pick extension vs shortening)
-- `deposit-change` ← `depositAmount`
-- `notice-change` ← `noticePeriodText`
-- `clause-change` ← `clauseSummary`
-- `unit-addition` ← any `unitAssignments` add
-- `unit-removal` ← any `unitAssignments` remove
-- `tenant-addition` / `tenant-removal` ← `coTenantIds` add/remove
+## State changes
 
-## UI changes (`src/components/amendments/AmendmentDialog.tsx`)
+- Replace `addTenantId` / `removeTenantId` strings with:
+  - `tenantsToAdd: string[]`
+  - `tenantsToRemove: string[]`
+  - `addTenantOpen: boolean` for the Popover.
+- Reset both in the `else` branch of the `useEffect`, and hydrate them from `existing` changes in the `if (existing)` branch:
+  - `coTenantIds` + `changeType === 'add'` → add metadata.tenantId to `tenantsToAdd`
+  - `coTenantIds` + `changeType === 'remove'` → add to `tenantsToRemove`
 
-- Remove the "Type" `<Select>` at the top of the dialog.
-- Replace it with a read-only summary line: "Detected changes: Rent change, Term extension, Unit added" (badges), plus a small helper text when 2+ → "This will be saved as a mixed amendment". Empty state → muted "No changes yet".
-- Remove the `applies()` gate in `changesDraft` so every section is always editable in parallel. All sections (rent, charges, end date, deposit, notice, clauses, units, tenants) are shown unconditionally; the user simply fills the ones that apply.
-- On save, compute `amendmentType` from `changesDraft` using the mapping above and pass it to `addAmendment` / `updateAmendment`. Drop the `type` state.
+## changesDraft
 
-## Display / list (`AmendmentsSection.tsx`)
+Rewrite the tenant section (lines 193–200) to emit one `coTenantIds` change per queued tenant:
 
-- Keep the existing "Type" column. For `mixed`, render a tooltip listing the categories actually present in `getAmendmentChanges(a.id)` (e.g. "Mixed: rent, term, units") so the row stays informative.
-- Optional: show the same badge cluster in the row expansion if there's already one; otherwise skip.
+```
+for (const tid of tenantsToAdd) {
+  push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, tid], { tenantId: tid });
+}
+for (const tid of tenantsToRemove) {
+  push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
+}
+```
 
-## i18n (`src/i18n/translations.ts`)
+Update the dependency array accordingly.
 
-- Add `amendments.detectedChanges`, `amendments.noChangesYet`, `amendments.mixedHint` (EN + FR).
-- Keep existing `amendments.type.*` keys (still used for rendering badges).
+## i18n (src/i18n/translations.ts)
 
-## Data model
-
-- No schema change. `AmendmentType` keeps its current union including `mixed`. Existing amendments keep their stored type; only newly saved ones are auto-derived.
-- No migration of historical data.
+Add EN + FR keys:
+- `amendments.coTenants` ("Co-tenants" / "Co-locataires")
+- `amendments.noCoTenants` ("No co-tenants" / "Aucun co-locataire")
+- `amendments.noTenantsAvailable` ("No tenants available" / "Aucun locataire disponible")
+- Reuse existing `amendments.addCoTenant`, `amendments.toRemove`, `amendments.toAdd`, `amendments.statusCurrent`, `amendments.action`.
+- Add column headers: `amendments.tenantName`, `amendments.tenantEmail`, `amendments.tenantPhone`.
 
 ## Out of scope
-
-- Splitting one avenant into multiple records.
-- Per-change approval workflow.
-- Changing the validation rules in `validateAmendment` (they already operate on the changes list, not on the type).
+- Backend / amendment types unchanged (still emit `coTenantIds` add/remove → derives `tenant-addition` / `tenant-removal` / `mixed` automatically).
+- No changes to `AmendmentsSection.tsx` or validation logic.
