@@ -93,8 +93,9 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string };
   const [unitsToAdd, setUnitsToAdd] = useState<AddDraft[]>([]);
   const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
-  const [addTenantId, setAddTenantId] = useState("");
-  const [removeTenantId, setRemoveTenantId] = useState("");
+  const [tenantsToAdd, setTenantsToAdd] = useState<string[]>([]);
+  const [tenantsToRemove, setTenantsToRemove] = useState<string[]>([]);
+  const [addTenantOpen, setAddTenantOpen] = useState(false);
   const [addUnitOpen, setAddUnitOpen] = useState(false);
 
   const currentUnits = useMemo(
@@ -139,6 +140,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       }));
       const remChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "remove");
       setUnitsToRemove(remChs.map(c => c.metadata?.unitId ?? "").filter(Boolean));
+      const addTen = chs.filter(c => c.fieldName === "coTenantIds" && c.changeType === "add");
+      setTenantsToAdd(addTen.map(c => c.metadata?.tenantId ?? "").filter(Boolean));
+      const remTen = chs.filter(c => c.fieldName === "coTenantIds" && c.changeType === "remove");
+      setTenantsToRemove(remTen.map(c => c.metadata?.tenantId ?? "").filter(Boolean));
     } else {
       setTitle(""); setReason(""); setNotes("");
       setEffectiveDate(""); setSignedDate("");
@@ -148,7 +153,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setNewDeposit(String(lease.depositOrGuaranteeAmount ?? ""));
       setNewNotice(lease.noticePeriodText);
       setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]);
-      setAddTenantId(""); setRemoveTenantId("");
+      setTenantsToAdd([]); setTenantsToRemove([]);
     }
   }, [existing, open, lease, getAmendmentChanges]);
 
@@ -190,17 +195,15 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       push("unitAssignments", "remove", { unitId: uid }, null,
         { unitId: uid, startDate: effectiveDate });
     }
-    if (addTenantId) {
-      push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, addTenantId],
-        { tenantId: addTenantId });
+    for (const tid of tenantsToAdd) {
+      push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, tid], { tenantId: tid });
     }
-    if (removeTenantId) {
-      push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== removeTenantId),
-        { tenantId: removeTenantId });
+    for (const tid of tenantsToRemove) {
+      push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
     }
     return out;
   }, [newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
-      unitsToAdd, unitsToRemove, addTenantId, removeTenantId,
+      unitsToAdd, unitsToRemove, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
   const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
