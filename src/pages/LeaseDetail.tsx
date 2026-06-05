@@ -538,7 +538,7 @@ export default function LeaseDetail() {
                   return (
                     <>
                       <DropdownMenuItem onSelect={() => openRenewDialog()}>
-                        <Clock className="h-4 w-4 mr-2" />{t("lease.renew")}
+                        <RefreshCw className="h-4 w-4 mr-2" />{t("lease.renew")}
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleMarkEnded()} disabled={endDisabled}>
                         <CheckCircle2 className="h-4 w-4 mr-2" />{t("detail.markEnded")}
