@@ -1,53 +1,48 @@
-## Goal
-Replace the two single-select "Add co-tenant / Remove co-tenant" dropdowns in the amendment dialog with a unified table that mirrors the units table pattern.
+# Amendment edit modal — rent source of truth, date layout, coverage warning
 
-## UI (AmendmentDialog.tsx)
+Scope: `src/components/amendments/AmendmentDialog.tsx` (+ a couple of i18n keys, + `getLeaseAmendments` already exists in `src/lib/amendments.ts`).
 
-Replace the two `<div>` blocks (lines 481–502) with a bordered section containing:
+## 1. Unit rent/charges become the source of truth
 
-- Header row: title `Co-tenants` + an `Add co-tenant` button (top-right) opening a Popover. The Popover lists tenants of the property who are not the primary tenant, not already a co-tenant, and not already queued to be added. Clicking one appends it to `tenantsToAdd`.
-- Table columns: Name · Email · Phone · Status (Current / To remove / To add badge) · Action (remove/undo icon button).
-- Rows:
-  - Existing co-tenants from `lease.coTenantIds`. Each row has a minus button → adds to `tenantsToRemove`. If marked, row is struck through with destructive tint and the action becomes an undo (X).
-  - New co-tenants from `tenantsToAdd` (success tint), each removable via X.
-- Empty state when no current co-tenants and nothing queued.
+Remove the two standalone fields **New rent** and **New charges** from the form. The lease-level `monthlyRent` / `monthlyCharges` are already recomputed from active assignment shares in `getEffectiveLeaseTerms` (see `src/lib/amendments.ts`), so they don't need a separate input.
 
-Reuse the same `Table`, `Badge`, `Popover`, `Button` styling and `h-8/h-7/h-9` sizing as the units table for visual consistency.
+Replace with: a read-only **Total rent / Total charges** summary line above the units table that lives-sums the editable per-unit shares (current units minus removed + added + edited).
 
-## State changes
+Make every row in the units table editable for `rentShare` and `chargesShare`:
+- Current units: today the table shows the assignment's existing `rentShare` / `chargesShare` as plain text. Convert them to `<Input type="number">` (matching the to-add rows' styling). Track edits in a new local map `editedShares: Record<unitId, { rentShare?: string; chargesShare?: string }>`.
+- Removed-marked rows: keep inputs disabled.
+- Added rows: unchanged (already editable).
 
-- Replace `addTenantId` / `removeTenantId` strings with:
-  - `tenantsToAdd: string[]`
-  - `tenantsToRemove: string[]`
-  - `addTenantOpen: boolean` for the Popover.
-- Reset both in the `else` branch of the `useEffect`, and hydrate them from `existing` changes in the `if (existing)` branch:
-  - `coTenantIds` + `changeType === 'add'` → add metadata.tenantId to `tenantsToAdd`
-  - `coTenantIds` + `changeType === 'remove'` → add to `tenantsToRemove`
+`changesDraft` updates:
+- Drop the `baseMonthlyRentTotal` and `baseMonthlyChargesTotal` blocks entirely.
+- For each entry in `editedShares` that differs from the current assignment, emit a `unitRentShare` or `unitChargesShare` change with `metadata.unitId` and `newValue = Number`.
 
-## changesDraft
+Activation side-effect — "modifying it on the avenant updates the unit itself":
+- In `save()`, after the amendment is created/updated, if `status === "active"` walk the final per-unit shares (current edits + added rows' shares) and call `updateUnit` for each affected unit, setting `baseRent` to its new rentShare. This mirrors the rent back onto the unit so the unit page stays consistent. (Charges live on the assignment, not the unit, so we only sync rent.)
 
-Rewrite the tenant section (lines 193–200) to emit one `coTenantIds` change per queued tenant:
+Derived-type logic in `deriveAmendmentType` already handles `unitRentShare` / `unitChargesShare`, no change needed.
 
-```
-for (const tid of tenantsToAdd) {
-  push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, tid], { tenantId: tid });
-}
-for (const tid of tenantsToRemove) {
-  push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
-}
-```
+## 2. Dates on one line
 
-Update the dependency array accordingly.
+Wrap **Effective date**, **Signed date**, and **New end date** in a single `grid grid-cols-3 gap-3 col-span-2` row. Remove `newEndDate` from its current standalone slot lower in the form.
 
-## i18n (src/i18n/translations.ts)
+## 3. Coverage-gap warning
 
-Add EN + FR keys:
-- `amendments.coTenants` ("Co-tenants" / "Co-locataires")
-- `amendments.noCoTenants` ("No co-tenants" / "Aucun co-locataire")
-- `amendments.noTenantsAvailable` ("No tenants available" / "Aucun locataire disponible")
-- Reuse existing `amendments.addCoTenant`, `amendments.toRemove`, `amendments.toAdd`, `amendments.statusCurrent`, `amendments.action`.
-- Add column headers: `amendments.tenantName`, `amendments.tenantEmail`, `amendments.tenantPhone`.
+Add a soft warning (non-blocking, rendered in the existing live-validation alert area) when `effectiveDate` is strictly greater than the current coverage end:
+
+- Coverage end = max(`lease.endDate`, latest active amendment's `effectiveDate`'s resulting `endDate`). Easiest: read `getCurrentLeaseTerms(lease.id, integrityState).endDate` — already imported pattern. Fallback to `lease.endDate`.
+- If `effectiveDate > coverageEnd` and there is no `newEndDate` already extending past `effectiveDate`, push a warning entry into the alert list with key `amendments.warning.coverageGap` and a message like *"Effective date is after the current lease/amendment end date — there will be uncovered days. Extend the end date to cover the gap."*
+
+Implementation: compute it in a local `useMemo` and render an extra `<li className="text-warning">` inside the existing `Alert` block (or render the Alert when only this warning exists). No backend / no `validateAmendment` change.
+
+## 4. i18n
+
+Add to `src/i18n/translations.ts`:
+- `amendments.totalRent`, `amendments.totalCharges`
+- `amendments.warning.coverageGap` (EN + FR)
 
 ## Out of scope
-- Backend / amendment types unchanged (still emit `coTenantIds` add/remove → derives `tenant-addition` / `tenant-removal` / `mixed` automatically).
-- No changes to `AmendmentsSection.tsx` or validation logic.
+
+- `AmendmentsSection.tsx`, financial recompute logic, integrity layer, backend.
+- Charges-on-unit modelling (charges remain on assignments).
+- Hiding the rent/charges fields outside the amendment dialog.
