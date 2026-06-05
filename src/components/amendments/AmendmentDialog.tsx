@@ -3,6 +3,7 @@ import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { validateAmendment } from "@/lib/integrity/amendmentIntegrity";
+import { getCurrentLeaseTerms } from "@/lib/amendments";
 import type {
   AmendmentType,
   AmendmentStatus,
@@ -71,7 +72,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const { t } = useSettings();
   const {
     units, tenants, getLeaseAssignedUnits,
-    addAmendment, updateAmendment, activateAmendment,
+    addAmendment, updateAmendment, activateAmendment, updateUnit,
     getAmendmentChanges,
   } = useAppData();
   const integrityState = useIntegrityState();
@@ -83,8 +84,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const [signedDate, setSignedDate] = useState("");
 
   // Per-type fields
-  const [newRent, setNewRent] = useState("");
-  const [newCharges, setNewCharges] = useState("");
   const [newEndDate, setNewEndDate] = useState("");
   const [newDeposit, setNewDeposit] = useState("");
   const [newNotice, setNewNotice] = useState("");
@@ -93,6 +92,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string };
   const [unitsToAdd, setUnitsToAdd] = useState<AddDraft[]>([]);
   const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
+  const [editedShares, setEditedShares] = useState<Record<string, { rentShare?: string; chargesShare?: string }>>({});
   const [tenantsToAdd, setTenantsToAdd] = useState<string[]>([]);
   const [tenantsToRemove, setTenantsToRemove] = useState<string[]>([]);
   const [addTenantOpen, setAddTenantOpen] = useState(false);
@@ -122,12 +122,18 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setSignedDate(existing.signedDate ?? "");
       const chs = getAmendmentChanges(existing.id);
       const find = (f: AmendmentFieldName) => chs.find(c => c.fieldName === f);
-      setNewRent(String(find("baseMonthlyRentTotal")?.newValue ?? ""));
-      setNewCharges(String(find("baseMonthlyChargesTotal")?.newValue ?? ""));
       setNewEndDate(String(find("leaseEndDate")?.newValue ?? ""));
       setNewDeposit(String(find("depositAmount")?.newValue ?? ""));
       setNewNotice(String(find("noticePeriodText")?.newValue ?? ""));
       setClauseSummary(String(find("clauseSummary")?.newValue ?? ""));
+      const edits: Record<string, { rentShare?: string; chargesShare?: string }> = {};
+      for (const c of chs) {
+        const uid = c.metadata?.unitId;
+        if (!uid) continue;
+        if (c.fieldName === "unitRentShare") edits[uid] = { ...edits[uid], rentShare: String(c.newValue ?? "") };
+        if (c.fieldName === "unitChargesShare") edits[uid] = { ...edits[uid], chargesShare: String(c.newValue ?? "") };
+      }
+      setEditedShares(edits);
       const addChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "add");
       setUnitsToAdd(addChs.map(c => {
         const nv = (c.newValue ?? {}) as { rentShare?: number; chargesShare?: number };
@@ -147,12 +153,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     } else {
       setTitle(""); setReason(""); setNotes("");
       setEffectiveDate(""); setSignedDate("");
-      setNewRent(String(lease.monthlyRent));
-      setNewCharges(String(lease.monthlyCharges));
       setNewEndDate(lease.endDate);
       setNewDeposit(String(lease.depositOrGuaranteeAmount ?? ""));
       setNewNotice(lease.noticePeriodText);
-      setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]);
+      setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]); setEditedShares({});
       setTenantsToAdd([]); setTenantsToRemove([]);
     }
   }, [existing, open, lease, getAmendmentChanges]);
@@ -167,12 +171,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       metadata?: AmendmentChangeMetadata,
     ) => out.push({ fieldName, changeType, oldValue, newValue, metadata });
 
-    if (newRent && Number(newRent) !== lease.monthlyRent) {
-      push("baseMonthlyRentTotal", "set", lease.monthlyRent, Number(newRent));
-    }
-    if (newCharges && Number(newCharges) !== lease.monthlyCharges) {
-      push("baseMonthlyChargesTotal", "set", lease.monthlyCharges, Number(newCharges));
-    }
     if (newEndDate && newEndDate !== lease.endDate) {
       push("leaseEndDate", "set", lease.endDate, newEndDate);
     }
@@ -184,6 +182,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     }
     if (clauseSummary) {
       push("clauseSummary", "set", "", clauseSummary);
+    }
+    for (const r of currentUnits) {
+      if (unitsToRemove.includes(r.unit.id)) continue;
+      const e = editedShares[r.unit.id];
+      if (!e) continue;
+      const oldRent = r.assignment.rentShare ?? 0;
+      const oldCh = r.assignment.chargesShare ?? 0;
+      if (e.rentShare !== undefined && e.rentShare !== "" && Number(e.rentShare) !== oldRent) {
+        push("unitRentShare", "set", oldRent, Number(e.rentShare), { unitId: r.unit.id });
+      }
+      if (e.chargesShare !== undefined && e.chargesShare !== "" && Number(e.chargesShare) !== oldCh) {
+        push("unitChargesShare", "set", oldCh, Number(e.chargesShare), { unitId: r.unit.id });
+      }
     }
     for (const a of unitsToAdd) {
       if (!a.unitId) continue;
@@ -202,8 +213,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
     }
     return out;
-  }, [newRent, newCharges, newEndDate, newDeposit, newNotice, clauseSummary,
-      unitsToAdd, unitsToRemove, tenantsToAdd, tenantsToRemove,
+  }, [newEndDate, newDeposit, newNotice, clauseSummary,
+      unitsToAdd, unitsToRemove, editedShares, currentUnits, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
   const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
