@@ -1078,7 +1078,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium">{t("detail.returnStatus")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-center">{t("detail.returnStatus")}</CardTitle>
                 <div className="flex items-center gap-2">
                   {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
                   <Button variant="outline" size="sm" onClick={openReturnForm}>{lease.returnStatus ? t("detail.update") : t("detail.setStatus")}</Button>
