@@ -985,7 +985,7 @@ export default function LeaseDetail() {
             const MoIcon = moDisplay.icon;
             const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void) => (
               <div className="flex items-center justify-between gap-2 min-h-[2rem]">
-                <div className="flex items-center gap-1.5 text-sm font-medium">
+                <div className="flex items-center gap-1.5 text-base font-medium">
                   {label}
                   <span className={`ml-1.5 inline-flex items-center gap-1 text-xs ${display.className}`}>
                     <Icon className="h-3.5 w-3.5" />
