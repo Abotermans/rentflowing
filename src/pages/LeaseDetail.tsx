@@ -634,7 +634,7 @@ export default function LeaseDetail() {
 
       {/* Lease Summary */}
       <Card>
-        <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("detail.leaseSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.leaseSummary")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {(() => {
             const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
@@ -786,7 +786,7 @@ export default function LeaseDetail() {
 
       {/* Financial Summary */}
       <Card>
-        <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("detail.financialSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
@@ -1045,7 +1045,7 @@ export default function LeaseDetail() {
 
           {/* Keys & Meters */}
           <Card>
-            <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("detail.keysMeters")}</CardTitle></CardHeader>
+            <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.keysMeters")}</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1236,7 +1236,7 @@ export default function LeaseDetail() {
       })()}
       {lease.notes && (
         <Card>
-          <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("common.notes")}</CardTitle></CardHeader>
+          <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{lease.notes}</p></CardContent>
         </Card>
       )}
