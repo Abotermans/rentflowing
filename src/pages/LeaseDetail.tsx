@@ -1289,6 +1289,11 @@ export default function LeaseDetail() {
           <div className="space-y-4 mt-4">
             <div>
               <Label>{t("payments.dialog.sourceType")}</Label>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{t("leaseDialog.recordReceipt")}</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>{t("payments.dialog.sourceType")}</Label>
               <Select value={formSourceType} onValueChange={v => setFormSourceType(v as CashReceiptSourceType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
