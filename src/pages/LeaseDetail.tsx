@@ -959,7 +959,7 @@ export default function LeaseDetail() {
           {/* Move-In Panel */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center">
                  <CardTitle className="text-sm font-medium flex items-center gap-1.5">
                    {t("detail.moveIn")}
                    {(() => {
