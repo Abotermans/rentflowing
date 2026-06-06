@@ -635,7 +635,16 @@ export default function LeaseDetail() {
             const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
             const sortedAssignments = assignments.length > 0
               ? assignments.slice().sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
-              : (unit ? [{ id: "fallback", unitId: unit.id, isPrimary: true, assignmentType: "primary" as const }] : []);
+              : (unit ? [{
+                  id: "fallback",
+                  unitId: unit.id,
+                  isPrimary: true,
+                  assignmentType: "primary" as const,
+                  startDate: lease.startDate,
+                  endDate: null as string | null,
+                  rentShare: lease.monthlyRent,
+                  chargesShare: lease.monthlyCharges,
+                }] : []);
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-border">
                 <div>
