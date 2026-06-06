@@ -600,7 +600,7 @@ export default function Leases() {
       )}
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="w-[920px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <DialogContent className="w-[760px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle>
             {!editingLease && (
@@ -648,7 +648,7 @@ export default function Leases() {
               {unitRows.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic px-3 py-4 text-center">{t("leases.units.empty")}</p>
               ) : (
-                <Table className="w-full">
+                <Table className="w-auto [&_th]:px-2 [&_td]:px-2">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
@@ -684,7 +684,7 @@ export default function Leases() {
                           </TableCell>
                           <TableCell className="py-1.5">
                             <Select value={row.assignmentType} onValueChange={v => setRoleForRow(idx, v as LeaseUnitAssignmentType)}>
-                              <SelectTrigger className="h-8 w-auto min-w-[110px]"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-8 w-auto min-w-[90px]"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {(["primary","parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
                                   <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
