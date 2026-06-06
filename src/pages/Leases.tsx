@@ -110,14 +110,17 @@ export default function Leases() {
     advanceCycleLeadDays: 15,
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
-  // Extra (non-primary) unit assignments attached to this lease. Each carries its own
-  // rent and charges contribution — these are summed into the lease totals.
-  const [extraUnits, setExtraUnits] = useState<{
+  // Unified rows for every unit attached to this lease. Exactly one row must
+  // carry `assignmentType === "primary"` — its unitId becomes `lease.unitId`.
+  // Lease totals (`form.monthlyRent` / `monthlyCharges`) are derived from the
+  // sum of these rows on save.
+  type UnitRow = {
     unitId: string;
     assignmentType: LeaseUnitAssignmentType;
     rentShare: number;
     chargesShare: number;
-  }[]>([]);
+  };
+  const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
 
   const emptyTenantForm: TenantFormData = {
     firstName: "", lastName: "", email: "", phone: "",
@@ -132,7 +135,7 @@ export default function Leases() {
     setEditingLease(null);
     setForm({ ...emptyForm });
     setTenantForm({ ...emptyTenantForm });
-    setExtraUnits([]);
+    setUnitRows([]);
     setStep(1);
     setTenantMode(tenants.length > 0 ? "existing" : "new");
     setSheetOpen(true);
@@ -142,15 +145,26 @@ export default function Leases() {
     const { id, createdAt, updatedAt, ...rest } = l;
     setForm(rest);
     const today = new Date().toISOString().slice(0, 10);
-    const extras = getLeaseAssignments(l.id)
-      .filter(a => !a.isPrimary && (!a.endDate || a.endDate >= today))
-      .map(a => ({
-        unitId: a.unitId,
-        assignmentType: a.assignmentType,
-        rentShare: a.rentShare ?? 0,
-        chargesShare: a.chargesShare ?? 0,
-      }));
-    setExtraUnits(extras);
+    const all = getLeaseAssignments(l.id)
+      .filter(a => !a.endDate || a.endDate >= today)
+      .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
+    const rows: UnitRow[] = all.map(a => ({
+      unitId: a.unitId,
+      assignmentType: a.isPrimary ? "primary" : a.assignmentType,
+      rentShare: a.rentShare ?? 0,
+      chargesShare: a.chargesShare ?? 0,
+    }));
+    // Fallback: ensure the lease's primary unit is present even if assignments
+    // weren't migrated yet.
+    if (!rows.some(r => r.assignmentType === "primary") && l.unitId) {
+      rows.unshift({
+        unitId: l.unitId,
+        assignmentType: "primary",
+        rentShare: l.monthlyRent,
+        chargesShare: l.monthlyCharges,
+      });
+    }
+    setUnitRows(rows);
     setSheetOpen(true);
   };
 
