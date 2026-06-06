@@ -182,35 +182,38 @@ export default function Leases() {
 
   const executeLeaseSave = () => {
     const persistAssignments = (leaseId: string) => {
-      // Primary share = lease total - sum of ancillary shares.
-      const ancRent = extraUnits
-        .filter(e => e.unitId && e.unitId !== form.unitId)
-        .reduce((s, e) => s + (e.rentShare ?? 0), 0);
-      const ancCharges = extraUnits
-        .filter(e => e.unitId && e.unitId !== form.unitId)
-        .reduce((s, e) => s + (e.chargesShare ?? 0), 0);
-      const primaryRent = Math.max(0, form.monthlyRent - ancRent);
-      const primaryCharges = Math.max(0, form.monthlyCharges - ancCharges);
-      const draft = [
-        { unitId: form.unitId, assignmentType: "primary" as LeaseUnitAssignmentType, isPrimary: true, rentShare: primaryRent, chargesShare: primaryCharges, startDate: form.startDate },
-        ...extraUnits
-          .filter(e => e.unitId && e.unitId !== form.unitId)
-          .map(e => ({ unitId: e.unitId, assignmentType: e.assignmentType, isPrimary: false, rentShare: e.rentShare, chargesShare: e.chargesShare, startDate: form.startDate })),
-      ];
+      const draft = unitRows.map(r => ({
+        unitId: r.unitId,
+        assignmentType: r.assignmentType,
+        isPrimary: r.assignmentType === "primary",
+        rentShare: r.rentShare,
+        chargesShare: r.chargesShare,
+        startDate: form.startDate,
+      }));
       setLeaseUnits(leaseId, form.propertyId, draft);
     };
+    // Derive lease-level totals + primary unit id from the rows table.
+    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
+    const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+    const formToPersist = {
+      ...form,
+      unitId: primaryRow?.unitId ?? form.unitId,
+      monthlyRent: totalRent,
+      monthlyCharges: totalCharges,
+    };
     if (editingLease) {
-      updateLease({ ...editingLease, ...form });
+      updateLease({ ...editingLease, ...formToPersist });
       persistAssignments(editingLease.id);
       toast({ title: "Lease updated" });
     } else {
       if (tenantMode === "new") {
         const newTenant = addTenant(tenantForm);
-        const created = addLease({ ...form, primaryTenantId: newTenant.id });
+        const created = addLease({ ...formToPersist, primaryTenantId: newTenant.id });
         persistAssignments(created.id);
         toast({ title: "Lease added", description: `Tenant ${getTenantFullName(newTenant)} created` });
       } else {
-        const created = addLease({ ...form });
+        const created = addLease({ ...formToPersist });
         persistAssignments(created.id);
         toast({ title: "Lease added" });
       }
