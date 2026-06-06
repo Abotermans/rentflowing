@@ -362,6 +362,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
           return closeOpenAssignmentsForLease(l.id, endDate, prevA, ts);
         });
+        // Cascade to active amendments: keep lease and amendment lifecycle in sync.
+        const newAmStatus = l.lifecycleStage === "terminated" ? "terminated" as const : "ended" as const;
+        setAmendments(prevAm => prevAm.map(a =>
+          a.leaseId === l.id && a.status === "active"
+            ? { ...a, status: newAmStatus, updatedAt: ts }
+            : a,
+        ));
       }
       return next;
     });
@@ -403,6 +410,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return closeOpenAssignmentsForLease(lease.id, moveOutDate, prev, ts);
     });
+    // Cascade: end any active amendments on this lease.
+    setAmendments(prevAm => prevAm.map(a =>
+      a.leaseId === lease.id && a.status === "active"
+        ? { ...a, status: "ended", updatedAt: ts }
+        : a,
+    ));
   }, []);
 
   // ===== Lease Unit Assignments =====

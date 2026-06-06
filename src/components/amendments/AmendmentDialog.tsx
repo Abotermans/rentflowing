@@ -33,6 +33,27 @@ type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt"
 
 const ANC_ROLES: LeaseUnitAssignmentType[] = ["parking", "cellar", "storage", "office-secondary", "commercial-addon", "ancillary", "other"];
 
+type NoticeUnit = "days" | "weeks" | "months" | "years";
+
+function parseNoticeText(text: string): { value: string; unit: NoticeUnit } {
+  if (!text) return { value: "", unit: "months" };
+  const m = text.match(/(\d+)\s*(day|week|month|year|jour|semaine|mois|année|annee|an)s?\b/i);
+  if (!m) return { value: "", unit: "months" };
+  const n = m[1];
+  const u = m[2].toLowerCase();
+  let unit: NoticeUnit = "months";
+  if (u.startsWith("day") || u.startsWith("jour")) unit = "days";
+  else if (u.startsWith("week") || u.startsWith("semaine")) unit = "weeks";
+  else if (u.startsWith("year") || u.startsWith("an")) unit = "years";
+  else unit = "months";
+  return { value: n, unit };
+}
+
+function serializeNotice(value: string, unit: NoticeUnit): string {
+  if (!value) return "";
+  return `${value} ${unit}`;
+}
+
 function deriveAmendmentType(changes: ChangeDraft[], lease: Lease): AmendmentType {
   const cats = new Set<AmendmentType>();
   for (const c of changes) {
@@ -87,7 +108,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   // Per-type fields
   const [newEndDate, setNewEndDate] = useState("");
   const [newDeposit, setNewDeposit] = useState("");
-  const [newNotice, setNewNotice] = useState("");
+  const [noticeValue, setNoticeValue] = useState("");
+  const [noticeUnit, setNoticeUnit] = useState<"days" | "weeks" | "months" | "years">("months");
   const [clauseSummary, setClauseSummary] = useState("");
   // Unit-change drafts (multi-row, intuitive add/remove UX)
   type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string };
@@ -125,7 +147,11 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       const find = (f: AmendmentFieldName) => chs.find(c => c.fieldName === f);
       setNewEndDate(String(find("leaseEndDate")?.newValue ?? ""));
       setNewDeposit(String(find("depositAmount")?.newValue ?? ""));
-      setNewNotice(String(find("noticePeriodText")?.newValue ?? ""));
+      {
+        const parsed = parseNoticeText(String(find("noticePeriodText")?.newValue ?? ""));
+        setNoticeValue(parsed.value);
+        setNoticeUnit(parsed.unit);
+      }
       setClauseSummary(String(find("clauseSummary")?.newValue ?? ""));
       const edits: Record<string, { rentShare?: string; chargesShare?: string }> = {};
       for (const c of chs) {
@@ -156,7 +182,11 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setEffectiveDate(""); setSignedDate("");
       setNewEndDate(lease.endDate);
       setNewDeposit(String(lease.depositOrGuaranteeAmount ?? ""));
-      setNewNotice(lease.noticePeriodText);
+      {
+        const parsed = parseNoticeText(lease.noticePeriodText);
+        setNoticeValue(parsed.value);
+        setNoticeUnit(parsed.unit);
+      }
       setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]); setEditedShares({});
       setTenantsToAdd([]); setTenantsToRemove([]);
     }
@@ -178,8 +208,9 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     if (newDeposit && Number(newDeposit) !== (lease.depositOrGuaranteeAmount ?? 0)) {
       push("depositAmount", "set", lease.depositOrGuaranteeAmount, Number(newDeposit));
     }
-    if (newNotice && newNotice !== lease.noticePeriodText) {
-      push("noticePeriodText", "set", lease.noticePeriodText, newNotice);
+    const noticeSerialized = serializeNotice(noticeValue, noticeUnit);
+    if (noticeSerialized && noticeSerialized !== lease.noticePeriodText) {
+      push("noticePeriodText", "set", lease.noticePeriodText, noticeSerialized);
     }
     if (clauseSummary) {
       push("clauseSummary", "set", "", clauseSummary);
@@ -214,7 +245,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
     }
     return out;
-  }, [newEndDate, newDeposit, newNotice, clauseSummary,
+  }, [newEndDate, newDeposit, noticeValue, noticeUnit, clauseSummary,
       unitsToAdd, unitsToRemove, editedShares, currentUnits, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
@@ -391,7 +422,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           </div>
           <div>
               <Label>{t("leases.noticePeriod")}</Label>
-              <Input className="h-8" value={newNotice} onChange={e => setNewNotice(e.target.value)} />
+              <div className="flex gap-2">
+                <Input className="h-8 w-24" type="number" min="0" value={noticeValue}
+                  onChange={e => setNoticeValue(e.target.value)} />
+                <Select value={noticeUnit} onValueChange={(v) => setNoticeUnit(v as NoticeUnit)}>
+                  <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="days">{t("amendments.noticeUnit.days")}</SelectItem>
+                    <SelectItem value="weeks">{t("amendments.noticeUnit.weeks")}</SelectItem>
+                    <SelectItem value="months">{t("amendments.noticeUnit.months")}</SelectItem>
+                    <SelectItem value="years">{t("amendments.noticeUnit.years")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
           </div>
           <div className="col-span-2">
               <Label>{t("amendments.clauseSummary")}</Label>
@@ -686,28 +729,36 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           </div>
         </div>
 
-        {((liveValidation && (liveValidation.blockers.length > 0 || liveValidation.warnings.length > 0)) || coverageGap) && (
-          <Alert variant={liveValidation?.blockers.length ? "destructive" : "default"}>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <ul className="list-disc ml-4 text-xs">
-                {liveValidation?.blockers.map(b => {
-                  const k = `amendments.error.${b.code}` as TranslationKey;
-                  const tr = (t as (key: TranslationKey) => string)(k);
-                  return <li key={b.code}>{tr && tr !== k ? tr : b.message}</li>;
-                })}
-                {liveValidation?.warnings.map(w => {
-                  const k = `amendments.error.${w.code}` as TranslationKey;
-                  const tr = (t as (key: TranslationKey) => string)(k);
-                  return <li key={w.code} className="text-warning">{tr && tr !== k ? tr : w.message}</li>;
-                })}
-                {coverageGap && (
-                  <li className="text-warning">{t("amendments.gapWarning")}</li>
-                )}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
+        {(() => {
+          const blockers = liveValidation?.blockers ?? [];
+          // Past-date warning is already surfaced inline next to the effective date field.
+          const warnings = (liveValidation?.warnings ?? []).filter(w => w.code !== "AMD_EFFECTIVE_IN_PAST");
+          if (blockers.length === 0 && warnings.length === 0 && !coverageGap) return null;
+          const isDestructive = blockers.length > 0;
+          return (
+            <Alert
+              variant={isDestructive ? "destructive" : "default"}
+              className={isDestructive ? "" : "border-warning/40 bg-warning/10 text-warning [&>svg]:text-warning"}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <ul className="list-disc ml-4 text-xs space-y-0.5">
+                  {blockers.map(b => {
+                    const k = `amendments.error.${b.code}` as TranslationKey;
+                    const tr = (t as (key: TranslationKey) => string)(k);
+                    return <li key={b.code}>{tr && tr !== k ? tr : b.message}</li>;
+                  })}
+                  {warnings.map(w => {
+                    const k = `amendments.error.${w.code}` as TranslationKey;
+                    const tr = (t as (key: TranslationKey) => string)(k);
+                    return <li key={w.code}>{tr && tr !== k ? tr : w.message}</li>;
+                  })}
+                  {coverageGap && <li>{t("amendments.gapWarning")}</li>}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          );
+        })()}
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
