@@ -1284,6 +1284,23 @@ export default function LeaseDetail() {
 
       {/* Record Cash Receipt Sheet */}
       <Dialog open={receiptSheetOpen} onOpenChange={setReceiptSheetOpen}>
+      </Dialog>
+
+      {/* Edit Notes */}
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t("common.notes")}</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-4">
+            <Textarea value={notesInput} onChange={e => setNotesInput(e.target.value)} rows={6} />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setNotesDialogOpen(false)}>{t("action.cancel")}</Button>
+              <Button onClick={() => { updateLease({ ...lease, notes: notesInput }); setNotesDialogOpen(false); toast({ title: t("action.save") }); }}>{t("action.save")}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={false}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{t("leaseDialog.recordReceipt")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
