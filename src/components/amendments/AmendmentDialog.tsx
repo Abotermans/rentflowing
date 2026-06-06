@@ -422,7 +422,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           </div>
           <div>
               <Label>{t("leases.noticePeriod")}</Label>
-              <Input className="h-8" value={newNotice} onChange={e => setNewNotice(e.target.value)} />
+              <div className="flex gap-2">
+                <Input className="h-8 w-24" type="number" min="0" value={noticeValue}
+                  onChange={e => setNoticeValue(e.target.value)} />
+                <Select value={noticeUnit} onValueChange={(v) => setNoticeUnit(v as NoticeUnit)}>
+                  <SelectTrigger className="h-8 flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="days">{t("amendments.noticeUnit.days")}</SelectItem>
+                    <SelectItem value="weeks">{t("amendments.noticeUnit.weeks")}</SelectItem>
+                    <SelectItem value="months">{t("amendments.noticeUnit.months")}</SelectItem>
+                    <SelectItem value="years">{t("amendments.noticeUnit.years")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
           </div>
           <div className="col-span-2">
               <Label>{t("amendments.clauseSummary")}</Label>
