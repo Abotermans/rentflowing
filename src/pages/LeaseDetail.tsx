@@ -15,7 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone } from "lucide-react";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
@@ -652,13 +653,29 @@ export default function LeaseDetail() {
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {tenant && (
                       <div className="flex items-center gap-2 text-sm">
-                        <Link to={`/tenants/${tenant.id}`} className="font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link>
+                        <HoverCard openDelay={150}>
+                          <HoverCardTrigger asChild>
+                            <Link to={`/tenants/${tenant.id}`} className="font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-auto p-3 space-y-1.5">
+                            <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{tenant.email}</span></div>
+                            <div className="flex items-center gap-2 text-xs"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{tenant.phone || "—"}</span></div>
+                          </HoverCardContent>
+                        </HoverCard>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
                       </div>
                     )}
                     {coTenants.map(ct => (
                       <div key={ct.id} className="flex items-center gap-2 text-sm">
-                        <Link to={`/tenants/${ct.id}`} className="font-medium text-primary hover:underline">{getTenantFullName(ct)}</Link>
+                        <HoverCard openDelay={150}>
+                          <HoverCardTrigger asChild>
+                            <Link to={`/tenants/${ct.id}`} className="font-medium text-primary hover:underline">{getTenantFullName(ct)}</Link>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-auto p-3 space-y-1.5">
+                            <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{ct.email}</span></div>
+                            <div className="flex items-center gap-2 text-xs"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{ct.phone || "—"}</span></div>
+                          </HoverCardContent>
+                        </HoverCard>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
                       </div>
                     ))}
@@ -1076,36 +1093,6 @@ export default function LeaseDetail() {
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      {/* Tenant & Unit */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leases.tenant")}</CardTitle></CardHeader>
-          <CardContent>
-            {tenant ? (
-              <div className="space-y-2">
-                <div><p className="text-xs text-muted-foreground">{t("common.name")}</p><Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link></div>
-                <div><p className="text-xs text-muted-foreground">{t("tenants.email")}</p><p className="text-sm text-foreground">{tenant.email}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("tenants.phone")}</p><p className="text-sm text-foreground">{tenant.phone || "—"}</p></div>
-              </div>
-            ) : <p className="text-sm text-muted-foreground">{t("leaseDetail.tenantNotFound")}</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.unitProperty")}</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {unit && <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${unit.id}`} className="text-sm font-medium text-primary hover:underline">{unit.unitCode} — {unit.unitLabel}</Link></div>}
-              {property && (
-                <>
-                  <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link></div>
-                  <div><p className="text-xs text-muted-foreground">{t("properties.city")}</p><p className="text-sm text-foreground">{property.city}</p></div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Receivables */}
