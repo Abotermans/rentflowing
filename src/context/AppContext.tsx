@@ -321,12 +321,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // instead of being a phantom discount on the lease record.
     const property = properties.find(p => p.id === created.propertyId);
     const currencyCode = property?.currencyCode ?? "EUR";
-    const { receivables, prepaymentReceipt, allocations } = generateLeaseReceivables(created, {
+    const { receivables } = generateLeaseReceivables(created, {
       currencyCode, genId, today: ts,
     });
     if (receivables.length > 0) setReceivableItems(prev => [...prev, ...receivables]);
-    if (prepaymentReceipt) setCashReceipts(prev => [...prev, prepaymentReceipt]);
-    if (allocations.length > 0) setAllocations(prev => [...prev, ...allocations]);
     return created;
   }, [properties]);
   const updateLease = useCallback((l: Lease) => {

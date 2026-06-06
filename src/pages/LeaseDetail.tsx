@@ -21,7 +21,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
+import { computeCycles, getCurrentCycle, getNextCycle, getCyclePaidAmount } from "@/lib/leaseCycles";
 import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseStatus, getMoveInStatus, getMoveOutStatus, computeGuaranteeStatus, type GuaranteeStatus } from "@/types";
 import { ASSIGNMENT_TYPE_LABELS, isAncillaryAssignmentType } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
@@ -60,15 +60,6 @@ const MOVE_OUT_CHECKLIST_KEY: Record<keyof MoveOutChecklist, TranslationKey> = {
   moveOutMeterReadingCaptured: "checklist.moveOut.moveOutMeterReadingCaptured",
   balanceReviewed: "checklist.moveOut.balanceReviewed",
   guaranteeReviewCompleted: "checklist.moveOut.guaranteeReviewCompleted",
-};
-const ADVANCE_METHOD_KEY: Record<"spread-evenly" | "fixed-monthly-reduction", TranslationKey> = {
-  "spread-evenly": "advance.method.spreadEvenly",
-  "fixed-monthly-reduction": "advance.method.fixedMonthly",
-};
-const ADVANCE_APPLIED_KEY: Record<"rent" | "charges" | "rent-and-charges", TranslationKey> = {
-  "rent": "advance.appliedTo.rent",
-  "charges": "advance.appliedTo.charges",
-  "rent-and-charges": "advance.appliedTo.rentAndCharges",
 };
 
 const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
@@ -218,9 +209,12 @@ export default function LeaseDetail() {
   const amSuffix = (n: number | null) => n != null
     ? <span className="text-[10px] text-muted-foreground ml-1">({t("amendments.basedOn").replace("{n}", String(n))})</span>
     : null;
-  const advancePricing = computeAdvancePricing(lease);
-  const hasAdvance = lease.hasAdvancePayment && advancePricing.advanceStatus !== 'not-applicable';
   const receivables = getReceivableItemsByLease(lease.id).sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+  const isAdvanceBilling = (lease.rentFormula || 1) > 1;
+  const cycles = isAdvanceBilling ? computeCycles({ rentFormula: lease.rentFormula, startDate: lease.startDate, endDate: effEndDate, monthlyRent: effRent, monthlyCharges: effCharges }) : [];
+  const currentCycle = isAdvanceBilling ? getCurrentCycle(cycles, todayIso) : null;
+  const nextCycle = isAdvanceBilling ? getNextCycle(cycles, todayIso) : null;
+  const [cyclesOpen, setCyclesOpen] = useState(false);
   const receipts = getCashReceiptsByLease(lease.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
   const { outstanding, overdue } = getLeaseOutstanding(lease.id);
   const totalAllocated = receivables.reduce((s, ri) => s + ri.allocatedAmount, 0);
@@ -812,103 +806,96 @@ export default function LeaseDetail() {
       </Card>
 
 
-      {/* Advance Payment Card */}
-      {hasAdvance && (
+      {/* Advance Billing — only when rentFormula > 1 */}
+      {isAdvanceBilling && (
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center">
-              <CardTitle className="text-sm font-medium flex-1 text-left">{t("rentPrepayment.title")}</CardTitle>
-              <StatusBadge status={advancePricing.advanceStatus} />
-            </div>
+          <CardHeader className="pb-3 flex-row items-center space-y-0">
+            <CardTitle className="text-sm font-medium flex-1 text-left">
+              {t("advanceCycle.title")} <span className="text-muted-foreground">— {t("advanceCycle.everyN").replace("{n}", String(lease.rentFormula))}</span>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Hero: Rent paid until */}
-            {advancePricing.prepaidUntilDate && (
-              <div className="rounded-md border bg-muted/30 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("rentPrepayment.rentPaidUntil")}</p>
-                  <p className="text-xl font-bold text-foreground">{formatDate(advancePricing.prepaidUntilDate, locale)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">{t("rentPrepayment.monthsRemaining")}</p>
-                  <p className="text-xl font-bold text-primary">{advancePricing.monthsRemaining} / {advancePricing.durationMonths}</p>
-                </div>
-              </div>
-            )}
-
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.amount")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(advancePricing.advanceAmount, currency, locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.method")}</p><p className="text-sm font-medium text-foreground">{lease.advanceAllocationMethod ? t(ADVANCE_METHOD_KEY[lease.advanceAllocationMethod]) : "—"}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.appliedTo")}</p><p className="text-sm font-medium text-foreground">{t(ADVANCE_APPLIED_KEY[lease.advanceAppliedTo || 'rent'])}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.paymentDate")}</p><p className="text-sm font-medium text-foreground">{lease.advancePaymentDate ? formatDate(lease.advancePaymentDate, locale) : "—"}</p></div>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{t("rentPrepayment.consumed")}: {formatCurrency(advancePricing.advanceConsumed, currency, locale)}</span>
-                <span>{t("rentPrepayment.remaining")}: {formatCurrency(advancePricing.advanceRemaining, currency, locale)}</span>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.paidFrom")}</p>
+                <p className="text-sm font-medium text-foreground">{currentCycle ? formatDate(currentCycle.startDate, locale) : "—"}</p>
               </div>
-              <Progress value={advancePricing.advanceAmount > 0 ? (advancePricing.advanceConsumed / advancePricing.advanceAmount) * 100 : 0} className="h-2" />
+              <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.paidUntil")}</p>
+                <p className="text-sm font-medium text-foreground">{currentCycle ? formatDate(currentCycle.endDate, locale) : "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.cycleTotal")}</p>
+                <p className="text-lg font-bold text-foreground">{currentCycle ? formatCurrency(currentCycle.total, currency, locale) : "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.cycleProgress")}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {currentCycle ? `${currentCycle.index} / ${cycles.length}` : `— / ${cycles.length}`}
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.firstMonthCovered")}</p><p className="font-medium text-foreground">{advancePricing.allocationStartMonth ? formatDate(advancePricing.allocationStartMonth + "-01", locale) : formatDate(lease.startDate, locale)}</p></div>
-              {advancePricing.allocationEndDate && <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.lastMonthCovered")}</p><p className="font-medium text-foreground">{formatDate(advancePricing.allocationEndDate + "-01", locale)}</p></div>}
-              <div><p className="text-xs text-muted-foreground">{t("rentPrepayment.duration")}</p><p className="font-medium text-foreground">{advancePricing.durationMonths} {t("rentPrepayment.monthsSuffix")}</p></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.monthlyRent")}</p>
+                <p className="text-sm font-medium text-foreground">{formatCurrency(effRent, currency, locale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.monthlyCharges")}</p>
+                <p className="text-sm font-medium text-foreground">{formatCurrency(effCharges, currency, locale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueDate")}</p>
+                <p className="text-sm font-medium text-foreground">{nextCycle ? formatDate(nextCycle.startDate, locale) : "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueAmount")}</p>
+                <p className="text-sm font-medium text-foreground">{nextCycle ? formatCurrency(nextCycle.total, currency, locale) : "—"}</p>
+              </div>
             </div>
 
-            {/* Collapsible Monthly Schedule */}
-            {advancePricing.monthlySchedule.length > 0 && (
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground hover:text-foreground">
-                    {t("rentPrepayment.schedule")}
-                    <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="mt-2 border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-xs">{t("rentPrepayment.col.month")}</TableHead>
-                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.rentDue")}</TableHead>
-                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.covered")}</TableHead>
-                          <TableHead className="text-xs text-right">{t("rentPrepayment.col.remaining")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {advancePricing.monthlySchedule.map((row) => {
-                          const now = new Date();
-                          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                          const isCurrent = row.month === currentMonth;
-                          const isPaidViaAdvance = row.fullyCovered;
-                          const isPast = row.month < currentMonth;
-                          return (
-                            <TableRow key={row.month} className={isCurrent ? "bg-primary/5 font-medium" : ""}>
-                              <TableCell className="text-xs">
-                                <span className="flex items-center gap-1.5">
-                                  {row.month}{isCurrent && <span className="text-primary text-[10px]">●</span>}
-                                  {isPaidViaAdvance && (isPast || isCurrent) && (
-                                    <span className="inline-flex items-center rounded-full bg-success/15 text-success px-1.5 py-0.5 text-[10px] font-semibold">{t("rentPrepayment.tag.paid")}</span>
-                                  )}
-                                  {isPaidViaAdvance && !isPast && !isCurrent && (
-                                    <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">{t("rentPrepayment.tag.prepaid")}</span>
-                                  )}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-xs text-right">{formatCurrency(row.rentDue, currency, locale)}</TableCell>
-                              <TableCell className="text-xs text-right text-success">{formatCurrency(row.prepaidShare, currency, locale)}</TableCell>
-                              <TableCell className="text-xs text-right text-muted-foreground">{formatCurrency(row.prepaidRemaining, currency, locale)}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+            <Collapsible open={cyclesOpen} onOpenChange={setCyclesOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground hover:text-foreground">
+                  {t("advanceCycle.allCycles")}
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${cyclesOpen ? "rotate-180" : ""}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">#</TableHead>
+                        <TableHead className="text-xs">{t("advanceCycle.period")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("advanceCycle.rent")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("advanceCycle.charges")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("advanceCycle.total")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("advanceCycle.paid")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cycles.map(c => {
+                        const isCurrent = currentCycle?.index === c.index;
+                        const paid = getCyclePaidAmount(c, receivables);
+                        const fullyPaid = paid >= c.total - 0.005;
+                        return (
+                          <TableRow key={c.index} className={isCurrent ? "bg-primary/5 font-medium" : ""}>
+                            <TableCell className="text-xs">{c.index}{isCurrent && <span className="text-primary text-[10px] ml-1">●</span>}</TableCell>
+                            <TableCell className="text-xs">{formatDate(c.startDate, locale)} → {formatDate(c.endDate, locale)}</TableCell>
+                            <TableCell className="text-xs text-right">{formatCurrency(c.rentTotal, currency, locale)}</TableCell>
+                            <TableCell className="text-xs text-right">{formatCurrency(c.chargesTotal, currency, locale)}</TableCell>
+                            <TableCell className="text-xs text-right font-medium">{formatCurrency(c.total, currency, locale)}</TableCell>
+                            <TableCell className={`text-xs text-right ${fullyPaid ? "text-success" : "text-muted-foreground"}`}>{formatCurrency(paid, currency, locale)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
         </Card>
       )}
