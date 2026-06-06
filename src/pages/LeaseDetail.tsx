@@ -634,7 +634,7 @@ export default function LeaseDetail() {
 
       {/* Lease Summary */}
       <Card>
-        <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("detail.leaseSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("detail.leaseSummary")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {(() => {
             const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
@@ -786,7 +786,7 @@ export default function LeaseDetail() {
 
       {/* Financial Summary */}
       <Card>
-        <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("detail.financialSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
@@ -817,7 +817,7 @@ export default function LeaseDetail() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center">
-              <CardTitle className="text-sm font-medium flex-1 text-center">{t("rentPrepayment.title")}</CardTitle>
+              <CardTitle className="text-sm font-medium flex-1 text-left">{t("rentPrepayment.title")}</CardTitle>
               <StatusBadge status={advancePricing.advanceStatus} />
             </div>
           </CardHeader>
@@ -917,7 +917,7 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center">
-            <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-center">
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-start">
               {t("detail.depositGuarantee")}
               {guarantee && (() => {
                 const d = GUARANTEE_DISPLAY[guarantee.status];
@@ -954,13 +954,13 @@ export default function LeaseDetail() {
 
       {/* Occupancy Operations */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4 text-center">{t("detail.occupancyOps")}</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4 text-left">{t("detail.occupancyOps")}</h2>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Move-In Panel */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center">
-                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-center">
+                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-start">
                    {t("detail.moveIn")}
                    {(() => {
                      const d = MOVE_STATUS_DISPLAY[moveInStatus];
@@ -1003,7 +1003,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center">
-                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-center">
+                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-start">
                    {t("detail.moveOut")}
                    {(() => {
                      const d = MOVE_STATUS_DISPLAY[moveOutStatus];
@@ -1045,7 +1045,7 @@ export default function LeaseDetail() {
 
           {/* Keys & Meters */}
           <Card>
-            <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("detail.keysMeters")}</CardTitle></CardHeader>
+            <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("detail.keysMeters")}</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1078,7 +1078,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-center">{t("detail.returnStatus")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-left">{t("detail.returnStatus")}</CardTitle>
                 <div className="flex items-center gap-2">
                   {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
                   <Button variant="outline" size="sm" onClick={openReturnForm}>{lease.returnStatus ? t("detail.update") : t("detail.setStatus")}</Button>
@@ -1105,7 +1105,7 @@ export default function LeaseDetail() {
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-3 cursor-pointer">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.openReceivables")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.openReceivables")}</CardTitle>
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
               </div>
             </CardHeader>
@@ -1153,7 +1153,7 @@ export default function LeaseDetail() {
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-3 cursor-pointer">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.cashReceipts")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.cashReceipts")}</CardTitle>
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", cashReceiptsOpen && "rotate-180")} />
               </div>
             </CardHeader>
@@ -1204,7 +1204,7 @@ export default function LeaseDetail() {
               <CollapsibleTrigger asChild>
                 <CardHeader className="pb-3 cursor-pointer">
                   <div className="flex items-center">
-                    <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.allocationHistory")}</CardTitle>
+                    <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.allocationHistory")}</CardTitle>
                     <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", allocationsOpen && "rotate-180")} />
                   </div>
                 </CardHeader>
@@ -1242,7 +1242,7 @@ export default function LeaseDetail() {
       })()}
       {lease.notes && (
         <Card>
-          <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("common.notes")}</CardTitle></CardHeader>
+          <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{lease.notes}</p></CardContent>
         </Card>
       )}
