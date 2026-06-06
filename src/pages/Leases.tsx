@@ -3,6 +3,7 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { FileText, Plus, Search, Pencil, Trash2, Bell, Clock, CheckCircle2, Undo2, AlertTriangle, Info } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
