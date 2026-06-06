@@ -1148,39 +1148,50 @@ export default function LeaseDetail() {
       </Collapsible>
 
       {/* Cash Receipts */}
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.cashReceipts")}</CardTitle></CardHeader>
-        <CardContent>
-          {receipts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("leaseDetail.noCashReceipts")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.received")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.unmatched")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.source")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.reference")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {receipts.map(cr => (
-                  <TableRow key={cr.id}>
-                    <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, locale)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, currency, locale)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, currency, locale) : "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference || "—"}</TableCell>
-                    <TableCell><StatusBadge status={cr.status} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Collapsible open={cashReceiptsOpen} onOpenChange={setCashReceiptsOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{t("leaseDetail.cashReceipts")}</CardTitle>
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", cashReceiptsOpen && "rotate-180")} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              {receipts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("leaseDetail.noCashReceipts")}</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.received")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.unmatched")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.source")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.reference")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receipts.map(cr => (
+                      <TableRow key={cr.id}>
+                        <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, currency, locale) : "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference || "—"}</TableCell>
+                        <TableCell><StatusBadge status={cr.status} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Allocation History */}
       {(() => {
