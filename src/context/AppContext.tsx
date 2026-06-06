@@ -362,6 +362,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
           return closeOpenAssignmentsForLease(l.id, endDate, prevA, ts);
         });
+        // Cascade to active amendments: keep lease and amendment lifecycle in sync.
+        const newAmStatus = l.lifecycleStage === "terminated" ? "terminated" as const : "ended" as const;
+        setAmendments(prevAm => prevAm.map(a =>
+          a.leaseId === l.id && a.status === "active"
+            ? { ...a, status: newAmStatus, updatedAt: ts }
+            : a,
+        ));
       }
       return next;
     });
