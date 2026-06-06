@@ -1,44 +1,55 @@
-## Why
+## Completing the thought
 
-The current Summary card shows a single contract-level `Signed date` (`lease.signedDate`). But each unit was signed onto the lease at a different moment:
+You're correct on both points, and they reinforce each other:
 
-- Units attached at lease creation were signed on `lease.signedDate`.
-- Units added later by an avenant were signed on that avenant's `signedDate` (`LeaseAmendment.signedDate`).
+### 1. Per-unit end date — already derivable, no new field needed
 
-This is the same shape as the start-date case we already fixed: the value is per-assignment, not per-lease, and showing one lease-level date hides the real story.
+A unit's end date on a lease is fully determined by the amendments that touch it:
 
-## Decision
+- **Unit removed by an avenant** → its end date is that avenant's `effectiveDate − 1 day` (or the `effectiveDate` itself depending on convention). The effective date already serves as the boundary, so storing a separate `endDate` would duplicate data and risk drift.
+- **Unit still on the lease** → its end date is the lease's current end date, i.e. the latest `term-extension` / `term-shortening` amendment's new `leaseEndDate`, or the original `lease.endDate` if none.
 
-Treat signature date as a per-unit fact in the Summary table, derived from the assignment's source (initial lease vs. the avenant that added the unit). Remove the lease-level `Signed date` cell from the Summary grid.
+So we don't need a new field on `LeaseUnitAssignment` or in the avenant modal. We just need a resolver (mirroring the per-unit start date and per-unit signed date logic already in place) and a new `End` column in the units table.
 
-## Changes (all in `src/pages/LeaseDetail.tsx`)
+### 2. Effective date is the contract — mandatory fields must be marked
 
-1. **Add a `Signed` column to the units table**, immediately after `Start`.
+Because the effective date now drives three derived values per unit (start date for added units, end date for removed units, and rent/charges share boundaries), it must be:
 
-2. **Resolve the signed date per assignment**:
-   - If `assignment.startDate === lease.startDate` (i.e. the unit was on the lease at inception) → use `lease.signedDate`.
-   - Otherwise, find the amendment that added this unit: an `amendmentChanges` row where `fieldName === "unitAssignments"`, `changeType === "add"`, and `metadata.unitId === assignment.unitId`. Resolve to that amendment and use its `signedDate`.
-   - If nothing matches or the date is missing, render `—`.
+- **Required** (already enforced in `canSubmit`, but not visually marked).
+- **Marked with `*`** in the modal, same as `title`.
 
-3. **Update the footer row** `colSpan` from 3 to 4 to account for the new column.
+Other fields stay optional. `signedDate` is documentary only and remains optional.
 
-4. **Remove the `signedDate` cell** at line 733 of the Summary grid (it's now in the table).
+## Plan
 
-5. **No type, context, translation, or business-logic changes.** Reuse the existing `leases.signedDate` key for the column header (or add a short `leases.col.signed` key consistent with `leases.col.start` — minor i18n addition only if needed).
+### A. Per-unit end date in the units table (`LeaseDetail.tsx`)
 
-## Resulting table
+1. Add an **`End`** column after the new `Signed` column, before `Σ rent`.
+2. Resolver `getUnitEndDate(assignment)`:
+   - Look through active amendments (chronological) for a `unitAssignments` / `remove` change matching `metadata.unitId === assignment.unitId`. If found → return that amendment's `effectiveDate` (display as the last day covered, or the effective date itself — match whichever convention `lifecycle.test.ts` already uses).
+   - Otherwise → return the current effective lease end date (`getCurrentLeaseTerms(...).endDate` or `lease.endDate`).
+3. Footer row `colSpan` goes from 4 → 5.
+4. Remove the lease-level `endDate` cell from the Summary grid (now per-unit, mirroring what we did for `startDate` and `signedDate`).
 
-```text
-┌──────────┬─────────┬────────────┬────────────┬────────┬─────────┬────────┐
-│ Unit     │ Role    │ Start      │ Signed     │ Rent   │ Charges │ Total  │
-├──────────┼─────────┼────────────┼────────────┼────────┼─────────┼────────┤
-│ A101 …   │ Primary │ 01/09/2024 │ 15/08/2024 │ 1 200 €│ 80 €    │ 1 280 €│
-│ P12 …    │ Parking │ 01/03/2026 │ 18/02/2026 │ 80 €   │ 0 €     │ 80 €   │
-├──────────┴─────────┴────────────┴────────────┼────────┼─────────┼────────┤
-│ Σ                                            │ 1 280 €│ 80 €    │ 1 360 €│
-└──────────────────────────────────────────────┴────────┴─────────┴────────┘
-```
+### B. Avenant modal — mark required fields (`AmendmentDialog.tsx`)
 
-## Files touched
-- `src/pages/LeaseDetail.tsx`
-- `src/i18n/translations.ts` (only if a new `leases.col.signed` header key is added)
+1. Add a small red `*` next to the labels of currently-required fields:
+   - `amendments.titleField`
+   - `amendments.effectiveDate`
+2. Keep `canSubmit` logic as-is (already requires both).
+3. No change to `signedDate`, `reason`, `notes`, `newEndDate`, etc.
+
+### C. No data-model changes
+
+- No new field on `LeaseUnitAssignment`, `Lease`, or `LeaseAmendment`.
+- No new translation keys beyond `leases.col.end` (en `"End"`, fr `"Fin"`).
+
+### Files to touch
+
+- `src/pages/LeaseDetail.tsx` — add `End` column + resolver, remove lease-level end-date cell, bump footer `colSpan`.
+- `src/components/amendments/AmendmentDialog.tsx` — add `*` markers on Title and Effective date labels.
+- `src/i18n/translations.ts` — add `leases.col.end` (en/fr).
+
+### Open question
+
+Should a removed unit show its end date as **the avenant's effective date** (the day the removal takes effect, i.e. last day NOT covered) or as **effective date − 1 day** (last day covered)? I'll match whichever convention the existing lifecycle logic uses; if neither is established, I'll go with the **effective date** itself for consistency with how start dates are stored (a unit added on date X "starts" on X).

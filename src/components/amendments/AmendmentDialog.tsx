@@ -375,12 +375,12 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             </div>
           </div>
           <div className="col-span-2">
-            <Label>{t("amendments.titleField")}</Label>
+            <Label>{t("amendments.titleField")} <span className="text-destructive">*</span></Label>
             <Input className="h-8" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
           <div className="col-span-2 grid grid-cols-3 gap-3">
             <div>
-              <Label>{t("amendments.effectiveDate")}</Label>
+              <Label>{t("amendments.effectiveDate")} <span className="text-destructive">*</span></Label>
               <div className="flex items-center gap-2">
                 <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
                 {(() => {
