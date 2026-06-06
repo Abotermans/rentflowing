@@ -3,8 +3,9 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { FileText, Plus, Search, Pencil, Trash2, Bell, Clock, CheckCircle2, Undo2, AlertTriangle } from "lucide-react";
+import { FileText, Plus, Search, Pencil, Trash2, Bell, Clock, CheckCircle2, Undo2, AlertTriangle, Info } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -804,26 +805,34 @@ export default function Leases() {
                   </Select>
                 </div>
                 {form.rentFormula !== 1 && (
-                  <div>
-                    <Label className="whitespace-nowrap">Generate next cycle (days before)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={120}
-                      value={form.advanceCycleLeadDays ?? 15}
-                      onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
-                      className="h-9 w-[80px] [field-sizing:content] min-w-[60px]"
-                    />
+                  <div className="flex items-end gap-2">
+                    <div>
+                      <Label className="flex items-center gap-1 whitespace-nowrap">
+                        Generate next cycle
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[260px]">
+                            <p className="text-xs">Number of days before the next payment is due that open receivables are created. Default is 15 days.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={120}
+                        value={form.advanceCycleLeadDays ?? 15}
+                        onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
+                        className="h-9 w-[80px] [field-sizing:content] min-w-[60px]"
+                      />
+                    </div>
+                    <span className="text-sm text-muted-foreground mb-2">days before next payment is due</span>
                   </div>
                 )}
               </div>
               {commonTiers.length === 0 && (
                 <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
-              )}
-              {form.rentFormula !== 1 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tenant is billed every {form.rentFormula} months. Default lead time 15 days controls how early the next cycle's open receivables are created.
-                </p>
               )}
             </div>
             )}
