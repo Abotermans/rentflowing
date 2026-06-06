@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -102,6 +103,9 @@ export default function LeaseDetail() {
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [pendingOverrideAction, setPendingOverrideAction] = useState<string>("");
+  const [receivablesOpen, setReceivablesOpen] = useState(false);
+  const [cashReceiptsOpen, setCashReceiptsOpen] = useState(false);
+  const [allocationsOpen, setAllocationsOpen] = useState(false);
 
   // Cash receipt form
   const [receiptSheetOpen, setReceiptSheetOpen] = useState(false);
@@ -1096,76 +1100,98 @@ export default function LeaseDetail() {
       </div>
 
       {/* Receivables */}
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.openReceivables")}</CardTitle></CardHeader>
-        <CardContent>
-          {enrichedReceivables.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("leaseDetail.noReceivables")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">{t("leaseDetail.period")}</TableHead>
-                  <TableHead className="text-xs">{t("table.type")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.dueDate")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.expected")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.allocated")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.outstanding")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {enrichedReceivables.map(ri => (
-                  <TableRow key={ri.id}>
-                    <TableCell className="text-xs text-muted-foreground">{ri.periodMonth ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, currency, locale)}</TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, currency, locale)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, currency, locale) : "—"}</TableCell>
-                    <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Collapsible open={receivablesOpen} onOpenChange={setReceivablesOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{t("leaseDetail.openReceivables")}</CardTitle>
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              {enrichedReceivables.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("leaseDetail.noReceivables")}</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">{t("leaseDetail.period")}</TableHead>
+                      <TableHead className="text-xs">{t("table.type")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.dueDate")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.expected")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.allocated")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.outstanding")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {enrichedReceivables.map(ri => (
+                      <TableRow key={ri.id}>
+                        <TableCell className="text-xs text-muted-foreground">{ri.periodMonth ?? "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, currency, locale) : "—"}</TableCell>
+                        <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Cash Receipts */}
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.cashReceipts")}</CardTitle></CardHeader>
-        <CardContent>
-          {receipts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("leaseDetail.noCashReceipts")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.received")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.unmatched")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.source")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.reference")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {receipts.map(cr => (
-                  <TableRow key={cr.id}>
-                    <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, locale)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, currency, locale)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, currency, locale) : "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference || "—"}</TableCell>
-                    <TableCell><StatusBadge status={cr.status} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Collapsible open={cashReceiptsOpen} onOpenChange={setCashReceiptsOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{t("leaseDetail.cashReceipts")}</CardTitle>
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", cashReceiptsOpen && "rotate-180")} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              {receipts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("leaseDetail.noCashReceipts")}</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.received")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.unmatched")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.source")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.reference")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receipts.map(cr => (
+                      <TableRow key={cr.id}>
+                        <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, currency, locale) : "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference || "—"}</TableCell>
+                        <TableCell><StatusBadge status={cr.status} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Allocation History */}
       {(() => {
@@ -1173,34 +1199,45 @@ export default function LeaseDetail() {
         const leaseAllocations = allocations.filter(a => leaseReceivableIds.has(a.receivableItemId)).sort((a, b) => b.allocationDate.localeCompare(a.allocationDate));
         if (leaseAllocations.length === 0) return null;
         return (
-          <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.allocationHistory")}</CardTitle></CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.receivable")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("payments.table.amount")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.method")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaseAllocations.map(al => {
-                    const ri = receivables.find(r => r.id === al.receivableItemId);
-                    return (
-                      <TableRow key={al.id}>
-                        <TableCell className="text-xs text-muted-foreground">{formatDate(al.allocationDate, locale)}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{ri?.label ?? "—"}</TableCell>
-                        <TableCell className="text-right text-sm font-medium">{formatCurrency(al.allocatedAmount, currency, locale)}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{getAllocationTypeLabel(t, al.allocationType)}</TableCell>
+          <Collapsible open={allocationsOpen} onOpenChange={setAllocationsOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="pb-3 cursor-pointer">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium">{t("leaseDetail.allocationHistory")}</CardTitle>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", allocationsOpen && "rotate-180")} />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
+                        <TableHead className="text-xs">{t("payments.table.receivable")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("payments.table.amount")}</TableHead>
+                        <TableHead className="text-xs">{t("payments.table.method")}</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {leaseAllocations.map(al => {
+                        const ri = receivables.find(r => r.id === al.receivableItemId);
+                        return (
+                          <TableRow key={al.id}>
+                            <TableCell className="text-xs text-muted-foreground">{formatDate(al.allocationDate, locale)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{ri?.label ?? "—"}</TableCell>
+                            <TableCell className="text-right text-sm font-medium">{formatCurrency(al.allocatedAmount, currency, locale)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{getAllocationTypeLabel(t, al.allocationType)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         );
       })()}
       {lease.notes && (
