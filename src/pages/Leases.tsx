@@ -618,15 +618,17 @@ export default function Leases() {
           </DialogHeader>
           <div className="space-y-4 mt-6">
             {(editingLease || step === 1) && (<>
-            <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
-            <div><Label>{t("leases.property")} *</Label>
-              <Select value={form.propertyId} onValueChange={v => {
-                setForm(f => ({ ...f, propertyId: v, unitId: "" }));
-                setUnitRows([]);
-              }}>
-                <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
-                <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
+              <div><Label>{t("leases.property")} *</Label>
+                <Select value={form.propertyId} onValueChange={v => {
+                  setForm(f => ({ ...f, propertyId: v, unitId: "" }));
+                  setUnitRows([]);
+                }}>
+                  <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
+                  <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
             </div>
             {/* Unified units table */}
             <div className="space-y-2">
