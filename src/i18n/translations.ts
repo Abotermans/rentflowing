@@ -1158,6 +1158,24 @@ const en = {
   "rentPrepayment.tag.paid": "Paid",
   "rentPrepayment.tag.prepaid": "Prepaid",
 
+  // Advance billing cycles
+  "advanceCycle.title": "Advance billing",
+  "advanceCycle.everyN": "every {n} months",
+  "advanceCycle.paidFrom": "Paid from",
+  "advanceCycle.paidUntil": "Paid until",
+  "advanceCycle.cycleTotal": "Current cycle total",
+  "advanceCycle.cycleProgress": "Cycle",
+  "advanceCycle.monthlyRent": "Monthly rent",
+  "advanceCycle.monthlyCharges": "Monthly charges",
+  "advanceCycle.nextDueDate": "Next payment due",
+  "advanceCycle.nextDueAmount": "Next payment amount",
+  "advanceCycle.allCycles": "All billing cycles",
+  "advanceCycle.period": "Period",
+  "advanceCycle.rent": "Rent",
+  "advanceCycle.charges": "Charges",
+  "advanceCycle.total": "Total",
+  "advanceCycle.paid": "Paid",
+
   // Advance method/appliedTo (translated)
   "advance.method.spreadEvenly": "Spread Evenly",
   "advance.method.fixedMonthly": "Fixed Monthly Reduction",
@@ -2375,6 +2393,24 @@ const fr: TranslationKeys = {
   "rentPrepayment.col.remaining": "Avance restante",
   "rentPrepayment.tag.paid": "Payé",
   "rentPrepayment.tag.prepaid": "Payé d'avance",
+
+  // Advance billing cycles
+  "advanceCycle.title": "Facturation à échéance",
+  "advanceCycle.everyN": "tous les {n} mois",
+  "advanceCycle.paidFrom": "Payé depuis le",
+  "advanceCycle.paidUntil": "Payé jusqu'au",
+  "advanceCycle.cycleTotal": "Total de l'échéance",
+  "advanceCycle.cycleProgress": "Échéance",
+  "advanceCycle.monthlyRent": "Loyer mensuel",
+  "advanceCycle.monthlyCharges": "Charges mensuelles",
+  "advanceCycle.nextDueDate": "Prochaine échéance",
+  "advanceCycle.nextDueAmount": "Montant de la prochaine échéance",
+  "advanceCycle.allCycles": "Toutes les échéances",
+  "advanceCycle.period": "Période",
+  "advanceCycle.rent": "Loyer",
+  "advanceCycle.charges": "Charges",
+  "advanceCycle.total": "Total",
+  "advanceCycle.paid": "Payé",
 
   // Advance method/appliedTo (translated)
   "advance.method.spreadEvenly": "Répartition uniforme",
