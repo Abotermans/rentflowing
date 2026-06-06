@@ -1100,41 +1100,52 @@ export default function LeaseDetail() {
       </div>
 
       {/* Receivables */}
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("leaseDetail.openReceivables")}</CardTitle></CardHeader>
-        <CardContent>
-          {enrichedReceivables.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("leaseDetail.noReceivables")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">{t("leaseDetail.period")}</TableHead>
-                  <TableHead className="text-xs">{t("table.type")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.dueDate")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.expected")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.allocated")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("payments.table.outstanding")}</TableHead>
-                  <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {enrichedReceivables.map(ri => (
-                  <TableRow key={ri.id}>
-                    <TableCell className="text-xs text-muted-foreground">{ri.periodMonth ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, currency, locale)}</TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, currency, locale)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, currency, locale) : "—"}</TableCell>
-                    <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Collapsible open={receivablesOpen} onOpenChange={setReceivablesOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{t("leaseDetail.openReceivables")}</CardTitle>
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              {enrichedReceivables.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("leaseDetail.noReceivables")}</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">{t("leaseDetail.period")}</TableHead>
+                      <TableHead className="text-xs">{t("table.type")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.dueDate")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.expected")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.allocated")}</TableHead>
+                      <TableHead className="text-xs text-right">{t("payments.table.outstanding")}</TableHead>
+                      <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {enrichedReceivables.map(ri => (
+                      <TableRow key={ri.id}>
+                        <TableCell className="text-xs text-muted-foreground">{ri.periodMonth ?? "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, currency, locale) : "—"}</TableCell>
+                        <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Cash Receipts */}
       <Card>
