@@ -724,8 +724,6 @@ export default function LeaseDetail() {
             <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(effEndDate, locale)}{amSuffix(endAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{t("leaseDetail.dueDayOfMonth").replace("{day}", String(lease.dueDayOfMonth))}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(effRent, currency, locale)}{amSuffix(rentAmNum)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(effCharges, currency, locale)}{amSuffix(chargesAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{effDeposit != null ? formatCurrency(effDeposit, currency, locale) : "—"}{amSuffix(depositAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{effNotice || "—"}{amSuffix(noticeAmNum)}</p></div>
@@ -740,77 +738,6 @@ export default function LeaseDetail() {
 
       {/* Amendments / Avenants */}
       <AmendmentsSection leaseId={lease.id} />
-
-      {/* Assigned Units (multi-unit lease) */}
-      {(() => {
-        const assignments = getLeaseAssignments(lease.id);
-        const active = assignments.filter(a => !a.endDate);
-        if (active.length === 0) return null;
-        const primaryCount = active.filter(a => a.isPrimary).length;
-        const ancillaryCount = active.length - primaryCount;
-        return (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center justify-between">
-                <span>{t("leases.assignedUnits")}</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {t("leases.assignedUnitsSummary").replace("{primary}", String(primaryCount)).replace("{ancillary}", String(ancillaryCount))}
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">{t("leases.col.unit")}</TableHead>
-                    <TableHead className="text-xs">{t("leases.col.role")}</TableHead>
-                    <TableHead className="text-xs">{t("leases.col.type")}</TableHead>
-                    <TableHead className="text-xs">{t("leases.col.start")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("leases.col.rentShare")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("leases.col.chargesShare")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {active
-                    .slice()
-                    .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
-                    .map(a => {
-                      const u = units.find(x => x.id === a.unitId);
-                      const isAnc = !a.isPrimary && isAncillaryAssignmentType(a.assignmentType);
-                      return (
-                        <TableRow key={a.id}>
-                          <TableCell className="font-mono text-xs">
-                            {u ? <Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode} — {u.unitLabel}</Link> : a.unitId}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${a.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                              {a.isPrimary ? t("leases.role.primary") : (isAnc ? t("leases.role.ancillary") : t("leases.role.secondary"))}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{t(`leases.assignmentType.${a.assignmentType}` as TranslationKey)}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  {(() => {
-                    const sumR = active.reduce((s, a) => s + (a.rentShare ?? 0), 0);
-                    const sumC = active.reduce((s, a) => s + (a.chargesShare ?? 0), 0);
-                    return (
-                      <TableRow className="border-t border-border bg-muted/30">
-                        <TableCell colSpan={4} className="text-xs font-medium text-muted-foreground">Σ</TableCell>
-                        <TableCell className="text-right text-xs font-semibold text-foreground">{formatCurrency(sumR, currency, locale)}</TableCell>
-                        <TableCell className="text-right text-xs font-semibold text-foreground">{formatCurrency(sumC, currency, locale)}</TableCell>
-                      </TableRow>
-                    );
-                  })()}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        );
-      })()}
 
       {/* Financial Summary */}
       <Card>
