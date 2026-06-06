@@ -634,7 +634,7 @@ export default function LeaseDetail() {
 
       {/* Lease Summary */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.leaseSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("detail.leaseSummary")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {(() => {
             const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
