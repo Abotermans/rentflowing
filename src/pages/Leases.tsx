@@ -698,7 +698,7 @@ export default function Leases() {
                                 onChange={ev => updateUnitRow(idx, { rentShare: Number(ev.target.value) || 0 })}
                                 className="h-8 w-[90px] text-right"
                               />
-                              <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
+                              <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
                             </div>
                           </TableCell>
                           <TableCell className="py-1.5">
