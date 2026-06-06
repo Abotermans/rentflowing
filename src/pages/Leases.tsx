@@ -684,7 +684,7 @@ export default function Leases() {
                           </TableCell>
                           <TableCell className="py-1.5">
                             <Select value={row.assignmentType} onValueChange={v => setRoleForRow(idx, v as LeaseUnitAssignmentType)}>
-                              <SelectTrigger className="h-8 w-auto min-w-[110px]"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-8 w-auto min-w-[90px]"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {(["primary","parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
                                   <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
