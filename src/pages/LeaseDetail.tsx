@@ -103,6 +103,9 @@ export default function LeaseDetail() {
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [pendingOverrideAction, setPendingOverrideAction] = useState<string>("");
+  const [receivablesOpen, setReceivablesOpen] = useState(false);
+  const [cashReceiptsOpen, setCashReceiptsOpen] = useState(false);
+  const [allocationsOpen, setAllocationsOpen] = useState(false);
 
   // Cash receipt form
   const [receiptSheetOpen, setReceiptSheetOpen] = useState(false);
