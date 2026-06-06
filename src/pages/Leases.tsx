@@ -34,7 +34,7 @@ import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
-import { formatCurrency as fmtCurrency } from "@/lib/formatters";
+import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
