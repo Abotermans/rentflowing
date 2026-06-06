@@ -1282,10 +1282,6 @@ export default function LeaseDetail() {
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.updated")}: {formatDate(lease.updatedAt, locale)}</span>
       </div>
 
-      {/* Record Cash Receipt Sheet */}
-      <Dialog open={receiptSheetOpen} onOpenChange={setReceiptSheetOpen}>
-      </Dialog>
-
       {/* Edit Notes */}
       <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
         <DialogContent className="max-w-md">
@@ -1300,7 +1296,8 @@ export default function LeaseDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={false}>
+      {/* Record Cash Receipt Sheet */}
+      <Dialog open={receiptSheetOpen} onOpenChange={setReceiptSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{t("leaseDialog.recordReceipt")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
