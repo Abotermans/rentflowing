@@ -480,6 +480,17 @@ export default function LeaseDetail() {
   const openReturnForm = () => { setRetStatus(lease.returnStatus || "pending"); setRetNotes(lease.returnNotes); setReturnSheetOpen(true); };
   const handleSaveReturn = () => { updateLease({ ...lease, returnStatus: retStatus, returnNotes: retNotes }); toast({ title: t("leaseToast.returnStatusUpdated") }); setReturnSheetOpen(false); };
   const handleUpdateKeys = (keyHandover: number, keyReturn: number) => { updateLease({ ...lease, keyHandoverCount: keyHandover, keyReturnCount: keyReturn }); };
+  const updateKeyItems = (items: LeaseKeyItem[]) => { updateLease({ ...lease, keys: items }); };
+  const addKeyItem = (kind: "key" | "badge") => {
+    const items = lease.keys ?? [];
+    const next: LeaseKeyItem = { id: `k_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, kind, label: "", handedOverDate: null, returnedDate: null };
+    updateKeyItems([...items, next]);
+  };
+  const patchKeyItem = (id: string, patch: Partial<LeaseKeyItem>) => {
+    const items = (lease.keys ?? []).map(k => k.id === id ? { ...k, ...patch } : k);
+    updateKeyItems(items);
+  };
+  const removeKeyItem = (id: string) => { updateKeyItems((lease.keys ?? []).filter(k => k.id !== id)); };
   const handleUpdateMeter = (field: "moveInMeterReading" | "moveOutMeterReading" | "moveInWaterMeterReading" | "moveOutWaterMeterReading", value: string) => {
     updateLease({ ...lease, [field]: value.trim() === "" ? null : value });
   };
