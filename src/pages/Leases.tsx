@@ -648,7 +648,7 @@ export default function Leases() {
               {unitRows.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic px-3 py-4 text-center">{t("leases.units.empty")}</p>
               ) : (
-                <Table className="w-full">
+                <Table className="w-auto [&_th]:px-2 [&_td]:px-2">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
