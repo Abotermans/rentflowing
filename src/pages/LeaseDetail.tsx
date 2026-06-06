@@ -21,7 +21,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { computeAdvancePricing, ADVANCE_METHOD_LABELS, ADVANCE_APPLIED_LABELS } from "@/lib/advancePricing";
+import { computeCycles, getCurrentCycle, getNextCycle, getCyclePaidAmount } from "@/lib/leaseCycles";
 import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, getLeaseStatus, getMoveInStatus, getMoveOutStatus, computeGuaranteeStatus, type GuaranteeStatus } from "@/types";
 import { ASSIGNMENT_TYPE_LABELS, isAncillaryAssignmentType } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
@@ -60,15 +60,6 @@ const MOVE_OUT_CHECKLIST_KEY: Record<keyof MoveOutChecklist, TranslationKey> = {
   moveOutMeterReadingCaptured: "checklist.moveOut.moveOutMeterReadingCaptured",
   balanceReviewed: "checklist.moveOut.balanceReviewed",
   guaranteeReviewCompleted: "checklist.moveOut.guaranteeReviewCompleted",
-};
-const ADVANCE_METHOD_KEY: Record<"spread-evenly" | "fixed-monthly-reduction", TranslationKey> = {
-  "spread-evenly": "advance.method.spreadEvenly",
-  "fixed-monthly-reduction": "advance.method.fixedMonthly",
-};
-const ADVANCE_APPLIED_KEY: Record<"rent" | "charges" | "rent-and-charges", TranslationKey> = {
-  "rent": "advance.appliedTo.rent",
-  "charges": "advance.appliedTo.charges",
-  "rent-and-charges": "advance.appliedTo.rentAndCharges",
 };
 
 const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
@@ -218,9 +209,12 @@ export default function LeaseDetail() {
   const amSuffix = (n: number | null) => n != null
     ? <span className="text-[10px] text-muted-foreground ml-1">({t("amendments.basedOn").replace("{n}", String(n))})</span>
     : null;
-  const advancePricing = computeAdvancePricing(lease);
-  const hasAdvance = lease.hasAdvancePayment && advancePricing.advanceStatus !== 'not-applicable';
   const receivables = getReceivableItemsByLease(lease.id).sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+  const isAdvanceBilling = (lease.rentFormula || 1) > 1;
+  const cycles = isAdvanceBilling ? computeCycles({ rentFormula: lease.rentFormula, startDate: lease.startDate, endDate: effEndDate, monthlyRent: effRent, monthlyCharges: effCharges }) : [];
+  const currentCycle = isAdvanceBilling ? getCurrentCycle(cycles, todayIso) : null;
+  const nextCycle = isAdvanceBilling ? getNextCycle(cycles, todayIso) : null;
+  const [cyclesOpen, setCyclesOpen] = useState(false);
   const receipts = getCashReceiptsByLease(lease.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
   const { outstanding, overdue } = getLeaseOutstanding(lease.id);
   const totalAllocated = receivables.reduce((s, ri) => s + ri.allocatedAmount, 0);
