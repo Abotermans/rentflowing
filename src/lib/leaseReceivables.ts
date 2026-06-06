@@ -49,7 +49,23 @@ export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): G
   const cycles = computeCycles(lease);
   const isAdvance = (lease.rentFormula || 1) > 1;
 
+  // Advance billing: only materialize receivables for cycles that are due
+  // soon. Each lease controls its own lead time via `advanceCycleLeadDays`
+  // (defaults to 15 days). Cycle 1 is always emitted so leases starting in
+  // the future still have receivables on the schedule.
+  const leadDays = isAdvance
+    ? (lease.advanceCycleLeadDays ?? 15)
+    : 0;
+  const horizonDate = isAdvance
+    ? new Date(Date.UTC(
+        Number(today.slice(0, 4)),
+        Number(today.slice(5, 7)) - 1,
+        Number(today.slice(8, 10)) + leadDays,
+      )).toISOString().slice(0, 10)
+    : today;
+
   for (const cycle of cycles) {
+    if (isAdvance && cycle.index > 1 && cycle.startDate > horizonDate) continue;
     const periodMonth = cycle.startDate.slice(0, 7);
     const dueDate = cycle.startDate;
     const cycleSuffix = isAdvance
