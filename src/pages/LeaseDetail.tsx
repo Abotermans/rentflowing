@@ -646,10 +646,10 @@ export default function LeaseDetail() {
                   chargesShare: lease.monthlyCharges,
                 }] : []);
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-border">
+              <div className="space-y-4 pb-4 border-b border-border">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1.5">{t("leases.tenant")}</p>
-                  <div className="space-y-1">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {tenant && (
                       <div className="flex items-center gap-2 text-sm">
                         <Link to={`/tenants/${tenant.id}`} className="font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link>
@@ -657,9 +657,9 @@ export default function LeaseDetail() {
                       </div>
                     )}
                     {coTenants.map(ct => (
-                      <div key={ct.id} className="text-sm">
+                      <div key={ct.id} className="flex items-center gap-2 text-sm">
                         <Link to={`/tenants/${ct.id}`} className="font-medium text-primary hover:underline">{getTenantFullName(ct)}</Link>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-2">{t("amendments.coTenants")}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
                       </div>
                     ))}
                   </div>
@@ -678,6 +678,7 @@ export default function LeaseDetail() {
                           <TableHead className="h-8 text-xs">{t("leases.endDate")}</TableHead>
                           <TableHead className="h-8 text-xs text-right">{t("leases.col.rentShare")}</TableHead>
                           <TableHead className="h-8 text-xs text-right">{t("leases.col.chargesShare")}</TableHead>
+                          <TableHead className="h-8 text-xs text-right">{t("common.total")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -685,6 +686,7 @@ export default function LeaseDetail() {
                           const u = units.find(x => x.id === a.unitId);
                           if (!u) return null;
                           const isAnc = !a.isPrimary && isAncillaryAssignmentType(a.assignmentType);
+                          const rowTotal = (a.rentShare ?? 0) + (a.chargesShare ?? 0);
                           return (
                             <TableRow key={a.id} className="h-9">
                               <TableCell className="py-1 text-xs">
@@ -699,17 +701,20 @@ export default function LeaseDetail() {
                               <TableCell className="py-1 text-xs text-muted-foreground">{a.endDate ? formatDate(a.endDate, locale) : formatDate(effEndDate, locale)}</TableCell>
                               <TableCell className="py-1 text-right text-xs tabular-nums">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
                               <TableCell className="py-1 text-right text-xs tabular-nums">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
+                              <TableCell className="py-1 text-right text-xs font-medium tabular-nums">{formatCurrency(rowTotal, currency, locale)}</TableCell>
                             </TableRow>
                           );
                         })}
                         {(() => {
                           const sumR = sortedAssignments.reduce((s, a) => s + (a.rentShare ?? 0), 0);
                           const sumC = sortedAssignments.reduce((s, a) => s + (a.chargesShare ?? 0), 0);
+                          const grand = sumR + sumC;
                           return (
                             <TableRow className="border-t border-border bg-muted/30 h-9">
                               <TableCell colSpan={4} className="py-1 text-xs font-medium text-muted-foreground">Σ</TableCell>
                               <TableCell className="py-1 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
                               <TableCell className="py-1 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
+                              <TableCell className="py-1 text-right text-xs font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
                             </TableRow>
                           );
                         })()}
@@ -724,7 +729,6 @@ export default function LeaseDetail() {
             <div><p className="text-xs text-muted-foreground">{t("leases.startDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(effEndDate, locale)}{amSuffix(endAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{t("leaseDetail.dueDayOfMonth").replace("{day}", String(lease.dueDayOfMonth))}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-lg font-bold text-primary">{formatCurrency(totalMonthly, currency, locale)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{effDeposit != null ? formatCurrency(effDeposit, currency, locale) : "—"}{amSuffix(depositAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{effNotice || "—"}{amSuffix(noticeAmNum)}</p></div>
             {lease.signedDate && <div><p className="text-xs text-muted-foreground">{t("leases.signedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.signedDate, locale)}</p></div>}
