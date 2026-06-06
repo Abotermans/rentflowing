@@ -1,55 +1,65 @@
-## Completing the thought
+# Formula-Driven Advance Payment Cycles
 
-You're correct on both points, and they reinforce each other:
+## Goal
+Make `rentFormula` (1 / 3 / 6 / 12 months) the single source of truth for advance billing. Each cycle becomes a bundled rent receivable + bundled charges receivable; the next cycle's receivables are generated automatically a configurable number of days before the current cycle ends. The lease page replaces its long "Advance Payment" card with a compact summary.
 
-### 1. Per-unit end date — already derivable, no new field needed
+## Cycle model
 
-A unit's end date on a lease is fully determined by the amendments that touch it:
+Cycles are anchored to the lease start date.
 
-- **Unit removed by an avenant** → its end date is that avenant's `effectiveDate − 1 day` (or the `effectiveDate` itself depending on convention). The effective date already serves as the boundary, so storing a separate `endDate` would duplicate data and risk drift.
-- **Unit still on the lease** → its end date is the lease's current end date, i.e. the latest `term-extension` / `term-shortening` amendment's new `leaseEndDate`, or the original `lease.endDate` if none.
+- Cycle 1: `start = lease.startDate`, `end = start + N months − 1 day`
+- Cycle k: starts the day after cycle k−1 ends
+- Last cycle is truncated at `lease.endDate` (shorter cycle, prorated receivables)
+- For `rentFormula = 1`, behavior is unchanged: one monthly rent + one monthly charges receivable per month.
 
-So we don't need a new field on `LeaseUnitAssignment` or in the avenant modal. We just need a resolver (mirroring the per-unit start date and per-unit signed date logic already in place) and a new `End` column in the units table.
+For `N > 1`, each cycle produces:
+- one **rent** ReceivableItem: `expectedAmount = monthlyRent × cycleMonths`, `dueDate = cycle.start`, `periodMonth = cycle.start` month, label like "Rent — 6 months advance (Jan–Jun 2026)"
+- one **charges** ReceivableItem: `expectedAmount = monthlyCharges × cycleMonths`, same due date, parallel label
+- both tagged with `cycleIndex` and `cycleEndDate` (new optional fields on ReceivableItem) so the UI can group them.
 
-### 2. Effective date is the contract — mandatory fields must be marked
+## Auto-generation of the next cycle
 
-Because the effective date now drives three derived values per unit (start date for added units, end date for removed units, and rent/charges share boundaries), it must be:
+- New lease field `advanceCycleLeadDays: number | null` (default 15).
+- A pure helper `ensureUpcomingCycles(lease, existingReceivables, today)` returns any missing cycle receivables that fall within `today + leadDays`. Invoked from `AppContext` on load / when leases or today change, same way other derived state is refreshed.
+- Idempotent: a cycle is identified by `(leaseId, cycleIndex)`; never duplicated.
 
-- **Required** (already enforced in `canSubmit`, but not visually marked).
-- **Marked with `*`** in the modal, same as `title`.
+## Removed configuration
 
-Other fields stay optional. `signedDate` is documentary only and remains optional.
+Drop from the lease form and lease detail UI: `hasAdvancePayment`, `advancePaymentAmount`, `advancePaymentDate`, `advanceAllocationMethod`, `advanceAppliedTo`, `advanceAllocationStartDate`, `advanceAllocationDurationMonths`, `fixedMonthlyReductionAmount`. The TypeScript fields stay on the `Lease` type as deprecated/optional for one release so existing mock data still loads, but no code reads them anymore.
 
-## Plan
+`computeAdvancePricing` and the prepayment branch of `generateLeaseReceivables` are removed. A new `generateCycleReceivables(lease)` replaces the rent/charges loop for `rentFormula > 1`.
 
-### A. Per-unit end date in the units table (`LeaseDetail.tsx`)
+## Lease page UI (new compact section)
 
-1. Add an **`End`** column after the new `Signed` column, before `Σ rent`.
-2. Resolver `getUnitEndDate(assignment)`:
-   - Look through active amendments (chronological) for a `unitAssignments` / `remove` change matching `metadata.unitId === assignment.unitId`. If found → return that amendment's `effectiveDate` (display as the last day covered, or the effective date itself — match whichever convention `lifecycle.test.ts` already uses).
-   - Otherwise → return the current effective lease end date (`getCurrentLeaseTerms(...).endDate` or `lease.endDate`).
-3. Footer row `colSpan` goes from 4 → 5.
-4. Remove the lease-level `endDate` cell from the Summary grid (now per-unit, mirroring what we did for `startDate` and `signedDate`).
+Replaces the current "Advance Payment" card. Shown only when `rentFormula > 1`.
 
-### B. Avenant modal — mark required fields (`AmendmentDialog.tsx`)
+Header: **Advance Billing — every {N} months**
 
-1. Add a small red `*` next to the labels of currently-required fields:
-   - `amendments.titleField`
-   - `amendments.effectiveDate`
-2. Keep `canSubmit` logic as-is (already requires both).
-3. No change to `signedDate`, `reason`, `notes`, `newEndDate`, etc.
+Single row of stats (matching the other compact cards):
+- **Paid from** — start of current paid cycle
+- **Paid until** — end of current paid cycle
+- **Total paid (current cycle)** — `monthlyRent × N + monthlyCharges × N`
+- **Monthly rent** / **Monthly charges** — unit values for clarity
+- **Next payment due** — `nextCycle.start` and `nextCycle.totalAmount`
 
-### C. No data-model changes
+Below: a minimal table of past + upcoming cycles (cycle #, period, total, status from the underlying receivable). Collapsible, collapsed by default like the other new sections.
 
-- No new field on `LeaseUnitAssignment`, `Lease`, or `LeaseAmendment`.
-- No new translation keys beyond `leases.col.end` (en `"End"`, fr `"Fin"`).
+## Technical notes
 
-### Files to touch
+Files affected:
+- `src/types/index.ts` — add `advanceCycleLeadDays`, mark old advance fields deprecated
+- `src/types/receivables.ts` — add optional `cycleIndex`, `cycleEndDate` on `ReceivableItem`
+- `src/lib/leaseReceivables.ts` — branch on `rentFormula`: 1 → monthly (unchanged), >1 → bundled cycle receivables; drop prepayment receipt path
+- new `src/lib/leaseCycles.ts` — `computeCycles(lease)`, `ensureUpcomingCycles(...)`, `getCurrentCycle(...)`, `getNextCycle(...)`
+- `src/context/AppContext.tsx` — call `ensureUpcomingCycles` when leases change; remove prepayment receipt creation
+- `src/pages/LeaseDetail.tsx` — remove the existing Advance Payment card, add the new compact `AdvanceCyclesSection`
+- new `src/components/leases/AdvanceCyclesSection.tsx`
+- Lease create/edit form — remove the advance payment block, add `advanceCycleLeadDays` (default 15) under the rent formula field
+- `src/i18n/translations.ts` — new keys (`advanceCycles.*`), remove no-longer-used `rentPrepayment.*` keys
+- `src/lib/leaseReceivables.test.ts` — update existing tests, add cycle tests
+- `src/data/mockData.ts` / `receivablesMockData.ts` — regenerate any seeded prepayment data into cycle receivables
 
-- `src/pages/LeaseDetail.tsx` — add `End` column + resolver, remove lease-level end-date cell, bump footer `colSpan`.
-- `src/components/amendments/AmendmentDialog.tsx` — add `*` markers on Title and Effective date labels.
-- `src/i18n/translations.ts` — add `leases.col.end` (en/fr).
-
-### Open question
-
-Should a removed unit show its end date as **the avenant's effective date** (the day the removal takes effect, i.e. last day NOT covered) or as **effective date − 1 day** (last day covered)? I'll match whichever convention the existing lifecycle logic uses; if neither is established, I'll go with the **effective date** itself for consistency with how start dates are stored (a unit added on date X "starts" on X).
+## Out of scope
+- Migrating historical prepayment allocations from existing demo leases (data is mock; regenerated on load).
+- Changes to reconciliation logic — cycle receivables flow through the same allocation engine.
+- Owner reporting and invoice-level accounting (per project scope memory).
