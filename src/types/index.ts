@@ -252,7 +252,7 @@ export interface Lease {
   // Keys
   keyHandoverCount: number;
   keyReturnCount: number;
-  keys: LeaseKeyItem[];
+  keys?: LeaseKeyItem[];
   // Return
   returnStatus: ReturnStatus | null;
   returnNotes: string;
