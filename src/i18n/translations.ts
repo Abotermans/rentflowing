@@ -588,7 +588,7 @@ const en = {
   "detail.kindBadge": "Badge",
   "detail.addKey": "Add key",
   "detail.addBadge": "Add badge",
-  "detail.addKeyBadge": "Add key or badge",
+  
   "detail.type": "Type",
   "detail.ledger": "Ledger",
   "detail.paymentHistory": "Payment History",
