@@ -110,14 +110,17 @@ export default function Leases() {
     advanceCycleLeadDays: 15,
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
-  // Extra (non-primary) unit assignments attached to this lease. Each carries its own
-  // rent and charges contribution — these are summed into the lease totals.
-  const [extraUnits, setExtraUnits] = useState<{
+  // Unified rows for every unit attached to this lease. Exactly one row must
+  // carry `assignmentType === "primary"` — its unitId becomes `lease.unitId`.
+  // Lease totals (`form.monthlyRent` / `monthlyCharges`) are derived from the
+  // sum of these rows on save.
+  type UnitRow = {
     unitId: string;
     assignmentType: LeaseUnitAssignmentType;
     rentShare: number;
     chargesShare: number;
-  }[]>([]);
+  };
+  const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
 
   const emptyTenantForm: TenantFormData = {
     firstName: "", lastName: "", email: "", phone: "",
@@ -132,7 +135,7 @@ export default function Leases() {
     setEditingLease(null);
     setForm({ ...emptyForm });
     setTenantForm({ ...emptyTenantForm });
-    setExtraUnits([]);
+    setUnitRows([]);
     setStep(1);
     setTenantMode(tenants.length > 0 ? "existing" : "new");
     setSheetOpen(true);
@@ -142,15 +145,26 @@ export default function Leases() {
     const { id, createdAt, updatedAt, ...rest } = l;
     setForm(rest);
     const today = new Date().toISOString().slice(0, 10);
-    const extras = getLeaseAssignments(l.id)
-      .filter(a => !a.isPrimary && (!a.endDate || a.endDate >= today))
-      .map(a => ({
-        unitId: a.unitId,
-        assignmentType: a.assignmentType,
-        rentShare: a.rentShare ?? 0,
-        chargesShare: a.chargesShare ?? 0,
-      }));
-    setExtraUnits(extras);
+    const all = getLeaseAssignments(l.id)
+      .filter(a => !a.endDate || a.endDate >= today)
+      .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
+    const rows: UnitRow[] = all.map(a => ({
+      unitId: a.unitId,
+      assignmentType: a.isPrimary ? "primary" : a.assignmentType,
+      rentShare: a.rentShare ?? 0,
+      chargesShare: a.chargesShare ?? 0,
+    }));
+    // Fallback: ensure the lease's primary unit is present even if assignments
+    // weren't migrated yet.
+    if (!rows.some(r => r.assignmentType === "primary") && l.unitId) {
+      rows.unshift({
+        unitId: l.unitId,
+        assignmentType: "primary",
+        rentShare: l.monthlyRent,
+        chargesShare: l.monthlyCharges,
+      });
+    }
+    setUnitRows(rows);
     setSheetOpen(true);
   };
 
@@ -168,35 +182,38 @@ export default function Leases() {
 
   const executeLeaseSave = () => {
     const persistAssignments = (leaseId: string) => {
-      // Primary share = lease total - sum of ancillary shares.
-      const ancRent = extraUnits
-        .filter(e => e.unitId && e.unitId !== form.unitId)
-        .reduce((s, e) => s + (e.rentShare ?? 0), 0);
-      const ancCharges = extraUnits
-        .filter(e => e.unitId && e.unitId !== form.unitId)
-        .reduce((s, e) => s + (e.chargesShare ?? 0), 0);
-      const primaryRent = Math.max(0, form.monthlyRent - ancRent);
-      const primaryCharges = Math.max(0, form.monthlyCharges - ancCharges);
-      const draft = [
-        { unitId: form.unitId, assignmentType: "primary" as LeaseUnitAssignmentType, isPrimary: true, rentShare: primaryRent, chargesShare: primaryCharges, startDate: form.startDate },
-        ...extraUnits
-          .filter(e => e.unitId && e.unitId !== form.unitId)
-          .map(e => ({ unitId: e.unitId, assignmentType: e.assignmentType, isPrimary: false, rentShare: e.rentShare, chargesShare: e.chargesShare, startDate: form.startDate })),
-      ];
+      const draft = unitRows.map(r => ({
+        unitId: r.unitId,
+        assignmentType: r.assignmentType,
+        isPrimary: r.assignmentType === "primary",
+        rentShare: r.rentShare,
+        chargesShare: r.chargesShare,
+        startDate: form.startDate,
+      }));
       setLeaseUnits(leaseId, form.propertyId, draft);
     };
+    // Derive lease-level totals + primary unit id from the rows table.
+    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
+    const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+    const formToPersist = {
+      ...form,
+      unitId: primaryRow?.unitId ?? form.unitId,
+      monthlyRent: totalRent,
+      monthlyCharges: totalCharges,
+    };
     if (editingLease) {
-      updateLease({ ...editingLease, ...form });
+      updateLease({ ...editingLease, ...formToPersist });
       persistAssignments(editingLease.id);
       toast({ title: "Lease updated" });
     } else {
       if (tenantMode === "new") {
         const newTenant = addTenant(tenantForm);
-        const created = addLease({ ...form, primaryTenantId: newTenant.id });
+        const created = addLease({ ...formToPersist, primaryTenantId: newTenant.id });
         persistAssignments(created.id);
         toast({ title: "Lease added", description: `Tenant ${getTenantFullName(newTenant)} created` });
       } else {
-        const created = addLease({ ...form });
+        const created = addLease({ ...formToPersist });
         persistAssignments(created.id);
         toast({ title: "Lease added" });
       }
@@ -205,13 +222,35 @@ export default function Leases() {
   };
 
   const handleSave = () => {
+    // Derive primary unit + totals from the rows (single source of truth).
+    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
+    const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+    if (unitRows.length === 0 || !primaryRow || !primaryRow.unitId) {
+      toast({ title: "Validation Error", description: "Add at least one unit with role Primary.", variant: "destructive" });
+      return;
+    }
+    if (unitRows.some(r => !r.unitId)) {
+      toast({ title: "Validation Error", description: "Every row in Units must have a unit selected.", variant: "destructive" });
+      return;
+    }
+    if (unitRows.filter(r => r.assignmentType === "primary").length !== 1) {
+      toast({ title: "Validation Error", description: "Exactly one unit must be marked as Primary.", variant: "destructive" });
+      return;
+    }
+    const dupCheck = new Set(unitRows.map(r => r.unitId));
+    if (dupCheck.size !== unitRows.length) {
+      toast({ title: "Validation Error", description: "Duplicate units in the table.", variant: "destructive" });
+      return;
+    }
+    const effectiveUnitId = primaryRow.unitId;
     if (editingLease) {
-      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.primaryTenantId || !form.startDate || !form.endDate) {
+      if (!form.leaseReference.trim() || !form.propertyId || !form.primaryTenantId || !form.startDate || !form.endDate) {
         toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
         return;
       }
     } else {
-      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.startDate || !form.endDate) {
+      if (!form.leaseReference.trim() || !form.propertyId || !form.startDate || !form.endDate) {
         toast({ title: "Validation Error", description: "Reference, property, unit, start date, and end date are required.", variant: "destructive" });
         return;
       }
@@ -227,11 +266,13 @@ export default function Leases() {
         }
       }
     }
-    const unitForSave = units.find(u => u.id === form.unitId);
-    const tierValue = unitForSave ? getMonthlyRentForMonths(unitForSave, form.rentFormula) : null;
-    if (tierValue == null) {
-      toast({ title: "Validation Error", description: "Selected rent tier is not available for this unit.", variant: "destructive" });
-      return;
+    // Every selected unit must support the chosen rent formula.
+    for (const row of unitRows) {
+      const u = units.find(uu => uu.id === row.unitId);
+      if (!u || getMonthlyRentForMonths(u, form.rentFormula) == null) {
+        toast({ title: "Validation Error", description: "Selected rent formula is not available for every unit. Pick a formula common to all units.", variant: "destructive" });
+        return;
+      }
     }
     // Validate status transition
     if (editingLease && form.lifecycleStage !== editingLease.lifecycleStage) {
@@ -251,57 +292,27 @@ export default function Leases() {
       }
     }
     if (form.lifecycleStage === "active") {
-      const existing = getActiveLease(form.unitId);
+      const existing = getActiveLease(effectiveUnitId);
       if (existing && existing.id !== editingLease?.id) {
         toast({ title: "Conflict", description: `Unit already has an active lease: ${existing.leaseReference}`, variant: "destructive" });
         return;
       }
     }
-    // Validate the full assignment draft (primary + extras): property mismatch,
-    // duplicates, multi-primary, units already used on another active lease.
-    const ancRentDraft = extraUnits
-      .filter(e => e.unitId && e.unitId !== form.unitId)
-      .reduce((s, e) => s + (e.rentShare ?? 0), 0);
-    const ancChargesDraft = extraUnits
-      .filter(e => e.unitId && e.unitId !== form.unitId)
-      .reduce((s, e) => s + (e.chargesShare ?? 0), 0);
-    const primaryRentDraft = form.monthlyRent - ancRentDraft;
-    const primaryChargesDraft = form.monthlyCharges - ancChargesDraft;
-    if (primaryRentDraft < 0 || primaryChargesDraft < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Sum of ancillary rent / charges cannot exceed the lease total.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const draft: DraftAssignment[] = [
-      {
-        unitId: form.unitId,
-        assignmentType: "primary",
-        isPrimary: true,
-        startDate: form.startDate,
-        endDate: null,
-        rentShare: primaryRentDraft,
-        chargesShare: primaryChargesDraft,
-      },
-      ...extraUnits
-        .filter(e => e.unitId && e.unitId !== form.unitId)
-        .map(e => ({
-          unitId: e.unitId,
-          assignmentType: e.assignmentType,
-          isPrimary: false,
-          startDate: form.startDate,
-          endDate: null as string | null,
-          rentShare: e.rentShare,
-          chargesShare: e.chargesShare,
-        })),
-    ];
+    // Build the assignment draft from the unified rows.
+    const draft: DraftAssignment[] = unitRows.map(r => ({
+      unitId: r.unitId,
+      assignmentType: r.assignmentType,
+      isPrimary: r.assignmentType === "primary",
+      startDate: form.startDate,
+      endDate: null,
+      rentShare: r.rentShare,
+      chargesShare: r.chargesShare,
+    }));
     const unitsValidation = validateLeaseUnits(
       editingLease?.id ?? null,
       form.propertyId,
       draft,
-      { monthlyRent: form.monthlyRent, monthlyCharges: form.monthlyCharges },
+      { monthlyRent: totalRent, monthlyCharges: totalCharges },
       integrityState,
     );
     if (!unitsValidation.allowed) {
@@ -360,15 +371,93 @@ export default function Leases() {
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
-  const selectedUnit = useMemo(() => units.find(u => u.id === form.unitId), [units, form.unitId]);
-  const availableTiers = useMemo(
-    () => (selectedUnit ? getAllRentTiers(selectedUnit) : []),
-    [selectedUnit],
-  );
+  // Intersection of advance-payment tiers across every selected unit. The
+  // rent formula can only pick a duration supported by all of them, since one
+  // formula applies uniformly to every unit attached to the lease.
+  const commonTiers = useMemo(() => {
+    const rowsWithUnits = unitRows
+      .map(r => units.find(u => u.id === r.unitId))
+      .filter((u): u is NonNullable<typeof u> => !!u);
+    if (rowsWithUnits.length === 0) return [];
+    const perUnit = rowsWithUnits.map(u =>
+      new Map(getAllRentTiers(u).map(t => [t.durationMonths, t.monthlyRent])),
+    );
+    const [first, ...rest] = perUnit;
+    return [...first.entries()]
+      .filter(([months]) => rest.every(m => m.has(months)))
+      .map(([durationMonths]) => ({ durationMonths }))
+      .sort((a, b) => a.durationMonths - b.durationMonths);
+  }, [unitRows, units]);
   const selectedProperty = useMemo(
     () => properties.find(p => p.id === form.propertyId),
     [properties, form.propertyId],
   );
+
+  // If the current rentFormula is no longer supported by every selected unit
+  // (e.g. user added a unit without that tier), reset to monthly.
+  if (form.rentFormula !== 1 && unitRows.length > 0 && !commonTiers.some(t => t.durationMonths === form.rentFormula)) {
+    // Defer state update out of render.
+    Promise.resolve().then(() => {
+      setForm(f => ({
+        ...f, rentFormula: 1,
+        hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+        advanceAllocationMethod: null, advanceAppliedTo: null,
+        advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
+        fixedMonthlyReductionAmount: null,
+      }));
+    });
+  }
+
+  // Derived totals for the units table footer + step-3 summary.
+  const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
+  const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+
+  const addUnitRow = () => {
+    setUnitRows(prev => {
+      const hasPrimary = prev.some(r => r.assignmentType === "primary");
+      return [...prev, {
+        unitId: "",
+        assignmentType: hasPrimary ? "parking" : "primary",
+        rentShare: 0,
+        chargesShare: 0,
+      }];
+    });
+  };
+  const removeUnitRow = (idx: number) => {
+    setUnitRows(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      // Ensure at least one row stays primary.
+      if (next.length > 0 && !next.some(r => r.assignmentType === "primary")) {
+        next[0] = { ...next[0], assignmentType: "primary" };
+      }
+      return next;
+    });
+  };
+  const updateUnitRow = (idx: number, patch: Partial<UnitRow>) => {
+    setUnitRows(prev => prev.map((r, i) => {
+      if (i !== idx) return r;
+      const next = { ...r, ...patch };
+      // When user picks a unit, pre-fill rent + charges from the unit's
+      // tier for the currently-selected rent formula (falls back to baseRent).
+      if (patch.unitId !== undefined) {
+        const u = units.find(uu => uu.id === patch.unitId);
+        if (u) {
+          const tierRent = getMonthlyRentForMonths(u, form.rentFormula);
+          next.rentShare = tierRent ?? u.baseRent ?? 0;
+          next.chargesShare = u.baseCharges ?? 0;
+        }
+      }
+      return next;
+    }));
+  };
+  const setRoleForRow = (idx: number, role: LeaseUnitAssignmentType) => {
+    setUnitRows(prev => prev.map((r, i) => {
+      if (i === idx) return { ...r, assignmentType: role };
+      // Only one primary allowed: demote others to parking.
+      if (role === "primary" && r.assignmentType === "primary") return { ...r, assignmentType: "parking" };
+      return r;
+    }));
+  };
 
   return (
     <div className="space-y-6">
@@ -529,153 +618,115 @@ export default function Leases() {
           <div className="space-y-4 mt-6">
             {(editingLease || step === 1) && (<>
             <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("leases.property")} *</Label>
-                <Select value={form.propertyId} onValueChange={v => {
-                  setForm(f => ({ ...f, propertyId: v, unitId: "" }));
-                  setExtraUnits([]);
-                }}>
-                  <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
-                  <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>{t("leases.unit")} *</Label>
-                <Select value={form.unitId} onValueChange={v => {
-                  const newUnit = units.find(u => u.id === v);
-                  setForm(f => {
-                    const next: LeaseFormData = { ...f, unitId: v };
-                    const rent = newUnit ? getMonthlyRentForMonths(newUnit, f.rentFormula) : null;
-                    if (rent == null) {
-                      // Selected duration not available on this unit — fall back to 1 month.
-                      return {
-                        ...next,
-                        rentFormula: 1,
-                        monthlyRent: newUnit?.baseRent ?? f.monthlyRent,
-                        hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
-                        advanceAllocationMethod: null, advanceAppliedTo: null,
-                        advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
-                        fixedMonthlyReductionAmount: null,
-                      };
-                    }
-                    return { ...next, monthlyRent: rent };
-                  });
-                }}>
-                  <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
-                  <SelectContent>
-                    {formUnits
-                      .filter(u => !extraUnits.some(e => e.unitId === u.id))
-                      .map(u => {
-                        const existing = getActiveLease(u.id);
-                        const blocked = existing && existing.id !== editingLease?.id;
-                        return (
-                          <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                            {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
-                          </SelectItem>
-                        );
-                      })}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div><Label>{t("leases.property")} *</Label>
+              <Select value={form.propertyId} onValueChange={v => {
+                setForm(f => ({ ...f, propertyId: v, unitId: "" }));
+                setUnitRows([]);
+              }}>
+                <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
+                <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
-            {/* Additional (ancillary) units */}
-            <div className="rounded-md border border-border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-xs">{t("leases.additionalUnits")}</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{t("leases.additionalUnitsHelp")}</p>
-                </div>
+            {/* Unified units table */}
+            <div className="rounded-md border border-border">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+                <Label className="text-xs">{t("leases.units.title")} *</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="h-8"
                   disabled={!form.propertyId}
-                  onClick={() => setExtraUnits(prev => [...prev, { unitId: "", assignmentType: "parking", rentShare: 0, chargesShare: 0 }])}
+                  onClick={addUnitRow}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />{t("leases.addUnit")}
                 </Button>
               </div>
-              {extraUnits.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">{t("leases.noAdditionalUnits")}</p>
+              {unitRows.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic px-3 py-4 text-center">{t("leases.units.empty")}</p>
               ) : (
-                <div className="space-y-2">
-                  {extraUnits.map((e, idx) => {
-                    const usedIds = new Set<string>([form.unitId, ...extraUnits.filter((_, i) => i !== idx).map(x => x.unitId)]);
-                    const options = formUnits.filter(u => !usedIds.has(u.id));
-                    return (
-                      <div key={idx} className="flex items-center gap-2">
-                        <Select
-                          value={e.unitId}
-                          onValueChange={v => setExtraUnits(prev => prev.map((x, i) => {
-                            if (i !== idx) return x;
-                            const u = units.find(uu => uu.id === v);
-                            // Pre-fill from the unit's base rent/charges (handy default).
-                            const next = { ...x, unitId: v };
-                            if (u && (x.rentShare === 0 || !x.unitId)) next.rentShare = u.baseRent;
-                            if (u && (x.chargesShare === 0 || !x.unitId)) next.chargesShare = u.baseCharges;
-                            return next;
-                          }))}
-                        >
-                          <SelectTrigger className="h-8 flex-1"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
-                          <SelectContent>
-                            {options.map(u => {
-                              const existing = getActiveLease(u.id);
-                              const blocked = existing && existing.id !== editingLease?.id;
-                              return (
-                                <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                                  {u.unitCode} — {u.unitLabel}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                        <Select value={e.assignmentType} onValueChange={v => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, assignmentType: v as LeaseUnitAssignmentType } : x))}>
-                          <SelectTrigger className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {(["parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
-                              <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={e.rentShare}
-                          onChange={ev => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, rentShare: Number(ev.target.value) || 0 } : x))}
-                          className="h-8 w-[90px]"
-                          placeholder={t("leases.col.rentShare")}
-                          title={t("leases.col.rentShare")}
-                        />
-                        <Input
-                          type="number"
-                          min={0}
-                          value={e.chargesShare}
-                          onChange={ev => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, chargesShare: Number(ev.target.value) || 0 } : x))}
-                          className="h-8 w-[90px]"
-                          placeholder={t("leases.col.chargesShare")}
-                          title={t("leases.col.chargesShare")}
-                        />
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExtraUnits(prev => prev.filter((_, i) => i !== idx))}>
-                          <XIcon className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  {/* Per-unit split summary: primary share is auto-computed as lease total minus ancillaries. */}
-                  {(() => {
-                    const ancRent = extraUnits.filter(e => e.unitId && e.unitId !== form.unitId).reduce((s, e) => s + (e.rentShare ?? 0), 0);
-                    const ancCharges = extraUnits.filter(e => e.unitId && e.unitId !== form.unitId).reduce((s, e) => s + (e.chargesShare ?? 0), 0);
-                    const primaryRent = form.monthlyRent - ancRent;
-                    const primaryCharges = form.monthlyCharges - ancCharges;
-                    const overflow = primaryRent < 0 || primaryCharges < 0;
-                    return (
-                      <div className="text-[11px] text-muted-foreground border-t border-border pt-2 mt-1 flex justify-between">
-                        <span>{t("leases.role.primary")}: <span className={overflow ? "text-destructive font-medium" : "text-foreground font-medium"}>{fmtCurrency(primaryRent, selectedProperty?.currencyCode, selectedProperty?.locale)} / {fmtCurrency(primaryCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span></span>
-                        <span>{t("leases.monthlyRent")} + {t("leases.monthlyCharges")}: {fmtCurrency(form.monthlyRent, selectedProperty?.currencyCode, selectedProperty?.locale)} / {fmtCurrency(form.monthlyCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="h-9">{t("leases.col.unit")}</TableHead>
+                      <TableHead className="h-9 w-[150px]">{t("leases.col.role")}</TableHead>
+                      <TableHead className="h-9 w-[110px] text-right">{t("leases.monthlyRent")}</TableHead>
+                      <TableHead className="h-9 w-[110px] text-right">{t("leases.monthlyCharges")}</TableHead>
+                      <TableHead className="h-9 w-[110px] text-right">{t("leases.units.total")}</TableHead>
+                      <TableHead className="h-9 w-[40px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unitRows.map((row, idx) => {
+                      const usedIds = new Set<string>(unitRows.filter((_, i) => i !== idx).map(x => x.unitId).filter(Boolean));
+                      const options = formUnits.filter(u => !usedIds.has(u.id));
+                      const rowTotal = (row.rentShare ?? 0) + (row.chargesShare ?? 0);
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell className="py-1.5">
+                            <Select value={row.unitId} onValueChange={v => updateUnitRow(idx, { unitId: v })}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
+                              <SelectContent>
+                                {options.map(u => {
+                                  const existing = getActiveLease(u.id);
+                                  const blocked = existing && existing.id !== editingLease?.id;
+                                  return (
+                                    <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
+                                      {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Select value={row.assignmentType} onValueChange={v => setRoleForRow(idx, v as LeaseUnitAssignmentType)}>
+                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {(["primary","parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
+                                  <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Input
+                              type="number" min={0}
+                              value={row.rentShare}
+                              onChange={ev => updateUnitRow(idx, { rentShare: Number(ev.target.value) || 0 })}
+                              className="h-8 text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Input
+                              type="number" min={0}
+                              value={row.chargesShare}
+                              onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
+                              className="h-8 text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1.5 text-right font-medium">
+                            {fmtCurrency(rowTotal, selectedProperty?.currencyCode, selectedProperty?.locale)}
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeUnitRow(idx)}>
+                              <XIcon className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow className="bg-muted/30 font-medium">
+                      <TableCell colSpan={2} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
+                        {t("leases.units.grandTotal")}
+                      </TableCell>
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                      <TableCell className="py-2" />
+                    </TableRow>
+                  </TableBody>
+                </Table>
               )}
             </div>
             </>)}
@@ -710,12 +761,18 @@ export default function Leases() {
               <Label>{t("leases.formula")} *</Label>
               <Select
                 value={String(form.rentFormula)}
+                disabled={commonTiers.length === 0}
                 onValueChange={(raw) => {
                   const months = Number(raw) as RentFormula;
-                  const rent = selectedUnit ? getMonthlyRentForMonths(selectedUnit, months) : null;
-                  const effectiveRent = rent ?? selectedUnit?.baseRent ?? form.monthlyRent;
+                  // Rewrite every row's rent share to the chosen tier for that unit.
+                  setUnitRows(prev => prev.map(r => {
+                    const u = units.find(uu => uu.id === r.unitId);
+                    if (!u) return r;
+                    const tier = getMonthlyRentForMonths(u, months);
+                    return tier == null ? r : { ...r, rentShare: tier };
+                  }));
                   setForm(f => ({
-                    ...f, rentFormula: months, monthlyRent: effectiveRent,
+                    ...f, rentFormula: months,
                     hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
                     advanceAllocationMethod: null, advanceAppliedTo: null,
                     advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
@@ -725,21 +782,21 @@ export default function Leases() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {availableTiers.length === 0 && (
+                  {commonTiers.length === 0 && (
                     <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
                   )}
-                  {availableTiers.map(tier => (
+                  {commonTiers.map(tier => (
                     <SelectItem key={tier.durationMonths} value={String(tier.durationMonths)}>
                       {tier.durationMonths === 1
                         ? t("leases.formula.monthly")
                         : `${tier.durationMonths} months`}
-                      {selectedProperty
-                        ? ` — ${fmtCurrency(tier.monthlyRent, selectedProperty.currencyCode, selectedProperty.locale)}/mo`
-                        : ` — ${tier.monthlyRent}/mo`}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {commonTiers.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
+              )}
               {form.rentFormula !== 1 && (
                 <>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -763,9 +820,17 @@ export default function Leases() {
             </div>
             )}
             {(editingLease || step === 3) && (<>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>{t("leases.monthlyRent")} *</Label><Input type="number" min={0} value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: Number(e.target.value) || 0 }))} /></div>
-              <div><Label>{t("leases.monthlyCharges")} *</Label><Input type="number" min={0} value={form.monthlyCharges} onChange={e => setForm(f => ({ ...f, monthlyCharges: Number(e.target.value) || 0 }))} /></div>
+            <div className="grid grid-cols-2 gap-4 items-end">
+              <div className="rounded-md border border-border px-3 py-2 text-xs">
+                <div className="text-muted-foreground uppercase tracking-wide text-[10px]">{t("leases.units.grandTotal")}</div>
+                <div className="mt-1 text-foreground">
+                  {t("leases.monthlyRent")}: <span className="font-medium">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
+                  {" · "}
+                  {t("leases.monthlyCharges")}: <span className="font-medium">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
+                  {" · "}
+                  {t("leases.units.total")}: <span className="font-medium">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
+                </div>
+              </div>
               <div><Label>{t("leases.dueDay")}</Label><Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -847,8 +912,9 @@ export default function Leases() {
                 {step < 3 ? (
                   <Button onClick={() => {
                     if (step === 1) {
-                      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId) {
-                        toast({ title: "Validation Error", description: "Reference, property, and unit are required.", variant: "destructive" });
+                      const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+                      if (!form.leaseReference.trim() || !form.propertyId || unitRows.length === 0 || !primaryRow?.unitId || unitRows.some(r => !r.unitId)) {
+                        toast({ title: "Validation Error", description: "Reference, property, and at least one unit (with a Primary role) are required.", variant: "destructive" });
                         return;
                       }
                     } else if (step === 2) {

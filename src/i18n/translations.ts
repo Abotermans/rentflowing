@@ -998,6 +998,11 @@ const en = {
   "leases.assignmentType.other": "Other",
   "reports.occupiedPrimary": "Occupied (primary)",
   "reports.ancillaryLeased": "Ancillary leased",
+  "leases.units.title": "Units",
+  "leases.units.empty": "Add at least one unit to this lease.",
+  "leases.units.total": "Total",
+  "leases.units.grandTotal": "Grand total",
+  "leases.formula.requiresCommonTiers": "Select units that all share the same advance-payment tiers to enable a formula.",
   // Amendments ("avenants")
   "amendments.title": "Amendments",
   "amendments.empty": "No amendments yet",
@@ -2234,6 +2239,11 @@ const fr: TranslationKeys = {
   "leases.assignmentType.other": "Autre",
   "reports.occupiedPrimary": "Occupés (principaux)",
   "reports.ancillaryLeased": "Annexes loués",
+  "leases.units.title": "Lots",
+  "leases.units.empty": "Ajoutez au moins un lot à ce bail.",
+  "leases.units.total": "Total",
+  "leases.units.grandTotal": "Total général",
+  "leases.formula.requiresCommonTiers": "Sélectionnez des lots partageant les mêmes paliers de paiement anticipé pour activer une formule.",
   // Avenants
   "amendments.title": "Avenants",
   "amendments.empty": "Aucun avenant",
