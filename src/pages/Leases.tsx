@@ -107,6 +107,7 @@ export default function Leases() {
     hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
     advanceAllocationMethod: null, advanceAppliedTo: null, advanceAllocationStartDate: null,
     advanceAllocationDurationMonths: null, fixedMonthlyReductionAmount: null,
+    advanceCycleLeadDays: 15,
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
   // Extra (non-primary) unit assignments attached to this lease. Each carries its own
