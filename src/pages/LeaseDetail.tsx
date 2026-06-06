@@ -684,17 +684,17 @@ export default function LeaseDetail() {
                     {sortedAssignments.length > 1 ? `${t("table.unit")}s · ${sortedAssignments.length}` : t("table.unit")}
                   </p>
                   <div className="rounded border overflow-hidden">
-                    <Table>
+                    <Table className="[&_th]:px-2 [&_td]:px-2">
                       <TableHeader>
                         <TableRow className="h-8">
-                          <TableHead className="h-8 text-xs">{t("leases.col.unit")}</TableHead>
-                          <TableHead className="h-8 text-xs">{t("leases.col.role")}</TableHead>
-                          <TableHead className="h-8 text-xs">{t("leases.col.start")}</TableHead>
-                          <TableHead className="h-8 text-xs">{t("leases.col.signed")}</TableHead>
-                          <TableHead className="h-8 text-xs">{t("leases.col.end")}</TableHead>
-                          <TableHead className="h-8 text-xs text-right">{t("leases.col.rentShare")}</TableHead>
-                          <TableHead className="h-8 text-xs text-right">{t("leases.col.chargesShare")}</TableHead>
-                          <TableHead className="h-8 text-xs text-right">{t("common.total")}</TableHead>
+                          <TableHead className="h-8 text-sm">{t("leases.col.unit")}</TableHead>
+                          <TableHead className="h-8 text-sm">{t("leases.col.role")}</TableHead>
+                          <TableHead className="h-8 text-sm">{t("leases.col.start")}</TableHead>
+                          <TableHead className="h-8 text-sm">{t("leases.col.signed")}</TableHead>
+                          <TableHead className="h-8 text-sm">{t("leases.col.end")}</TableHead>
+                          <TableHead className="h-8 text-sm text-right">{t("leases.col.rentShare")}</TableHead>
+                          <TableHead className="h-8 text-sm text-right">{t("leases.col.chargesShare")}</TableHead>
+                          <TableHead className="h-8 text-sm text-right">{t("common.total")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -721,20 +721,20 @@ export default function LeaseDetail() {
                           }
                           return (
                             <TableRow key={a.id} className="h-9">
-                              <TableCell className="py-1 text-xs">
+                              <TableCell className="py-1 text-sm">
                                 <Link to={`/units/${u.id}`} className="font-medium text-primary hover:underline">{u.unitCode} — {u.unitLabel}</Link>
                               </TableCell>
                               <TableCell className="py-1">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${a.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                                <span className={`text-xs px-1.5 py-0.5 rounded ${a.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                                   {a.isPrimary ? t("leases.role.primary") : (isAnc ? t(`leases.assignmentType.${a.assignmentType}` as TranslationKey) : t("leases.role.secondary"))}
                                 </span>
                               </TableCell>
-                              <TableCell className="py-1 text-xs text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
-                              <TableCell className="py-1 text-xs text-muted-foreground">{signedFor ? formatDate(signedFor, locale) : "—"}</TableCell>
-                              <TableCell className="py-1 text-xs text-muted-foreground">{formatDate(effEndDate, locale)}</TableCell>
-                              <TableCell className="py-1 text-right text-xs tabular-nums">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
-                              <TableCell className="py-1 text-right text-xs tabular-nums">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
-                              <TableCell className="py-1 text-right text-xs font-medium tabular-nums">{formatCurrency(rowTotal, currency, locale)}</TableCell>
+                              <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
+                              <TableCell className="py-1 text-sm text-muted-foreground">{signedFor ? formatDate(signedFor, locale) : "—"}</TableCell>
+                              <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(effEndDate, locale)}</TableCell>
+                              <TableCell className="py-1 text-right text-sm tabular-nums">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
+                              <TableCell className="py-1 text-right text-sm tabular-nums">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
+                              <TableCell className="py-1 text-right text-sm font-medium tabular-nums">{formatCurrency(rowTotal, currency, locale)}</TableCell>
                             </TableRow>
                           );
                         })}
@@ -744,10 +744,10 @@ export default function LeaseDetail() {
                           const grand = sumR + sumC;
                           return (
                             <TableRow className="border-t border-border bg-muted/30 h-9">
-                              <TableCell colSpan={5} className="py-1 text-xs font-medium text-muted-foreground">Σ</TableCell>
-                              <TableCell className="py-1 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
-                              <TableCell className="py-1 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
-                              <TableCell className="py-1 text-right text-xs font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
+                              <TableCell colSpan={5} className="py-1 text-sm font-medium text-muted-foreground">Σ</TableCell>
+                              <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
+                              <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
+                              <TableCell className="py-1 text-right text-sm font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
                             </TableRow>
                           );
                         })()}
