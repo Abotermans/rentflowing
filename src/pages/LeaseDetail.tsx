@@ -1086,7 +1086,10 @@ export default function LeaseDetail() {
 
           {/* Keys & Badges */}
           <Card>
-            <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.keysBadges")}</CardTitle></CardHeader>
+            <CardHeader className="pb-3 flex-row items-center space-y-0 gap-2">
+              <CardTitle className="text-sm font-medium text-left flex-1">{t("detail.keysBadges")}</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => addKeyItem("key")}><Plus className="h-3.5 w-3.5 mr-1" />{t("action.add")}</Button>
+            </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {(lease.keys ?? []).length === 0 ? (
@@ -1115,9 +1118,6 @@ export default function LeaseDetail() {
                     ))}
                   </div>
                 )}
-                <div className="flex gap-2 pt-1">
-                  <Button variant="outline" size="sm" onClick={() => addKeyItem("key")}><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addKeyBadge")}</Button>
-                </div>
               </div>
             </CardContent>
           </Card>
