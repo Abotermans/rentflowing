@@ -765,9 +765,9 @@ export default function Leases() {
             </>)}
             {(editingLease || step === 1) && (
             <div>
-              <div className="flex items-start gap-4">
+              <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-4">
                 <div>
-                  <Label>{t("leases.formula")} *</Label>
+                  <Label className="mb-2 flex h-5 items-center">{t("leases.formula")} *</Label>
                   <Select
                     value={String(form.rentFormula)}
                     disabled={commonTiers.length === 0}
@@ -789,7 +789,7 @@ export default function Leases() {
                   }));
                     }}
                   >
-                    <SelectTrigger className="h-9 w-auto min-w-[140px]"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
                   {commonTiers.length === 0 && (
                     <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
@@ -806,7 +806,7 @@ export default function Leases() {
                 </div>
                 {form.rentFormula !== 1 && (
                   <div>
-                    <Label className="flex items-center gap-1 whitespace-nowrap">
+                    <Label className="mb-2 flex h-5 items-center gap-1 whitespace-nowrap">
                       Generate next cycle
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -817,14 +817,14 @@ export default function Leases() {
                         </TooltipContent>
                       </Tooltip>
                     </Label>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex h-9 items-center gap-1">
                       <Input
                         type="number"
                         min={0}
                         max={120}
                         value={form.advanceCycleLeadDays ?? 15}
                         onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
-                        className="h-9 w-[80px] [field-sizing:content] min-w-[60px]"
+                        className="h-9 w-[80px]"
                       />
                       <span className="text-sm text-muted-foreground">days before next payment is due</span>
                     </div>
