@@ -1093,7 +1093,7 @@ export default function LeaseDetail() {
                 {(lease.keys ?? []).length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("detail.noKeysBadges")}</p>
                 ) : (
-                  <div className="grid grid-cols-[110px_1fr_140px_140px_auto] gap-2 items-center text-xs">
+                  <div className="grid grid-cols-[120px_1fr_160px_160px_auto] gap-3 items-center text-sm">
                     <div className="text-muted-foreground font-medium">{t("detail.type")}</div>
                     <div className="text-muted-foreground font-medium">{t("detail.identifier")}</div>
                     <div className="text-muted-foreground font-medium">{t("detail.handedOver")}</div>
@@ -1117,8 +1117,7 @@ export default function LeaseDetail() {
                   </div>
                 )}
                 <div className="flex gap-2 pt-1">
-                  <Button variant="outline" size="sm" onClick={() => addKeyItem("key")}><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addKey")}</Button>
-                  <Button variant="outline" size="sm" onClick={() => addKeyItem("badge")}><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addBadge")}</Button>
+                  <Button variant="outline" size="sm" onClick={() => addKeyItem("key")}><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addKeyBadge")}</Button>
                 </div>
               </div>
             </CardContent>
