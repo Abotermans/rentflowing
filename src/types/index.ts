@@ -178,6 +178,14 @@ export interface MoveOutChecklist {
 
 export type ReturnStatus = "pending" | "in-review" | "completed";
 
+export interface LeaseKeyItem {
+  id: string;
+  kind: "key" | "badge";
+  label: string;
+  handedOverDate: string | null;
+  returnedDate: string | null;
+}
+
 export const DEFAULT_MOVE_IN_CHECKLIST: MoveInChecklist = {
   leaseSigned: false, firstPaymentReceived: false, guaranteeConfirmed: false,
   keysHandedOver: false, meterReadingCaptured: false, tenantDocumentsComplete: false,
