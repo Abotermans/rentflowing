@@ -618,153 +618,115 @@ export default function Leases() {
           <div className="space-y-4 mt-6">
             {(editingLease || step === 1) && (<>
             <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("leases.property")} *</Label>
-                <Select value={form.propertyId} onValueChange={v => {
-                  setForm(f => ({ ...f, propertyId: v, unitId: "" }));
-                  setExtraUnits([]);
-                }}>
-                  <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
-                  <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>{t("leases.unit")} *</Label>
-                <Select value={form.unitId} onValueChange={v => {
-                  const newUnit = units.find(u => u.id === v);
-                  setForm(f => {
-                    const next: LeaseFormData = { ...f, unitId: v };
-                    const rent = newUnit ? getMonthlyRentForMonths(newUnit, f.rentFormula) : null;
-                    if (rent == null) {
-                      // Selected duration not available on this unit — fall back to 1 month.
-                      return {
-                        ...next,
-                        rentFormula: 1,
-                        monthlyRent: newUnit?.baseRent ?? f.monthlyRent,
-                        hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
-                        advanceAllocationMethod: null, advanceAppliedTo: null,
-                        advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
-                        fixedMonthlyReductionAmount: null,
-                      };
-                    }
-                    return { ...next, monthlyRent: rent };
-                  });
-                }}>
-                  <SelectTrigger><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
-                  <SelectContent>
-                    {formUnits
-                      .filter(u => !extraUnits.some(e => e.unitId === u.id))
-                      .map(u => {
-                        const existing = getActiveLease(u.id);
-                        const blocked = existing && existing.id !== editingLease?.id;
-                        return (
-                          <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                            {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
-                          </SelectItem>
-                        );
-                      })}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div><Label>{t("leases.property")} *</Label>
+              <Select value={form.propertyId} onValueChange={v => {
+                setForm(f => ({ ...f, propertyId: v, unitId: "" }));
+                setUnitRows([]);
+              }}>
+                <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
+                <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
-            {/* Additional (ancillary) units */}
-            <div className="rounded-md border border-border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-xs">{t("leases.additionalUnits")}</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{t("leases.additionalUnitsHelp")}</p>
-                </div>
+            {/* Unified units table */}
+            <div className="rounded-md border border-border">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+                <Label className="text-xs">{t("leases.units.title")} *</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="h-8"
                   disabled={!form.propertyId}
-                  onClick={() => setExtraUnits(prev => [...prev, { unitId: "", assignmentType: "parking", rentShare: 0, chargesShare: 0 }])}
+                  onClick={addUnitRow}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />{t("leases.addUnit")}
                 </Button>
               </div>
-              {extraUnits.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">{t("leases.noAdditionalUnits")}</p>
+              {unitRows.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic px-3 py-4 text-center">{t("leases.units.empty")}</p>
               ) : (
-                <div className="space-y-2">
-                  {extraUnits.map((e, idx) => {
-                    const usedIds = new Set<string>([form.unitId, ...extraUnits.filter((_, i) => i !== idx).map(x => x.unitId)]);
-                    const options = formUnits.filter(u => !usedIds.has(u.id));
-                    return (
-                      <div key={idx} className="flex items-center gap-2">
-                        <Select
-                          value={e.unitId}
-                          onValueChange={v => setExtraUnits(prev => prev.map((x, i) => {
-                            if (i !== idx) return x;
-                            const u = units.find(uu => uu.id === v);
-                            // Pre-fill from the unit's base rent/charges (handy default).
-                            const next = { ...x, unitId: v };
-                            if (u && (x.rentShare === 0 || !x.unitId)) next.rentShare = u.baseRent;
-                            if (u && (x.chargesShare === 0 || !x.unitId)) next.chargesShare = u.baseCharges;
-                            return next;
-                          }))}
-                        >
-                          <SelectTrigger className="h-8 flex-1"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
-                          <SelectContent>
-                            {options.map(u => {
-                              const existing = getActiveLease(u.id);
-                              const blocked = existing && existing.id !== editingLease?.id;
-                              return (
-                                <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                                  {u.unitCode} — {u.unitLabel}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                        <Select value={e.assignmentType} onValueChange={v => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, assignmentType: v as LeaseUnitAssignmentType } : x))}>
-                          <SelectTrigger className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {(["parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
-                              <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={e.rentShare}
-                          onChange={ev => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, rentShare: Number(ev.target.value) || 0 } : x))}
-                          className="h-8 w-[90px]"
-                          placeholder={t("leases.col.rentShare")}
-                          title={t("leases.col.rentShare")}
-                        />
-                        <Input
-                          type="number"
-                          min={0}
-                          value={e.chargesShare}
-                          onChange={ev => setExtraUnits(prev => prev.map((x, i) => i === idx ? { ...x, chargesShare: Number(ev.target.value) || 0 } : x))}
-                          className="h-8 w-[90px]"
-                          placeholder={t("leases.col.chargesShare")}
-                          title={t("leases.col.chargesShare")}
-                        />
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExtraUnits(prev => prev.filter((_, i) => i !== idx))}>
-                          <XIcon className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  {/* Per-unit split summary: primary share is auto-computed as lease total minus ancillaries. */}
-                  {(() => {
-                    const ancRent = extraUnits.filter(e => e.unitId && e.unitId !== form.unitId).reduce((s, e) => s + (e.rentShare ?? 0), 0);
-                    const ancCharges = extraUnits.filter(e => e.unitId && e.unitId !== form.unitId).reduce((s, e) => s + (e.chargesShare ?? 0), 0);
-                    const primaryRent = form.monthlyRent - ancRent;
-                    const primaryCharges = form.monthlyCharges - ancCharges;
-                    const overflow = primaryRent < 0 || primaryCharges < 0;
-                    return (
-                      <div className="text-[11px] text-muted-foreground border-t border-border pt-2 mt-1 flex justify-between">
-                        <span>{t("leases.role.primary")}: <span className={overflow ? "text-destructive font-medium" : "text-foreground font-medium"}>{fmtCurrency(primaryRent, selectedProperty?.currencyCode, selectedProperty?.locale)} / {fmtCurrency(primaryCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span></span>
-                        <span>{t("leases.monthlyRent")} + {t("leases.monthlyCharges")}: {fmtCurrency(form.monthlyRent, selectedProperty?.currencyCode, selectedProperty?.locale)} / {fmtCurrency(form.monthlyCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="h-9">{t("leases.col.unit")}</TableHead>
+                      <TableHead className="h-9 w-[150px]">{t("leases.col.role")}</TableHead>
+                      <TableHead className="h-9 w-[110px] text-right">{t("leases.monthlyRent")}</TableHead>
+                      <TableHead className="h-9 w-[110px] text-right">{t("leases.monthlyCharges")}</TableHead>
+                      <TableHead className="h-9 w-[110px] text-right">{t("leases.units.total")}</TableHead>
+                      <TableHead className="h-9 w-[40px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unitRows.map((row, idx) => {
+                      const usedIds = new Set<string>(unitRows.filter((_, i) => i !== idx).map(x => x.unitId).filter(Boolean));
+                      const options = formUnits.filter(u => !usedIds.has(u.id));
+                      const rowTotal = (row.rentShare ?? 0) + (row.chargesShare ?? 0);
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell className="py-1.5">
+                            <Select value={row.unitId} onValueChange={v => updateUnitRow(idx, { unitId: v })}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
+                              <SelectContent>
+                                {options.map(u => {
+                                  const existing = getActiveLease(u.id);
+                                  const blocked = existing && existing.id !== editingLease?.id;
+                                  return (
+                                    <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
+                                      {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Select value={row.assignmentType} onValueChange={v => setRoleForRow(idx, v as LeaseUnitAssignmentType)}>
+                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {(["primary","parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
+                                  <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Input
+                              type="number" min={0}
+                              value={row.rentShare}
+                              onChange={ev => updateUnitRow(idx, { rentShare: Number(ev.target.value) || 0 })}
+                              className="h-8 text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Input
+                              type="number" min={0}
+                              value={row.chargesShare}
+                              onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
+                              className="h-8 text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1.5 text-right font-medium">
+                            {fmtCurrency(rowTotal, selectedProperty?.currencyCode, selectedProperty?.locale)}
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeUnitRow(idx)}>
+                              <XIcon className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow className="bg-muted/30 font-medium">
+                      <TableCell colSpan={2} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
+                        {t("leases.units.grandTotal")}
+                      </TableCell>
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                      <TableCell className="py-2" />
+                    </TableRow>
+                  </TableBody>
+                </Table>
               )}
             </div>
             </>)}
