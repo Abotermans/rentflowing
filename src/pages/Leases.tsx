@@ -371,15 +371,93 @@ export default function Leases() {
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
-  const selectedUnit = useMemo(() => units.find(u => u.id === form.unitId), [units, form.unitId]);
-  const availableTiers = useMemo(
-    () => (selectedUnit ? getAllRentTiers(selectedUnit) : []),
-    [selectedUnit],
-  );
+  // Intersection of advance-payment tiers across every selected unit. The
+  // rent formula can only pick a duration supported by all of them, since one
+  // formula applies uniformly to every unit attached to the lease.
+  const commonTiers = useMemo(() => {
+    const rowsWithUnits = unitRows
+      .map(r => units.find(u => u.id === r.unitId))
+      .filter((u): u is NonNullable<typeof u> => !!u);
+    if (rowsWithUnits.length === 0) return [];
+    const perUnit = rowsWithUnits.map(u =>
+      new Map(getAllRentTiers(u).map(t => [t.durationMonths, t.monthlyRent])),
+    );
+    const [first, ...rest] = perUnit;
+    return [...first.entries()]
+      .filter(([months]) => rest.every(m => m.has(months)))
+      .map(([durationMonths]) => ({ durationMonths }))
+      .sort((a, b) => a.durationMonths - b.durationMonths);
+  }, [unitRows, units]);
   const selectedProperty = useMemo(
     () => properties.find(p => p.id === form.propertyId),
     [properties, form.propertyId],
   );
+
+  // If the current rentFormula is no longer supported by every selected unit
+  // (e.g. user added a unit without that tier), reset to monthly.
+  if (form.rentFormula !== 1 && unitRows.length > 0 && !commonTiers.some(t => t.durationMonths === form.rentFormula)) {
+    // Defer state update out of render.
+    Promise.resolve().then(() => {
+      setForm(f => ({
+        ...f, rentFormula: 1,
+        hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+        advanceAllocationMethod: null, advanceAppliedTo: null,
+        advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
+        fixedMonthlyReductionAmount: null,
+      }));
+    });
+  }
+
+  // Derived totals for the units table footer + step-3 summary.
+  const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
+  const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+
+  const addUnitRow = () => {
+    setUnitRows(prev => {
+      const hasPrimary = prev.some(r => r.assignmentType === "primary");
+      return [...prev, {
+        unitId: "",
+        assignmentType: hasPrimary ? "parking" : "primary",
+        rentShare: 0,
+        chargesShare: 0,
+      }];
+    });
+  };
+  const removeUnitRow = (idx: number) => {
+    setUnitRows(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      // Ensure at least one row stays primary.
+      if (next.length > 0 && !next.some(r => r.assignmentType === "primary")) {
+        next[0] = { ...next[0], assignmentType: "primary" };
+      }
+      return next;
+    });
+  };
+  const updateUnitRow = (idx: number, patch: Partial<UnitRow>) => {
+    setUnitRows(prev => prev.map((r, i) => {
+      if (i !== idx) return r;
+      const next = { ...r, ...patch };
+      // When user picks a unit, pre-fill rent + charges from the unit's
+      // tier for the currently-selected rent formula (falls back to baseRent).
+      if (patch.unitId !== undefined) {
+        const u = units.find(uu => uu.id === patch.unitId);
+        if (u) {
+          const tierRent = getMonthlyRentForMonths(u, form.rentFormula);
+          next.rentShare = tierRent ?? u.baseRent ?? 0;
+          next.chargesShare = u.baseCharges ?? 0;
+        }
+      }
+      return next;
+    }));
+  };
+  const setRoleForRow = (idx: number, role: LeaseUnitAssignmentType) => {
+    setUnitRows(prev => prev.map((r, i) => {
+      if (i === idx) return { ...r, assignmentType: role };
+      // Only one primary allowed: demote others to parking.
+      if (role === "primary" && r.assignmentType === "primary") return { ...r, assignmentType: "parking" };
+      return r;
+    }));
+  };
 
   return (
     <div className="space-y-6">
