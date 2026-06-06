@@ -1,42 +1,36 @@
-# Amendment dialog polish + lease/amendment consistency
+# Consolidate lease units into a single table in Lease Summary
 
-## 1. Remove duplicate "effective date in past" warning
-In `src/components/amendments/AmendmentDialog.tsx`, the bottom Alert iterates over `liveValidation.warnings`. Filter out `AMD_EFFECTIVE_IN_PAST` from the displayed warnings (the date-field tooltip already shows it). Drop the alert entirely when only that warning remains and there's no other content.
+## 1. Replace the unit list block in Lease Summary with a table
+In `src/pages/LeaseDetail.tsx` (the Summary card, around lines 658–686), replace the current vertical list of unit chips with a compact table showing one row per active assignment:
 
-## 2. Structured notice period field
-Replace the free-text `newNotice` input with a numeric input + unit selector.
+Columns:
+- Unit (code + label, link to unit detail)
+- Role (primary / ancillary type badge)
+- Start date (`assignment.startDate`)
+- End date (`assignment.endDate ?? "—"` since open assignments inherit the lease's effective end)
+- Rent share (EUR)
+- Charges share (EUR)
 
-- New state: `newNoticeValue` (string number) and `newNoticeUnit` ("days" | "weeks" | "months" | "years"), default unit `months`.
-- On open (existing amendment or lease default), parse `noticePeriodText` with regex `^\s*(\d+)\s*(day|week|month|year)s?\s*$` (case-insensitive, FR aware: `jour|semaine|mois|année|an`). If no match, fall back to value `""` and unit `months` and keep raw text only as a tooltip hint — but per the requirement we standardize, so we replace.
-- Serialize back to `noticePeriodText` as `"<n> <unit>"` (canonical English form, e.g. `"3 months"`). The downstream code only reads it as a string label, so a stable canonical format is acceptable.
-- UI: two side-by-side controls under the same `Label` ("Préavis"): `Input type="number" min="0"` (w-20) + `Select` with localized unit options.
-- Add translation keys: `amendments.noticeUnit.days|weeks|months|years` (EN + FR: jours/semaines/mois/années).
+Footer row: Σ totals for rent and charges, matching the visual treatment already used in the "Assigned Units" card (border-t, bg-muted/30, font-semibold).
 
-## 3. Improve bottom Alert design
-Currently it uses `<Alert variant="destructive">` or default with a single `AlertTriangle` and bullets. Improvements:
+Per-unit start/end dates make sense: amendments can add a parking spot mid-lease, or remove a unit early, and each assignment row already carries its own `startDate` / `endDate`. The table will surface that variability instead of the single lease-level "Start / End" fields.
 
-- When the alert is a "warning-only" state (no blockers), use a new soft amber styling: `border-warning/40 bg-warning/10 text-warning-foreground` with the `AlertTriangle` colored `text-warning`.
-- When destructive: keep variant but ensure the icon inherits `text-destructive` (already does via the variant — verify).
-- Render blockers vs warnings as two grouped sections with a small colored leading dot, instead of mixed bullet list with inline `text-warning` class.
+## 2. Remove the duplicate "Assigned Units" card
+Delete the entire block at lines 711–780 (`{(() => { const assignments = ...; return (<Card>…</Card>); })()}`). The new in-summary table replaces it.
 
-Concretely: split list into two `<ul>`s; render warning icon color matching the alert tone; tighten spacing.
+## 3. Remove the rent/charges scalar fields from the Summary grid
+Delete the two grid cells at lines 694–695 (`leases.monthlyRent` and `leases.monthlyCharges`). The totals appear in the new table footer. Keep `detail.totalMonthly` (rent + charges combined) as a single bold number — useful at-a-glance, not duplicated by the table.
 
-## 4. Cascade lease end/terminate to active amendments
-In `src/context/AppContext.tsx`, the `updateLease` cascade block (around lines 346–365) detects `becameClosed` when a lease transitions from `active` → `ended`/`terminated`. Add an amendment cascade inside that block:
+## 4. Per-unit deposit / notice / signed date — push back
+The user asked whether deposit, notice period, and signed date should also become per-unit. They should not:
 
-```
-setAmendments(prev => prev.map(a =>
-  a.leaseId === l.id && a.status === "active"
-    ? { ...a, status: l.lifecycleStage === "terminated" ? "terminated" : "ended", updatedAt: ts }
-    : a,
-));
-```
+- **Deposit / guarantee** is a single legal obligation against the contract (one bank guarantee, one cash deposit). Splitting it per unit would not match how it is held, returned, or accounted for, and the amendment model already represents deposit changes as a single `depositAmount` field, not per unit.
+- **Notice period** is governed by the lease contract (and French law tied to the lease type), not by individual lots. The notice given for a primary apartment automatically frees its parking.
+- **Signed date** is the date the lease (or its amendment) was signed — it is a document-level fact, not a per-unit one. Per-unit dating already exists via `assignment.startDate` / `endDate` and via the linked amendment's `effectiveDate` / `signedDate`.
 
-Mirror the same logic in `confirmMoveOut` (which forces `lifecycleStage: "ended"`): after updating leases, mark active amendments of that lease as `ended`.
-
-This guarantees: a lease cannot be ended/terminated while its amendment still shows as Actif/active.
+So these three stay as lease-level fields in the Summary grid. If the user wants per-amendment visibility (e.g. "deposit was raised to X on date Y"), that information is already shown in the Amendments section just below.
 
 ## Files touched
-- `src/components/amendments/AmendmentDialog.tsx` — notice field, alert filtering + restyle
-- `src/context/AppContext.tsx` — amendment cascade in `updateLease` + `confirmMoveOut`
-- `src/i18n/translations.ts` — 4 unit labels × 2 locales
+- `src/pages/LeaseDetail.tsx`
+
+No type, context, or translation changes are required; all required keys (`leases.col.unit/role/start/rentShare/chargesShare`) already exist and are used by the deleted "Assigned Units" card. One new key may be needed: `leases.col.end` — will reuse `leases.endDate` if no dedicated key exists.
