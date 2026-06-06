@@ -961,92 +961,95 @@ export default function LeaseDetail() {
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4 text-left">{t("detail.occupancyOps")}</h2>
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Move-In Panel */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center">
-                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-start">
-                   {t("detail.moveIn")}
-                   {(() => {
-                     const d = MOVE_STATUS_DISPLAY[moveInStatus];
-                     const Icon = d.icon;
-                     return (
-                       <span className={`ml-1.5 inline-flex items-center gap-1 text-xs ${d.className}`}>
-                         <Icon className="h-3.5 w-3.5" />
-                         {t(d.labelKey)}
-                       </span>
-                     );
-                   })()}
-                 </CardTitle>
-                 {moveInStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveInForm}>{moveInStatus === "not-scheduled" ? t("detail.schedule") : t("action.edit")}</Button>}
+          {(() => {
+            const miKeys = Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[];
+            const moKeys = Object.keys(lease.moveOutChecklist) as (keyof MoveOutChecklist)[];
+            const maxLen = Math.max(miKeys.length, moKeys.length);
+            const miDisplay = MOVE_STATUS_DISPLAY[moveInStatus];
+            const moDisplay = MOVE_STATUS_DISPLAY[moveOutStatus];
+            const MiIcon = miDisplay.icon;
+            const MoIcon = moDisplay.icon;
+            const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void) => (
+              <div className="flex items-center justify-between gap-2 min-h-[2rem]">
+                <div className="flex items-center gap-1.5 text-sm font-medium">
+                  {label}
+                  <span className={`ml-1.5 inline-flex items-center gap-1 text-xs ${display.className}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                    {t(display.labelKey)}
+                  </span>
+                </div>
+                {status !== "completed" && (
+                  <Button variant="outline" size="sm" onClick={onOpen}>
+                    {status === "not-scheduled" ? t("detail.schedule") : t("action.edit")}
+                  </Button>
+                )}
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-muted-foreground">{t("maintenance.scheduled")}</p><p className="text-sm font-medium text-foreground">{lease.moveInScheduledDate ? formatDate(lease.moveInScheduledDate, locale) : "—"}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("detail.actual")}</p><p className="text-sm font-medium text-foreground">{lease.moveInActualDate ? formatDate(lease.moveInActualDate, locale) : "—"}</p></div>
+            );
+            const renderDates = (scheduled: string | null, actual: string | null) => (
+              <div className="grid grid-cols-2 gap-3 min-h-[3rem]">
+                <div><p className="text-xs text-muted-foreground">{t("maintenance.scheduled")}</p><p className="text-sm font-medium text-foreground">{scheduled ? formatDate(scheduled, locale) : "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("detail.actual")}</p><p className="text-sm font-medium text-foreground">{actual ? formatDate(actual, locale) : "—"}</p></div>
               </div>
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("detail.checklist")}</p>
-                {(Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[]).map(key => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                      checked={lease.moveInChecklist[key]}
-                      onCheckedChange={() => toggleMoveInChecklist(key)}
-                      disabled={moveInStatus === "completed"}
-                    />
-                    <span className={`text-sm ${lease.moveInChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                      {t(MOVE_IN_CHECKLIST_KEY[key])}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+            );
+            return (
+              <>
+                {/* Move-In column */}
+                <Card className="flex flex-col">
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveIn"), miDisplay, MiIcon, moveInStatus, openMoveInForm)}</CardHeader>
+                  <CardContent className="space-y-3 flex-1">
+                    {renderDates(lease.moveInScheduledDate, lease.moveInActualDate)}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide min-h-[1.25rem]">{t("detail.checklist")}</p>
+                      {Array.from({ length: maxLen }).map((_, i) => {
+                        const key = miKeys[i];
+                        if (!key) return <div key={`mi-empty-${i}`} className="h-6" />;
+                        return (
+                          <label key={key} className="flex items-center gap-2 cursor-pointer h-6">
+                            <Checkbox
+                              checked={lease.moveInChecklist[key]}
+                              onCheckedChange={() => toggleMoveInChecklist(key)}
+                              disabled={moveInStatus === "completed"}
+                            />
+                            <span className={`text-sm ${lease.moveInChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                              {t(MOVE_IN_CHECKLIST_KEY[key])}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
 
-          {/* Move-Out Panel */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center">
-                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-start">
-                   {t("detail.moveOut")}
-                   {(() => {
-                     const d = MOVE_STATUS_DISPLAY[moveOutStatus];
-                     const Icon = d.icon;
-                     return (
-                       <span className={`ml-1.5 inline-flex items-center gap-1 text-xs ${d.className}`}>
-                         <Icon className="h-3.5 w-3.5" />
-                         {t(d.labelKey)}
-                       </span>
-                     );
-                   })()}
-                 </CardTitle>
-                 {moveOutStatus !== "completed" && <Button variant="outline" size="sm" onClick={openMoveOutForm}>{moveOutStatus === "not-scheduled" ? t("detail.schedule") : t("action.edit")}</Button>}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-muted-foreground">{t("maintenance.scheduled")}</p><p className="text-sm font-medium text-foreground">{lease.moveOutScheduledDate ? formatDate(lease.moveOutScheduledDate, locale) : "—"}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("detail.actual")}</p><p className="text-sm font-medium text-foreground">{lease.moveOutActualDate ? formatDate(lease.moveOutActualDate, locale) : "—"}</p></div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("detail.checklist")}</p>
-                {(Object.keys(lease.moveOutChecklist) as (keyof MoveOutChecklist)[]).map(key => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                      checked={lease.moveOutChecklist[key]}
-                      onCheckedChange={() => toggleMoveOutChecklist(key)}
-                      disabled={moveOutStatus === "completed"}
-                    />
-                    <span className={`text-sm ${lease.moveOutChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                      {t(MOVE_OUT_CHECKLIST_KEY[key])}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
-            </CardContent>
-          </Card>
+                {/* Move-Out column */}
+                <Card className="flex flex-col">
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, openMoveOutForm)}</CardHeader>
+                  <CardContent className="space-y-3 flex-1">
+                    {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide min-h-[1.25rem]">{t("detail.checklist")}</p>
+                      {Array.from({ length: maxLen }).map((_, i) => {
+                        const key = moKeys[i];
+                        if (!key) return <div key={`mo-empty-${i}`} className="h-6" />;
+                        return (
+                          <label key={key} className="flex items-center gap-2 cursor-pointer h-6">
+                            <Checkbox
+                              checked={lease.moveOutChecklist[key]}
+                              onCheckedChange={() => toggleMoveOutChecklist(key)}
+                              disabled={moveOutStatus === "completed"}
+                            />
+                            <span className={`text-sm ${lease.moveOutChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                              {t(MOVE_OUT_CHECKLIST_KEY[key])}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })()}
 
           {/* Keys & Meters */}
           <Card>
