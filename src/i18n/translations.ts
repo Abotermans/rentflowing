@@ -998,6 +998,11 @@ const en = {
   "leases.assignmentType.other": "Other",
   "reports.occupiedPrimary": "Occupied (primary)",
   "reports.ancillaryLeased": "Ancillary leased",
+  "leases.units.title": "Units",
+  "leases.units.empty": "Add at least one unit to this lease.",
+  "leases.units.total": "Total",
+  "leases.units.grandTotal": "Grand total",
+  "leases.formula.requiresCommonTiers": "Select units that all share the same advance-payment tiers to enable a formula.",
   // Amendments ("avenants")
   "amendments.title": "Amendments",
   "amendments.empty": "No amendments yet",
