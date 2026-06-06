@@ -1842,7 +1842,6 @@ const fr: TranslationKeys = {
   "detail.kindBadge": "Badge",
   "detail.addKey": "Ajouter une clé",
   "detail.addBadge": "Ajouter un badge",
-  "detail.addKeyBadge": "Ajouter une clé ou un badge",
   "detail.type": "Type",
   "detail.ledger": "Grand livre",
   "detail.paymentHistory": "Historique des paiements",
