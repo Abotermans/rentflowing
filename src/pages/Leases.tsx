@@ -600,7 +600,7 @@ export default function Leases() {
       )}
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+        <DialogContent className="w-auto max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle>
             {!editingLease && (
@@ -765,7 +765,7 @@ export default function Leases() {
             </>)}
             {(editingLease || step === 1) && (
             <div>
-              <div className="flex flex-wrap items-start gap-4">
+              <div className="flex items-start gap-4">
                 <div>
                   <Label>{t("leases.formula")} *</Label>
                   <Select
