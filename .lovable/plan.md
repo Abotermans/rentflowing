@@ -1,65 +1,47 @@
-# Formula-Driven Advance Payment Cycles
+# Unify lease units table & formula gating
 
-## Goal
-Make `rentFormula` (1 / 3 / 6 / 12 months) the single source of truth for advance billing. Each cycle becomes a bundled rent receivable + bundled charges receivable; the next cycle's receivables are generated automatically a configurable number of days before the current cycle ends. The lease page replaces its long "Advance Payment" card with a compact summary.
+Refactor the Add/Edit Lease modal so units are managed in a single table (no more separate "Unit" field + "Additional units" block), and so the rent formula applies uniformly across every selected unit.
 
-## Cycle model
+## UI changes (`src/pages/Leases.tsx`)
 
-Cycles are anchored to the lease start date.
+1. **Remove** the standalone Property/Unit two-column row that holds the primary unit `<Select>`.
+2. **Keep** the Property `<Select>` on its own line (units depend on it).
+3. **Replace** the "Additional units" panel with a single **Units** card:
+   - Header: "Units *" on the left, `[+ Add unit]` button top-right (disabled until a Property is chosen).
+   - Table columns:
+     `Unit | Role | Monthly rent | Monthly charges | Total | ✕`
+   - First row added is auto-tagged role = `primary`; subsequent rows default to `parking` (role editable via Select, with a constraint that exactly one row stays `primary`).
+   - Each row's Rent / Charges are editable numbers; `Total = rent + charges` (read-only).
+   - **Footer row**: sums of Monthly rent, Monthly charges, and a Grand total cell.
+   - Empty state copy when no units yet: "Add at least one unit to this lease."
 
-- Cycle 1: `start = lease.startDate`, `end = start + N months − 1 day`
-- Cycle k: starts the day after cycle k−1 ends
-- Last cycle is truncated at `lease.endDate` (shorter cycle, prorated receivables)
-- For `rentFormula = 1`, behavior is unchanged: one monthly rent + one monthly charges receivable per month.
+4. **Formula selector** (`leases.formula`):
+   - Compute `commonTiers = intersection of getAllRentTiers(unit).durationMonths for every selected unit row` (must be non-empty; 1-month is always present if every unit has `baseRent`).
+   - The `<Select>` only lists durations in `commonTiers`.
+   - If no units selected yet, or the intersection is empty, disable the Select and show helper text:
+     *"Select units that all share the same advance-payment tiers to enable a formula."*
+   - When a formula is chosen, **rewrite every row's `rentShare`** to `getMonthlyRentForMonths(unit, months)` for that unit. Charges are untouched.
+   - When a unit is added/removed or its unit id changes, re-validate the current `rentFormula` against the new intersection; if invalid, reset to `1` and clear any advance-cycle UI state.
 
-For `N > 1`, each cycle produces:
-- one **rent** ReceivableItem: `expectedAmount = monthlyRent × cycleMonths`, `dueDate = cycle.start`, `periodMonth = cycle.start` month, label like "Rent — 6 months advance (Jan–Jun 2026)"
-- one **charges** ReceivableItem: `expectedAmount = monthlyCharges × cycleMonths`, same due date, parallel label
-- both tagged with `cycleIndex` and `cycleEndDate` (new optional fields on ReceivableItem) so the UI can group them.
+5. **Lease totals** (`form.monthlyRent`, `form.monthlyCharges`) become **derived** from the table sums on every change (single source of truth = the rows). Remove the separate "Monthly rent / Monthly charges" inputs from step 3 and instead show a read-only summary line ("Monthly rent: X · Charges: Y · Total: Z"). `dueDay`, deposit, notice period, signed date, notes remain editable.
 
-## Auto-generation of the next cycle
+## State / persistence
 
-- New lease field `advanceCycleLeadDays: number | null` (default 15).
-- A pure helper `ensureUpcomingCycles(lease, existingReceivables, today)` returns any missing cycle receivables that fall within `today + leadDays`. Invoked from `AppContext` on load / when leases or today change, same way other derived state is refreshed.
-- Idempotent: a cycle is identified by `(leaseId, cycleIndex)`; never duplicated.
-
-## Removed configuration
-
-Drop from the lease form and lease detail UI: `hasAdvancePayment`, `advancePaymentAmount`, `advancePaymentDate`, `advanceAllocationMethod`, `advanceAppliedTo`, `advanceAllocationStartDate`, `advanceAllocationDurationMonths`, `fixedMonthlyReductionAmount`. The TypeScript fields stay on the `Lease` type as deprecated/optional for one release so existing mock data still loads, but no code reads them anymore.
-
-`computeAdvancePricing` and the prepayment branch of `generateLeaseReceivables` are removed. A new `generateCycleReceivables(lease)` replaces the rent/charges loop for `rentFormula > 1`.
-
-## Lease page UI (new compact section)
-
-Replaces the current "Advance Payment" card. Shown only when `rentFormula > 1`.
-
-Header: **Advance Billing — every {N} months**
-
-Single row of stats (matching the other compact cards):
-- **Paid from** — start of current paid cycle
-- **Paid until** — end of current paid cycle
-- **Total paid (current cycle)** — `monthlyRent × N + monthlyCharges × N`
-- **Monthly rent** / **Monthly charges** — unit values for clarity
-- **Next payment due** — `nextCycle.start` and `nextCycle.totalAmount`
-
-Below: a minimal table of past + upcoming cycles (cycle #, period, total, status from the underlying receivable). Collapsible, collapsed by default like the other new sections.
-
-## Technical notes
-
-Files affected:
-- `src/types/index.ts` — add `advanceCycleLeadDays`, mark old advance fields deprecated
-- `src/types/receivables.ts` — add optional `cycleIndex`, `cycleEndDate` on `ReceivableItem`
-- `src/lib/leaseReceivables.ts` — branch on `rentFormula`: 1 → monthly (unchanged), >1 → bundled cycle receivables; drop prepayment receipt path
-- new `src/lib/leaseCycles.ts` — `computeCycles(lease)`, `ensureUpcomingCycles(...)`, `getCurrentCycle(...)`, `getNextCycle(...)`
-- `src/context/AppContext.tsx` — call `ensureUpcomingCycles` when leases change; remove prepayment receipt creation
-- `src/pages/LeaseDetail.tsx` — remove the existing Advance Payment card, add the new compact `AdvanceCyclesSection`
-- new `src/components/leases/AdvanceCyclesSection.tsx`
-- Lease create/edit form — remove the advance payment block, add `advanceCycleLeadDays` (default 15) under the rent formula field
-- `src/i18n/translations.ts` — new keys (`advanceCycles.*`), remove no-longer-used `rentPrepayment.*` keys
-- `src/lib/leaseReceivables.test.ts` — update existing tests, add cycle tests
-- `src/data/mockData.ts` / `receivablesMockData.ts` — regenerate any seeded prepayment data into cycle receivables
+- Replace `extraUnits` with a unified `unitRows: { unitId; assignmentType; rentShare; chargesShare }[]`.
+- On open (add): start with `[]`; on edit: load all assignments (primary + ancillary), sorted with primary first.
+- On save:
+  - `form.unitId` ← the row flagged `primary`.
+  - `form.monthlyRent` / `monthlyCharges` ← sums of rows.
+  - `setLeaseUnits(leaseId, propertyId, rows.map(...))` — primary row uses `isPrimary: true`, others `false`.
+- Validation: exactly one primary row; every row has a `unitId`; no duplicate unit ids; selected formula must exist on every unit.
+- Keep the existing `validateLeaseUnits` integrity call (it already handles property mismatch / active-lease conflicts).
 
 ## Out of scope
-- Migrating historical prepayment allocations from existing demo leases (data is mock; regenerated on load).
-- Changes to reconciliation logic — cycle receivables flow through the same allocation engine.
-- Owner reporting and invoice-level accounting (per project scope memory).
+
+- Per-unit formulas (explicit user note: to be done later).
+- Changes outside the Add/Edit Lease modal (lease list table, LeaseDetail, receivables generation logic) — the resulting `lease.monthlyRent`/`monthlyCharges` and per-assignment shares feed the existing downstream code unchanged.
+
+## Files touched
+
+- `src/pages/Leases.tsx` — modal markup, `extraUnits` → `unitRows`, formula gating, save mapping.
+- `src/i18n/translations.ts` — add keys: `leases.units.title`, `leases.units.empty`, `leases.units.total`, `leases.units.grandTotal`, `leases.formula.requiresCommonTiers`, French equivalents.
