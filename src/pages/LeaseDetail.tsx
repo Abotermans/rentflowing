@@ -1103,11 +1103,9 @@ export default function LeaseDetail() {
       <Collapsible open={receivablesOpen} onOpenChange={setReceivablesOpen}>
         <Card>
           <CollapsibleTrigger asChild>
-            <CardHeader className="pb-3 cursor-pointer">
-              <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.openReceivables")}</CardTitle>
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
-              </div>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.openReceivables")}</CardTitle>
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
@@ -1151,11 +1149,9 @@ export default function LeaseDetail() {
       <Collapsible open={cashReceiptsOpen} onOpenChange={setCashReceiptsOpen}>
         <Card>
           <CollapsibleTrigger asChild>
-            <CardHeader className="pb-3 cursor-pointer">
-              <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.cashReceipts")}</CardTitle>
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", cashReceiptsOpen && "rotate-180")} />
-              </div>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.cashReceipts")}</CardTitle>
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", cashReceiptsOpen && "rotate-180")} />
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
@@ -1202,11 +1198,9 @@ export default function LeaseDetail() {
           <Collapsible open={allocationsOpen} onOpenChange={setAllocationsOpen}>
             <Card>
               <CollapsibleTrigger asChild>
-                <CardHeader className="pb-3 cursor-pointer">
-                  <div className="flex items-center">
-                    <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.allocationHistory")}</CardTitle>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", allocationsOpen && "rotate-180")} />
-                  </div>
+                <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+                  <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.allocationHistory")}</CardTitle>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", allocationsOpen && "rotate-180")} />
                 </CardHeader>
               </CollapsibleTrigger>
               <CollapsibleContent>
