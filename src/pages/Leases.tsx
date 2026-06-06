@@ -33,6 +33,7 @@ import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
+import { Trash2 as TrashIcon } from "lucide-react";
 import { formatCurrency as fmtCurrency } from "@/lib/formatters";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
