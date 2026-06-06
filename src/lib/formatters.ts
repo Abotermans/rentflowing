@@ -33,6 +33,16 @@ export function getCountryName(countryCode: string, locale: string = "en"): stri
   }
 }
 
+export function getCurrencySymbol(currencyCode: string): string {
+  try {
+    return new Intl.NumberFormat("en", { style: "currency", currency: currencyCode, minimumFractionDigits: 0 })
+      .formatToParts(0)
+      .find(p => p.type === "currency")?.value ?? currencyCode;
+  } catch {
+    return currencyCode;
+  }
+}
+
 export const UNIT_STATUS_KEYS: Record<string, TranslationKey> = {
   vacant: "status.vacant",
   occupied: "status.occupied",
