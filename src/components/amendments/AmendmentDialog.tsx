@@ -87,7 +87,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   // Per-type fields
   const [newEndDate, setNewEndDate] = useState("");
   const [newDeposit, setNewDeposit] = useState("");
-  const [newNotice, setNewNotice] = useState("");
+  const [noticeValue, setNoticeValue] = useState("");
+  const [noticeUnit, setNoticeUnit] = useState<"days" | "weeks" | "months" | "years">("months");
   const [clauseSummary, setClauseSummary] = useState("");
   // Unit-change drafts (multi-row, intuitive add/remove UX)
   type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string };
