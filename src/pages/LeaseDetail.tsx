@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -106,6 +106,10 @@ export default function LeaseDetail() {
   const [formRef, setFormRef] = useState("");
   const [formNotes, setFormNotes] = useState("");
   const [formAutoAllocate, setFormAutoAllocate] = useState(true);
+
+  // Notes edit
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [notesInput, setNotesInput] = useState("");
 
   // Guarantee form
   const [guaranteeSheetOpen, setGuaranteeSheetOpen] = useState(false);
@@ -1259,12 +1263,19 @@ export default function LeaseDetail() {
           </Collapsible>
         );
       })()}
-      {lease.notes && (
-        <Card>
-          <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("common.notes")}</CardTitle></CardHeader>
-          <CardContent><p className="text-sm text-muted-foreground">{lease.notes}</p></CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-medium text-left">{t("common.notes")}</CardTitle>
+          <Button variant="ghost" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
+            <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {lease.notes
+            ? <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lease.notes}</p>
+            : <p className="text-sm text-muted-foreground italic">—</p>}
+        </CardContent>
+      </Card>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.created")}: {formatDate(lease.createdAt, locale)}</span>
