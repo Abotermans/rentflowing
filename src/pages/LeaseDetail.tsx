@@ -1204,7 +1204,7 @@ export default function LeaseDetail() {
               <CollapsibleTrigger asChild>
                 <CardHeader className="pb-3 cursor-pointer">
                   <div className="flex items-center">
-                    <CardTitle className="text-sm font-medium">{t("leaseDetail.allocationHistory")}</CardTitle>
+                    <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.allocationHistory")}</CardTitle>
                     <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", allocationsOpen && "rotate-180")} />
                   </div>
                 </CardHeader>
