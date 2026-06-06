@@ -2239,6 +2239,11 @@ const fr: TranslationKeys = {
   "leases.assignmentType.other": "Autre",
   "reports.occupiedPrimary": "Occupés (principaux)",
   "reports.ancillaryLeased": "Annexes loués",
+  "leases.units.title": "Lots",
+  "leases.units.empty": "Ajoutez au moins un lot à ce bail.",
+  "leases.units.total": "Total",
+  "leases.units.grandTotal": "Total général",
+  "leases.formula.requiresCommonTiers": "Sélectionnez des lots partageant les mêmes paliers de paiement anticipé pour activer une formule.",
   // Avenants
   "amendments.title": "Avenants",
   "amendments.empty": "Aucun avenant",
