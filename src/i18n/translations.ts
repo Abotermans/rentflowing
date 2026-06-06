@@ -2203,6 +2203,7 @@ const fr: TranslationKeys = {
   "leases.col.type": "Type",
   "leases.col.start": "Début",
   "leases.col.signed": "Signé",
+  "leases.col.end": "Fin",
   "leases.col.rentShare": "Quote-part loyer",
   "leases.col.chargesShare": "Quote-part charges",
   "leases.assignmentType.primary": "Principal",
