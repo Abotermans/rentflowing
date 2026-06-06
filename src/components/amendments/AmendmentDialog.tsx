@@ -729,28 +729,36 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           </div>
         </div>
 
-        {((liveValidation && (liveValidation.blockers.length > 0 || liveValidation.warnings.length > 0)) || coverageGap) && (
-          <Alert variant={liveValidation?.blockers.length ? "destructive" : "default"}>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <ul className="list-disc ml-4 text-xs">
-                {liveValidation?.blockers.map(b => {
-                  const k = `amendments.error.${b.code}` as TranslationKey;
-                  const tr = (t as (key: TranslationKey) => string)(k);
-                  return <li key={b.code}>{tr && tr !== k ? tr : b.message}</li>;
-                })}
-                {liveValidation?.warnings.map(w => {
-                  const k = `amendments.error.${w.code}` as TranslationKey;
-                  const tr = (t as (key: TranslationKey) => string)(k);
-                  return <li key={w.code} className="text-warning">{tr && tr !== k ? tr : w.message}</li>;
-                })}
-                {coverageGap && (
-                  <li className="text-warning">{t("amendments.gapWarning")}</li>
-                )}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
+        {(() => {
+          const blockers = liveValidation?.blockers ?? [];
+          // Past-date warning is already surfaced inline next to the effective date field.
+          const warnings = (liveValidation?.warnings ?? []).filter(w => w.code !== "AMD_EFFECTIVE_IN_PAST");
+          if (blockers.length === 0 && warnings.length === 0 && !coverageGap) return null;
+          const isDestructive = blockers.length > 0;
+          return (
+            <Alert
+              variant={isDestructive ? "destructive" : "default"}
+              className={isDestructive ? "" : "border-warning/40 bg-warning/10 text-warning [&>svg]:text-warning"}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <ul className="list-disc ml-4 text-xs space-y-0.5">
+                  {blockers.map(b => {
+                    const k = `amendments.error.${b.code}` as TranslationKey;
+                    const tr = (t as (key: TranslationKey) => string)(k);
+                    return <li key={b.code}>{tr && tr !== k ? tr : b.message}</li>;
+                  })}
+                  {warnings.map(w => {
+                    const k = `amendments.error.${w.code}` as TranslationKey;
+                    const tr = (t as (key: TranslationKey) => string)(k);
+                    return <li key={w.code}>{tr && tr !== k ? tr : w.message}</li>;
+                  })}
+                  {coverageGap && <li>{t("amendments.gapWarning")}</li>}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          );
+        })()}
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
