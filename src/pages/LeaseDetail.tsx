@@ -786,7 +786,7 @@ export default function LeaseDetail() {
 
       {/* Financial Summary */}
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
@@ -954,7 +954,7 @@ export default function LeaseDetail() {
 
       {/* Occupancy Operations */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t("detail.occupancyOps")}</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4 text-center">{t("detail.occupancyOps")}</h2>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Move-In Panel */}
           <Card>
@@ -1045,7 +1045,7 @@ export default function LeaseDetail() {
 
           {/* Keys & Meters */}
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.keysMeters")}</CardTitle></CardHeader>
+            <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("detail.keysMeters")}</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1242,7 +1242,7 @@ export default function LeaseDetail() {
       })()}
       {lease.notes && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("common.notes")}</CardTitle></CardHeader>
+          <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{lease.notes}</p></CardContent>
         </Card>
       )}
