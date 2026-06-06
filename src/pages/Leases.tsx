@@ -761,12 +761,18 @@ export default function Leases() {
               <Label>{t("leases.formula")} *</Label>
               <Select
                 value={String(form.rentFormula)}
+                disabled={commonTiers.length === 0}
                 onValueChange={(raw) => {
                   const months = Number(raw) as RentFormula;
-                  const rent = selectedUnit ? getMonthlyRentForMonths(selectedUnit, months) : null;
-                  const effectiveRent = rent ?? selectedUnit?.baseRent ?? form.monthlyRent;
+                  // Rewrite every row's rent share to the chosen tier for that unit.
+                  setUnitRows(prev => prev.map(r => {
+                    const u = units.find(uu => uu.id === r.unitId);
+                    if (!u) return r;
+                    const tier = getMonthlyRentForMonths(u, months);
+                    return tier == null ? r : { ...r, rentShare: tier };
+                  }));
                   setForm(f => ({
-                    ...f, rentFormula: months, monthlyRent: effectiveRent,
+                    ...f, rentFormula: months,
                     hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
                     advanceAllocationMethod: null, advanceAppliedTo: null,
                     advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
@@ -776,21 +782,21 @@ export default function Leases() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {availableTiers.length === 0 && (
+                  {commonTiers.length === 0 && (
                     <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
                   )}
-                  {availableTiers.map(tier => (
+                  {commonTiers.map(tier => (
                     <SelectItem key={tier.durationMonths} value={String(tier.durationMonths)}>
                       {tier.durationMonths === 1
                         ? t("leases.formula.monthly")
                         : `${tier.durationMonths} months`}
-                      {selectedProperty
-                        ? ` — ${fmtCurrency(tier.monthlyRent, selectedProperty.currencyCode, selectedProperty.locale)}/mo`
-                        : ` — ${tier.monthlyRent}/mo`}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {commonTiers.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
+              )}
               {form.rentFormula !== 1 && (
                 <>
                   <p className="text-xs text-muted-foreground mt-1">
