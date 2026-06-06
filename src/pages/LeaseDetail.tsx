@@ -1105,7 +1105,7 @@ export default function LeaseDetail() {
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-3 cursor-pointer">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium">{t("leaseDetail.openReceivables")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.openReceivables")}</CardTitle>
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
               </div>
             </CardHeader>
@@ -1153,7 +1153,7 @@ export default function LeaseDetail() {
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-3 cursor-pointer">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium">{t("leaseDetail.cashReceipts")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.cashReceipts")}</CardTitle>
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", cashReceiptsOpen && "rotate-180")} />
               </div>
             </CardHeader>
