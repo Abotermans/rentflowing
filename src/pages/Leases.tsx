@@ -600,7 +600,7 @@ export default function Leases() {
       )}
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="w-[920px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <DialogContent className="w-[760px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle>
             {!editingLease && (
