@@ -816,8 +816,8 @@ export default function LeaseDetail() {
       {hasAdvance && (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">{t("rentPrepayment.title")}</CardTitle>
+            <div className="flex items-center">
+              <CardTitle className="text-sm font-medium flex-1 text-center">{t("rentPrepayment.title")}</CardTitle>
               <StatusBadge status={advancePricing.advanceStatus} />
             </div>
           </CardHeader>
