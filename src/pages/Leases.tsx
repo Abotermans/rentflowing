@@ -765,7 +765,7 @@ export default function Leases() {
             </>)}
             {(editingLease || step === 1) && (
             <div>
-              <div className="flex flex-wrap items-end gap-4">
+              <div className="flex flex-wrap items-start gap-4">
                 <div>
                   <Label>{t("leases.formula")} *</Label>
                   <Select
@@ -805,19 +805,19 @@ export default function Leases() {
                   </Select>
                 </div>
                 {form.rentFormula !== 1 && (
-                  <div className="flex items-end gap-2">
-                    <div>
-                      <Label className="flex items-center gap-1 whitespace-nowrap">
-                        Generate next cycle
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[260px]">
-                            <p className="text-xs">Number of days before the next payment is due that open receivables are created. Default is 15 days.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </Label>
+                  <div>
+                    <Label className="flex items-center gap-1 whitespace-nowrap">
+                      Generate next cycle
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[260px]">
+                          <p className="text-xs">Number of days before the next payment is due that open receivables are created. Default is 15 days.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </Label>
+                    <div className="flex items-center gap-1.5">
                       <Input
                         type="number"
                         min={0}
@@ -826,8 +826,8 @@ export default function Leases() {
                         onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
                         className="h-9 w-[80px] [field-sizing:content] min-w-[60px]"
                       />
+                      <span className="text-sm text-muted-foreground">days before next payment is due</span>
                     </div>
-                    <span className="text-sm text-muted-foreground mb-2">days before next payment is due</span>
                   </div>
                 )}
               </div>
