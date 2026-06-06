@@ -764,11 +764,13 @@ export default function Leases() {
             </>)}
             {(editingLease || step === 1) && (
             <div>
-              <Label>{t("leases.formula")} *</Label>
-              <Select
-                value={String(form.rentFormula)}
-                disabled={commonTiers.length === 0}
-                onValueChange={(raw) => {
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <Label>{t("leases.formula")} *</Label>
+                  <Select
+                    value={String(form.rentFormula)}
+                    disabled={commonTiers.length === 0}
+                    onValueChange={(raw) => {
                   const months = Number(raw) as RentFormula;
                   // Rewrite every row's rent share to the chosen tier for that unit.
                   setUnitRows(prev => prev.map(r => {
@@ -784,10 +786,10 @@ export default function Leases() {
                     advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
                     fixedMonthlyReductionAmount: null,
                   }));
-                }}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-auto min-w-[140px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
                   {commonTiers.length === 0 && (
                     <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
                   )}
@@ -798,30 +800,30 @@ export default function Leases() {
                         : `${tier.durationMonths} months`}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-              {commonTiers.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
-              )}
-              {form.rentFormula !== 1 && (
-                <>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Tenant is billed every {form.rentFormula} months: rent + charges receivables are generated per cycle.
-                  </p>
-                  <div className="mt-3">
-                    <Label>Generate next cycle receivables (days before due)</Label>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.rentFormula !== 1 && (
+                  <div>
+                    <Label className="whitespace-nowrap">Generate next cycle (days before)</Label>
                     <Input
                       type="number"
                       min={0}
                       max={120}
                       value={form.advanceCycleLeadDays ?? 15}
                       onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
+                      className="h-9 w-[80px] [field-sizing:content] min-w-[60px]"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Default 15 days. Controls how early the next cycle's open receivables are created.
-                    </p>
                   </div>
-                </>
+                )}
+              </div>
+              {commonTiers.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
+              )}
+              {form.rentFormula !== 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tenant is billed every {form.rentFormula} months. Default lead time 15 days controls how early the next cycle's open receivables are created.
+                </p>
               )}
             </div>
             )}
