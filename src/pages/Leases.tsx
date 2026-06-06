@@ -912,8 +912,9 @@ export default function Leases() {
                 {step < 3 ? (
                   <Button onClick={() => {
                     if (step === 1) {
-                      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId) {
-                        toast({ title: "Validation Error", description: "Reference, property, and unit are required.", variant: "destructive" });
+                      const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+                      if (!form.leaseReference.trim() || !form.propertyId || unitRows.length === 0 || !primaryRow?.unitId || unitRows.some(r => !r.unitId)) {
+                        toast({ title: "Validation Error", description: "Reference, property, and at least one unit (with a Primary role) are required.", variant: "destructive" });
                         return;
                       }
                     } else if (step === 2) {
