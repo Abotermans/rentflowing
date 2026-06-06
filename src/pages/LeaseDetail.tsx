@@ -1003,7 +1003,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center">
-                 <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-center">
                    {t("detail.moveOut")}
                    {(() => {
                      const d = MOVE_STATUS_DISPLAY[moveOutStatus];
