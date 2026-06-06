@@ -45,7 +45,7 @@ describe("generateLeaseReceivables", () => {
   it("6-month formula: 2 bundled cycles on a 12-month lease (rent + charges per cycle)", () => {
     n = 0;
     const res = generateLeaseReceivables(
-      lease({ rentFormula: 6 }),
+      lease({ rentFormula: 6, advanceCycleLeadDays: 400 }),
       { currencyCode: "EUR", genId, today: "2026-01-01" }
     );
     expect(res.receivables.length).toBe(4); // 2 cycles × (rent + charges)
@@ -64,7 +64,7 @@ describe("generateLeaseReceivables", () => {
   it("3-month formula with leftover month produces a final truncated cycle", () => {
     n = 0;
     const res = generateLeaseReceivables(
-      lease({ rentFormula: 3, endDate: "2026-04-30" }), // 4 months total
+      lease({ rentFormula: 3, endDate: "2026-04-30", advanceCycleLeadDays: 400 }), // 4 months total
       { currencyCode: "EUR", genId, today: "2026-01-01" }
     );
     const rents = res.receivables.filter(r => r.itemType === "rent").sort((a, b) => a.dueDate.localeCompare(b.dueDate));

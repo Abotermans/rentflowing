@@ -825,18 +825,16 @@ export default function LeaseDetail() {
                 <p className="text-sm font-medium text-foreground">{currentCycle ? formatDate(currentCycle.endDate, locale) : "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{t("advanceCycle.cycleTotal")}</p>
-                <p className="text-lg font-bold text-foreground">{currentCycle ? formatCurrency(currentCycle.total, currency, locale) : "—"}</p>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueDate")}</p>
+                <p className="text-sm font-medium text-foreground">{nextCycle ? formatDate(nextCycle.startDate, locale) : "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{t("advanceCycle.cycleProgress")}</p>
-                <p className="text-sm font-medium text-foreground">
-                  {currentCycle ? `${currentCycle.index} / ${cycles.length}` : `— / ${cycles.length}`}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueAmount")}</p>
+                <p className="text-sm font-medium text-foreground">{nextCycle ? formatCurrency(nextCycle.total, currency, locale) : "—"}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 border-t pt-3">
               <div>
                 <p className="text-xs text-muted-foreground">{t("advanceCycle.monthlyRent")}</p>
                 <p className="text-sm font-medium text-foreground">{formatCurrency(effRent, currency, locale)}</p>
@@ -846,12 +844,8 @@ export default function LeaseDetail() {
                 <p className="text-sm font-medium text-foreground">{formatCurrency(effCharges, currency, locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueDate")}</p>
-                <p className="text-sm font-medium text-foreground">{nextCycle ? formatDate(nextCycle.startDate, locale) : "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueAmount")}</p>
-                <p className="text-sm font-medium text-foreground">{nextCycle ? formatCurrency(nextCycle.total, currency, locale) : "—"}</p>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.cycleTotal")}</p>
+                <p className="text-lg font-bold text-foreground">{currentCycle ? formatCurrency(currentCycle.total, currency, locale) : "—"}</p>
               </div>
             </div>
 
@@ -873,6 +867,7 @@ export default function LeaseDetail() {
                         <TableHead className="text-xs text-right">{t("advanceCycle.charges")}</TableHead>
                         <TableHead className="text-xs text-right">{t("advanceCycle.total")}</TableHead>
                         <TableHead className="text-xs text-right">{t("advanceCycle.paid")}</TableHead>
+                        <TableHead className="text-xs">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -880,6 +875,24 @@ export default function LeaseDetail() {
                         const isCurrent = currentCycle?.index === c.index;
                         const paid = getCyclePaidAmount(c, receivables);
                         const fullyPaid = paid >= c.total - 0.005;
+                        let status: "paid" | "late" | "current" | "future";
+                        let statusLabel: string;
+                        let statusClass: string;
+                        if (fullyPaid) {
+                          status = "paid"; statusLabel = "Paid";
+                          statusClass = "bg-success/10 text-success border-success/20";
+                        } else if (c.endDate < todayIso) {
+                          status = "late"; statusLabel = "Late";
+                          statusClass = "bg-destructive/10 text-destructive border-destructive/20";
+                        } else if (c.startDate <= todayIso) {
+                          status = "current"; statusLabel = paid > 0 ? "Partially paid" : "Due";
+                          statusClass = paid > 0
+                            ? "bg-warning/10 text-warning border-warning/20"
+                            : "bg-primary/10 text-primary border-primary/20";
+                        } else {
+                          status = "future"; statusLabel = "Future";
+                          statusClass = "bg-muted text-muted-foreground border-border";
+                        }
                         return (
                           <TableRow key={c.index} className={isCurrent ? "bg-primary/5 font-medium" : ""}>
                             <TableCell className="text-xs">{c.index}{isCurrent && <span className="text-primary text-[10px] ml-1">●</span>}</TableCell>
@@ -888,6 +901,11 @@ export default function LeaseDetail() {
                             <TableCell className="text-xs text-right">{formatCurrency(c.chargesTotal, currency, locale)}</TableCell>
                             <TableCell className="text-xs text-right font-medium">{formatCurrency(c.total, currency, locale)}</TableCell>
                             <TableCell className={`text-xs text-right ${fullyPaid ? "text-success" : "text-muted-foreground"}`}>{formatCurrency(paid, currency, locale)}</TableCell>
+                            <TableCell className="text-xs">
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-medium ${statusClass}`}>
+                                {statusLabel}
+                              </span>
+                            </TableCell>
                           </TableRow>
                         );
                       })}

@@ -264,6 +264,13 @@ export interface Lease {
   advanceAllocationDurationMonths: number | null;
   fixedMonthlyReductionAmount: number | null;
 
+  /**
+   * Lead time (in days) before a cycle's start date at which the cycle's
+   * rent + charges receivables are generated. Only used when
+   * `rentFormula > 1`. Defaults to 15 when null/undefined.
+   */
+  advanceCycleLeadDays?: number | null;
+
   createdAt: string;
   updatedAt: string;
 }

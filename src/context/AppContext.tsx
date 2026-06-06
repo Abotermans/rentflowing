@@ -14,6 +14,7 @@ import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
 import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
 import { autoAllocate } from "@/lib/reconciliation";
 import { generateLeaseReceivables } from "@/lib/leaseReceivables";
+import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
 import {
   migrateLegacyLeaseAssignments,
@@ -244,6 +245,73 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allocationRules, setAllocationRules] = useState<AllocationRule[]>(initialAllocationRules);
   const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>(initialAllocationRuleUnitShares);
   const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>(initialCostAllocationResults);
+
+  // ===== Advance billing: auto-generate cycle receivables when their lead
+  // window opens. Idempotent — keyed on (leaseId, cycleIndex). Runs whenever
+  // leases change (or on mount).
+  useEffect(() => {
+    const today = now();
+    const toAdd: ReceivableItem[] = [];
+    for (const lease of leases) {
+      if ((lease.rentFormula || 1) <= 1) continue;
+      if (lease.lifecycleStage === "ended" || lease.lifecycleStage === "terminated") continue;
+      const property = properties.find(p => p.id === lease.propertyId);
+      const currencyCode = property?.currencyCode ?? "EUR";
+      const cycles = computeCycles(lease);
+      const leadDays = lease.advanceCycleLeadDays ?? 15;
+      const horizon = new Date(Date.UTC(
+        Number(today.slice(0, 4)),
+        Number(today.slice(5, 7)) - 1,
+        Number(today.slice(8, 10)) + leadDays,
+      )).toISOString().slice(0, 10);
+      for (const cycle of cycles) {
+        if (cycle.index > 1 && cycle.startDate > horizon) continue;
+        const already = receivableItems.some(
+          r => r.leaseId === lease.id && r.cycleIndex === cycle.index,
+        );
+        if (already) continue;
+        const ts = today;
+        if (cycle.rentTotal > 0) {
+          const rent: ReceivableItem = {
+            id: genId("ri"),
+            leaseId: lease.id, tenantId: lease.primaryTenantId,
+            propertyId: lease.propertyId, unitId: lease.unitId,
+            itemType: "rent",
+            label: `Rent — ${cycle.months}-month advance (cycle ${cycle.index}, ${cycle.months} mo)`,
+            periodMonth: cycle.startDate.slice(0, 7), dueDate: cycle.startDate,
+            currencyCode,
+            expectedAmount: cycle.rentTotal, allocatedAmount: 0, outstandingAmount: cycle.rentTotal,
+            status: "open", priority: 10, origin: "lease-schedule", notes: "",
+            cycleIndex: cycle.index, cycleEndDate: cycle.endDate,
+            createdAt: ts, updatedAt: ts,
+          };
+          rent.status = computeReceivableStatus(rent);
+          toAdd.push(rent);
+        }
+        if (cycle.chargesTotal > 0) {
+          const charges: ReceivableItem = {
+            id: genId("ri"),
+            leaseId: lease.id, tenantId: lease.primaryTenantId,
+            propertyId: lease.propertyId, unitId: lease.unitId,
+            itemType: "charges",
+            label: `Charges — ${cycle.months}-month advance (cycle ${cycle.index}, ${cycle.months} mo)`,
+            periodMonth: cycle.startDate.slice(0, 7), dueDate: cycle.startDate,
+            currencyCode,
+            expectedAmount: cycle.chargesTotal, allocatedAmount: 0, outstandingAmount: cycle.chargesTotal,
+            status: "open", priority: 20, origin: "lease-schedule", notes: "",
+            cycleIndex: cycle.index, cycleEndDate: cycle.endDate,
+            createdAt: ts, updatedAt: ts,
+          };
+          charges.status = computeReceivableStatus(charges);
+          toAdd.push(charges);
+        }
+      }
+    }
+    if (toAdd.length > 0) {
+      setReceivableItems(prev => [...prev, ...toAdd]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leases, properties]);
 
   // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
