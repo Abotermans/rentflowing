@@ -1118,9 +1118,6 @@ export default function LeaseDetail() {
                     ))}
                   </div>
                 )}
-                <div className="flex gap-2 pt-1">
-                  <Button variant="outline" size="sm" onClick={() => addKeyItem("key")}><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addKeyBadge")}</Button>
-                </div>
               </div>
             </CardContent>
           </Card>
