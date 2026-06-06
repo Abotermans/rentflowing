@@ -34,7 +34,7 @@ import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
-import { formatCurrency as fmtCurrency } from "@/lib/formatters";
+import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -698,7 +698,7 @@ export default function Leases() {
                                 onChange={ev => updateUnitRow(idx, { rentShare: Number(ev.target.value) || 0 })}
                                 className="h-8 w-[90px] text-right"
                               />
-                              <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
+                              <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
                             </div>
                           </TableCell>
                           <TableCell className="py-1.5">
@@ -709,7 +709,7 @@ export default function Leases() {
                                 onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
                                 className="h-8 w-[90px] text-right"
                               />
-                              <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
+                              <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
                             </div>
                           </TableCell>
                           <TableCell className="py-1.5 text-right font-medium">
