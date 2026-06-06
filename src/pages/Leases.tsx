@@ -222,13 +222,35 @@ export default function Leases() {
   };
 
   const handleSave = () => {
+    // Derive primary unit + totals from the rows (single source of truth).
+    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
+    const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+    if (unitRows.length === 0 || !primaryRow || !primaryRow.unitId) {
+      toast({ title: "Validation Error", description: "Add at least one unit with role Primary.", variant: "destructive" });
+      return;
+    }
+    if (unitRows.some(r => !r.unitId)) {
+      toast({ title: "Validation Error", description: "Every row in Units must have a unit selected.", variant: "destructive" });
+      return;
+    }
+    if (unitRows.filter(r => r.assignmentType === "primary").length !== 1) {
+      toast({ title: "Validation Error", description: "Exactly one unit must be marked as Primary.", variant: "destructive" });
+      return;
+    }
+    const dupCheck = new Set(unitRows.map(r => r.unitId));
+    if (dupCheck.size !== unitRows.length) {
+      toast({ title: "Validation Error", description: "Duplicate units in the table.", variant: "destructive" });
+      return;
+    }
+    const effectiveUnitId = primaryRow.unitId;
     if (editingLease) {
-      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.primaryTenantId || !form.startDate || !form.endDate) {
+      if (!form.leaseReference.trim() || !form.propertyId || !form.primaryTenantId || !form.startDate || !form.endDate) {
         toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
         return;
       }
     } else {
-      if (!form.leaseReference.trim() || !form.propertyId || !form.unitId || !form.startDate || !form.endDate) {
+      if (!form.leaseReference.trim() || !form.propertyId || !form.startDate || !form.endDate) {
         toast({ title: "Validation Error", description: "Reference, property, unit, start date, and end date are required.", variant: "destructive" });
         return;
       }
@@ -244,11 +266,13 @@ export default function Leases() {
         }
       }
     }
-    const unitForSave = units.find(u => u.id === form.unitId);
-    const tierValue = unitForSave ? getMonthlyRentForMonths(unitForSave, form.rentFormula) : null;
-    if (tierValue == null) {
-      toast({ title: "Validation Error", description: "Selected rent tier is not available for this unit.", variant: "destructive" });
-      return;
+    // Every selected unit must support the chosen rent formula.
+    for (const row of unitRows) {
+      const u = units.find(uu => uu.id === row.unitId);
+      if (!u || getMonthlyRentForMonths(u, form.rentFormula) == null) {
+        toast({ title: "Validation Error", description: "Selected rent formula is not available for every unit. Pick a formula common to all units.", variant: "destructive" });
+        return;
+      }
     }
     // Validate status transition
     if (editingLease && form.lifecycleStage !== editingLease.lifecycleStage) {
@@ -268,57 +292,27 @@ export default function Leases() {
       }
     }
     if (form.lifecycleStage === "active") {
-      const existing = getActiveLease(form.unitId);
+      const existing = getActiveLease(effectiveUnitId);
       if (existing && existing.id !== editingLease?.id) {
         toast({ title: "Conflict", description: `Unit already has an active lease: ${existing.leaseReference}`, variant: "destructive" });
         return;
       }
     }
-    // Validate the full assignment draft (primary + extras): property mismatch,
-    // duplicates, multi-primary, units already used on another active lease.
-    const ancRentDraft = extraUnits
-      .filter(e => e.unitId && e.unitId !== form.unitId)
-      .reduce((s, e) => s + (e.rentShare ?? 0), 0);
-    const ancChargesDraft = extraUnits
-      .filter(e => e.unitId && e.unitId !== form.unitId)
-      .reduce((s, e) => s + (e.chargesShare ?? 0), 0);
-    const primaryRentDraft = form.monthlyRent - ancRentDraft;
-    const primaryChargesDraft = form.monthlyCharges - ancChargesDraft;
-    if (primaryRentDraft < 0 || primaryChargesDraft < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Sum of ancillary rent / charges cannot exceed the lease total.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const draft: DraftAssignment[] = [
-      {
-        unitId: form.unitId,
-        assignmentType: "primary",
-        isPrimary: true,
-        startDate: form.startDate,
-        endDate: null,
-        rentShare: primaryRentDraft,
-        chargesShare: primaryChargesDraft,
-      },
-      ...extraUnits
-        .filter(e => e.unitId && e.unitId !== form.unitId)
-        .map(e => ({
-          unitId: e.unitId,
-          assignmentType: e.assignmentType,
-          isPrimary: false,
-          startDate: form.startDate,
-          endDate: null as string | null,
-          rentShare: e.rentShare,
-          chargesShare: e.chargesShare,
-        })),
-    ];
+    // Build the assignment draft from the unified rows.
+    const draft: DraftAssignment[] = unitRows.map(r => ({
+      unitId: r.unitId,
+      assignmentType: r.assignmentType,
+      isPrimary: r.assignmentType === "primary",
+      startDate: form.startDate,
+      endDate: null,
+      rentShare: r.rentShare,
+      chargesShare: r.chargesShare,
+    }));
     const unitsValidation = validateLeaseUnits(
       editingLease?.id ?? null,
       form.propertyId,
       draft,
-      { monthlyRent: form.monthlyRent, monthlyCharges: form.monthlyCharges },
+      { monthlyRent: totalRent, monthlyCharges: totalCharges },
       integrityState,
     );
     if (!unitsValidation.allowed) {
