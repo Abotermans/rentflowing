@@ -713,23 +713,13 @@ export default function Leases() {
                   const months = Number(raw) as RentFormula;
                   const rent = selectedUnit ? getMonthlyRentForMonths(selectedUnit, months) : null;
                   const effectiveRent = rent ?? selectedUnit?.baseRent ?? form.monthlyRent;
-                  if (months === 1) {
-                    setForm(f => ({
-                      ...f, rentFormula: months, monthlyRent: effectiveRent,
-                      hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
-                      advanceAllocationMethod: null, advanceAppliedTo: null,
-                      advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
-                      fixedMonthlyReductionAmount: null,
-                    }));
-                  } else {
-                    setForm(f => ({
-                      ...f, rentFormula: months, monthlyRent: effectiveRent,
-                      hasAdvancePayment: true, advancePaymentAmount: effectiveRent * months,
-                      advanceAllocationMethod: 'spread-evenly', advanceAppliedTo: 'rent',
-                      advanceAllocationStartDate: f.startDate || null,
-                      advanceAllocationDurationMonths: months, fixedMonthlyReductionAmount: null,
-                    }));
-                  }
+                  setForm(f => ({
+                    ...f, rentFormula: months, monthlyRent: effectiveRent,
+                    hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+                    advanceAllocationMethod: null, advanceAppliedTo: null,
+                    advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
+                    fixedMonthlyReductionAmount: null,
+                  }));
                 }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -749,18 +739,11 @@ export default function Leases() {
                   ))}
                 </SelectContent>
               </Select>
-              {form.rentFormula !== 1 && form.advancePaymentAmount != null && (() => {
-                const startISO = form.startDate || new Date().toISOString().slice(0, 10);
-                const start = new Date(startISO + "T00:00:00Z");
-                const months = form.advanceAllocationDurationMonths || form.rentFormula;
-                const lastDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + months, 0));
-                const until = lastDay.toISOString().slice(0, 10);
-                return (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Tenant prepays {form.advancePaymentAmount.toLocaleString()} for {months} months — rent paid until {until}.
-                  </p>
-                );
-              })()}
+              {form.rentFormula !== 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tenant is billed every {form.rentFormula} months: rent + charges receivables are generated per cycle.
+                </p>
+              )}
             </div>
             )}
             {(editingLease || step === 3) && (<>
