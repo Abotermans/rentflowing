@@ -410,6 +410,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return closeOpenAssignmentsForLease(lease.id, moveOutDate, prev, ts);
     });
+    // Cascade: end any active amendments on this lease.
+    setAmendments(prevAm => prevAm.map(a =>
+      a.leaseId === lease.id && a.status === "active"
+        ? { ...a, status: "ended", updatedAt: ts }
+        : a,
+    ));
   }, []);
 
   // ===== Lease Unit Assignments =====
