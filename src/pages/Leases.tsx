@@ -600,7 +600,7 @@ export default function Leases() {
       )}
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="w-auto max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <DialogContent className="w-[920px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle>
             {!editingLease && (
@@ -629,9 +629,9 @@ export default function Leases() {
               </Select>
             </div>
             {/* Unified units table */}
-            <div className="rounded-md border border-border">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-                <Label className="text-xs">{t("leases.units.title")} *</Label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>{t("leases.units.title")} *</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -646,7 +646,7 @@ export default function Leases() {
               {unitRows.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic px-3 py-4 text-center">{t("leases.units.empty")}</p>
               ) : (
-                <Table className="w-auto">
+                <Table className="w-full">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
@@ -696,7 +696,7 @@ export default function Leases() {
                                 type="number" min={0}
                                 value={row.rentShare}
                                 onChange={ev => updateUnitRow(idx, { rentShare: Number(ev.target.value) || 0 })}
-                                className="h-8 text-right w-[90px] [field-sizing:content] min-w-[70px]"
+                                className="h-8 w-[90px] text-right"
                               />
                               <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
                             </div>
@@ -707,7 +707,7 @@ export default function Leases() {
                                 type="number" min={0}
                                 value={row.chargesShare}
                                 onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
-                                className="h-8 text-right w-[90px] [field-sizing:content] min-w-[70px]"
+                                className="h-8 w-[90px] text-right"
                               />
                               <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
                             </div>
