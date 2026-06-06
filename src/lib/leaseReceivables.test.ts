@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Lease } from "@/types";
 import { DEFAULT_MOVE_IN_CHECKLIST, DEFAULT_MOVE_OUT_CHECKLIST } from "@/types";
 import { generateLeaseReceivables } from "./leaseReceivables";
-import { computeAdvancePricing } from "./advancePricing";
+import { computeCycles, getCurrentCycle, getNextCycle } from "./leaseCycles";
 
 let n = 0;
 const genId = (p: string) => `${p}-${++n}`;
@@ -31,90 +31,62 @@ function lease(over: Partial<Lease> = {}): Lease {
 }
 
 describe("generateLeaseReceivables", () => {
-  it("generates one rent + one charges receivable per month, all open by default", () => {
+  it("monthly formula: one rent + one charges receivable per month, all open", () => {
     n = 0;
     const res = generateLeaseReceivables(lease(), { currencyCode: "EUR", genId, today: "2026-01-01" });
-    expect(res.receivables.length).toBe(24); // 12 months × 2 lines
+    expect(res.receivables.length).toBe(24);
     expect(res.receivables.filter(r => r.itemType === "rent")).toHaveLength(12);
     expect(res.receivables.filter(r => r.itemType === "charges")).toHaveLength(12);
     expect(res.prepaymentReceipt).toBeNull();
+    expect(res.allocations).toHaveLength(0);
     expect(res.receivables.every(r => r.outstandingAmount === r.expectedAmount)).toBe(true);
   });
 
-  it("12-month prepayment marks all 12 rent receivables paid (charges still open)", () => {
+  it("6-month formula: 2 bundled cycles on a 12-month lease (rent + charges per cycle)", () => {
     n = 0;
-    const l = lease({
-      hasAdvancePayment: true, advancePaymentAmount: 12000,
-      advanceAllocationMethod: "spread-evenly", advanceAppliedTo: "rent",
-      advanceAllocationDurationMonths: 12, advanceAllocationStartDate: "2026-01",
-      advancePaymentDate: "2026-01-01",
-    });
-    const res = generateLeaseReceivables(l, { currencyCode: "EUR", genId, today: "2026-01-01" });
-    expect(res.prepaymentReceipt).not.toBeNull();
-    expect(res.prepaymentReceipt!.amountReceived).toBe(12000);
-    expect(res.prepaymentReceipt!.unmatchedAmount).toBe(0);
-    const rents = res.receivables.filter(r => r.itemType === "rent");
-    expect(rents.every(r => r.status === "paid")).toBe(true);
-    const charges = res.receivables.filter(r => r.itemType === "charges");
-    expect(charges.every(r => r.outstandingAmount === 100)).toBe(true);
-    // 12 rent allocations
-    expect(res.allocations).toHaveLength(12);
-  });
-
-  it("6-month prepayment on a 12-month lease covers months 1-6 only", () => {
-    n = 0;
-    const l = lease({
-      hasAdvancePayment: true, advancePaymentAmount: 6000,
-      advanceAllocationMethod: "spread-evenly", advanceAppliedTo: "rent",
-      advanceAllocationDurationMonths: 6, advanceAllocationStartDate: "2026-01",
-      advancePaymentDate: "2026-01-01",
-    });
-    const res = generateLeaseReceivables(l, { currencyCode: "EUR", genId, today: "2026-01-01" });
+    const res = generateLeaseReceivables(
+      lease({ rentFormula: 6 }),
+      { currencyCode: "EUR", genId, today: "2026-01-01" }
+    );
+    expect(res.receivables.length).toBe(4); // 2 cycles × (rent + charges)
     const rents = res.receivables.filter(r => r.itemType === "rent").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    expect(rents.slice(0, 6).every(r => r.status === "paid")).toBe(true);
-    expect(rents.slice(6).every(r => r.outstandingAmount === 1000)).toBe(true);
-    expect(res.allocations).toHaveLength(6);
+    expect(rents).toHaveLength(2);
+    expect(rents[0].expectedAmount).toBe(6000);
+    expect(rents[0].dueDate).toBe("2026-01-01");
+    expect(rents[0].cycleIndex).toBe(1);
+    expect(rents[0].cycleEndDate).toBe("2026-06-30");
+    expect(rents[1].dueDate).toBe("2026-07-01");
+    expect(rents[1].cycleEndDate).toBe("2026-12-31");
+    const charges = res.receivables.filter(r => r.itemType === "charges");
+    expect(charges.every(c => c.expectedAmount === 600)).toBe(true);
   });
 
-  it("rent-and-charges mode allocates across both", () => {
+  it("3-month formula with leftover month produces a final truncated cycle", () => {
     n = 0;
-    const l = lease({
-      hasAdvancePayment: true, advancePaymentAmount: 2200, // 2 months of (1000+100)
-      advanceAllocationMethod: "spread-evenly", advanceAppliedTo: "rent-and-charges",
-      advanceAllocationDurationMonths: 2, advanceAllocationStartDate: "2026-01",
-      advancePaymentDate: "2026-01-01",
-    });
-    const res = generateLeaseReceivables(l, { currencyCode: "EUR", genId, today: "2026-01-01" });
-    const jan = res.receivables.filter(r => r.periodMonth === "2026-01");
-    const feb = res.receivables.filter(r => r.periodMonth === "2026-02");
-    expect(jan.every(r => r.status === "paid")).toBe(true);
-    expect(feb.every(r => r.status === "paid")).toBe(true);
-    expect(res.prepaymentReceipt!.unmatchedAmount).toBe(0);
+    const res = generateLeaseReceivables(
+      lease({ rentFormula: 3, endDate: "2026-04-30" }), // 4 months total
+      { currencyCode: "EUR", genId, today: "2026-01-01" }
+    );
+    const rents = res.receivables.filter(r => r.itemType === "rent").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    expect(rents).toHaveLength(2);
+    expect(rents[0].expectedAmount).toBe(3000);
+    expect(rents[1].expectedAmount).toBe(1000); // truncated to 1 month
+    expect(rents[1].cycleEndDate).toBe("2026-04-30");
   });
 });
 
-describe("computeAdvancePricing (read model)", () => {
-  it("never discounts rent — effective rent equals tier rent", () => {
-    const l = lease({
-      hasAdvancePayment: true, advancePaymentAmount: 12000,
-      advanceAllocationMethod: "spread-evenly", advanceAppliedTo: "rent",
-      advanceAllocationDurationMonths: 12, advanceAllocationStartDate: "2026-01",
-    });
-    const r = computeAdvancePricing(l, new Date("2026-01-15"));
-    expect(r.effectiveMonthlyRent).toBe(1000);
-    expect(r.effectiveMonthlyDue).toBe(1100);
+describe("computeCycles", () => {
+  it("monthly leases produce one cycle per month", () => {
+    const cycles = computeCycles(lease());
+    expect(cycles).toHaveLength(12);
+    expect(cycles[0]).toMatchObject({ index: 1, months: 1, startDate: "2026-01-01", endDate: "2026-01-31", total: 1100 });
   });
 
-  it("exposes prepaidUntilDate at the end of the last covered month", () => {
-    const l = lease({
-      hasAdvancePayment: true, advancePaymentAmount: 12000,
-      advanceAllocationMethod: "spread-evenly", advanceAppliedTo: "rent",
-      advanceAllocationDurationMonths: 12, advanceAllocationStartDate: "2026-01",
-    });
-    const r = computeAdvancePricing(l, new Date("2026-01-15"));
-    expect(r.prepaidUntilDate).toBe("2026-12-31");
-    expect(r.durationMonths).toBe(12);
-    expect(r.monthsCovered).toBe(1);
-    expect(r.monthsRemaining).toBe(11);
+  it("getCurrentCycle / getNextCycle locate cycles around today", () => {
+    const cycles = computeCycles(lease({ rentFormula: 6 }));
+    expect(getCurrentCycle(cycles, "2026-03-15")?.index).toBe(1);
+    expect(getNextCycle(cycles, "2026-03-15")?.index).toBe(2);
+    expect(getCurrentCycle(cycles, "2026-08-01")?.index).toBe(2);
+    expect(getNextCycle(cycles, "2026-08-01")).toBeNull();
   });
 });
