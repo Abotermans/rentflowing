@@ -147,7 +147,11 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       const find = (f: AmendmentFieldName) => chs.find(c => c.fieldName === f);
       setNewEndDate(String(find("leaseEndDate")?.newValue ?? ""));
       setNewDeposit(String(find("depositAmount")?.newValue ?? ""));
-      setNewNotice(String(find("noticePeriodText")?.newValue ?? ""));
+      {
+        const parsed = parseNoticeText(String(find("noticePeriodText")?.newValue ?? ""));
+        setNoticeValue(parsed.value);
+        setNoticeUnit(parsed.unit);
+      }
       setClauseSummary(String(find("clauseSummary")?.newValue ?? ""));
       const edits: Record<string, { rentShare?: string; chargesShare?: string }> = {};
       for (const c of chs) {
@@ -178,7 +182,11 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setEffectiveDate(""); setSignedDate("");
       setNewEndDate(lease.endDate);
       setNewDeposit(String(lease.depositOrGuaranteeAmount ?? ""));
-      setNewNotice(lease.noticePeriodText);
+      {
+        const parsed = parseNoticeText(lease.noticePeriodText);
+        setNoticeValue(parsed.value);
+        setNoticeUnit(parsed.unit);
+      }
       setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]); setEditedShares({});
       setTenantsToAdd([]); setTenantsToRemove([]);
     }
@@ -200,8 +208,9 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     if (newDeposit && Number(newDeposit) !== (lease.depositOrGuaranteeAmount ?? 0)) {
       push("depositAmount", "set", lease.depositOrGuaranteeAmount, Number(newDeposit));
     }
-    if (newNotice && newNotice !== lease.noticePeriodText) {
-      push("noticePeriodText", "set", lease.noticePeriodText, newNotice);
+    const noticeSerialized = serializeNotice(noticeValue, noticeUnit);
+    if (noticeSerialized && noticeSerialized !== lease.noticePeriodText) {
+      push("noticePeriodText", "set", lease.noticePeriodText, noticeSerialized);
     }
     if (clauseSummary) {
       push("clauseSummary", "set", "", clauseSummary);
@@ -236,7 +245,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
     }
     return out;
-  }, [newEndDate, newDeposit, newNotice, clauseSummary,
+  }, [newEndDate, newDeposit, noticeValue, noticeUnit, clauseSummary,
       unitsToAdd, unitsToRemove, editedShares, currentUnits, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
