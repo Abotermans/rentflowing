@@ -643,7 +643,7 @@ export default function LeaseDetail() {
 
       {/* Lease Summary */}
       <Card>
-        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.leaseSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-base font-medium text-left">{t("detail.leaseSummary")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {(() => {
             const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
@@ -794,7 +794,7 @@ export default function LeaseDetail() {
 
       {/* Financial Summary */}
       <Card>
-        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.financialSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-base font-medium text-left">{t("detail.financialSummary")}</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
@@ -824,7 +824,7 @@ export default function LeaseDetail() {
       {isAdvanceBilling && (
         <Card>
           <CardHeader className="pb-3 flex-row items-center space-y-0">
-            <CardTitle className="text-sm font-medium flex-1 text-left">
+            <CardTitle className="text-base font-medium flex-1 text-left">
               {t("advanceCycle.title")} <span className="text-muted-foreground">— {t("advanceCycle.everyN").replace("{n}", String(lease.rentFormula))}</span>
             </CardTitle>
           </CardHeader>
@@ -936,7 +936,7 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center">
-            <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-start">
+            <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
               {t("detail.depositGuarantee")}
               {guarantee && (() => {
                 const d = GUARANTEE_DISPLAY[guarantee.status];
@@ -1067,7 +1067,7 @@ export default function LeaseDetail() {
 
           {/* Meters */}
           <Card>
-            <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.meters")}</CardTitle></CardHeader>
+            <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-base font-medium text-left">{t("detail.meters")}</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-x-3 gap-y-2 items-center text-xs">
                 <div className="text-muted-foreground"></div>
@@ -1091,7 +1091,7 @@ export default function LeaseDetail() {
           {/* Keys & Badges */}
           <Card>
             <CardHeader className="pb-3 flex-row items-center space-y-0 gap-2">
-              <CardTitle className="text-sm font-medium text-left flex-1">{t("detail.keysBadges")}</CardTitle>
+              <CardTitle className="text-base font-medium text-left flex-1">{t("detail.keysBadges")}</CardTitle>
               <Button variant="outline" size="sm" onClick={() => addKeyItem("key")}><Plus className="h-3.5 w-3.5 mr-1" />{t("action.add")}</Button>
             </CardHeader>
             <CardContent>
@@ -1133,7 +1133,7 @@ export default function LeaseDetail() {
         <Card>
           <CollapsibleTrigger asChild>
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-              <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.openReceivables")}</CardTitle>
+              <CardTitle className="text-base font-medium flex-1 text-left">{t("leaseDetail.openReceivables")}</CardTitle>
               <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
             </CardHeader>
           </CollapsibleTrigger>
@@ -1179,7 +1179,7 @@ export default function LeaseDetail() {
         <Card>
           <CollapsibleTrigger asChild>
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-              <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.cashReceipts")}</CardTitle>
+              <CardTitle className="text-base font-medium flex-1 text-left">{t("leaseDetail.cashReceipts")}</CardTitle>
               <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", cashReceiptsOpen && "rotate-180")} />
             </CardHeader>
           </CollapsibleTrigger>
@@ -1228,7 +1228,7 @@ export default function LeaseDetail() {
             <Card>
               <CollapsibleTrigger asChild>
                 <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-                  <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.allocationHistory")}</CardTitle>
+                  <CardTitle className="text-base font-medium flex-1 text-left">{t("leaseDetail.allocationHistory")}</CardTitle>
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", allocationsOpen && "rotate-180")} />
                 </CardHeader>
               </CollapsibleTrigger>
@@ -1265,7 +1265,7 @@ export default function LeaseDetail() {
       })()}
       <Card>
         <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium text-left">{t("common.notes")}</CardTitle>
+          <CardTitle className="text-base font-medium text-left">{t("common.notes")}</CardTitle>
           <Button variant="ghost" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
             <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
           </Button>
