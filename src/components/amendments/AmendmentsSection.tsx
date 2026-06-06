@@ -81,8 +81,8 @@ export function AmendmentsSection({ leaseId }: Props) {
 
   return (
     <Card>
-      <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+      <CardHeader className="pb-3 flex flex-row items-center">
+        <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-center">
           <FileEdit className="h-4 w-4" />{t("amendments.title")} <span className="text-muted-foreground">({ams.length})</span>
         </CardTitle>
         <Button size="sm" className="h-8" onClick={() => { setEditing(null); setDialogOpen(true); }}>
