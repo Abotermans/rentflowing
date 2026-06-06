@@ -1003,7 +1003,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center">
-                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-center">
+                 <CardTitle className="text-sm font-medium flex items-center gap-1.5 flex-1 justify-start">
                    {t("detail.moveOut")}
                    {(() => {
                      const d = MOVE_STATUS_DISPLAY[moveOutStatus];
@@ -1078,7 +1078,7 @@ export default function LeaseDetail() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-center">{t("detail.returnStatus")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-left">{t("detail.returnStatus")}</CardTitle>
                 <div className="flex items-center gap-2">
                   {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
                   <Button variant="outline" size="sm" onClick={openReturnForm}>{lease.returnStatus ? t("detail.update") : t("detail.setStatus")}</Button>
@@ -1105,7 +1105,7 @@ export default function LeaseDetail() {
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-3 cursor-pointer">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.openReceivables")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.openReceivables")}</CardTitle>
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
               </div>
             </CardHeader>
@@ -1153,7 +1153,7 @@ export default function LeaseDetail() {
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-3 cursor-pointer">
               <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.cashReceipts")}</CardTitle>
+                <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.cashReceipts")}</CardTitle>
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", cashReceiptsOpen && "rotate-180")} />
               </div>
             </CardHeader>
@@ -1204,7 +1204,7 @@ export default function LeaseDetail() {
               <CollapsibleTrigger asChild>
                 <CardHeader className="pb-3 cursor-pointer">
                   <div className="flex items-center">
-                    <CardTitle className="text-sm font-medium flex-1 text-center">{t("leaseDetail.allocationHistory")}</CardTitle>
+                    <CardTitle className="text-sm font-medium flex-1 text-left">{t("leaseDetail.allocationHistory")}</CardTitle>
                     <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", allocationsOpen && "rotate-180")} />
                   </div>
                 </CardHeader>
@@ -1242,7 +1242,7 @@ export default function LeaseDetail() {
       })()}
       {lease.notes && (
         <Card>
-          <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-center">{t("common.notes")}</CardTitle></CardHeader>
+          <CardHeader className="pb-3 items-center"><CardTitle className="text-sm font-medium text-left">{t("common.notes")}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground">{lease.notes}</p></CardContent>
         </Card>
       )}
