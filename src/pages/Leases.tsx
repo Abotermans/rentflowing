@@ -645,14 +645,14 @@ export default function Leases() {
               {unitRows.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic px-3 py-4 text-center">{t("leases.units.empty")}</p>
               ) : (
-                <Table>
+                <Table className="w-auto">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="h-9">{t("leases.col.unit")}</TableHead>
-                      <TableHead className="h-9 w-[150px]">{t("leases.col.role")}</TableHead>
-                      <TableHead className="h-9 w-[110px] text-right">{t("leases.monthlyRent")}</TableHead>
-                      <TableHead className="h-9 w-[110px] text-right">{t("leases.monthlyCharges")}</TableHead>
-                      <TableHead className="h-9 w-[110px] text-right">{t("leases.units.total")}</TableHead>
+                      <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
+                      <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
+                      <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
+                      <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
+                      <TableHead className="h-9 w-auto text-right">{t("leases.units.total")}</TableHead>
                       <TableHead className="h-9 w-[40px]" />
                     </TableRow>
                   </TableHeader>
@@ -665,7 +665,7 @@ export default function Leases() {
                         <TableRow key={idx}>
                           <TableCell className="py-1.5">
                             <Select value={row.unitId} onValueChange={v => updateUnitRow(idx, { unitId: v })}>
-                              <SelectTrigger className="h-8"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
+                              <SelectTrigger className="h-8 w-auto min-w-[140px]"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                               <SelectContent>
                                 {options.map(u => {
                                   const existing = getActiveLease(u.id);
@@ -681,7 +681,7 @@ export default function Leases() {
                           </TableCell>
                           <TableCell className="py-1.5">
                             <Select value={row.assignmentType} onValueChange={v => setRoleForRow(idx, v as LeaseUnitAssignmentType)}>
-                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-8 w-auto min-w-[110px]"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {(["primary","parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
                                   <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
@@ -690,20 +690,26 @@ export default function Leases() {
                             </Select>
                           </TableCell>
                           <TableCell className="py-1.5">
-                            <Input
-                              type="number" min={0}
-                              value={row.rentShare}
-                              onChange={ev => updateUnitRow(idx, { rentShare: Number(ev.target.value) || 0 })}
-                              className="h-8 text-right"
-                            />
+                            <div className="flex items-center gap-1 justify-end">
+                              <Input
+                                type="number" min={0}
+                                value={row.rentShare}
+                                onChange={ev => updateUnitRow(idx, { rentShare: Number(ev.target.value) || 0 })}
+                                className="h-8 text-right w-[90px] [field-sizing:content] min-w-[70px]"
+                              />
+                              <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
+                            </div>
                           </TableCell>
                           <TableCell className="py-1.5">
-                            <Input
-                              type="number" min={0}
-                              value={row.chargesShare}
-                              onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
-                              className="h-8 text-right"
-                            />
+                            <div className="flex items-center gap-1 justify-end">
+                              <Input
+                                type="number" min={0}
+                                value={row.chargesShare}
+                                onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
+                                className="h-8 text-right w-[90px] [field-sizing:content] min-w-[70px]"
+                              />
+                              <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
+                            </div>
                           </TableCell>
                           <TableCell className="py-1.5 text-right font-medium">
                             {fmtCurrency(rowTotal, selectedProperty?.currencyCode, selectedProperty?.locale)}
