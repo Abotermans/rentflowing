@@ -675,6 +675,7 @@ export default function LeaseDetail() {
                           <TableHead className="h-8 text-xs">{t("leases.col.unit")}</TableHead>
                           <TableHead className="h-8 text-xs">{t("leases.col.role")}</TableHead>
                           <TableHead className="h-8 text-xs">{t("leases.col.start")}</TableHead>
+                          <TableHead className="h-8 text-xs">{t("leases.col.signed")}</TableHead>
                           <TableHead className="h-8 text-xs text-right">{t("leases.col.rentShare")}</TableHead>
                           <TableHead className="h-8 text-xs text-right">{t("leases.col.chargesShare")}</TableHead>
                           <TableHead className="h-8 text-xs text-right">{t("common.total")}</TableHead>
@@ -686,6 +687,22 @@ export default function LeaseDetail() {
                           if (!u) return null;
                           const isAnc = !a.isPrimary && isAncillaryAssignmentType(a.assignmentType);
                           const rowTotal = (a.rentShare ?? 0) + (a.chargesShare ?? 0);
+                          // Per-unit signed date: lease.signedDate for inception units;
+                          // otherwise the signedDate of the amendment that added this unit.
+                          let signedFor: string | null = null;
+                          if (a.startDate === lease.startDate) {
+                            signedFor = lease.signedDate;
+                          } else {
+                            const addChange = integrityState.amendmentChanges.find(c =>
+                              c.fieldName === "unitAssignments" &&
+                              c.changeType === "add" &&
+                              c.metadata?.unitId === a.unitId,
+                            );
+                            if (addChange) {
+                              const am = integrityState.amendments.find(x => x.id === addChange.amendmentId);
+                              signedFor = am?.signedDate ?? null;
+                            }
+                          }
                           return (
                             <TableRow key={a.id} className="h-9">
                               <TableCell className="py-1 text-xs">
@@ -697,6 +714,7 @@ export default function LeaseDetail() {
                                 </span>
                               </TableCell>
                               <TableCell className="py-1 text-xs text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
+                              <TableCell className="py-1 text-xs text-muted-foreground">{signedFor ? formatDate(signedFor, locale) : "—"}</TableCell>
                               <TableCell className="py-1 text-right text-xs tabular-nums">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
                               <TableCell className="py-1 text-right text-xs tabular-nums">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
                               <TableCell className="py-1 text-right text-xs font-medium tabular-nums">{formatCurrency(rowTotal, currency, locale)}</TableCell>
@@ -709,7 +727,7 @@ export default function LeaseDetail() {
                           const grand = sumR + sumC;
                           return (
                             <TableRow className="border-t border-border bg-muted/30 h-9">
-                              <TableCell colSpan={3} className="py-1 text-xs font-medium text-muted-foreground">Σ</TableCell>
+                              <TableCell colSpan={4} className="py-1 text-xs font-medium text-muted-foreground">Σ</TableCell>
                               <TableCell className="py-1 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
                               <TableCell className="py-1 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
                               <TableCell className="py-1 text-right text-xs font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
@@ -730,7 +748,6 @@ export default function LeaseDetail() {
             <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{t("leaseDetail.dueDayOfMonth").replace("{day}", String(lease.dueDayOfMonth))}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.deposit")}</p><p className="text-sm font-medium text-foreground">{effDeposit != null ? formatCurrency(effDeposit, currency, locale) : "—"}{amSuffix(depositAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{effNotice || "—"}{amSuffix(noticeAmNum)}</p></div>
-            {lease.signedDate && <div><p className="text-xs text-muted-foreground">{t("leases.signedDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.signedDate, locale)}</p></div>}
             <div><p className="text-xs text-muted-foreground">{t("detail.noticeGiven")}</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? t("common.yes") : t("common.no")}</p></div>
             {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
             {lease.intendedMoveOutDate && <div><p className="text-xs text-muted-foreground">{t("detail.intendedMoveOut")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.intendedMoveOutDate, locale)}</p></div>}
