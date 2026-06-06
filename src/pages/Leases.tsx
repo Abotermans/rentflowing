@@ -741,9 +741,24 @@ export default function Leases() {
                 </SelectContent>
               </Select>
               {form.rentFormula !== 1 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tenant is billed every {form.rentFormula} months: rent + charges receivables are generated per cycle.
-                </p>
+                <>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Tenant is billed every {form.rentFormula} months: rent + charges receivables are generated per cycle.
+                  </p>
+                  <div className="mt-3">
+                    <Label>Generate next cycle receivables (days before due)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={120}
+                      value={form.advanceCycleLeadDays ?? 15}
+                      onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Default 15 days. Controls how early the next cycle's open receivables are created.
+                    </p>
+                  </div>
+                </>
               )}
             </div>
             )}
