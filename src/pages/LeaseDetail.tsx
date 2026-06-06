@@ -659,29 +659,53 @@ export default function LeaseDetail() {
                   <p className="text-xs text-muted-foreground mb-1.5">
                     {sortedAssignments.length > 1 ? `${t("table.unit")}s · ${sortedAssignments.length}` : t("table.unit")}
                   </p>
-                  <div className="space-y-1">
-                    {sortedAssignments.map(a => {
-                      const u = units.find(x => x.id === a.unitId);
-                      const prop = u ? properties.find(p => p.id === u.propertyId) : property;
-                      if (!u) return null;
-                      return (
-                        <div key={a.id} className="flex items-center gap-2 text-sm flex-wrap">
-                          <Link to={`/units/${u.id}`} className="font-medium text-primary hover:underline">{u.unitCode} — {u.unitLabel}</Link>
-                          {a.isPrimary && sortedAssignments.length > 1 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.role.primary")}</span>
-                          )}
-                          {!a.isPrimary && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t(`leases.assignmentType.${a.assignmentType}` as TranslationKey)}</span>
-                          )}
-                          {prop && (
-                            <>
-                              <span className="text-muted-foreground">·</span>
-                              <Link to={`/properties/${prop.id}`} className="text-muted-foreground hover:text-primary hover:underline text-xs">{prop.name}</Link>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="rounded border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="h-8">
+                          <TableHead className="h-8 text-xs">{t("leases.col.unit")}</TableHead>
+                          <TableHead className="h-8 text-xs">{t("leases.col.role")}</TableHead>
+                          <TableHead className="h-8 text-xs">{t("leases.col.start")}</TableHead>
+                          <TableHead className="h-8 text-xs">{t("leases.endDate")}</TableHead>
+                          <TableHead className="h-8 text-xs text-right">{t("leases.col.rentShare")}</TableHead>
+                          <TableHead className="h-8 text-xs text-right">{t("leases.col.chargesShare")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedAssignments.map(a => {
+                          const u = units.find(x => x.id === a.unitId);
+                          if (!u) return null;
+                          const isAnc = !a.isPrimary && isAncillaryAssignmentType(a.assignmentType);
+                          return (
+                            <TableRow key={a.id} className="h-9">
+                              <TableCell className="py-1 text-xs">
+                                <Link to={`/units/${u.id}`} className="font-medium text-primary hover:underline">{u.unitCode} — {u.unitLabel}</Link>
+                              </TableCell>
+                              <TableCell className="py-1">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${a.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                                  {a.isPrimary ? t("leases.role.primary") : (isAnc ? t(`leases.assignmentType.${a.assignmentType}` as TranslationKey) : t("leases.role.secondary"))}
+                                </span>
+                              </TableCell>
+                              <TableCell className="py-1 text-xs text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
+                              <TableCell className="py-1 text-xs text-muted-foreground">{a.endDate ? formatDate(a.endDate, locale) : formatDate(effEndDate, locale)}</TableCell>
+                              <TableCell className="py-1 text-right text-xs tabular-nums">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
+                              <TableCell className="py-1 text-right text-xs tabular-nums">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {(() => {
+                          const sumR = sortedAssignments.reduce((s, a) => s + (a.rentShare ?? 0), 0);
+                          const sumC = sortedAssignments.reduce((s, a) => s + (a.chargesShare ?? 0), 0);
+                          return (
+                            <TableRow className="border-t border-border bg-muted/30 h-9">
+                              <TableCell colSpan={4} className="py-1 text-xs font-medium text-muted-foreground">Σ</TableCell>
+                              <TableCell className="py-1 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
+                              <TableCell className="py-1 text-right text-xs font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
+                            </TableRow>
+                          );
+                        })()}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </div>
