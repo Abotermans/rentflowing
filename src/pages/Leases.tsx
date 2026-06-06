@@ -600,7 +600,7 @@ export default function Leases() {
       )}
 
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="w-auto max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <DialogContent className="w-[920px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle>
             {!editingLease && (
@@ -629,9 +629,9 @@ export default function Leases() {
               </Select>
             </div>
             {/* Unified units table */}
-            <div className="rounded-md border border-border">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-                <Label className="text-xs">{t("leases.units.title")} *</Label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>{t("leases.units.title")} *</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -646,7 +646,7 @@ export default function Leases() {
               {unitRows.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic px-3 py-4 text-center">{t("leases.units.empty")}</p>
               ) : (
-                <Table className="w-auto">
+                <Table className="w-full">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
@@ -696,7 +696,7 @@ export default function Leases() {
                                 type="number" min={0}
                                 value={row.rentShare}
                                 onChange={ev => updateUnitRow(idx, { rentShare: Number(ev.target.value) || 0 })}
-                                className="h-8 text-right w-[90px] [field-sizing:content] min-w-[70px]"
+                                className="h-8 w-[90px] text-right"
                               />
                               <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
                             </div>
@@ -707,7 +707,7 @@ export default function Leases() {
                                 type="number" min={0}
                                 value={row.chargesShare}
                                 onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
-                                className="h-8 text-right w-[90px] [field-sizing:content] min-w-[70px]"
+                                className="h-8 w-[90px] text-right"
                               />
                               <span className="text-xs text-muted-foreground">{selectedProperty?.currencyCode ?? ""}</span>
                             </div>
@@ -765,9 +765,9 @@ export default function Leases() {
             </>)}
             {(editingLease || step === 1) && (
             <div>
-              <div className="flex items-start gap-4">
+              <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-4">
                 <div>
-                  <Label>{t("leases.formula")} *</Label>
+                  <Label className="mb-2 flex h-5 items-center">{t("leases.formula")} *</Label>
                   <Select
                     value={String(form.rentFormula)}
                     disabled={commonTiers.length === 0}
@@ -789,7 +789,7 @@ export default function Leases() {
                   }));
                     }}
                   >
-                    <SelectTrigger className="h-9 w-auto min-w-[140px]"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
                   {commonTiers.length === 0 && (
                     <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
@@ -806,7 +806,7 @@ export default function Leases() {
                 </div>
                 {form.rentFormula !== 1 && (
                   <div>
-                    <Label className="flex items-center gap-1 whitespace-nowrap">
+                    <Label className="mb-2 flex h-5 items-center gap-1 whitespace-nowrap">
                       Generate next cycle
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -817,14 +817,14 @@ export default function Leases() {
                         </TooltipContent>
                       </Tooltip>
                     </Label>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex h-9 items-center gap-1">
                       <Input
                         type="number"
                         min={0}
                         max={120}
                         value={form.advanceCycleLeadDays ?? 15}
                         onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
-                        className="h-9 w-[80px] [field-sizing:content] min-w-[60px]"
+                        className="h-9 w-[80px]"
                       />
                       <span className="text-sm text-muted-foreground">days before next payment is due</span>
                     </div>
