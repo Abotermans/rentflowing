@@ -1,41 +1,42 @@
-## Goal
+# Amendment dialog polish + lease/amendment consistency
 
-Make every section on the Lease detail page (`src/pages/LeaseDetail.tsx`) visually consistent: same title size/weight/color, no icon prefixes on section titles, consistent right-side controls (status badge + action button), and consistent inline meta-status (icon + label).
+## 1. Remove duplicate "effective date in past" warning
+In `src/components/amendments/AmendmentDialog.tsx`, the bottom Alert iterates over `liveValidation.warnings`. Filter out `AMD_EFFECTIVE_IN_PAST` from the displayed warnings (the date-field tooltip already shows it). Drop the alert entirely when only that warning remains and there's no other content.
 
-## Current inconsistencies
+## 2. Structured notice period field
+Replace the free-text `newNotice` input with a numeric input + unit selector.
 
-Card titles all use `text-sm font-medium` (good), but several prefix the title with an icon — breaking consistency with cards that don't:
-- "Avance" (Wallet)
-- "Dépôt / Garantie" (Shield)
-- "Move-In" (Home)
-- "Move-Out" (PackageCheck)
-- "Keys & Meters" (Key)
-- "Return Status" (Gauge)
-- "Notes" (StickyNote)
+- New state: `newNoticeValue` (string number) and `newNoticeUnit` ("days" | "weeks" | "months" | "years"), default unit `months`.
+- On open (existing amendment or lease default), parse `noticePeriodText` with regex `^\s*(\d+)\s*(day|week|month|year)s?\s*$` (case-insensitive, FR aware: `jour|semaine|mois|année|an`). If no match, fall back to value `""` and unit `months` and keep raw text only as a tooltip hint — but per the requirement we standardize, so we replace.
+- Serialize back to `noticePeriodText` as `"<n> <unit>"` (canonical English form, e.g. `"3 months"`). The downstream code only reads it as a string label, so a stable canonical format is acceptable.
+- UI: two side-by-side controls under the same `Label` ("Préavis"): `Input type="number" min="0"` (w-20) + `Select` with localized unit options.
+- Add translation keys: `amendments.noticeUnit.days|weeks|months|years` (EN + FR: jours/semaines/mois/années).
 
-Also:
-- The "Occupancy Operations" group heading uses `<h2>` with a `Truck` icon — inconsistent with all other sections which are plain card titles with no icons.
-- The inline status pill rendered inside `CardTitle` (Guarantee, Move-In, Move-Out) keeps its small status icon — that's a status indicator, not a section icon, and stays.
+## 3. Improve bottom Alert design
+Currently it uses `<Alert variant="destructive">` or default with a single `AlertTriangle` and bullets. Improvements:
 
-## Changes (single file: `src/pages/LeaseDetail.tsx`)
+- When the alert is a "warning-only" state (no blockers), use a new soft amber styling: `border-warning/40 bg-warning/10 text-warning-foreground` with the `AlertTriangle` colored `text-warning`.
+- When destructive: keep variant but ensure the icon inherits `text-destructive` (already does via the variant — verify).
+- Render blockers vs warnings as two grouped sections with a small colored leading dot, instead of mixed bullet list with inline `text-warning` class.
 
-1. Section titles — remove leading icons, keep `text-sm font-medium`, keep inline status pill on right of label where present:
-   - Advance Payment card: drop `<Wallet />` from CardTitle.
-   - Deposit/Guarantee card: drop `<Shield />` (keep guarantee status pill).
-   - Move-In card: drop `<Home />` (keep move-in status pill).
-   - Move-Out card: drop `<PackageCheck />` (keep move-out status pill).
-   - Keys & Meters card: drop `<Key />`.
-   - Return Status card: drop `<Gauge />`.
-   - Notes card: drop `<StickyNote />`.
+Concretely: split list into two `<ul>`s; render warning icon color matching the alert tone; tighten spacing.
 
-2. Occupancy Operations group heading: drop the `Truck` icon and use the same visual treatment as other section headings (plain `h2` with `text-lg font-semibold text-foreground mb-4`, no `flex/gap`, no icon).
+## 4. Cascade lease end/terminate to active amendments
+In `src/context/AppContext.tsx`, the `updateLease` cascade block (around lines 346–365) detects `becameClosed` when a lease transitions from `active` → `ended`/`terminated`. Add an amendment cascade inside that block:
 
-3. Drop now-unused lucide imports: `Wallet`, `Shield`, `Home`, `PackageCheck`, `Key`, `Gauge`, `StickyNote`, `Truck`. Keep `Zap` and `Droplet` (still used inline inside the meters grid as data-row indicators, not section titles). Keep `Clock`, `Bell`, `AlertTriangle`, `CheckCircle2`, `XCircle`, `Undo2`, `RefreshCw`, `Trash2`, `MoreVertical`, `Plus`, `ChevronDown`, `Banknote`, `ArrowLeft` (used elsewhere).
+```
+setAmendments(prev => prev.map(a =>
+  a.leaseId === l.id && a.status === "active"
+    ? { ...a, status: l.lifecycleStage === "terminated" ? "terminated" : "ended", updatedAt: ts }
+    : a,
+));
+```
 
-4. No changes to colors, layout, spacing, padding, action buttons, or business logic. Right-side `Button variant="outline" size="sm"` and status badges are already consistent and untouched.
+Mirror the same logic in `confirmMoveOut` (which forces `lifecycleStage: "ended"`): after updating leases, mark active amendments of that lease as `ended`.
 
-## Out of scope
+This guarantees: a lease cannot be ended/terminated while its amendment still shows as Actif/active.
 
-- Color tokens, spacing, typography tokens — already consistent.
-- Header/kebab area, banners, dialogs, tables.
-- Inline icons inside data rows (electricity/water indicators, footer `Clock` timestamps) — these are data semantics, not section titles.
+## Files touched
+- `src/components/amendments/AmendmentDialog.tsx` — notice field, alert filtering + restyle
+- `src/context/AppContext.tsx` — amendment cascade in `updateLease` + `confirmMoveOut`
+- `src/i18n/translations.ts` — 4 unit labels × 2 locales
