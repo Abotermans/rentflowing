@@ -985,6 +985,7 @@ const en = {
   "leases.col.type": "Type",
   "leases.col.start": "Start",
   "leases.col.signed": "Signed",
+  "leases.col.end": "End",
   "leases.col.rentShare": "Rent share",
   "leases.col.chargesShare": "Charges share",
   "leases.assignmentType.primary": "Primary",
