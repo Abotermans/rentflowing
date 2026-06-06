@@ -825,18 +825,16 @@ export default function LeaseDetail() {
                 <p className="text-sm font-medium text-foreground">{currentCycle ? formatDate(currentCycle.endDate, locale) : "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{t("advanceCycle.cycleTotal")}</p>
-                <p className="text-lg font-bold text-foreground">{currentCycle ? formatCurrency(currentCycle.total, currency, locale) : "—"}</p>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueDate")}</p>
+                <p className="text-sm font-medium text-foreground">{nextCycle ? formatDate(nextCycle.startDate, locale) : "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{t("advanceCycle.cycleProgress")}</p>
-                <p className="text-sm font-medium text-foreground">
-                  {currentCycle ? `${currentCycle.index} / ${cycles.length}` : `— / ${cycles.length}`}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueAmount")}</p>
+                <p className="text-sm font-medium text-foreground">{nextCycle ? formatCurrency(nextCycle.total, currency, locale) : "—"}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 border-t pt-3">
               <div>
                 <p className="text-xs text-muted-foreground">{t("advanceCycle.monthlyRent")}</p>
                 <p className="text-sm font-medium text-foreground">{formatCurrency(effRent, currency, locale)}</p>
@@ -846,12 +844,8 @@ export default function LeaseDetail() {
                 <p className="text-sm font-medium text-foreground">{formatCurrency(effCharges, currency, locale)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueDate")}</p>
-                <p className="text-sm font-medium text-foreground">{nextCycle ? formatDate(nextCycle.startDate, locale) : "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t("advanceCycle.nextDueAmount")}</p>
-                <p className="text-sm font-medium text-foreground">{nextCycle ? formatCurrency(nextCycle.total, currency, locale) : "—"}</p>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.cycleTotal")}</p>
+                <p className="text-lg font-bold text-foreground">{currentCycle ? formatCurrency(currentCycle.total, currency, locale) : "—"}</p>
               </div>
             </div>
 
