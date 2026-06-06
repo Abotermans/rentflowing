@@ -1062,57 +1062,65 @@ export default function LeaseDetail() {
             );
           })()}
 
-          {/* Keys & Meters */}
+          {/* Meters */}
           <Card>
-            <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.keysMeters")}</CardTitle></CardHeader>
+            <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.meters")}</CardTitle></CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><p className="text-xs text-muted-foreground">{t("detail.keysHandedOver")}</p><div className="flex items-center gap-2 mt-1"><Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyHandoverCount} onChange={e => handleUpdateKeys(parseInt(e.target.value) || 0, lease.keyReturnCount)} /></div></div>
-                  <div><p className="text-xs text-muted-foreground">{t("detail.keysReturned")}</p><div className="flex items-center gap-2 mt-1"><Input type="number" min={0} className="w-20 h-8 text-sm" value={lease.keyReturnCount} onChange={e => handleUpdateKeys(lease.keyHandoverCount, parseInt(e.target.value) || 0)} /></div></div>
-                </div>
-                <div className="border-t border-border pt-3">
-                  <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-x-3 gap-y-2 items-center text-xs">
-                    <div className="text-muted-foreground"></div>
-                    <div className="text-muted-foreground font-medium">{t("detail.moveInMeter")}</div>
-                    <div className="text-muted-foreground font-medium">{t("detail.moveOutMeter")}</div>
-                    <div className="text-muted-foreground font-medium text-right">{t("detail.consumption")}</div>
+              <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-x-3 gap-y-2 items-center text-xs">
+                <div className="text-muted-foreground"></div>
+                <div className="text-muted-foreground font-medium">{t("detail.moveInMeter")}</div>
+                <div className="text-muted-foreground font-medium">{t("detail.moveOutMeter")}</div>
+                <div className="text-muted-foreground font-medium text-right">{t("detail.consumption")}</div>
 
-                    <div className="flex items-center gap-1.5 text-foreground"><Zap className="h-3.5 w-3.5 text-warning" />{t("detail.electricity")}</div>
-                    <Input inputMode="decimal" placeholder="—" className="h-8 text-sm" value={lease.moveInMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInMeterReading", e.target.value)} />
-                    <Input inputMode="decimal" placeholder="—" className="h-8 text-sm" value={lease.moveOutMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutMeterReading", e.target.value)} />
-                    <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInMeterReading && lease.moveOutMeterReading ? `${(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading)).toLocaleString()} kWh` : "—"}</div>
+                <div className="flex items-center gap-1.5 text-foreground"><Zap className="h-3.5 w-3.5 text-warning" />{t("detail.electricity")}</div>
+                <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-10" value={lease.moveInMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span></div>
+                <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-10" value={lease.moveOutMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span></div>
+                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInMeterReading && lease.moveOutMeterReading ? `${(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading)).toLocaleString()} kWh` : "—"}</div>
 
-                    <div className="flex items-center gap-1.5 text-foreground"><Droplet className="h-3.5 w-3.5 text-primary" />{t("detail.water")}</div>
-                    <Input inputMode="decimal" placeholder="—" className="h-8 text-sm" value={lease.moveInWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInWaterMeterReading", e.target.value)} />
-                    <Input inputMode="decimal" placeholder="—" className="h-8 text-sm" value={lease.moveOutWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutWaterMeterReading", e.target.value)} />
-                    <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInWaterMeterReading && lease.moveOutWaterMeterReading ? `${(parseFloat(lease.moveOutWaterMeterReading) - parseFloat(lease.moveInWaterMeterReading)).toLocaleString()} m³` : "—"}</div>
-                  </div>
-                </div>
+                <div className="flex items-center gap-1.5 text-foreground"><Droplet className="h-3.5 w-3.5 text-primary" />{t("detail.water")}</div>
+                <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-8" value={lease.moveInWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInWaterMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span></div>
+                <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-8" value={lease.moveOutWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutWaterMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span></div>
+                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInWaterMeterReading && lease.moveOutWaterMeterReading ? `${(parseFloat(lease.moveOutWaterMeterReading) - parseFloat(lease.moveInWaterMeterReading)).toLocaleString()} m³` : "—"}</div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Return Panel */}
+          {/* Keys & Badges */}
           <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center">
-                <CardTitle className="text-sm font-medium flex-1 text-left">{t("detail.returnStatus")}</CardTitle>
-                <div className="flex items-center gap-2">
-                  {lease.returnStatus && <StatusBadge status={lease.returnStatus} />}
-                  <Button variant="outline" size="sm" onClick={openReturnForm}>{lease.returnStatus ? t("detail.update") : t("detail.setStatus")}</Button>
+            <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-sm font-medium text-left">{t("detail.keysBadges")}</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {(lease.keys ?? []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t("detail.noKeysBadges")}</p>
+                ) : (
+                  <div className="grid grid-cols-[110px_1fr_140px_140px_auto] gap-2 items-center text-xs">
+                    <div className="text-muted-foreground font-medium">{t("detail.type")}</div>
+                    <div className="text-muted-foreground font-medium">{t("detail.identifier")}</div>
+                    <div className="text-muted-foreground font-medium">{t("detail.handedOver")}</div>
+                    <div className="text-muted-foreground font-medium">{t("detail.returned")}</div>
+                    <div></div>
+                    {(lease.keys ?? []).map(k => (
+                      <div key={k.id} className="contents">
+                        <Select value={k.kind} onValueChange={(v) => patchKeyItem(k.id, { kind: v as "key" | "badge" })}>
+                          <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="key">{t("detail.kindKey")}</SelectItem>
+                            <SelectItem value="badge">{t("detail.kindBadge")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input className="h-8 text-sm" placeholder={t("detail.identifier")} value={k.label} onChange={e => patchKeyItem(k.id, { label: e.target.value })} />
+                        <Input type="date" className="h-8 text-sm" value={k.handedOverDate ?? ""} onChange={e => patchKeyItem(k.id, { handedOverDate: e.target.value || null })} />
+                        <Input type="date" className="h-8 text-sm" value={k.returnedDate ?? ""} onChange={e => patchKeyItem(k.id, { returnedDate: e.target.value || null })} />
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeKeyItem(k.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" size="sm" onClick={() => addKeyItem("key")}><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addKey")}</Button>
+                  <Button variant="outline" size="sm" onClick={() => addKeyItem("badge")}><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addBadge")}</Button>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              {lease.returnStatus ? (
-                <div className="space-y-2">
-                  <div><p className="text-xs text-muted-foreground">{t("filter.status")}</p><StatusBadge status={lease.returnStatus} /></div>
-                  {lease.returnNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.returnNotes}</p></div>}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t("detail.noReturnDesc")}</p>
-              )}
             </CardContent>
           </Card>
         </div>
