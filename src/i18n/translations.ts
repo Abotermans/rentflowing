@@ -1916,6 +1916,20 @@ const fr: TranslationKeys = {
   "propertyDetail.moreActions": "Plus d'actions",
   "propertyDetail.surfaceWithUnit": "Surface ({unit})",
 
+  // Tenant detail specific
+  "tenantDetail.toastDeleted": "Locataire supprimé",
+  "tenantDetail.moreActions": "Plus d'actions",
+  "tenantDetail.openReceivables": "Créances ouvertes",
+  "tenantDetail.dueDate": "Échéance",
+  "tenantDetail.label": "Libellé",
+  "tenantDetail.lease": "Bail",
+  "tenantDetail.recentCashReceipts": "Encaissements récents",
+  "tenantDetail.unmatched": "Non affecté",
+  "tenantDetail.source": "Source",
+  "tenantDetail.period": "Période",
+  "tenantDetail.created": "Créé le",
+  "tenantDetail.updated": "Mis à jour le",
+
   // Subtitles
   "payments.subtitle": "Gérer les encaissements et suivre l'historique des paiements",
   "reports.subtitle": "Analyser la performance de votre patrimoine",
