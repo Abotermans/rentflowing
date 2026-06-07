@@ -178,14 +178,14 @@ export default function PropertyDetail() {
             </div>
             <p className="text-sm text-muted-foreground mt-1 font-mono">{property.referenceCode}</p>
             <div className="flex gap-2 mt-2">
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{getPropertyTypeLabel(property.propertyType)}</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span>
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{property.currencyCode}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="More actions">
+                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("propertyDetail.moreActions")}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -215,7 +215,7 @@ export default function PropertyDetail() {
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(property.propertyType)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("filter.status")}</span><StatusBadge status={property.status} /></div>
           </CardContent>
         </Card>
