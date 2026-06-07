@@ -1884,6 +1884,24 @@ const fr: TranslationKeys = {
   "detail.noTicketsForVendor": "Aucun ticket assigné à ce prestataire.",
   "detail.noReturnStatus": "Aucun statut de restitution défini.",
 
+  // Property detail specific
+  "propertyDetail.toastDeleted": "Bien supprimé",
+  "propertyDetail.tenant": "Locataire",
+  "propertyDetail.lease": "Bail",
+  "propertyDetail.totalCosts": "Coûts totaux",
+  "propertyDetail.charges": "Charges",
+  "propertyDetail.taxes": "Taxes",
+  "propertyDetail.entries": "Écritures",
+  "propertyDetail.unitBurden": "Charge par lot",
+  "propertyDetail.direct": "Direct",
+  "propertyDetail.allocated": "Réparti",
+  "propertyDetail.total": "Total",
+  "propertyDetail.unit": "Lot",
+  "propertyDetail.noCostEntries": "Aucune écriture de coût pour ce bien.",
+  "propertyDetail.viewAllCostEntries": "Voir toutes les écritures de coûts →",
+  "propertyDetail.moreActions": "Plus d'actions",
+  "propertyDetail.surfaceWithUnit": "Surface ({unit})",
+
   // Subtitles
   "payments.subtitle": "Gérer les encaissements et suivre l'historique des paiements",
   "reports.subtitle": "Analyser la performance de votre patrimoine",
