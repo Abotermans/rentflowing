@@ -613,6 +613,24 @@ const en = {
   "detail.noTicketsForVendor": "No tickets assigned to this vendor.",
   "detail.noReturnStatus": "No return status set.",
 
+  // Property detail specific
+  "propertyDetail.toastDeleted": "Property deleted",
+  "propertyDetail.tenant": "Tenant",
+  "propertyDetail.lease": "Lease",
+  "propertyDetail.totalCosts": "Total Costs",
+  "propertyDetail.charges": "Charges",
+  "propertyDetail.taxes": "Taxes",
+  "propertyDetail.entries": "Entries",
+  "propertyDetail.unitBurden": "Unit Burden",
+  "propertyDetail.direct": "Direct",
+  "propertyDetail.allocated": "Allocated",
+  "propertyDetail.total": "Total",
+  "propertyDetail.unit": "Unit",
+  "propertyDetail.noCostEntries": "No cost entries for this property.",
+  "propertyDetail.viewAllCostEntries": "View all cost entries →",
+  "propertyDetail.moreActions": "More actions",
+  "propertyDetail.surfaceWithUnit": "Surface ({unit})",
+
   // Subtitles
   "payments.subtitle": "Manage rent collection and track payment history",
   "reports.subtitle": "Analyze your portfolio performance",
@@ -1865,6 +1883,24 @@ const fr: TranslationKeys = {
   "detail.noGuaranteeRecord": "Aucun enregistrement de garantie.",
   "detail.noTicketsForVendor": "Aucun ticket assigné à ce prestataire.",
   "detail.noReturnStatus": "Aucun statut de restitution défini.",
+
+  // Property detail specific
+  "propertyDetail.toastDeleted": "Bien supprimé",
+  "propertyDetail.tenant": "Locataire",
+  "propertyDetail.lease": "Bail",
+  "propertyDetail.totalCosts": "Coûts totaux",
+  "propertyDetail.charges": "Charges",
+  "propertyDetail.taxes": "Taxes",
+  "propertyDetail.entries": "Écritures",
+  "propertyDetail.unitBurden": "Charge par lot",
+  "propertyDetail.direct": "Direct",
+  "propertyDetail.allocated": "Réparti",
+  "propertyDetail.total": "Total",
+  "propertyDetail.unit": "Lot",
+  "propertyDetail.noCostEntries": "Aucune écriture de coût pour ce bien.",
+  "propertyDetail.viewAllCostEntries": "Voir toutes les écritures de coûts →",
+  "propertyDetail.moreActions": "Plus d'actions",
+  "propertyDetail.surfaceWithUnit": "Surface ({unit})",
 
   // Subtitles
   "payments.subtitle": "Gérer les encaissements et suivre l'historique des paiements",

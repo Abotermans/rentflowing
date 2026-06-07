@@ -14,8 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote, AlertTriangle, MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, UNIT_TYPE_KEYS } from "@/lib/formatters";
+import { formatCurrency, formatArea, formatDate, getCountryName, UNIT_TYPE_KEYS } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
+import type { TranslationKey } from "@/i18n/translations";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -28,17 +29,20 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 
-const UNIT_TYPES: { value: UnitType; label: string }[] = [
-  { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
-  { value: "office", label: "Office" }, { value: "parking", label: "Parking" },
-  { value: "storage", label: "Storage" }, { value: "house", label: "House" },
-  { value: "commercial-unit", label: "Commercial Unit" },
-];
-const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
-  { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
-  { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
-  { value: "archived", label: "Archived" },
-];
+const UNIT_TYPE_VALUES: UnitType[] = ["apartment", "studio", "office", "parking", "storage", "house", "commercial-unit"];
+const UNIT_STATUS_VALUES: UnitStatus[] = ["vacant", "occupied", "reserved", "unavailable", "archived"];
+const PROPERTY_TYPE_KEYS: Record<string, TranslationKey> = {
+  residential: "properties.residential",
+  commercial: "properties.commercial",
+  "mixed-use": "properties.mixedUse",
+};
+const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
+  vacant: "status.vacant",
+  occupied: "status.occupied",
+  reserved: "status.reserved",
+  unavailable: "status.unavailable",
+  archived: "status.archived",
+};
 
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
@@ -81,17 +85,17 @@ export default function PropertyDetail() {
   const executeUnitSave = () => {
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...unitForm });
-      toast({ title: "Unit updated" });
+      toast({ title: t("units.toastUpdated") });
     } else {
       addUnit(unitForm);
-      toast({ title: "Unit added" });
+      toast({ title: t("units.toastAdded") });
     }
     setSheetOpen(false);
   };
 
   const handleSaveUnit = () => {
     if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
-      toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("units.requiredCodeLabel"), variant: "destructive" });
       return;
     }
     if (editingUnit && unitForm.currentStatus !== editingUnit.currentStatus) {
@@ -102,7 +106,7 @@ export default function PropertyDetail() {
           setOverrideDialogOpen(true);
           return;
         }
-        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        toast({ title: t("units.statusChangeBlocked"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
         return;
       }
     }
@@ -120,18 +124,18 @@ export default function PropertyDetail() {
     });
     updateUnit({ ...editingUnit, ...unitForm });
     setSheetOpen(false);
-    toast({ title: "Unit updated (overridden)", description: `Override reason: ${reason}` });
+    toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
     setPendingOverrideValidation(null);
   };
 
   const handleDeleteUnit = (unitId: string) => {
     deleteUnit(unitId);
-    toast({ title: "Unit deleted" });
+    toast({ title: t("units.toastDeleted") });
   };
 
   const handleDeleteProperty = (propertyId: string) => {
     deleteProperty(propertyId);
-    toast({ title: "Property deleted" });
+    toast({ title: t("propertyDetail.toastDeleted") });
     navigate("/properties");
   };
 
@@ -174,14 +178,14 @@ export default function PropertyDetail() {
             </div>
             <p className="text-sm text-muted-foreground mt-1 font-mono">{property.referenceCode}</p>
             <div className="flex gap-2 mt-2">
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{getPropertyTypeLabel(property.propertyType)}</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span>
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{property.currencyCode}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="More actions">
+                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("propertyDetail.moreActions")}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -211,7 +215,7 @@ export default function PropertyDetail() {
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{getPropertyTypeLabel(property.propertyType)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("filter.status")}</span><StatusBadge status={property.status} /></div>
           </CardContent>
         </Card>
@@ -269,23 +273,23 @@ export default function PropertyDetail() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-center">Floor</TableHead>
-                    <TableHead className="text-right">Surface</TableHead>
-                    <TableHead className="text-right">Rent</TableHead>
-                    <TableHead className="text-right">Charges</TableHead>
+                    <TableHead>{t("units.code")}</TableHead>
+                    <TableHead>{t("units.label")}</TableHead>
+                    <TableHead>{t("units.type")}</TableHead>
+                    <TableHead className="text-center">{t("units.floor")}</TableHead>
+                    <TableHead className="text-right">{t("units.surface")}</TableHead>
+                    <TableHead className="text-right">{t("units.rent")}</TableHead>
+                    <TableHead className="text-right">{t("units.charges")}</TableHead>
                     <TableHead>{t("occupancy.derivedLabel")}</TableHead>
-                    <TableHead>Tenant</TableHead>
-                    <TableHead>Lease</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("propertyDetail.tenant")}</TableHead>
+                    <TableHead>{t("propertyDetail.lease")}</TableHead>
+                    <TableHead className="text-right">{t("units.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {propertyUnits.map(u => {
                     const activeLease = getActiveLease(u.id);
-                    const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
+                    const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
                     const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments);
                     return (
                       <TableRow key={u.id}>
@@ -372,36 +376,36 @@ export default function PropertyDetail() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Banknote className="h-4 w-4" />Costs & Taxes
+                <Banknote className="h-4 w-4" />{t("costs.costsTaxes")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div><p className="text-xs text-muted-foreground">Total Costs</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCosts, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Charges</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCharges, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Taxes</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalTaxes, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Entries</p><p className="text-lg font-bold text-foreground">{propEntries.length}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("propertyDetail.totalCosts")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCosts, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("propertyDetail.charges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCharges, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("propertyDetail.taxes")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalTaxes, property.currencyCode, property.locale)}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("propertyDetail.entries")}</p><p className="text-lg font-bold text-foreground">{propEntries.length}</p></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-md bg-muted/50 border">
-                  <p className="text-xs text-muted-foreground">Owner-Borne</p>
+                  <p className="text-xs text-muted-foreground">{t("costs.ownerBorne")}</p>
                   <p className="text-lg font-bold text-destructive">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</p>
                 </div>
                 <div className="p-3 rounded-md bg-muted/50 border">
-                  <p className="text-xs text-muted-foreground">Recoverable</p>
+                  <p className="text-xs text-muted-foreground">{t("costs.recoverable")}</p>
                   <p className="text-lg font-bold text-success">{formatCurrency(recoverable, property.currencyCode, property.locale)}</p>
                 </div>
               </div>
               {unitBurden.length > 0 && (
                 <>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-2">Unit Burden</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-2">{t("propertyDetail.unitBurden")}</p>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">Unit</TableHead>
-                        <TableHead className="text-xs text-right">Direct</TableHead>
-                        <TableHead className="text-xs text-right">Allocated</TableHead>
-                        <TableHead className="text-xs text-right">Total</TableHead>
+                        <TableHead className="text-xs">{t("propertyDetail.unit")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("propertyDetail.direct")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("propertyDetail.allocated")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("propertyDetail.total")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -417,10 +421,10 @@ export default function PropertyDetail() {
                   </Table>
                 </>
               )}
-              {propEntries.length === 0 && <p className="text-sm text-muted-foreground">No cost entries for this property.</p>}
+              {propEntries.length === 0 && <p className="text-sm text-muted-foreground">{t("propertyDetail.noCostEntries")}</p>}
               {propEntries.length > 0 && (
                 <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                  <Link to="/costs/entries">View all cost entries →</Link>
+                  <Link to="/costs/entries">{t("propertyDetail.viewAllCostEntries")}</Link>
                 </Button>
               )}
             </CardContent>
@@ -437,44 +441,44 @@ export default function PropertyDetail() {
           <div className="space-y-4 mt-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Unit Code *</Label>
+                <Label>{t("units.code")} *</Label>
                 <Input value={unitForm.unitCode} onChange={e => setUnitForm(f => ({ ...f, unitCode: e.target.value }))} placeholder="e.g. PAR-A01" />
               </div>
               <div>
-                <Label>Unit Label *</Label>
+                <Label>{t("units.label")} *</Label>
                 <Input value={unitForm.unitLabel} onChange={e => setUnitForm(f => ({ ...f, unitLabel: e.target.value }))} placeholder="e.g. Appt 1er gauche" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Unit Type *</Label>
+                <Label>{t("units.type")} *</Label>
                 <Select value={unitForm.unitType} onValueChange={v => setUnitForm(f => ({ ...f, unitType: v as UnitType }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{UNIT_TYPE_VALUES.map(v => <SelectItem key={v} value={v}>{t(UNIT_TYPE_KEYS[v])}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Status *</Label>
+                <Label>{t("units.status")} *</Label>
                 <Select value={unitForm.currentStatus} onValueChange={v => setUnitForm(f => ({ ...f, currentStatus: v as UnitStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{UNIT_STATUS_VALUES.map(s => <SelectItem key={s} value={s}>{t(UNIT_STATUS_LABEL_KEYS[s])}</SelectItem>)}</SelectContent>
                 </Select>
                 <StatusTransitionAlert validation={unitStatusValidation} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <div><Label>Floor</Label><Input type="number" value={unitForm.floor ?? ""} onChange={e => setUnitForm(f => ({ ...f, floor: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>Surface ({property.measurementSystem === "metric" ? "m²" : "sq ft"})</Label><Input type="number" value={unitForm.surfaceArea ?? ""} onChange={e => setUnitForm(f => ({ ...f, surfaceArea: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>Available From</Label><Input type="date" value={unitForm.availableFrom ?? ""} onChange={e => setUnitForm(f => ({ ...f, availableFrom: e.target.value || null }))} /></div>
+              <div><Label>{t("units.floor")}</Label><Input type="number" value={unitForm.floor ?? ""} onChange={e => setUnitForm(f => ({ ...f, floor: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>{t("propertyDetail.surfaceWithUnit").replace("{unit}", property.measurementSystem === "metric" ? "m²" : "sq ft")}</Label><Input type="number" value={unitForm.surfaceArea ?? ""} onChange={e => setUnitForm(f => ({ ...f, surfaceArea: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>{t("units.availableFrom")}</Label><Input type="date" value={unitForm.availableFrom ?? ""} onChange={e => setUnitForm(f => ({ ...f, availableFrom: e.target.value || null }))} /></div>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <div><Label>Bedrooms</Label><Input type="number" min={0} value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: Number(e.target.value) || 0 }))} /></div>
-              <div><Label>Bathrooms</Label><Input type="number" min={0} value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: Number(e.target.value) || 0 }))} /></div>
-              <div className="flex items-end gap-2 pb-1"><Switch checked={unitForm.furnished} onCheckedChange={v => setUnitForm(f => ({ ...f, furnished: v }))} id="prop-furnished" /><Label htmlFor="prop-furnished">Furnished</Label></div>
+              <div><Label>{t("units.bedrooms")}</Label><Input type="number" min={0} value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: Number(e.target.value) || 0 }))} /></div>
+              <div><Label>{t("units.bathrooms")}</Label><Input type="number" min={0} value={unitForm.bathrooms} onChange={e => setUnitForm(f => ({ ...f, bathrooms: Number(e.target.value) || 0 }))} /></div>
+              <div className="flex items-end gap-2 pb-1"><Switch checked={unitForm.furnished} onCheckedChange={v => setUnitForm(f => ({ ...f, furnished: v }))} id="prop-furnished" /><Label htmlFor="prop-furnished">{t("units.furnished")}</Label></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Base Rent</Label><Input type="number" min={0} value={unitForm.baseRent ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>Base Charges</Label><Input type="number" min={0} value={unitForm.baseCharges ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>{t("units.rent")}</Label><Input type="number" min={0} value={unitForm.baseRent ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
+              <div><Label>{t("units.charges")}</Label><Input type="number" min={0} value={unitForm.baseCharges ?? ""} onChange={e => setUnitForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
             </div>
             <div>
               <Label>{t("units.rentTiers")}</Label>
@@ -487,11 +491,11 @@ export default function PropertyDetail() {
                 onChange={(baseRent, rentTiers) => setUnitForm(f => ({ ...f, baseRent, rentTiers }))}
               />
             </div>
-            <div><Label>Notes</Label><Textarea value={unitForm.notes} onChange={e => setUnitForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
+            <div><Label>{t("units.notes")}</Label><Textarea value={unitForm.notes} onChange={e => setUnitForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveUnit}>{editingUnit ? "Save Changes" : "Add Unit"}</Button>
+            <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleSaveUnit}>{editingUnit ? t("action.saveChanges") : t("units.add")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -502,7 +506,7 @@ export default function PropertyDetail() {
           open={overrideDialogOpen}
           onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) setPendingOverrideValidation(null); }}
           validation={pendingOverrideValidation}
-          actionLabel="Override and Save"
+          actionLabel={t("units.overrideAndSave")}
           onOverride={handleUnitOverrideConfirm}
         />
       )}
