@@ -632,20 +632,6 @@ const en = {
   "propertyDetail.surfaceWithUnit": "Surface ({unit})",
 
   // Tenant detail specific
-  "tenantDetail.toastDeleted": "Locataire supprimé",
-  "tenantDetail.moreActions": "Plus d'actions",
-  "tenantDetail.openReceivables": "Créances ouvertes",
-  "tenantDetail.dueDate": "Échéance",
-  "tenantDetail.label": "Libellé",
-  "tenantDetail.lease": "Bail",
-  "tenantDetail.recentCashReceipts": "Encaissements récents",
-  "tenantDetail.unmatched": "Non affecté",
-  "tenantDetail.source": "Source",
-  "tenantDetail.period": "Période",
-  "tenantDetail.created": "Créé le",
-  "tenantDetail.updated": "Mis à jour le",
-
-  // Tenant detail specific
   "tenantDetail.toastDeleted": "Tenant deleted",
   "tenantDetail.moreActions": "More actions",
   "tenantDetail.openReceivables": "Open Receivables",
