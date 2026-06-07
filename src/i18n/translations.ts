@@ -613,6 +613,24 @@ const en = {
   "detail.noTicketsForVendor": "No tickets assigned to this vendor.",
   "detail.noReturnStatus": "No return status set.",
 
+  // Property detail specific
+  "propertyDetail.toastDeleted": "Property deleted",
+  "propertyDetail.tenant": "Tenant",
+  "propertyDetail.lease": "Lease",
+  "propertyDetail.totalCosts": "Total Costs",
+  "propertyDetail.charges": "Charges",
+  "propertyDetail.taxes": "Taxes",
+  "propertyDetail.entries": "Entries",
+  "propertyDetail.unitBurden": "Unit Burden",
+  "propertyDetail.direct": "Direct",
+  "propertyDetail.allocated": "Allocated",
+  "propertyDetail.total": "Total",
+  "propertyDetail.unit": "Unit",
+  "propertyDetail.noCostEntries": "No cost entries for this property.",
+  "propertyDetail.viewAllCostEntries": "View all cost entries →",
+  "propertyDetail.moreActions": "More actions",
+  "propertyDetail.surfaceWithUnit": "Surface ({unit})",
+
   // Subtitles
   "payments.subtitle": "Manage rent collection and track payment history",
   "reports.subtitle": "Analyze your portfolio performance",
