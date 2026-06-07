@@ -631,6 +631,20 @@ const en = {
   "propertyDetail.moreActions": "More actions",
   "propertyDetail.surfaceWithUnit": "Surface ({unit})",
 
+  // Tenant detail specific
+  "tenantDetail.toastDeleted": "Tenant deleted",
+  "tenantDetail.moreActions": "More actions",
+  "tenantDetail.openReceivables": "Open Receivables",
+  "tenantDetail.dueDate": "Due Date",
+  "tenantDetail.label": "Label",
+  "tenantDetail.lease": "Lease",
+  "tenantDetail.recentCashReceipts": "Recent Cash Receipts",
+  "tenantDetail.unmatched": "Unmatched",
+  "tenantDetail.source": "Source",
+  "tenantDetail.period": "Period",
+  "tenantDetail.created": "Created",
+  "tenantDetail.updated": "Updated",
+
   // Subtitles
   "payments.subtitle": "Manage rent collection and track payment history",
   "reports.subtitle": "Analyze your portfolio performance",
