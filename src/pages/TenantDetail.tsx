@@ -44,7 +44,7 @@ export default function TenantDetail() {
 
   const handleDeleteTenant = (tid: string) => {
     deleteTenant(tid);
-    toast({ title: "Tenant deleted" });
+    toast({ title: t("tenantDetail.toastDeleted") });
     navigate("/tenants");
   };
 
@@ -61,7 +61,7 @@ export default function TenantDetail() {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="More actions">
+              <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("tenantDetail.moreActions")}>
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -117,7 +117,7 @@ export default function TenantDetail() {
             </div>
             {unappliedCredit > 0 && (
               <div>
-                <p className="text-xs text-muted-foreground">Unapplied Credit</p>
+                <p className="text-xs text-muted-foreground">{t("units.unappliedCredit")}</p>
                 <p className="text-lg font-bold text-primary">
                   <Banknote className="h-4 w-4 inline mr-1" />
                   {formatCurrency(unappliedCredit, activeProperty?.currencyCode, activeProperty?.locale)}
@@ -131,17 +131,17 @@ export default function TenantDetail() {
       {/* Open Receivables */}
       {openReceivables.length > 0 && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Open Receivables</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("tenantDetail.openReceivables")}</CardTitle></CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Due Date</TableHead>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs">Label</TableHead>
-                  <TableHead className="text-xs">Lease</TableHead>
-                  <TableHead className="text-xs text-right">Outstanding</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">{t("tenantDetail.dueDate")}</TableHead>
+                  <TableHead className="text-xs">{t("table.type")}</TableHead>
+                  <TableHead className="text-xs">{t("tenantDetail.label")}</TableHead>
+                  <TableHead className="text-xs">{t("tenantDetail.lease")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("table.outstanding")}</TableHead>
+                  <TableHead className="text-xs">{t("table.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -200,18 +200,18 @@ export default function TenantDetail() {
       {/* Recent Cash Receipts */}
       {recentReceipts.length > 0 && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Recent Cash Receipts</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("tenantDetail.recentCashReceipts")}</CardTitle></CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Date</TableHead>
-                  <TableHead className="text-xs">Lease</TableHead>
-                  <TableHead className="text-xs text-right">Received</TableHead>
-                  <TableHead className="text-xs text-right">Unmatched</TableHead>
-                  <TableHead className="text-xs">Source</TableHead>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">{t("common.date")}</TableHead>
+                  <TableHead className="text-xs">{t("tenantDetail.lease")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("table.received")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("tenantDetail.unmatched")}</TableHead>
+                  <TableHead className="text-xs">{t("tenantDetail.source")}</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -246,11 +246,11 @@ export default function TenantDetail() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Reference</TableHead>
-                  <TableHead className="text-xs">Property</TableHead>
-                  <TableHead className="text-xs">Unit</TableHead>
-                  <TableHead className="text-xs">Period</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.unit")}</TableHead>
+                  <TableHead className="text-xs">{t("tenantDetail.period")}</TableHead>
+                  <TableHead className="text-xs">{t("table.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -282,8 +282,8 @@ export default function TenantDetail() {
       )}
 
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(tenant.createdAt, activeProperty?.locale)}</span>
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Updated: {formatDate(tenant.updatedAt, activeProperty?.locale)}</span>
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("tenantDetail.created")}: {formatDate(tenant.createdAt, activeProperty?.locale)}</span>
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("tenantDetail.updated")}: {formatDate(tenant.updatedAt, activeProperty?.locale)}</span>
       </div>
     </div>
   );

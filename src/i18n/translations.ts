@@ -631,6 +631,20 @@ const en = {
   "propertyDetail.moreActions": "More actions",
   "propertyDetail.surfaceWithUnit": "Surface ({unit})",
 
+  // Tenant detail specific
+  "tenantDetail.toastDeleted": "Tenant deleted",
+  "tenantDetail.moreActions": "More actions",
+  "tenantDetail.openReceivables": "Open Receivables",
+  "tenantDetail.dueDate": "Due Date",
+  "tenantDetail.label": "Label",
+  "tenantDetail.lease": "Lease",
+  "tenantDetail.recentCashReceipts": "Recent Cash Receipts",
+  "tenantDetail.unmatched": "Unmatched",
+  "tenantDetail.source": "Source",
+  "tenantDetail.period": "Period",
+  "tenantDetail.created": "Created",
+  "tenantDetail.updated": "Updated",
+
   // Subtitles
   "payments.subtitle": "Manage rent collection and track payment history",
   "reports.subtitle": "Analyze your portfolio performance",
@@ -1901,6 +1915,20 @@ const fr: TranslationKeys = {
   "propertyDetail.viewAllCostEntries": "Voir toutes les écritures de coûts →",
   "propertyDetail.moreActions": "Plus d'actions",
   "propertyDetail.surfaceWithUnit": "Surface ({unit})",
+
+  // Tenant detail specific
+  "tenantDetail.toastDeleted": "Locataire supprimé",
+  "tenantDetail.moreActions": "Plus d'actions",
+  "tenantDetail.openReceivables": "Créances ouvertes",
+  "tenantDetail.dueDate": "Échéance",
+  "tenantDetail.label": "Libellé",
+  "tenantDetail.lease": "Bail",
+  "tenantDetail.recentCashReceipts": "Encaissements récents",
+  "tenantDetail.unmatched": "Non affecté",
+  "tenantDetail.source": "Source",
+  "tenantDetail.period": "Période",
+  "tenantDetail.created": "Créé le",
+  "tenantDetail.updated": "Mis à jour le",
 
   // Subtitles
   "payments.subtitle": "Gérer les encaissements et suivre l'historique des paiements",
