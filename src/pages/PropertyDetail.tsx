@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote, AlertTriangle, MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { formatCurrency, formatArea, formatDate, getCountryName, getPropertyTypeLabel, UNIT_TYPE_KEYS } from "@/lib/formatters";
+import { formatCurrency, formatArea, formatDate, getCountryName, UNIT_TYPE_KEYS } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
@@ -28,17 +28,8 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 
-const UNIT_TYPES: { value: UnitType; label: string }[] = [
-  { value: "apartment", label: "Apartment" }, { value: "studio", label: "Studio" },
-  { value: "office", label: "Office" }, { value: "parking", label: "Parking" },
-  { value: "storage", label: "Storage" }, { value: "house", label: "House" },
-  { value: "commercial-unit", label: "Commercial Unit" },
-];
-const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
-  { value: "vacant", label: "Vacant" }, { value: "occupied", label: "Occupied" },
-  { value: "reserved", label: "Reserved" }, { value: "unavailable", label: "Unavailable" },
-  { value: "archived", label: "Archived" },
-];
+const UNIT_TYPE_VALUES: UnitType[] = ["apartment", "studio", "office", "parking", "storage", "house", "commercial-unit"];
+const UNIT_STATUS_VALUES: UnitStatus[] = ["vacant", "occupied", "reserved", "unavailable", "archived"];
 
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
@@ -81,17 +72,17 @@ export default function PropertyDetail() {
   const executeUnitSave = () => {
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...unitForm });
-      toast({ title: "Unit updated" });
+      toast({ title: t("units.toastUpdated") });
     } else {
       addUnit(unitForm);
-      toast({ title: "Unit added" });
+      toast({ title: t("units.toastAdded") });
     }
     setSheetOpen(false);
   };
 
   const handleSaveUnit = () => {
     if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
-      toast({ title: "Validation Error", description: "Unit code and label are required.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("units.requiredCodeLabel"), variant: "destructive" });
       return;
     }
     if (editingUnit && unitForm.currentStatus !== editingUnit.currentStatus) {
@@ -102,7 +93,7 @@ export default function PropertyDetail() {
           setOverrideDialogOpen(true);
           return;
         }
-        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+        toast({ title: t("units.statusChangeBlocked"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
         return;
       }
     }
@@ -120,18 +111,18 @@ export default function PropertyDetail() {
     });
     updateUnit({ ...editingUnit, ...unitForm });
     setSheetOpen(false);
-    toast({ title: "Unit updated (overridden)", description: `Override reason: ${reason}` });
+    toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
     setPendingOverrideValidation(null);
   };
 
   const handleDeleteUnit = (unitId: string) => {
     deleteUnit(unitId);
-    toast({ title: "Unit deleted" });
+    toast({ title: t("units.toastDeleted") });
   };
 
   const handleDeleteProperty = (propertyId: string) => {
     deleteProperty(propertyId);
-    toast({ title: "Property deleted" });
+    toast({ title: t("propertyDetail.toastDeleted") });
     navigate("/properties");
   };
 
