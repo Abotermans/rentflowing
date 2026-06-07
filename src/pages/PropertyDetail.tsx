@@ -273,23 +273,23 @@ export default function PropertyDetail() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-center">Floor</TableHead>
-                    <TableHead className="text-right">Surface</TableHead>
-                    <TableHead className="text-right">Rent</TableHead>
-                    <TableHead className="text-right">Charges</TableHead>
+                    <TableHead>{t("units.code")}</TableHead>
+                    <TableHead>{t("units.label")}</TableHead>
+                    <TableHead>{t("units.type")}</TableHead>
+                    <TableHead className="text-center">{t("units.floor")}</TableHead>
+                    <TableHead className="text-right">{t("units.surface")}</TableHead>
+                    <TableHead className="text-right">{t("units.rent")}</TableHead>
+                    <TableHead className="text-right">{t("units.charges")}</TableHead>
                     <TableHead>{t("occupancy.derivedLabel")}</TableHead>
-                    <TableHead>Tenant</TableHead>
-                    <TableHead>Lease</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("propertyDetail.tenant")}</TableHead>
+                    <TableHead>{t("propertyDetail.lease")}</TableHead>
+                    <TableHead className="text-right">{t("units.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {propertyUnits.map(u => {
                     const activeLease = getActiveLease(u.id);
-                    const tenant = activeLease ? tenants.find(t => t.id === activeLease.primaryTenantId) : null;
+                    const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
                     const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments);
                     return (
                       <TableRow key={u.id}>
