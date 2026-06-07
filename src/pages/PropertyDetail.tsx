@@ -16,6 +16,7 @@ import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plu
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { formatCurrency, formatArea, formatDate, getCountryName, UNIT_TYPE_KEYS } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
+import type { TranslationKey } from "@/i18n/translations";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -30,6 +31,18 @@ import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 
 const UNIT_TYPE_VALUES: UnitType[] = ["apartment", "studio", "office", "parking", "storage", "house", "commercial-unit"];
 const UNIT_STATUS_VALUES: UnitStatus[] = ["vacant", "occupied", "reserved", "unavailable", "archived"];
+const PROPERTY_TYPE_KEYS: Record<string, TranslationKey> = {
+  residential: "properties.residential",
+  commercial: "properties.commercial",
+  "mixed-use": "properties.mixedUse",
+};
+const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
+  vacant: "status.vacant",
+  occupied: "status.occupied",
+  reserved: "status.reserved",
+  unavailable: "status.unavailable",
+  archived: "status.archived",
+};
 
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
