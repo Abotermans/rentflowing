@@ -3,7 +3,8 @@ import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { validateAmendment } from "@/lib/integrity/amendmentIntegrity";
-import { getCurrentLeaseTerms } from "@/lib/amendments";
+import { getCurrentLeaseTerms, isAmendmentEditable, canSchedule, canActivate } from "@/lib/amendments";
+import { AmendmentConfirmDialog } from "./AmendmentConfirmDialog";
 import type {
   AmendmentType,
   AmendmentStatus,
@@ -94,10 +95,12 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const { t } = useSettings();
   const {
     units, tenants, getLeaseAssignedUnits,
-    addAmendment, updateAmendment, activateAmendment, updateUnit,
+    addAmendment, updateAmendment, activateAmendment, scheduleAmendment, updateUnit,
     getAmendmentChanges,
   } = useAppData();
   const integrityState = useIntegrityState();
+  const editable = isAmendmentEditable(existing);
+  const [confirmAction, setConfirmAction] = useState<"schedule" | "activate" | null>(null);
 
   const [title, setTitle] = useState("");
   const [reason, setReason] = useState("");
@@ -292,8 +295,27 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     })), integrityState);
   }, [effectiveDate, derivedType, title, reason, notes, signedDate, changesDraft, integrityState, lease.id, existing]);
 
-  const canSubmit = title.trim().length > 0 && effectiveDate;
-  const canActivate = canSubmit && liveValidation?.allowed === true;
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const draftLike = useMemo(() => ({
+    id: existing?.id ?? "preview",
+    leaseId: lease.id,
+    amendmentNumber: existing?.amendmentNumber ?? 0,
+    amendmentType: derivedType,
+    title, reason, notes,
+    effectiveDate,
+    signedDate: signedDate || null,
+    status: (existing?.status ?? "draft") as AmendmentStatus,
+    supersedesAmendmentId: existing?.supersedesAmendmentId ?? null,
+  }), [existing, lease.id, derivedType, title, reason, notes, effectiveDate, signedDate]);
+  const fullChanges = useMemo(() => changesDraft.map((c, i) => ({
+    ...c, id: `p${i}`, amendmentId: draftLike.id, createdAt: "", updatedAt: "",
+  })), [changesDraft, draftLike.id]);
+  const scheduleGate = useMemo(() => canSchedule(draftLike, fullChanges, integrityState),
+    [draftLike, fullChanges, integrityState]);
+  const activateGate = useMemo(() => canActivate(draftLike, fullChanges, integrityState, todayISO),
+    [draftLike, fullChanges, integrityState, todayISO]);
+  const canSubmit = title.trim().length > 0 && !!effectiveDate;
+  const isActive = existing?.status === "active";
 
   const coverageGap = useMemo(() => {
     if (!effectiveDate) return false;
@@ -307,6 +329,9 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
   const save = (status: AmendmentStatus) => {
     if (!canSubmit) return;
+    // Date-driven: never persist active when date is future; never persist scheduled when date is past.
+    if (status === "active" && effectiveDate > todayISO) status = "scheduled";
+    if (status === "scheduled" && effectiveDate <= todayISO) status = "active";
     // Sync edited per-unit rent back to the Unit record on activation
     // (charges live on assignments, not units, so only rent is mirrored).
     if (status === "active") {
@@ -345,6 +370,14 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       if (status === "active") activateAmendment(created.id);
     }
     onOpenChange(false);
+  };
+
+  const requestSchedule = () => { if (scheduleGate.ok) setConfirmAction("schedule"); };
+  const requestActivate = () => { if (activateGate.ok) setConfirmAction("activate"); };
+  const handleConfirm = () => {
+    if (confirmAction === "activate") save("active");
+    else if (confirmAction === "schedule") save("scheduled");
+    setConfirmAction(null);
   };
 
   return (
@@ -761,12 +794,29 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         })()}
 
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
-          <Button variant="outline" disabled={!canSubmit} onClick={() => save("draft")}>{t("amendments.saveDraft")}</Button>
-          <Button variant="outline" disabled={!canSubmit} onClick={() => save("scheduled")}>{t("amendments.schedule")}</Button>
-          <Button disabled={!canActivate} onClick={() => save("active")}>{t("amendments.activate")}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {editable ? t("action.cancel") : t("action.close")}
+          </Button>
+          {editable && !isActive && (
+            <>
+              <Button variant="outline" disabled={!canSubmit} onClick={() => save("draft")}>{t("amendments.saveDraft")}</Button>
+              <Button variant="outline" disabled={!scheduleGate.ok} onClick={requestSchedule}>{t("amendments.schedule")}</Button>
+              <Button disabled={!activateGate.ok} onClick={requestActivate}>{t("amendments.activate")}</Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
+      {confirmAction && (
+        <AmendmentConfirmDialog
+          open={!!confirmAction}
+          onOpenChange={(o) => { if (!o) setConfirmAction(null); }}
+          lease={lease}
+          effectiveDate={effectiveDate}
+          changes={changesDraft}
+          action={confirmAction}
+          onConfirm={handleConfirm}
+        />
+      )}
     </Dialog>
   );
 }
