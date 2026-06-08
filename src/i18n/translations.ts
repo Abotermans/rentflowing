@@ -2495,6 +2495,16 @@ const fr: TranslationKeys = {
   "amendments.error.AMD_PRIMARY_CHANGE": "Changer le lot principal affecte l'occupation et le reporting",
   "amendments.error.AMD_WILL_END_PREVIOUS": "Activer cet avenant clôturera l'avenant en vigueur",
   "amendments.badge.current": "Actif",
+  "amendments.confirm.activateTitle": "Activer l'avenant ?",
+  "amendments.confirm.scheduleTitle": "Planifier l'avenant ?",
+  "amendments.confirm.consequences": "Conséquences",
+  "amendments.confirm.willEndPrevious": "L'avenant actif n°{n} sera clôturé.",
+  "amendments.confirm.willRegenReceivables": "Les créances futures seront régénérées à partir de la date d'effet.",
+  "amendments.confirm.willUpdateLease": "Le résumé du bail (loyer, charges, date de fin, dépôt) sera mis à jour.",
+  "amendments.confirm.willAutoActivateOnDate": "L'avenant s'activera automatiquement à la date d'effet.",
+  "amendments.readOnlyNotice": "Cet avenant est actif et en lecture seule. Créez un nouvel avenant pour modifier les conditions.",
+  "amendments.errors.dateInFuture": "La date d'effet est future — utilisez Planifier.",
+  "amendments.errors.notReady": "Renseignez le titre, la date d'effet et au moins une modification.",
 
   // Lease detail page (extra)
   "leaseDetail.totalAllocated": "Total alloué",
