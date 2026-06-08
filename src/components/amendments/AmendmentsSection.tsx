@@ -161,10 +161,6 @@ export function AmendmentsSection({ leaseId }: Props) {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{terms.noticePeriodText || "—"}</p></div>
-          <div><p className="text-xs text-muted-foreground">Deposit</p><p className="text-sm font-medium text-foreground">{terms.depositAmount != null ? formatCurrency(terms.depositAmount, currency, locale) : "—"}</p></div>
-        </div>
       </div>
     );
   };
