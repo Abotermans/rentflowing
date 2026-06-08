@@ -177,9 +177,7 @@ export default function Tenants() {
                 const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
                 return (
                   <TableRow key={tenant.id} className="cursor-pointer" onClick={() => window.location.href = `/tenants/${tenant.id}`}>
-                    <TableCell className="font-medium">
-                      <Link to={`/tenants/${tenant.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{getTenantFullName(tenant)}</Link>
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{getTenantFullName(tenant)}</TableCell>
                     <TableCell className="text-muted-foreground">{tenant.email}</TableCell>
                     <TableCell className="text-muted-foreground">{tenant.phone}</TableCell>
                     <TableCell><StatusBadge status={tenant.status} /></TableCell>
