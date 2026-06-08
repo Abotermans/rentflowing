@@ -66,7 +66,7 @@ const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
   archived: "status.archived",
 };
 
-type EditSection = "info" | "financials" | "property" | "notes" | null;
+type EditSection = "info" | "financials" | "notes" | null;
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
@@ -131,6 +131,7 @@ export default function UnitDetail() {
         unitCode: form.unitCode, unitLabel: form.unitLabel, unitType: form.unitType,
         floor: form.floor, surfaceArea: form.surfaceArea, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
         furnished: form.furnished, availableFrom: form.availableFrom, currentStatus: form.currentStatus,
+        description: form.description ?? "",
       });
     } else if (editSection === "financials") {
       persist({
@@ -138,12 +139,6 @@ export default function UnitDetail() {
         rentTiers: [...form.rentTiers].sort((a, b) => a.durationMonths - b.durationMonths),
         baseCharges: form.baseCharges,
       });
-    } else if (editSection === "property") {
-      if (!form.propertyId) {
-        toast({ title: t("common.validationError"), description: t("units.requiredProperty"), variant: "destructive" });
-        return;
-      }
-      persist({ propertyId: form.propertyId });
     } else if (editSection === "notes") {
       persist({ notes: form.notes });
     }
