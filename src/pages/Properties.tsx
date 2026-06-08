@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Building2, Plus, Pencil, Search } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Property } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
@@ -183,8 +183,8 @@ export default function Properties() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("properties.name")}</TableHead>
                 <TableHead>{t("properties.reference")}</TableHead>
+                <TableHead>{t("properties.name")}</TableHead>
                 <TableHead>{t("properties.city")}</TableHead>
                 <TableHead>{t("properties.country")}</TableHead>
                 <TableHead>{t("properties.type")}</TableHead>
@@ -200,10 +200,8 @@ export default function Properties() {
                 const stats = getPropertyStats(p.id);
                 return (
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/properties/${p.id}`)}>
-                    <TableCell className="font-medium">
-                      <Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link>
-                    </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs">{p.referenceCode}</TableCell>
+                    <TableCell className="text-muted-foreground">{p.name}</TableCell>
                     <TableCell className="text-muted-foreground">{p.city}</TableCell>
                     <TableCell className="text-muted-foreground">{getCountryName(p.countryCode)}</TableCell>
                     <TableCell className="text-muted-foreground">{getPropertyTypeLabel(p.propertyType)}</TableCell>
