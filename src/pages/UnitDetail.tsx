@@ -555,22 +555,6 @@ export default function UnitDetail() {
       </Card>
 
       {/* Property Context */}
-      <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><Building2 className="h-4 w-4" />{t("detail.propertyContext")}</CardTitle>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("property")}><Pencil className="h-3.5 w-3.5" /></Button>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link></div>
-            <div><p className="text-xs text-muted-foreground">{t("properties.city")}</p><p className="text-sm font-medium text-foreground">{property.city}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("properties.country")}</p><p className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("properties.locale")}</p><p className="text-sm font-medium text-foreground font-mono">{property.locale}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("properties.measurement")}</p><p className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</p></div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Maintenance */}
       {(() => {
         const unitTickets = getTicketsByUnit(unit.id);
