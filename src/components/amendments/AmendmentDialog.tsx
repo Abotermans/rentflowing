@@ -387,7 +387,14 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           <DialogTitle>{existing ? t("amendments.edit") : t("amendments.add")}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-3">
+        {!editable && (
+          <Alert className="border-primary/30 bg-primary/5">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-xs">{t("amendments.readOnlyNotice")}</AlertDescription>
+          </Alert>
+        )}
+
+        <fieldset disabled={!editable} className="grid grid-cols-2 gap-3 disabled:opacity-70">
           <div className="col-span-2">
             <Label>{t("amendments.type")}</Label>
             <div className="rounded border bg-muted/30 px-2 py-1.5 min-h-8 flex flex-wrap items-center gap-1.5">
@@ -760,7 +767,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             <Label>{t("amendments.notes")}</Label>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
-        </div>
+        </fieldset>
 
         {(() => {
           const blockers = liveValidation?.blockers ?? [];
