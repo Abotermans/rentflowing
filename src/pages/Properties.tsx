@@ -183,8 +183,8 @@ export default function Properties() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("properties.name")}</TableHead>
                 <TableHead>{t("properties.reference")}</TableHead>
+                <TableHead>{t("properties.name")}</TableHead>
                 <TableHead>{t("properties.city")}</TableHead>
                 <TableHead>{t("properties.country")}</TableHead>
                 <TableHead>{t("properties.type")}</TableHead>
