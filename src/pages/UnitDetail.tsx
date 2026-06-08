@@ -741,6 +741,14 @@ export default function UnitDetail() {
                 <Switch checked={form.furnished} onCheckedChange={v => setForm(f => f && ({ ...f, furnished: v }))} />
                 <Label>{t("units.furnished")}</Label>
               </div>
+              <div>
+                <Label>{t("common.description")}</Label>
+                <Textarea
+                  value={form.description ?? ""}
+                  onChange={e => setForm(f => f && ({ ...f, description: e.target.value }))}
+                  rows={4}
+                />
+              </div>
             </div>
           )}
           {form && editSection === "financials" && (
