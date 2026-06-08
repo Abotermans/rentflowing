@@ -549,6 +549,108 @@ export default function PropertyDetail() {
           onOverride={handleUnitOverrideConfirm}
         />
       )}
+
+      {/* Property Edit Dialog */}
+      <Dialog open={propertyEditOpen} onOpenChange={setPropertyEditOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("properties.edit")}</DialogTitle>
+          </DialogHeader>
+          {propertyForm && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{t("properties.name")} *</Label>
+                  <Input value={propertyForm.name} onChange={e => setPropertyForm(f => f && ({ ...f, name: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>{t("properties.reference")} *</Label>
+                  <Input value={propertyForm.referenceCode} onChange={e => setPropertyForm(f => f && ({ ...f, referenceCode: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <Label>{t("properties.ownerName")}</Label>
+                <Input value={propertyForm.ownerName} onChange={e => setPropertyForm(f => f && ({ ...f, ownerName: e.target.value }))} />
+              </div>
+              <div>
+                <Label>{t("properties.addressLine1")} *</Label>
+                <Input value={propertyForm.address1} onChange={e => setPropertyForm(f => f && ({ ...f, address1: e.target.value }))} />
+              </div>
+              <div>
+                <Label>{t("properties.addressLine2")}</Label>
+                <Input value={propertyForm.address2} onChange={e => setPropertyForm(f => f && ({ ...f, address2: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{t("properties.city")} *</Label>
+                  <Input value={propertyForm.city} onChange={e => setPropertyForm(f => f && ({ ...f, city: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>{t("properties.postalCode")}</Label>
+                  <Input value={propertyForm.postalCode} onChange={e => setPropertyForm(f => f && ({ ...f, postalCode: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{t("properties.region")}</Label>
+                  <Input value={propertyForm.regionOrState} onChange={e => setPropertyForm(f => f && ({ ...f, regionOrState: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>{t("properties.country")} *</Label>
+                  <Select value={propertyForm.countryCode} onValueChange={v => setPropertyForm(f => f && ({ ...f, countryCode: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EUROPEAN_COUNTRIES.map(c => <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>{t("properties.propertyType")} *</Label>
+                <Select value={propertyForm.propertyType} onValueChange={v => setPropertyForm(f => f && ({ ...f, propertyType: v as Property["propertyType"] }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="residential">{t("properties.residential")}</SelectItem>
+                    <SelectItem value="commercial">{t("properties.commercial")}</SelectItem>
+                    <SelectItem value="mixed-use">{t("properties.mixedUse")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>{t("properties.currency")} *</Label>
+                  <Select value={propertyForm.currencyCode} onValueChange={v => setPropertyForm(f => f && ({ ...f, currencyCode: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>{t("properties.locale")}</Label>
+                  <Input value={propertyForm.locale} onChange={e => setPropertyForm(f => f && ({ ...f, locale: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>{t("properties.measurement")}</Label>
+                  <Select value={propertyForm.measurementSystem} onValueChange={v => setPropertyForm(f => f && ({ ...f, measurementSystem: v as "metric" | "imperial" }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="metric">{t("properties.metric")}</SelectItem>
+                      <SelectItem value="imperial">{t("properties.imperial")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>{t("common.description")}</Label>
+                <Textarea value={propertyForm.description} onChange={e => setPropertyForm(f => f && ({ ...f, description: e.target.value }))} rows={3} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPropertyEditOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleSaveProperty}>{t("action.saveChanges")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
