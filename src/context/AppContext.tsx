@@ -16,6 +16,7 @@ import { autoAllocate } from "@/lib/reconciliation";
 import { generateLeaseReceivables } from "@/lib/leaseReceivables";
 import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
+import { getEffectiveLeaseTerms as libGetEffectiveLeaseTerms } from "@/lib/amendments";
 import {
   migrateLegacyLeaseAssignments,
   getActiveLeaseForUnit as findActiveLeaseForUnit,
