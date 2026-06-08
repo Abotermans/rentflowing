@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, Wrench, Building2, DoorOpen, User, Clock, CalendarClock, HardHat, StickyNote, Pencil } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
-import { MAINTENANCE_CATEGORY_KEYS, MAINTENANCE_STATUS_KEYS, MaintenanceTicket, MaintenanceStatus, MaintenanceCategory, MaintenancePriority } from "@/types/maintenance";
+import { MAINTENANCE_CATEGORY_KEYS, MAINTENANCE_PRIORITY_KEYS, MAINTENANCE_STATUS_KEYS, MaintenanceTicket, MaintenanceStatus, MaintenanceCategory, MaintenancePriority } from "@/types/maintenance";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -244,7 +244,7 @@ function EditTicketSheet({ ticket, open, onOpenChange }: { ticket: MaintenanceTi
             <div><Label>{t("maintenance.priority")}</Label>
               <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v as MaintenancePriority }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{(["low","medium","high","urgent"] as MaintenancePriority[]).map(k => <SelectItem key={k} value={k}>{t(`status.${k === "medium" ? "medium" : k}` as const)}</SelectItem>)}</SelectContent>
+                <SelectContent>{(Object.keys(MAINTENANCE_PRIORITY_KEYS) as MaintenancePriority[]).map(k => <SelectItem key={k} value={k}>{t(MAINTENANCE_PRIORITY_KEYS[k])}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>
