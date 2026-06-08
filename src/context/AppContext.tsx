@@ -663,6 +663,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const activateAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
     const am = amendments.find(a => a.id === id);
     if (!am) return { ok: false, reason: "Amendment not found" };
+    const todayISO = new Date().toISOString().slice(0, 10);
+    if (am.effectiveDate && am.effectiveDate > todayISO) {
+      return { ok: false, reason: "Effective date is in the future — schedule instead" };
+    }
     const ts = now();
     const eff = am.effectiveDate;
     const dayBefore = (() => {
@@ -744,16 +748,85 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (endedIds.has(a.id)) return { ...a, status: "ended", updatedAt: ts };
       return a;
     }));
+
+    // Propagate the new effective terms to the parent lease and regenerate
+    // forward-dated receivables. Past + paid items are preserved.
+    setLeases(prevLeases => {
+      const lease = prevLeases.find(l => l.id === am.leaseId);
+      if (!lease) return prevLeases;
+
+      // Build the synthetic snapshot the same way getEffectiveLeaseTerms would,
+      // but using the freshly-updated assignments + amendments scoped to today.
+      setLeaseUnitAssignments(prevA => {
+        setAmendments(prevAms => {
+          setAmendmentChanges(prevCh => {
+            const eff2 = libGetEffectiveLeaseTerms(am.leaseId, todayISO, {
+              properties: [], units: [], tenants: [],
+              leases: prevLeases, guarantees: [],
+              leaseUnitAssignments: prevA,
+              amendments: prevAms, amendmentChanges: prevCh,
+              receivableItems: [], cashReceipts: [], allocations: [],
+              tickets: [], costCategories: [], costEntries: [],
+              allocationRules: [], allocationRuleUnitShares: [], costAllocationResults: [],
+            } as never);
+            if (eff2) {
+              const patched: Lease = {
+                ...lease,
+                monthlyRent: eff2.monthlyRent,
+                monthlyCharges: eff2.monthlyCharges,
+                endDate: eff2.endDate,
+                depositOrGuaranteeAmount: eff2.depositAmount ?? lease.depositOrGuaranteeAmount,
+                noticePeriodText: eff2.noticePeriodText || lease.noticePeriodText,
+                primaryTenantId: eff2.primaryTenantId,
+                coTenantIds: eff2.coTenantIds,
+                updatedAt: ts,
+              };
+              // Patch lease record
+              setLeases(curr => curr.map(l => l.id === lease.id ? patched : l));
+              // Regenerate forward receivables
+              const property = properties.find(p => p.id === patched.propertyId);
+              const currencyCode = property?.currencyCode ?? "EUR";
+              const { receivables: regen } = generateLeaseReceivables(patched, {
+                currencyCode, genId, today: ts,
+              });
+              setReceivableItems(prevRi => {
+                const kept = prevRi.filter(ri =>
+                  ri.leaseId !== lease.id ||
+                  ri.dueDate < eff ||
+                  ri.allocatedAmount > 0,
+                );
+                const keptKeys = new Set(kept.map(ri => `${ri.leaseId}|${ri.itemType}|${ri.periodMonth}|${ri.dueDate}`));
+                const fresh = regen.filter(ri =>
+                  ri.dueDate >= eff &&
+                  !keptKeys.has(`${ri.leaseId}|${ri.itemType}|${ri.periodMonth}|${ri.dueDate}`),
+                );
+                return [...kept, ...fresh];
+              });
+            }
+            return prevCh;
+          });
+          return prevAms;
+        });
+        return prevA;
+      });
+      return prevLeases;
+    });
+
     return { ok: true };
-  }, [amendments, amendmentChanges]);
+  }, [amendments, amendmentChanges, properties]);
 
   const scheduleAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
     const am = amendments.find(a => a.id === id);
     if (!am) return { ok: false, reason: "Amendment not found" };
     if (!am.effectiveDate) return { ok: false, reason: "Effective date is required" };
+    const todayISO = new Date().toISOString().slice(0, 10);
+    if (am.effectiveDate <= todayISO) {
+      // Date already reached — go straight to active.
+      return activateAmendment(id);
+    }
     setAmendmentStatus(id, "scheduled");
     return { ok: true };
-  }, [amendments, setAmendmentStatus]);
+  }, [amendments, setAmendmentStatus, activateAmendment]);
 
   const terminateAmendment = useCallback((id: string) => {
     setAmendmentStatus(id, "terminated");
