@@ -113,6 +113,9 @@ export function AmendmentsSection({ leaseId }: Props) {
                   <TableRow className="h-8">
                     <TableHead className="h-8 text-sm">{t("leases.col.unit")}</TableHead>
                     <TableHead className="h-8 text-sm">{t("leases.col.role")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("leases.col.start")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("leases.col.signed")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("leases.col.end")}</TableHead>
                     <TableHead className="h-8 text-sm text-right">{t("leases.col.rentShare")}</TableHead>
                     <TableHead className="h-8 text-sm text-right">{t("leases.col.chargesShare")}</TableHead>
                     <TableHead className="h-8 text-sm text-right">{t("common.total")}</TableHead>
@@ -129,6 +132,9 @@ export function AmendmentsSection({ leaseId }: Props) {
                             {u.isPrimary ? t("leases.role.primary") : t("leases.role.secondary")}
                           </span>
                         </TableCell>
+                        <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(lease.startDate, locale)}</TableCell>
+                        <TableCell className="py-1 text-sm text-muted-foreground">{lease.signedDate ? formatDate(lease.signedDate, locale) : "—"}</TableCell>
+                        <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(terms.endDate, locale)}</TableCell>
                         <TableCell className="py-1 text-right text-sm tabular-nums">{formatCurrency(u.rentShare ?? 0, currency, locale)}</TableCell>
                         <TableCell className="py-1 text-right text-sm tabular-nums">{formatCurrency(u.chargesShare ?? 0, currency, locale)}</TableCell>
                         <TableCell className="py-1 text-right text-sm font-medium tabular-nums">{formatCurrency(rowTotal, currency, locale)}</TableCell>
@@ -136,11 +142,11 @@ export function AmendmentsSection({ leaseId }: Props) {
                     );
                   })}
                   {sortedUnits.length === 0 && (
-                    <TableRow><TableCell colSpan={5} className="py-3 text-center text-xs text-muted-foreground">—</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="py-3 text-center text-xs text-muted-foreground">—</TableCell></TableRow>
                   )}
                   {sortedUnits.length > 0 && (
                     <TableRow className="border-t border-border bg-muted/30 h-9">
-                      <TableCell colSpan={2} className="py-1 text-sm font-medium text-muted-foreground">Σ</TableCell>
+                      <TableCell colSpan={5} className="py-1 text-sm font-medium text-muted-foreground">Σ</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
