@@ -262,9 +262,7 @@ export default function Units() {
                   const prop = properties.find(p => p.id === u.propertyId);
                   return (
                     <TableRow key={u.id} className="cursor-pointer" onClick={() => navigate(`/units/${u.id}`)}>
-                      <TableCell className="font-mono text-xs font-medium">
-                        <Link to={`/units/${u.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{u.unitCode}</Link>
-                      </TableCell>
+                      <TableCell className="text-muted-foreground">{u.unitCode}</TableCell>
                       <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}
