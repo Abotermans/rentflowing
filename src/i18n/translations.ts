@@ -1182,6 +1182,16 @@ const en = {
   "amendments.error.AMD_PRIMARY_CHANGE": "Changing the primary unit affects occupancy and reporting",
   "amendments.error.AMD_WILL_END_PREVIOUS": "Activating this amendment will end the amendment currently in force",
   "amendments.badge.current": "Current",
+  "amendments.confirm.activateTitle": "Activate amendment?",
+  "amendments.confirm.scheduleTitle": "Schedule amendment?",
+  "amendments.confirm.consequences": "Consequences",
+  "amendments.confirm.willEndPrevious": "Active amendment #{n} will be ended.",
+  "amendments.confirm.willRegenReceivables": "Future receivables will be regenerated from the effective date.",
+  "amendments.confirm.willUpdateLease": "The lease summary (rent, charges, end date, deposit) will be updated.",
+  "amendments.confirm.willAutoActivateOnDate": "The amendment will activate automatically when the effective date is reached.",
+  "amendments.readOnlyNotice": "This amendment is active and read-only. Create a new amendment to change terms.",
+  "amendments.errors.dateInFuture": "Effective date is in the future — use Schedule instead.",
+  "amendments.errors.notReady": "Fill in the title, effective date and at least one change.",
 
   // Lease detail page (extra)
   "leaseDetail.totalAllocated": "Total Allocated",
