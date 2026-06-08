@@ -753,18 +753,6 @@ export default function UnitDetail() {
               </div>
             </div>
           )}
-          {form && editSection === "property" && (
-            <div className="space-y-4 mt-4">
-              <Alert><AlertDescription className="text-xs">{t("units.changePropertyWarning")}</AlertDescription></Alert>
-              <div>
-                <Label>{t("table.property")} *</Label>
-                <Select value={form.propertyId} onValueChange={v => setForm(f => f && ({ ...f, propertyId: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
           {form && editSection === "notes" && (
             <div className="space-y-4 mt-4">
               <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => f && ({ ...f, notes: e.target.value }))} rows={5} /></div>
