@@ -58,6 +58,32 @@ export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
   cancelled: "Cancelled",
 };
 
+import type { TranslationKey } from "@/i18n/translations";
+
+export const MAINTENANCE_CATEGORY_KEYS: Record<MaintenanceCategory, TranslationKey> = {
+  plumbing: "maintenance.cat.plumbing",
+  electrical: "maintenance.cat.electrical",
+  heating: "maintenance.cat.heating",
+  cleaning: "maintenance.cat.cleaning",
+  damage: "maintenance.cat.damage",
+  general: "maintenance.cat.general",
+};
+
+export const MAINTENANCE_PRIORITY_KEYS: Record<MaintenancePriority, TranslationKey> = {
+  low: "status.low",
+  medium: "status.medium",
+  high: "status.high",
+  urgent: "status.urgent",
+};
+
+export const MAINTENANCE_STATUS_KEYS: Record<MaintenanceStatus, TranslationKey> = {
+  open: "status.open",
+  assigned: "status.assigned",
+  "in-progress": "status.inProgress",
+  completed: "status.completed",
+  cancelled: "status.cancelled",
+};
+
 export const TRADE_CATEGORIES = [
   "Plumbing", "Electrical", "Heating & HVAC", "Cleaning", "General Maintenance",
   "Painting", "Locksmith", "Carpentry", "Roofing", "Landscaping",
