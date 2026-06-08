@@ -38,6 +38,8 @@ export interface Unit {
   furnished: boolean;
   currentStatus: UnitStatus;
   baseRent: number | null;
+  /** Free-form descriptive text shown in the unit detail. Optional. */
+  description?: string;
   /**
    * Additional rent tiers for multi-month advance periods.
    * The 1-month rent lives in `baseRent`; this array carries every OTHER tier.
