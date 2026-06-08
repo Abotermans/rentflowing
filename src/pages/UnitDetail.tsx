@@ -411,7 +411,7 @@ export default function UnitDetail() {
           <CardTitle className="text-sm font-medium">{t("detail.unitInformation")}</CardTitle>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("info")}><Pencil className="h-3.5 w-3.5" /></Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {infoItems.map(item => (
               <div key={item.label} className="flex items-start gap-2">
@@ -419,6 +419,22 @@ export default function UnitDetail() {
                 <div><p className="text-xs text-muted-foreground">{item.label}</p><p className="text-sm font-medium text-foreground">{item.value}</p></div>
               </div>
             ))}
+          </div>
+          <div className="pt-3 border-t">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5" />{t("detail.propertyContext")}
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link></div>
+              <div><p className="text-xs text-muted-foreground">{t("properties.city")}</p><p className="text-sm font-medium text-foreground">{property.city}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("properties.country")}</p><p className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("properties.locale")}</p><p className="text-sm font-medium text-foreground font-mono">{property.locale}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("properties.measurement")}</p><p className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</p></div>
+            </div>
+          </div>
+          <div className="pt-3 border-t">
+            <p className="text-xs text-muted-foreground mb-1">{t("common.description")}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{unit.description || "—"}</p>
           </div>
         </CardContent>
       </Card>
