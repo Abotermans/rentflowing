@@ -3,8 +3,11 @@ import type {
   LeaseAmendment,
   LeaseAmendmentChange,
   EffectiveLeaseTerms,
+  AmendmentStatus,
 } from "@/types/amendments";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import type { IntegrityState } from "@/lib/integrity/types";
+import { validateAmendment } from "@/lib/integrity/amendmentIntegrity";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -203,6 +206,71 @@ export function getEffectiveLeaseTerms(
 
 export function getCurrentLeaseTerms(leaseId: string, s: State): EffectiveLeaseTerms | null {
   return getEffectiveLeaseTerms(leaseId, today(), s);
+}
+
+/* ------------------------------------------------------------------ */
+/* Lifecycle gating helpers — shared between dialog, row and context. */
+/* ------------------------------------------------------------------ */
+
+export type AmendmentDraftLike = Pick<
+  LeaseAmendment,
+  "id" | "leaseId" | "amendmentNumber" | "amendmentType" | "title" | "reason" |
+  "notes" | "effectiveDate" | "signedDate" | "status" | "supersedesAmendmentId"
+>;
+
+export interface GateResult { ok: boolean; reason?: string }
+
+export function isAmendmentEditable(am: Pick<LeaseAmendment, "status"> | null | undefined): boolean {
+  if (!am) return true;
+  return am.status === "draft" || am.status === "scheduled";
+}
+
+function hasMandatoryData(am: AmendmentDraftLike, changes: readonly Pick<LeaseAmendmentChange, "fieldName">[]): GateResult {
+  if (!am.title?.trim()) return { ok: false, reason: "Title is required" };
+  if (!am.effectiveDate) return { ok: false, reason: "Effective date is required" };
+  if (changes.length === 0) return { ok: false, reason: "At least one change is required" };
+  return { ok: true };
+}
+
+/** Can this amendment move to `scheduled`? Requires mandatory data + validation. */
+export function canSchedule(
+  am: AmendmentDraftLike,
+  changes: readonly LeaseAmendmentChange[],
+  s: IntegrityState,
+): GateResult {
+  if (am.status === "active") return { ok: false, reason: "Already active" };
+  const m = hasMandatoryData(am, changes);
+  if (!m.ok) return m;
+  const v = validateAmendment(am as LeaseAmendment, changes, s);
+  if (!v.allowed) return { ok: false, reason: v.blockers[0]?.message ?? "Validation failed" };
+  return { ok: true };
+}
+
+/** Can this amendment be activated today? Requires schedule-eligibility + past/today date. */
+export function canActivate(
+  am: AmendmentDraftLike,
+  changes: readonly LeaseAmendmentChange[],
+  s: IntegrityState,
+  todayISO: string = today(),
+): GateResult {
+  if (am.status === "active") return { ok: false, reason: "Already active" };
+  const g = canSchedule(am, changes, s);
+  if (!g.ok) return g;
+  if (am.effectiveDate > todayISO) {
+    return { ok: false, reason: "Effective date is in the future — schedule instead" };
+  }
+  return { ok: true };
+}
+
+/** Status the amendment should land on given today's date. */
+export function resolveTargetStatus(
+  requested: AmendmentStatus,
+  effectiveDate: string,
+  todayISO: string = today(),
+): AmendmentStatus {
+  if (requested === "active" && effectiveDate > todayISO) return "scheduled";
+  if (requested === "scheduled" && effectiveDate <= todayISO) return "active";
+  return requested;
 }
 
 export interface AmendmentImpact {

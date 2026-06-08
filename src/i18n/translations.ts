@@ -1182,6 +1182,16 @@ const en = {
   "amendments.error.AMD_PRIMARY_CHANGE": "Changing the primary unit affects occupancy and reporting",
   "amendments.error.AMD_WILL_END_PREVIOUS": "Activating this amendment will end the amendment currently in force",
   "amendments.badge.current": "Current",
+  "amendments.confirm.activateTitle": "Activate amendment?",
+  "amendments.confirm.scheduleTitle": "Schedule amendment?",
+  "amendments.confirm.consequences": "Consequences",
+  "amendments.confirm.willEndPrevious": "Active amendment #{n} will be ended.",
+  "amendments.confirm.willRegenReceivables": "Future receivables will be regenerated from the effective date.",
+  "amendments.confirm.willUpdateLease": "The lease summary (rent, charges, end date, deposit) will be updated.",
+  "amendments.confirm.willAutoActivateOnDate": "The amendment will activate automatically when the effective date is reached.",
+  "amendments.readOnlyNotice": "This amendment is active and read-only. Create a new amendment to change terms.",
+  "amendments.errors.dateInFuture": "Effective date is in the future — use Schedule instead.",
+  "amendments.errors.notReady": "Fill in the title, effective date and at least one change.",
 
   // Lease detail page (extra)
   "leaseDetail.totalAllocated": "Total Allocated",
@@ -2485,6 +2495,16 @@ const fr: TranslationKeys = {
   "amendments.error.AMD_PRIMARY_CHANGE": "Changer le lot principal affecte l'occupation et le reporting",
   "amendments.error.AMD_WILL_END_PREVIOUS": "Activer cet avenant clôturera l'avenant en vigueur",
   "amendments.badge.current": "Actif",
+  "amendments.confirm.activateTitle": "Activer l'avenant ?",
+  "amendments.confirm.scheduleTitle": "Planifier l'avenant ?",
+  "amendments.confirm.consequences": "Conséquences",
+  "amendments.confirm.willEndPrevious": "L'avenant actif n°{n} sera clôturé.",
+  "amendments.confirm.willRegenReceivables": "Les créances futures seront régénérées à partir de la date d'effet.",
+  "amendments.confirm.willUpdateLease": "Le résumé du bail (loyer, charges, date de fin, dépôt) sera mis à jour.",
+  "amendments.confirm.willAutoActivateOnDate": "L'avenant s'activera automatiquement à la date d'effet.",
+  "amendments.readOnlyNotice": "Cet avenant est actif et en lecture seule. Créez un nouvel avenant pour modifier les conditions.",
+  "amendments.errors.dateInFuture": "La date d'effet est future — utilisez Planifier.",
+  "amendments.errors.notReady": "Renseignez le titre, la date d'effet et au moins une modification.",
 
   // Lease detail page (extra)
   "leaseDetail.totalAllocated": "Total alloué",

@@ -16,6 +16,7 @@ import { autoAllocate } from "@/lib/reconciliation";
 import { generateLeaseReceivables } from "@/lib/leaseReceivables";
 import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
+import { getEffectiveLeaseTerms as libGetEffectiveLeaseTerms } from "@/lib/amendments";
 import {
   migrateLegacyLeaseAssignments,
   getActiveLeaseForUnit as findActiveLeaseForUnit,
@@ -662,6 +663,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const activateAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
     const am = amendments.find(a => a.id === id);
     if (!am) return { ok: false, reason: "Amendment not found" };
+    const todayISO = new Date().toISOString().slice(0, 10);
+    if (am.effectiveDate && am.effectiveDate > todayISO) {
+      return { ok: false, reason: "Effective date is in the future — schedule instead" };
+    }
     const ts = now();
     const eff = am.effectiveDate;
     const dayBefore = (() => {
@@ -671,8 +676,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
     const changes = getAmendmentChanges(id, amendmentChanges);
 
-    setLeaseUnitAssignments(prev => {
-      let next = [...prev];
+    // Compute the post-activation snapshot synchronously so we can derive the
+    // effective lease terms and patch the lease + receivables in one shot.
+    const nextAssignments: LeaseUnitAssignment[] = (() => {
+      let next = [...leaseUnitAssignments];
       for (const c of changes) {
         if (c.fieldName === "unitAssignments" && c.changeType === "add" && c.metadata?.unitId) {
           const v = (c.newValue ?? {}) as { rentShare?: number; chargesShare?: number };
@@ -724,7 +731,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
       return next;
-    });
+    })();
 
     // Enforce single-active invariant: any other currently-active amendment on
     // the same lease is moved to "ended". The newly activated amendment records
@@ -738,21 +745,75 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     const supersededId = previousActives[0]?.id ?? am.supersedesAmendmentId ?? null;
     const endedIds = new Set(previousActives.map(a => a.id));
-    setAmendments(prev => prev.map(a => {
-      if (a.id === id) return { ...a, status: "active", supersedesAmendmentId: supersededId, updatedAt: ts };
-      if (endedIds.has(a.id)) return { ...a, status: "ended", updatedAt: ts };
+    const nextAmendments = amendments.map(a => {
+      if (a.id === id) return { ...a, status: "active" as const, supersedesAmendmentId: supersededId, updatedAt: ts };
+      if (endedIds.has(a.id)) return { ...a, status: "ended" as const, updatedAt: ts };
       return a;
-    }));
+    });
+
+    // Compute effective terms from the simulated post-activation state.
+    const lease = leases.find(l => l.id === am.leaseId);
+    let patched: Lease | null = null;
+    if (lease) {
+      const eff2 = libGetEffectiveLeaseTerms(am.leaseId, todayISO, {
+        leases, leaseUnitAssignments: nextAssignments,
+        amendments: nextAmendments, amendmentChanges,
+      });
+      if (eff2) {
+        patched = {
+          ...lease,
+          monthlyRent: eff2.monthlyRent || lease.monthlyRent,
+          monthlyCharges: eff2.monthlyCharges || lease.monthlyCharges,
+          endDate: eff2.endDate || lease.endDate,
+          depositOrGuaranteeAmount: eff2.depositAmount ?? lease.depositOrGuaranteeAmount,
+          noticePeriodText: eff2.noticePeriodText || lease.noticePeriodText,
+          primaryTenantId: eff2.primaryTenantId || lease.primaryTenantId,
+          coTenantIds: eff2.coTenantIds ?? lease.coTenantIds,
+          updatedAt: ts,
+        };
+      }
+    }
+
+    // Commit all derived state in one render pass.
+    setLeaseUnitAssignments(nextAssignments);
+    setAmendments(nextAmendments);
+    if (patched) {
+      setLeases(prev => prev.map(l => l.id === patched!.id ? patched! : l));
+      const property = properties.find(p => p.id === patched.propertyId);
+      const currencyCode = property?.currencyCode ?? "EUR";
+      const { receivables: regen } = generateLeaseReceivables(patched, {
+        currencyCode, genId, today: ts,
+      });
+      setReceivableItems(prevRi => {
+        const kept = prevRi.filter(ri =>
+          ri.leaseId !== patched!.id ||
+          ri.dueDate < eff ||
+          ri.allocatedAmount > 0,
+        );
+        const keptKeys = new Set(kept.map(ri => `${ri.leaseId}|${ri.itemType}|${ri.periodMonth}|${ri.dueDate}`));
+        const fresh = regen.filter(ri =>
+          ri.dueDate >= eff &&
+          !keptKeys.has(`${ri.leaseId}|${ri.itemType}|${ri.periodMonth}|${ri.dueDate}`),
+        );
+        return [...kept, ...fresh];
+      });
+    }
+
     return { ok: true };
-  }, [amendments, amendmentChanges]);
+  }, [amendments, amendmentChanges, leases, leaseUnitAssignments, properties]);
 
   const scheduleAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
     const am = amendments.find(a => a.id === id);
     if (!am) return { ok: false, reason: "Amendment not found" };
     if (!am.effectiveDate) return { ok: false, reason: "Effective date is required" };
+    const todayISO = new Date().toISOString().slice(0, 10);
+    if (am.effectiveDate <= todayISO) {
+      // Date already reached — go straight to active.
+      return activateAmendment(id);
+    }
     setAmendmentStatus(id, "scheduled");
     return { ok: true };
-  }, [amendments, setAmendmentStatus]);
+  }, [amendments, setAmendmentStatus, activateAmendment]);
 
   const terminateAmendment = useCallback((id: string) => {
     setAmendmentStatus(id, "terminated");
