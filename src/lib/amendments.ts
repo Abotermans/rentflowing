@@ -170,7 +170,15 @@ export function getEffectiveLeaseTerms(
           terms.primaryTenantId = String(c.newValue);
           break;
         case "coTenantIds":
-          terms.coTenantIds = Array.isArray(c.newValue) ? (c.newValue as string[]) : [];
+          if (c.changeType === "add" && c.metadata?.tenantId) {
+            if (!terms.coTenantIds.includes(c.metadata.tenantId)) {
+              terms.coTenantIds = [...terms.coTenantIds, c.metadata.tenantId];
+            }
+          } else if (c.changeType === "remove" && c.metadata?.tenantId) {
+            terms.coTenantIds = terms.coTenantIds.filter(x => x !== c.metadata!.tenantId);
+          } else if (Array.isArray(c.newValue)) {
+            terms.coTenantIds = c.newValue as string[];
+          }
           break;
         default:
           // Unit-related changes are already represented via live assignment rows
