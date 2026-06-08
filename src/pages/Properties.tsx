@@ -200,10 +200,8 @@ export default function Properties() {
                 const stats = getPropertyStats(p.id);
                 return (
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/properties/${p.id}`)}>
-                    <TableCell className="font-medium">
-                      <Link to={`/properties/${p.id}`} className="hover:underline text-foreground">{p.name}</Link>
-                    </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs">{p.referenceCode}</TableCell>
+                    <TableCell className="text-muted-foreground">{p.name}</TableCell>
                     <TableCell className="text-muted-foreground">{p.city}</TableCell>
                     <TableCell className="text-muted-foreground">{getCountryName(p.countryCode)}</TableCell>
                     <TableCell className="text-muted-foreground">{getPropertyTypeLabel(p.propertyType)}</TableCell>
