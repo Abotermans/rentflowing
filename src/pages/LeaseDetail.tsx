@@ -174,11 +174,7 @@ export default function LeaseDetail() {
     );
   }
 
-  const tenant = tenants.find(tn => tn.id === lease.primaryTenantId);
   const unit = units.find(u => u.id === lease.unitId);
-  const coTenants = (lease.coTenantIds ?? [])
-    .map(tid => tenants.find(tn => tn.id === tid))
-    .filter((x): x is NonNullable<typeof x> => !!x);
   const property = properties.find(p => p.id === lease.propertyId);
   const locale = property?.locale ?? "fr-FR";
   const currency = property?.currencyCode ?? "EUR";
@@ -189,6 +185,12 @@ export default function LeaseDetail() {
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const effectiveTerms = getEffectiveLeaseTerms(lease.id, todayIso, integrityState);
+  const effPrimaryTenantId = effectiveTerms?.primaryTenantId ?? lease.primaryTenantId;
+  const effCoTenantIds = effectiveTerms?.coTenantIds ?? lease.coTenantIds ?? [];
+  const tenant = tenants.find(tn => tn.id === effPrimaryTenantId);
+  const coTenants = effCoTenantIds
+    .map(tid => tenants.find(tn => tn.id === tid))
+    .filter((x): x is NonNullable<typeof x> => !!x);
   const effRent = effectiveTerms?.monthlyRent ?? lease.monthlyRent;
   const effCharges = effectiveTerms?.monthlyCharges ?? lease.monthlyCharges;
   const effEndDate = effectiveTerms?.endDate ?? lease.endDate;
