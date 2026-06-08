@@ -684,7 +684,6 @@ export default function UnitDetail() {
             <DialogTitle>
               {editSection === "info" && t("detail.unitInformation")}
               {editSection === "financials" && t("detail.financialDefaults")}
-              {editSection === "property" && t("detail.propertyContext")}
               {editSection === "notes" && t("common.notes")}
             </DialogTitle>
           </DialogHeader>
