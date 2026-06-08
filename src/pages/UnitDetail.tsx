@@ -312,13 +312,6 @@ export default function UnitDetail() {
               <StatusBadge status={unit.currentStatus} />
             </div>
             <p className="text-sm text-muted-foreground mt-1">{unit.unitLabel}</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {t("table.property")}: <Link to={`/properties/${property.id}`} className="hover:underline text-primary">{property.name}</Link>
-              <span className="mx-1 text-muted-foreground">·</span>
-              <span className="font-mono text-xs">{property.referenceCode}</span>
-              <span className="mx-1 text-muted-foreground">·</span>
-              {property.city}, {getCountryName(property.countryCode)}
-            </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (unit.currentStatus === "vacant" || unit.currentStatus === "reserved") && (
