@@ -15,7 +15,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote, AlertTriangle, MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { formatCurrency, formatArea, formatDate, getCountryName, UNIT_TYPE_KEYS } from "@/lib/formatters";
-import { Unit, UnitType, UnitStatus, getTenantFullName } from "@/types";
+import { Unit, UnitType, UnitStatus, Property, getTenantFullName } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
@@ -36,6 +36,16 @@ const PROPERTY_TYPE_KEYS: Record<string, TranslationKey> = {
   commercial: "properties.commercial",
   "mixed-use": "properties.mixedUse",
 };
+const EUROPEAN_COUNTRIES = [
+  { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
+  { code: "DE", label: "Germany" }, { code: "GB", label: "United Kingdom" }, { code: "ES", label: "Spain" },
+  { code: "IT", label: "Italy" }, { code: "PT", label: "Portugal" }, { code: "CH", label: "Switzerland" },
+  { code: "AT", label: "Austria" }, { code: "LU", label: "Luxembourg" }, { code: "IE", label: "Ireland" },
+  { code: "SE", label: "Sweden" }, { code: "DK", label: "Denmark" }, { code: "NO", label: "Norway" },
+  { code: "FI", label: "Finland" }, { code: "PL", label: "Poland" }, { code: "CZ", label: "Czech Republic" },
+];
+const CURRENCIES = ["EUR", "GBP", "CHF", "SEK", "DKK", "NOK", "PLN", "CZK"];
+type PropertyEditData = Omit<Property, "id" | "createdAt" | "updatedAt">;
 const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
   vacant: "status.vacant",
   occupied: "status.occupied",
@@ -48,7 +58,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, updateProperty, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const navigate = useNavigate();
@@ -69,6 +79,25 @@ export default function PropertyDetail() {
     currentStatus: "vacant", baseRent: null, rentTiers: [], baseCharges: null, availableFrom: null, notes: "",
   };
   const [unitForm, setUnitForm] = useState<UnitFormData>({ ...emptyUnitForm });
+
+  const [propertyEditOpen, setPropertyEditOpen] = useState(false);
+  const [propertyForm, setPropertyForm] = useState<PropertyEditData | null>(null);
+  const openEditProperty = () => {
+    if (!property) return;
+    const { id: _id, createdAt, updatedAt, ...rest } = property;
+    setPropertyForm(rest);
+    setPropertyEditOpen(true);
+  };
+  const handleSaveProperty = () => {
+    if (!property || !propertyForm) return;
+    if (!propertyForm.name.trim() || !propertyForm.referenceCode.trim() || !propertyForm.address1.trim() || !propertyForm.city.trim() || !propertyForm.countryCode) {
+      toast({ title: t("common.validationError"), description: "Please fill in all required fields.", variant: "destructive" });
+      return;
+    }
+    updateProperty({ ...property, ...propertyForm });
+    toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
+    setPropertyEditOpen(false);
+  };
 
   const openAddUnit = () => { setEditingUnit(null); setUnitForm({ ...emptyUnitForm }); setSheetOpen(true); };
   const openEditUnit = (u: Unit) => {
@@ -177,10 +206,6 @@ export default function PropertyDetail() {
               <StatusBadge status={property.status} />
             </div>
             <p className="text-sm text-muted-foreground mt-1 font-mono">{property.referenceCode}</p>
-            <div className="flex gap-2 mt-2">
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{property.currencyCode}</span>
-            </div>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -210,17 +235,26 @@ export default function PropertyDetail() {
       {/* Overview & Local Settings */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.overview")}</CardTitle></CardHeader>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">{t("detail.overview")}</CardTitle>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditProperty} aria-label={t("action.edit") ?? "Edit"}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("filter.status")}</span><StatusBadge status={property.status} /></div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("detail.localSettings")}</CardTitle></CardHeader>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">{t("detail.localSettings")}</CardTitle>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditProperty} aria-label={t("action.edit") ?? "Edit"}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.locale")}</span><span className="text-sm font-medium text-foreground font-mono">{property.locale}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.currency")}</span><span className="text-sm font-medium text-foreground">{property.currencyCode}</span></div>
@@ -247,12 +281,17 @@ export default function PropertyDetail() {
       </div>
 
       {/* Description */}
-      {property.description && (
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t("common.description")}</CardTitle></CardHeader>
-          <CardContent><p className="text-sm text-muted-foreground">{property.description}</p></CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-medium">{t("common.description")}</CardTitle>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditProperty} aria-label={t("action.edit") ?? "Edit"}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{property.description || "—"}</p>
+        </CardContent>
+      </Card>
 
       {/* Units */}
       <div>
@@ -510,6 +549,108 @@ export default function PropertyDetail() {
           onOverride={handleUnitOverrideConfirm}
         />
       )}
+
+      {/* Property Edit Dialog */}
+      <Dialog open={propertyEditOpen} onOpenChange={setPropertyEditOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("properties.edit")}</DialogTitle>
+          </DialogHeader>
+          {propertyForm && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{t("properties.name")} *</Label>
+                  <Input value={propertyForm.name} onChange={e => setPropertyForm(f => f && ({ ...f, name: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>{t("properties.reference")} *</Label>
+                  <Input value={propertyForm.referenceCode} onChange={e => setPropertyForm(f => f && ({ ...f, referenceCode: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <Label>{t("properties.ownerName")}</Label>
+                <Input value={propertyForm.ownerName} onChange={e => setPropertyForm(f => f && ({ ...f, ownerName: e.target.value }))} />
+              </div>
+              <div>
+                <Label>{t("properties.addressLine1")} *</Label>
+                <Input value={propertyForm.address1} onChange={e => setPropertyForm(f => f && ({ ...f, address1: e.target.value }))} />
+              </div>
+              <div>
+                <Label>{t("properties.addressLine2")}</Label>
+                <Input value={propertyForm.address2} onChange={e => setPropertyForm(f => f && ({ ...f, address2: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{t("properties.city")} *</Label>
+                  <Input value={propertyForm.city} onChange={e => setPropertyForm(f => f && ({ ...f, city: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>{t("properties.postalCode")}</Label>
+                  <Input value={propertyForm.postalCode} onChange={e => setPropertyForm(f => f && ({ ...f, postalCode: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{t("properties.region")}</Label>
+                  <Input value={propertyForm.regionOrState} onChange={e => setPropertyForm(f => f && ({ ...f, regionOrState: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>{t("properties.country")} *</Label>
+                  <Select value={propertyForm.countryCode} onValueChange={v => setPropertyForm(f => f && ({ ...f, countryCode: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EUROPEAN_COUNTRIES.map(c => <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>{t("properties.propertyType")} *</Label>
+                <Select value={propertyForm.propertyType} onValueChange={v => setPropertyForm(f => f && ({ ...f, propertyType: v as Property["propertyType"] }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="residential">{t("properties.residential")}</SelectItem>
+                    <SelectItem value="commercial">{t("properties.commercial")}</SelectItem>
+                    <SelectItem value="mixed-use">{t("properties.mixedUse")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>{t("properties.currency")} *</Label>
+                  <Select value={propertyForm.currencyCode} onValueChange={v => setPropertyForm(f => f && ({ ...f, currencyCode: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>{t("properties.locale")}</Label>
+                  <Input value={propertyForm.locale} onChange={e => setPropertyForm(f => f && ({ ...f, locale: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>{t("properties.measurement")}</Label>
+                  <Select value={propertyForm.measurementSystem} onValueChange={v => setPropertyForm(f => f && ({ ...f, measurementSystem: v as "metric" | "imperial" }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="metric">{t("properties.metric")}</SelectItem>
+                      <SelectItem value="imperial">{t("properties.imperial")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>{t("common.description")}</Label>
+                <Textarea value={propertyForm.description} onChange={e => setPropertyForm(f => f && ({ ...f, description: e.target.value }))} rows={3} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPropertyEditOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleSaveProperty}>{t("action.saveChanges")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
