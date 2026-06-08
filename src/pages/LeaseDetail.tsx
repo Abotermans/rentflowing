@@ -949,7 +949,9 @@ export default function LeaseDetail() {
                 );
               })()}
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>{guarantee ? t("detail.editGuarantee") : t("detail.addGuarantee")}</Button>
+            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
+              {guarantee ? <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</> : <><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addGuarantee")}</>}
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -994,7 +996,7 @@ export default function LeaseDetail() {
                 </div>
                 {status !== "completed" && (
                   <Button variant="outline" size="sm" onClick={onOpen}>
-                    {status === "not-scheduled" ? t("detail.schedule") : t("action.edit")}
+                    {status === "not-scheduled" ? <><Clock className="h-3.5 w-3.5 mr-1" />{t("detail.schedule")}</> : <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</>}
                   </Button>
                 )}
               </div>
@@ -1268,7 +1270,7 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base font-medium text-left">{t("common.notes")}</CardTitle>
-          <Button variant="ghost" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
+          <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
             <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
           </Button>
         </CardHeader>
