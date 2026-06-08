@@ -222,6 +222,16 @@ let counter = 500;
 const genId = (prefix: string) => `${prefix}${++counter}`;
 const now = () => new Date().toISOString().split("T")[0];
 
+const LS_AMENDMENTS = "app-amendments";
+const LS_AMENDMENT_CHANGES = "app-amendment-changes";
+function loadLS<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch { return fallback; }
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [properties, setProperties] = useState<Property[]>(initialProperties);
   const [units, setUnits] = useState<Unit[]>(initialUnits);
@@ -231,8 +241,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>(
     () => migrateLegacyLeaseAssignments(initialLeases, initialLeaseUnitAssignments),
   );
-  const [amendments, setAmendments] = useState<LeaseAmendment[]>(initialAmendments);
-  const [amendmentChanges, setAmendmentChanges] = useState<LeaseAmendmentChange[]>(initialAmendmentChanges);
+  const [amendments, setAmendments] = useState<LeaseAmendment[]>(
+    () => loadLS<LeaseAmendment[]>(LS_AMENDMENTS, initialAmendments),
+  );
+  const [amendmentChanges, setAmendmentChanges] = useState<LeaseAmendmentChange[]>(
+    () => loadLS<LeaseAmendmentChange[]>(LS_AMENDMENT_CHANGES, initialAmendmentChanges),
+  );
+  useEffect(() => {
+    try { localStorage.setItem(LS_AMENDMENTS, JSON.stringify(amendments)); } catch {}
+  }, [amendments]);
+  useEffect(() => {
+    try { localStorage.setItem(LS_AMENDMENT_CHANGES, JSON.stringify(amendmentChanges)); } catch {}
+  }, [amendmentChanges]);
   const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
   const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
   const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
