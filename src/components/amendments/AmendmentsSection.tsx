@@ -79,6 +79,87 @@ export function AmendmentsSection({ leaseId }: Props) {
 
   const openEdit = (a: LeaseAmendment) => { setEditing(a); setDialogOpen(true); };
 
+  const renderTermsAsList = (terms: NonNullable<typeof current>) => {
+    const sortedUnits = terms.units.slice().sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    const coTenants = terms.coTenantIds;
+    const sumR = sortedUnits.reduce((s, u) => s + (u.rentShare ?? 0), 0);
+    const sumC = sortedUnits.reduce((s, u) => s + (u.chargesShare ?? 0), 0);
+    const grand = sumR + sumC;
+    return (
+      <div className="space-y-4">
+        <div className="space-y-4 pb-4 border-b border-border">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1.5">{t("leases.tenant")}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium text-foreground">{tenantLabel(terms.primaryTenantId)}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
+              </div>
+              {coTenants.map(id => (
+                <div key={id} className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-foreground">{tenantLabel(id)}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1.5">
+              {sortedUnits.length > 1 ? `${t("table.unit")}s · ${sortedUnits.length}` : t("table.unit")}
+            </p>
+            <div className="rounded border overflow-hidden">
+              <Table className="[&_th]:px-2 [&_td]:px-2">
+                <TableHeader>
+                  <TableRow className="h-8">
+                    <TableHead className="h-8 text-sm">{t("leases.col.unit")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("leases.col.role")}</TableHead>
+                    <TableHead className="h-8 text-sm text-right">{t("leases.col.rentShare")}</TableHead>
+                    <TableHead className="h-8 text-sm text-right">{t("leases.col.chargesShare")}</TableHead>
+                    <TableHead className="h-8 text-sm text-right">{t("common.total")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedUnits.map(u => {
+                    const rowTotal = (u.rentShare ?? 0) + (u.chargesShare ?? 0);
+                    return (
+                      <TableRow key={u.unitId} className="h-9">
+                        <TableCell className="py-1 text-sm font-medium text-foreground">{unitLabel(u.unitId)}</TableCell>
+                        <TableCell className="py-1">
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${u.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                            {u.isPrimary ? t("leases.role.primary") : t("leases.role.secondary")}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-1 text-right text-sm tabular-nums">{formatCurrency(u.rentShare ?? 0, currency, locale)}</TableCell>
+                        <TableCell className="py-1 text-right text-sm tabular-nums">{formatCurrency(u.chargesShare ?? 0, currency, locale)}</TableCell>
+                        <TableCell className="py-1 text-right text-sm font-medium tabular-nums">{formatCurrency(rowTotal, currency, locale)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {sortedUnits.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="py-3 text-center text-xs text-muted-foreground">—</TableCell></TableRow>
+                  )}
+                  {sortedUnits.length > 0 && (
+                    <TableRow className="border-t border-border bg-muted/30 h-9">
+                      <TableCell colSpan={2} className="py-1 text-sm font-medium text-muted-foreground">Σ</TableCell>
+                      <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
+                      <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
+                      <TableCell className="py-1 text-right text-sm font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div><p className="text-xs text-muted-foreground">{t("leases.endDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(terms.endDate, locale)}</p></div>
+          <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{terms.noticePeriodText || "—"}</p></div>
+          <div><p className="text-xs text-muted-foreground">Deposit</p><p className="text-sm font-medium text-foreground">{terms.depositAmount != null ? formatCurrency(terms.depositAmount, currency, locale) : "—"}</p></div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3 flex flex-row items-center">
@@ -286,7 +367,7 @@ export function AmendmentsSection({ leaseId }: Props) {
           </TabsContent>
 
           <TabsContent value="original" className="pt-3">
-            {original && renderTerms(original)}
+            {original && renderTermsAsList(original)}
           </TabsContent>
         </Tabs>
 
