@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, Wrench, Building2, DoorOpen, User, Clock, CalendarClock, HardHat, StickyNote, Pencil } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
-import { MAINTENANCE_CATEGORY_LABELS, MAINTENANCE_PRIORITY_LABELS, MAINTENANCE_STATUS_LABELS, MaintenanceTicket, MaintenanceStatus } from "@/types/maintenance";
+import { MAINTENANCE_CATEGORY_KEYS, MAINTENANCE_STATUS_KEYS, MaintenanceTicket, MaintenanceStatus, MaintenanceCategory, MaintenancePriority } from "@/types/maintenance";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ export default function MaintenanceDetail() {
   const { t } = useSettings();
   const [editOpen, setEditOpen] = useState(false);
 
-  const ticket = tickets.find(t => t.id === id);
+  const ticket = tickets.find(x => x.id === id);
   if (!ticket) {
     return (
       <div className="text-center py-12">
@@ -35,12 +35,12 @@ export default function MaintenanceDetail() {
 
   const property = properties.find(p => p.id === ticket.propertyId);
   const unit = units.find(u => u.id === ticket.unitId);
-  const tenant = ticket.tenantId ? tenants.find(t => t.id === ticket.tenantId) : null;
+  const tenant = ticket.tenantId ? tenants.find(tn => tn.id === ticket.tenantId) : null;
   const vendor = ticket.assignedVendorId ? vendors.find(v => v.id === ticket.assignedVendorId) : null;
 
   const quickStatusChange = (status: MaintenanceStatus) => {
     updateTicket({ ...ticket, status, completedDate: status === "completed" ? new Date().toISOString().split("T")[0] : ticket.completedDate });
-    toast({ title: `Status changed to ${MAINTENANCE_STATUS_LABELS[status]}` });
+    toast({ title: t("maintenance.statusChangedTo").replace("{status}", t(MAINTENANCE_STATUS_KEYS[status])) });
   };
 
   return (
@@ -56,10 +56,10 @@ export default function MaintenanceDetail() {
               <StatusBadge status={ticket.status} />
               <StatusBadge status={ticket.priority} />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{MAINTENANCE_CATEGORY_LABELS[ticket.category]} · {formatDate(ticket.createdDate, property?.locale)}</p>
+            <p className="text-sm text-muted-foreground mt-1">{t(MAINTENANCE_CATEGORY_KEYS[ticket.category])} · {formatDate(ticket.createdDate, property?.locale)}</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
+            <Pencil className="h-3.5 w-3.5 mr-1.5" />{t("action.edit")}
           </Button>
         </div>
       </div>
@@ -129,7 +129,7 @@ export default function MaintenanceDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
               <p className="text-xs text-muted-foreground">{t("maintenance.category")}</p>
-              <p className="text-sm font-medium text-foreground">{MAINTENANCE_CATEGORY_LABELS[ticket.category]}</p>
+              <p className="text-sm font-medium text-foreground">{t(MAINTENANCE_CATEGORY_KEYS[ticket.category])}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{t("maintenance.priority")}</p>
@@ -188,8 +188,8 @@ export default function MaintenanceDetail() {
 
       {/* Timestamps */}
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Created: {formatDate(ticket.createdDate, property?.locale)}</span>
-        {ticket.scheduledDate && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />Scheduled: {formatDate(ticket.scheduledDate, property?.locale)}</span>}
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("maintenance.created")}: {formatDate(ticket.createdDate, property?.locale)}</span>
+        {ticket.scheduledDate && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" />{t("maintenance.scheduled")}: {formatDate(ticket.scheduledDate, property?.locale)}</span>}
       </div>
 
       {/* Edit Sheet */}
@@ -201,6 +201,7 @@ export default function MaintenanceDetail() {
 function EditTicketSheet({ ticket, open, onOpenChange }: { ticket: MaintenanceTicket; open: boolean; onOpenChange: (v: boolean) => void }) {
   const { properties, units, tenants, vendors, updateTicket } = useAppData();
   const { toast } = useToast();
+  const { t } = useSettings();
   const { id, ...rest } = ticket;
   const [form, setForm] = useState(rest);
 
@@ -208,25 +209,25 @@ function EditTicketSheet({ ticket, open, onOpenChange }: { ticket: MaintenanceTi
 
   const handleSave = () => {
     updateTicket({ ...ticket, ...form });
-    toast({ title: "Ticket updated" });
+    toast({ title: t("maintenance.toastUpdated") });
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Edit Ticket</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("maintenance.edit")}</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-6">
-          <div><Label>Title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
-          <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} /></div>
+          <div><Label>{t("maintenance.titleField")}</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+          <div><Label>{t("common.description")}</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Property</Label>
+            <div><Label>{t("maintenance.property")}</Label>
               <Select value={form.propertyId} onValueChange={v => setForm(f => ({ ...f, propertyId: v, unitId: "" }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Unit</Label>
+            <div><Label>{t("maintenance.unit")}</Label>
               <Select value={form.unitId} onValueChange={v => setForm(f => ({ ...f, unitId: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{formUnits.map(u => <SelectItem key={u.id} value={u.id}>{u.unitCode}</SelectItem>)}</SelectContent>
@@ -234,45 +235,45 @@ function EditTicketSheet({ ticket, open, onOpenChange }: { ticket: MaintenanceTi
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Category</Label>
-              <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v as any }))}>
+            <div><Label>{t("maintenance.category")}</Label>
+              <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v as MaintenanceCategory }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{Object.entries(MAINTENANCE_CATEGORY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                <SelectContent>{(Object.keys(MAINTENANCE_CATEGORY_KEYS) as MaintenanceCategory[]).map(k => <SelectItem key={k} value={k}>{t(MAINTENANCE_CATEGORY_KEYS[k])}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Priority</Label>
-              <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v as any }))}>
+            <div><Label>{t("maintenance.priority")}</Label>
+              <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v as MaintenancePriority }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{Object.entries(MAINTENANCE_PRIORITY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                <SelectContent>{(["low","medium","high","urgent"] as MaintenancePriority[]).map(k => <SelectItem key={k} value={k}>{t(`status.${k === "medium" ? "medium" : k}` as const)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Status</Label>
-              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as any }))}>
+            <div><Label>{t("maintenance.status")}</Label>
+              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as MaintenanceStatus }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{Object.entries(MAINTENANCE_STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                <SelectContent>{(Object.keys(MAINTENANCE_STATUS_KEYS) as MaintenanceStatus[]).map(k => <SelectItem key={k} value={k}>{t(MAINTENANCE_STATUS_KEYS[k])}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Vendor</Label>
+            <div><Label>{t("maintenance.vendor")}</Label>
               <Select value={form.assignedVendorId ?? "none"} onValueChange={v => setForm(f => ({ ...f, assignedVendorId: v === "none" ? null : v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Unassigned</SelectItem>
+                  <SelectItem value="none">{t("maintenance.unassigned")}</SelectItem>
                   {vendors.filter(v => v.status === "active").map(v => <SelectItem key={v.id} value={v.id}>{v.vendorName}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Scheduled Date</Label><Input type="date" value={form.scheduledDate ?? ""} onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value || null }))} /></div>
-            <div><Label>Completed Date</Label><Input type="date" value={form.completedDate ?? ""} onChange={e => setForm(f => ({ ...f, completedDate: e.target.value || null }))} /></div>
+            <div><Label>{t("maintenance.scheduledDate")}</Label><Input type="date" value={form.scheduledDate ?? ""} onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value || null }))} /></div>
+            <div><Label>{t("maintenance.completedDate")}</Label><Input type="date" value={form.completedDate ?? ""} onChange={e => setForm(f => ({ ...f, completedDate: e.target.value || null }))} /></div>
           </div>
-          <div><Label>Internal Notes</Label><Textarea value={form.internalNotes} onChange={e => setForm(f => ({ ...f, internalNotes: e.target.value }))} rows={3} /></div>
+          <div><Label>{t("maintenance.internalNotes")}</Label><Textarea value={form.internalNotes} onChange={e => setForm(f => ({ ...f, internalNotes: e.target.value }))} rows={3} /></div>
         </div>
         <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
+          <Button onClick={handleSave}>{t("action.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
