@@ -87,21 +87,25 @@ export function AmendmentsSection({ leaseId }: Props) {
     const grand = sumR + sumC;
     return (
       <div className="space-y-4">
-        <div className="space-y-4 pb-4 border-b border-border">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1.5">{t("leases.tenant")}</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-foreground">{tenantLabel(terms.primaryTenantId)}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
-              </div>
-              {coTenants.map(id => (
-                <div key={id} className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-foreground">{tenantLabel(id)}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
+      <div className="space-y-4">
+          <div className="flex flex-wrap gap-x-8 gap-y-2 items-start">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">{t("leases.tenant")}</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-foreground">{tenantLabel(terms.primaryTenantId)}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
                 </div>
-              ))}
+                {coTenants.map(id => (
+                  <div key={id} className="flex items-center gap-2 text-sm">
+                    <span className="font-medium text-foreground">{tenantLabel(id)}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
+                  </div>
+                ))}
+              </div>
             </div>
+            <div><p className="text-xs text-muted-foreground mb-1">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{terms.noticePeriodText || "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground mb-1">Deposit</p><p className="text-sm font-medium text-foreground">{terms.depositAmount != null ? formatCurrency(terms.depositAmount, currency, locale) : "—"}</p></div>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1.5">
@@ -156,10 +160,6 @@ export function AmendmentsSection({ leaseId }: Props) {
               </Table>
             </div>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{terms.noticePeriodText || "—"}</p></div>
-          <div><p className="text-xs text-muted-foreground">Deposit</p><p className="text-sm font-medium text-foreground">{terms.depositAmount != null ? formatCurrency(terms.depositAmount, currency, locale) : "—"}</p></div>
         </div>
       </div>
     );
