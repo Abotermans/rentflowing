@@ -554,12 +554,10 @@ export default function Leases() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={l.rentFormula === 1 ? "outline" : l.rentFormula >= 12 ? "default" : "secondary"}>
-                        {l.rentFormula === 1
-                          ? t("leases.formula.monthly")
-                          : `${l.rentFormula} ${t("units.advancePeriodMonths").toLowerCase().replace(/\s*\(.*\)/, "")}`}
-                      </Badge>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {l.rentFormula === 1
+                        ? t("leases.formula.monthly")
+                        : `${l.rentFormula} ${t("units.advancePeriodMonths").toLowerCase().replace(/\s*\(.*\)/, "")}`}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={getLeaseStatus(l)} />
