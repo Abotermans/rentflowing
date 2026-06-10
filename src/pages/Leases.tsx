@@ -114,6 +114,7 @@ export default function Leases() {
     advanceAllocationMethod: null, advanceAppliedTo: null, advanceAllocationStartDate: null,
     advanceAllocationDurationMonths: null, fixedMonthlyReductionAmount: null,
     advanceCycleLeadDays: 15,
+    chargesBillingMode: "provision-reconciled",
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
   // Unified rows for every unit attached to this lease. Exactly one row must
