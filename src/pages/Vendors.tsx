@@ -70,7 +70,6 @@ export default function Vendors() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("vendors.title")}</h1>
-          <p className="text-sm text-muted-foreground">{vendors.length} {t("vendors.title").toLowerCase()}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative inline-flex">
@@ -100,6 +99,9 @@ export default function Vendors() {
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
+          <div className="px-4 pt-4 text-right">
+            <span className="text-sm text-muted-foreground">{vendors.length} {t("vendors.title").toLowerCase()}</span>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>

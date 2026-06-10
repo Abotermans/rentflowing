@@ -99,7 +99,6 @@ export default function Maintenance() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("maintenance.title")}</h1>
-          <p className="text-sm text-muted-foreground">{tickets.length} {t("maintenance.tickets")}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative inline-flex">
@@ -160,6 +159,9 @@ export default function Maintenance() {
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
+          <div className="px-4 pt-4 text-right">
+            <span className="text-sm text-muted-foreground">{tickets.length} {t("maintenance.tickets")}</span>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
