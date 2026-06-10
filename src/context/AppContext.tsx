@@ -357,30 +357,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setProperties(prev => [...prev, {
+    const created: Property = {
       ...p,
-      portfolioId: p.portfolioId ?? currentPortfolioId,
+      portfolioId: p.portfolioId ?? currentPortfolioId ?? undefined,
       id: genId("p"), createdAt: ts, updatedAt: ts,
-    }]);
+    };
+    setProperties(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.properties, created, currentPortfolioId);
   }, [currentPortfolioId]);
   const updateProperty = useCallback((p: Property) => {
-    setProperties(prev => prev.map(x => x.id === p.id ? { ...p, updatedAt: now() } : x));
+    const next = { ...p, updatedAt: now() };
+    setProperties(prev => prev.map(x => x.id === p.id ? next : x));
+    mirror.update(TABLES.properties, p.id, next);
   }, []);
   const deleteProperty = useCallback((id: string) => {
     setProperties(prev => prev.filter(x => x.id !== id));
     setUnits(prev => prev.filter(x => x.propertyId !== id));
+    // FK ON DELETE CASCADE handles units/leases/etc. in the DB.
+    mirror.remove(TABLES.properties, id);
   }, []);
 
   // ===== Unit CRUD =====
   const addUnit = useCallback((u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setUnits(prev => [...prev, { ...u, id: genId("u"), createdAt: ts, updatedAt: ts }]);
-  }, []);
+    const created: Unit = { ...u, id: genId("u"), createdAt: ts, updatedAt: ts };
+    setUnits(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.units, created, currentPortfolioId);
+  }, [currentPortfolioId]);
   const updateUnit = useCallback((u: Unit) => {
-    setUnits(prev => prev.map(x => x.id === u.id ? { ...u, updatedAt: now() } : x));
+    const next = { ...u, updatedAt: now() };
+    setUnits(prev => prev.map(x => x.id === u.id ? next : x));
+    mirror.update(TABLES.units, u.id, next);
   }, []);
   const deleteUnit = useCallback((id: string) => {
     setUnits(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.units, id);
   }, []);
 
   // ===== Tenant CRUD =====
@@ -388,17 +399,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ts = now();
     const created: Tenant = {
       ...t,
-      portfolioId: t.portfolioId ?? currentPortfolioId,
+      portfolioId: t.portfolioId ?? currentPortfolioId ?? undefined,
       id: genId("t"), createdAt: ts, updatedAt: ts,
     };
     setTenants(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.tenants, created, currentPortfolioId);
     return created;
   }, [currentPortfolioId]);
   const updateTenant = useCallback((t: Tenant) => {
-    setTenants(prev => prev.map(x => x.id === t.id ? { ...t, updatedAt: now() } : x));
+    const next = { ...t, updatedAt: now() };
+    setTenants(prev => prev.map(x => x.id === t.id ? next : x));
+    mirror.update(TABLES.tenants, t.id, next);
   }, []);
   const deleteTenant = useCallback((id: string) => {
     setTenants(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.tenants, id);
   }, []);
 
   // ===== Lease CRUD =====
