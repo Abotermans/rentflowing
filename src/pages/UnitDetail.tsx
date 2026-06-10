@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
@@ -656,6 +656,7 @@ export default function UnitDetail() {
               {(() => {
                 type Row = {
                   id: string;
+                  sourceEntryId: string;
                   source: "direct" | "allocated";
                   label: string;
                   category: string;
@@ -683,6 +684,7 @@ export default function UnitDetail() {
                   const s = splitRecovery(e.amount, e.recoveryType);
                   rows.push({
                     id: `d-${e.id}`,
+                      sourceEntryId: e.id,
                     source: "direct",
                     label: e.label,
                     category: getCostCategoryById(e.categoryId)?.name ?? "—",
@@ -702,6 +704,7 @@ export default function UnitDetail() {
                   const rule = getAllocationRuleById(parent?.allocationRuleId ?? "");
                   rows.push({
                     id: `a-${r.id}`,
+                    sourceEntryId: r.costEntryId,
                     source: "allocated",
                     label: parent?.label ?? "—",
                     category: parent ? (getCostCategoryById(parent.categoryId)?.name ?? "—") : "—",
