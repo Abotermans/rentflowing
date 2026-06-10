@@ -17,6 +17,8 @@ export interface Property {
   status: "active" | "inactive";
   createdAt: string;
   updatedAt: string;
+  /** Workspace this property belongs to. Stamped at create-time. */
+  portfolioId?: string;
 }
 
 export type PropertyStatus = "active" | "inactive";
@@ -68,6 +70,8 @@ export interface Tenant {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  /** Workspace this tenant belongs to. Stamped at create-time. */
+  portfolioId?: string;
 }
 
 export function getTenantFullName(t: Tenant): string {
