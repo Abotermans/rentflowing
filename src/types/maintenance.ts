@@ -32,6 +32,8 @@ export interface Vendor {
   address: string;
   notes: string;
   status: VendorStatus;
+  /** Workspace this vendor belongs to. Stamped at create-time. */
+  portfolioId?: string;
 }
 
 export const MAINTENANCE_CATEGORY_LABELS: Record<MaintenanceCategory, string> = {
