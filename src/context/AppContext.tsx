@@ -1483,6 +1483,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         allocationRules: [] as AllocationRule[],
         allocationRuleUnitShares: [] as AllocationRuleUnitShare[],
         costAllocationResults: [] as CostAllocationResult[],
+        chargesReconciliations: [] as ChargesReconciliation[],
       };
       return empty;
     }
