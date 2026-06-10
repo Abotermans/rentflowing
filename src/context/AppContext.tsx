@@ -256,6 +256,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allocationRules, setAllocationRules] = useState<AllocationRule[]>([]);
   const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>([]);
   const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>([]);
+  const [chargesReconciliations, setChargesReconciliations] = useState<ChargesReconciliation[]>([]);
 
   // Hydrate from DB whenever the active portfolio changes.
   useEffect(() => {
@@ -268,6 +269,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTickets([]); setVendors([]);
       setCostCategories([]); setCostEntries([]); setAllocationRules([]);
       setAllocationRuleUnitShares([]); setCostAllocationResults([]);
+      setChargesReconciliations([]);
       setLoading(false);
       return;
     }
@@ -294,6 +296,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAllocationRules(snap.allocationRules);
       setAllocationRuleUnitShares(snap.allocationRuleUnitShares);
       setCostAllocationResults(snap.costAllocationResults);
+      setChargesReconciliations(snap.chargesReconciliations);
       setLoading(false);
     }).catch(err => {
       console.error("[AppContext] loadPortfolio failed:", err);
