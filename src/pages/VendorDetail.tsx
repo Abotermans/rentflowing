@@ -4,6 +4,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Mail, Phone, MapPin, StickyNote, HardHat } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
@@ -129,7 +130,7 @@ export default function VendorDetail() {
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{unit?.unitCode ?? "—"}</TableCell>
                       <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[t.category]}</TableCell>
-                      <TableCell><StatusBadge status={t.priority} /></TableCell>
+                      <TableCell><PriorityLabel priority={t.priority} /></TableCell>
                       <TableCell><StatusBadge status={t.status} /></TableCell>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(t.createdDate, prop?.locale)}</TableCell>
                     </TableRow>
