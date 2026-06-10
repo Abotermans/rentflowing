@@ -864,6 +864,7 @@ const en = {
   "costs.source": "Source",
   "costs.sourceDirect": "Direct",
   "costs.sourceAllocated": "Allocated",
+  "costs.openRecord": "Open record",
   "costs.category": "Category",
   "costs.period": "Period",
   "costs.allocationMethod": "Allocation Method",
