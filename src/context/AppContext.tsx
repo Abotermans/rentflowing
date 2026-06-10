@@ -53,6 +53,7 @@ interface PropertyStats {
 }
 
 interface AppState {
+  loading: boolean;
   properties: Property[];
   units: Unit[];
   tenants: Tenant[];
@@ -1421,6 +1422,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ]);
 
   const value = useMemo(() => ({
+    loading,
     properties: scoped.properties,
     units: scoped.units,
     tenants: scoped.tenants,
@@ -1476,6 +1478,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getAllocationResultsByUnit, getAllocationResultsByProperty,
     getCostCategoryById, getAllocationRuleById, getUnitSharesByRule,
   }), [
+    loading,
     scoped,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
