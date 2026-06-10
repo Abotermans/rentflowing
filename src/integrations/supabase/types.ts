@@ -14,16 +14,171 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      portfolio_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          portfolio_id: string
+          role: Database["public"]["Enums"]["portfolio_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          portfolio_id: string
+          role?: Database["public"]["Enums"]["portfolio_role"]
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          portfolio_id?: string
+          role?: Database["public"]["Enums"]["portfolio_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_invitations_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio_members: {
+        Row: {
+          id: string
+          joined_at: string
+          portfolio_id: string
+          role: Database["public"]["Enums"]["portfolio_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          portfolio_id: string
+          role?: Database["public"]["Enums"]["portfolio_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          portfolio_id?: string
+          role?: Database["public"]["Enums"]["portfolio_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_members_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolios: {
+        Row: {
+          created_at: string
+          created_by: string
+          default_currency: string
+          default_locale: string
+          id: string
+          name: string
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          default_currency?: string
+          default_locale?: string
+          id?: string
+          name: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          default_currency?: string
+          default_locale?: string
+          id?: string
+          name?: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          default_portfolio_id: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          locale: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          default_portfolio_id?: string | null
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          locale?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          default_portfolio_id?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          locale?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_portfolio_role: {
+        Args: {
+          _portfolio_id: string
+          _roles: Database["public"]["Enums"]["portfolio_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_portfolio_member: {
+        Args: { _portfolio_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      portfolio_role: "owner" | "admin" | "editor" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +305,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      portfolio_role: ["owner", "admin", "editor", "viewer"],
+    },
   },
 } as const
