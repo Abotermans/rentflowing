@@ -4,21 +4,16 @@ import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
-import { initialProperties, initialUnits, initialTenants, initialLeases, initialGuarantees, initialLeaseUnitAssignments } from "@/data/mockData";
-import { initialAmendments, initialAmendmentChanges } from "@/data/mockData";
 import type { LeaseAmendment, LeaseAmendmentChange, AmendmentType, AmendmentStatus, AmendmentFieldName, AmendmentChangeType, AmendmentChangeMetadata } from "@/types/amendments";
 import { nextAmendmentNumber, getAmendmentChanges } from "@/lib/amendments";
 import { canActivateAmendment } from "@/lib/integrity/amendmentIntegrity";
-import { initialReceivableItems, initialCashReceipts, initialAllocations } from "@/data/receivablesMockData";
-import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
-import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
 import { autoAllocate } from "@/lib/reconciliation";
 import { generateLeaseReceivables } from "@/lib/leaseReceivables";
 import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
 import { getEffectiveLeaseTerms as libGetEffectiveLeaseTerms } from "@/lib/amendments";
-import { DEMO_PORTFOLIO_ID, LS_DEMO_SEEDED_KEY } from "@/lib/portfolioScope";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { loadPortfolio, mirror, newId, TABLES } from "@/lib/repo";
 import {
   migrateLegacyLeaseAssignments,
   getActiveLeaseForUnit as findActiveLeaseForUnit,
@@ -221,77 +216,75 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
-let counter = 500;
-const genId = (prefix: string) => `${prefix}${++counter}`;
+const genId = (_prefix?: string) => newId();
 const now = () => new Date().toISOString().split("T")[0];
-
-const LS_AMENDMENTS = "app-amendments";
-const LS_AMENDMENT_CHANGES = "app-amendment-changes";
-function loadLS<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch { return fallback; }
-}
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { currentPortfolioId } = usePortfolio();
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Seed mock data is stamped with DEMO_PORTFOLIO_ID until the first real
-  // portfolio loads (effect below) and claims the demo dataset.
-  const stampDemo = <T extends { portfolioId?: string }>(arr: T[]): T[] =>
-    arr.map(x => x.portfolioId ? x : { ...x, portfolioId: DEMO_PORTFOLIO_ID });
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [leases, setLeases] = useState<Lease[]>([]);
+  const [guarantees, setGuarantees] = useState<Guarantee[]>([]);
+  const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>([]);
+  const [amendments, setAmendments] = useState<LeaseAmendment[]>([]);
+  const [amendmentChanges, setAmendmentChanges] = useState<LeaseAmendmentChange[]>([]);
+  const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>([]);
+  const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>([]);
+  const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>([]);
+  const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [costCategories, setCostCategories] = useState<CostCategory[]>([]);
+  const [costEntries, setCostEntries] = useState<CostEntry[]>([]);
+  const [allocationRules, setAllocationRules] = useState<AllocationRule[]>([]);
+  const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>([]);
+  const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>([]);
 
-  const [properties, setProperties] = useState<Property[]>(() => stampDemo(initialProperties));
-  const [units, setUnits] = useState<Unit[]>(initialUnits);
-  const [tenants, setTenants] = useState<Tenant[]>(() => stampDemo(initialTenants));
-  const [leases, setLeases] = useState<Lease[]>(initialLeases);
-  const [guarantees, setGuarantees] = useState<Guarantee[]>(initialGuarantees);
-  const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>(
-    () => migrateLegacyLeaseAssignments(initialLeases, initialLeaseUnitAssignments),
-  );
-  const [amendments, setAmendments] = useState<LeaseAmendment[]>(
-    () => loadLS<LeaseAmendment[]>(LS_AMENDMENTS, initialAmendments),
-  );
-  const [amendmentChanges, setAmendmentChanges] = useState<LeaseAmendmentChange[]>(
-    () => loadLS<LeaseAmendmentChange[]>(LS_AMENDMENT_CHANGES, initialAmendmentChanges),
-  );
+  // Hydrate from DB whenever the active portfolio changes.
   useEffect(() => {
-    try { localStorage.setItem(LS_AMENDMENTS, JSON.stringify(amendments)); } catch {}
-  }, [amendments]);
-  useEffect(() => {
-    try { localStorage.setItem(LS_AMENDMENT_CHANGES, JSON.stringify(amendmentChanges)); } catch {}
-  }, [amendmentChanges]);
-  const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
-  const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
-  const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
-  const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialTickets);
-  const [vendors, setVendors] = useState<Vendor[]>(() => stampDemo(initialVendors));
-
-  // Costs & Taxes state
-  const [costCategories, setCostCategories] = useState<CostCategory[]>(() => stampDemo(initialCostCategories));
-  const [costEntries, setCostEntries] = useState<CostEntry[]>(initialCostEntries);
-  const [allocationRules, setAllocationRules] = useState<AllocationRule[]>(initialAllocationRules);
-  const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>(initialAllocationRuleUnitShares);
-  const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>(initialCostAllocationResults);
-
-  // One-time migration: the first real portfolio to load adopts the demo
-  // dataset (per browser). Subsequent portfolios start empty.
-  useEffect(() => {
-    if (!currentPortfolioId) return;
-    let seeded = localStorage.getItem(LS_DEMO_SEEDED_KEY);
-    if (!seeded) {
-      localStorage.setItem(LS_DEMO_SEEDED_KEY, currentPortfolioId);
-      seeded = currentPortfolioId;
+    let cancelled = false;
+    if (!currentPortfolioId) {
+      setProperties([]); setUnits([]); setTenants([]); setLeases([]);
+      setGuarantees([]); setLeaseUnitAssignments([]);
+      setAmendments([]); setAmendmentChanges([]);
+      setReceivableItems([]); setCashReceipts([]); setAllocations([]);
+      setTickets([]); setVendors([]);
+      setCostCategories([]); setCostEntries([]); setAllocationRules([]);
+      setAllocationRuleUnitShares([]); setCostAllocationResults([]);
+      setLoading(false);
+      return;
     }
-    if (seeded !== currentPortfolioId) return;
-    const remap = <T extends { portfolioId?: string }>(arr: T[]): T[] =>
-      arr.map(x => x.portfolioId === DEMO_PORTFOLIO_ID ? { ...x, portfolioId: currentPortfolioId } : x);
-    setProperties(prev => remap(prev));
-    setTenants(prev => remap(prev));
-    setVendors(prev => remap(prev));
-    setCostCategories(prev => remap(prev));
+    setLoading(true);
+    loadPortfolio(currentPortfolioId).then(snap => {
+      if (cancelled) return;
+      setProperties(snap.properties);
+      setUnits(snap.units);
+      setTenants(snap.tenants);
+      setLeases(snap.leases);
+      setGuarantees(snap.guarantees);
+      setLeaseUnitAssignments(
+        migrateLegacyLeaseAssignments(snap.leases, snap.leaseUnitAssignments),
+      );
+      setAmendments(snap.amendments);
+      setAmendmentChanges(snap.amendmentChanges);
+      setReceivableItems(snap.receivableItems);
+      setCashReceipts(snap.cashReceipts);
+      setAllocations(snap.allocations);
+      setTickets(snap.tickets);
+      setVendors(snap.vendors);
+      setCostCategories(snap.costCategories);
+      setCostEntries(snap.costEntries);
+      setAllocationRules(snap.allocationRules);
+      setAllocationRuleUnitShares(snap.allocationRuleUnitShares);
+      setCostAllocationResults(snap.costAllocationResults);
+      setLoading(false);
+    }).catch(err => {
+      console.error("[AppContext] loadPortfolio failed:", err);
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, [currentPortfolioId]);
 
   // ===== Advance billing: auto-generate cycle receivables when their lead
@@ -364,30 +357,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setProperties(prev => [...prev, {
+    const created: Property = {
       ...p,
-      portfolioId: p.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      portfolioId: p.portfolioId ?? currentPortfolioId ?? undefined,
       id: genId("p"), createdAt: ts, updatedAt: ts,
-    }]);
+    };
+    setProperties(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.properties, created, currentPortfolioId);
   }, [currentPortfolioId]);
   const updateProperty = useCallback((p: Property) => {
-    setProperties(prev => prev.map(x => x.id === p.id ? { ...p, updatedAt: now() } : x));
+    const next = { ...p, updatedAt: now() };
+    setProperties(prev => prev.map(x => x.id === p.id ? next : x));
+    mirror.update(TABLES.properties, p.id, next);
   }, []);
   const deleteProperty = useCallback((id: string) => {
     setProperties(prev => prev.filter(x => x.id !== id));
     setUnits(prev => prev.filter(x => x.propertyId !== id));
+    // FK ON DELETE CASCADE handles units/leases/etc. in the DB.
+    mirror.remove(TABLES.properties, id);
   }, []);
 
   // ===== Unit CRUD =====
   const addUnit = useCallback((u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setUnits(prev => [...prev, { ...u, id: genId("u"), createdAt: ts, updatedAt: ts }]);
-  }, []);
+    const created: Unit = { ...u, id: genId("u"), createdAt: ts, updatedAt: ts };
+    setUnits(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.units, created, currentPortfolioId);
+  }, [currentPortfolioId]);
   const updateUnit = useCallback((u: Unit) => {
-    setUnits(prev => prev.map(x => x.id === u.id ? { ...u, updatedAt: now() } : x));
+    const next = { ...u, updatedAt: now() };
+    setUnits(prev => prev.map(x => x.id === u.id ? next : x));
+    mirror.update(TABLES.units, u.id, next);
   }, []);
   const deleteUnit = useCallback((id: string) => {
     setUnits(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.units, id);
   }, []);
 
   // ===== Tenant CRUD =====
@@ -395,17 +399,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ts = now();
     const created: Tenant = {
       ...t,
-      portfolioId: t.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      portfolioId: t.portfolioId ?? currentPortfolioId ?? undefined,
       id: genId("t"), createdAt: ts, updatedAt: ts,
     };
     setTenants(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.tenants, created, currentPortfolioId);
     return created;
   }, [currentPortfolioId]);
   const updateTenant = useCallback((t: Tenant) => {
-    setTenants(prev => prev.map(x => x.id === t.id ? { ...t, updatedAt: now() } : x));
+    const next = { ...t, updatedAt: now() };
+    setTenants(prev => prev.map(x => x.id === t.id ? next : x));
+    mirror.update(TABLES.tenants, t.id, next);
   }, []);
   const deleteTenant = useCallback((id: string) => {
     setTenants(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.tenants, id);
   }, []);
 
   // ===== Lease CRUD =====
@@ -417,27 +425,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTenants(prevT => reconcileTenantStatuses([created.primaryTenantId, ...created.coTenantIds], next, prevT));
       return next;
     });
+    if (currentPortfolioId) mirror.insert(TABLES.leases, created, currentPortfolioId);
     // Always seed a primary assignment from the legacy unitId so a lease is never unit-less.
     if (created.unitId) {
-      setLeaseUnitAssignments(prev => [
-        ...prev,
-        {
-          id: genId("lua"),
-          leaseId: created.id,
-          unitId: created.unitId,
-          assignmentType: "primary",
-          isPrimary: true,
-          startDate: created.startDate,
-          endDate: null,
-          // Strict per-unit pricing: seed the primary share from the lease totals so
-          // a freshly created single-unit lease is already coherent.
-          rentShare: created.monthlyRent,
-          chargesShare: created.monthlyCharges,
-          notes: "",
-          createdAt: ts,
-          updatedAt: ts,
-        },
-      ]);
+      const lua: LeaseUnitAssignment = {
+        id: genId("lua"),
+        leaseId: created.id,
+        unitId: created.unitId,
+        assignmentType: "primary",
+        isPrimary: true,
+        startDate: created.startDate,
+        endDate: null,
+        rentShare: created.monthlyRent,
+        chargesShare: created.monthlyCharges,
+        notes: "",
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      setLeaseUnitAssignments(prev => [...prev, lua]);
+      if (currentPortfolioId) mirror.insert(TABLES.leaseUnitAssignments, lua, currentPortfolioId);
     }
     // Auto-generate the monthly rent/charges receivables, plus a prepayment
     // CashReceipt + allocations if the lease carries an advance. This is what
@@ -448,14 +454,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { receivables } = generateLeaseReceivables(created, {
       currencyCode, genId, today: ts,
     });
-    if (receivables.length > 0) setReceivableItems(prev => [...prev, ...receivables]);
+    if (receivables.length > 0) {
+      setReceivableItems(prev => [...prev, ...receivables]);
+      if (currentPortfolioId) mirror.insertMany(TABLES.receivableItems, receivables, currentPortfolioId);
+    }
     return created;
-  }, [properties]);
+  }, [properties, currentPortfolioId]);
   const updateLease = useCallback((l: Lease) => {
     const ts = now();
+    const patched = { ...l, updatedAt: ts };
+    mirror.update(TABLES.leases, l.id, patched);
     setLeases(prev => {
       const old = prev.find(x => x.id === l.id);
-      const next = prev.map(x => x.id === l.id ? { ...l, updatedAt: ts } : x);
+      const next = prev.map(x => x.id === l.id ? patched : x);
       const affected = [
         ...(old ? [old.primaryTenantId, ...old.coTenantIds] : []),
         l.primaryTenantId, ...l.coTenantIds,
@@ -481,14 +492,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 ? { ...u, currentStatus: "vacant" as const, availableFrom: endDate, updatedAt: ts }
                 : u,
             ));
+            openUnitIds.forEach(uid => mirror.update(TABLES.units, uid, {
+              currentStatus: "vacant", availableFrom: endDate,
+            }));
           }
-          return closeOpenAssignmentsForLease(l.id, endDate, prevA, ts);
+          const nextA = closeOpenAssignmentsForLease(l.id, endDate, prevA, ts);
+          // Mirror closed assignments.
+          const closed = nextA.filter(a => prevA.some(p => p.id === a.id && !p.endDate) && a.endDate);
+          closed.forEach(a => mirror.update(TABLES.leaseUnitAssignments, a.id, { endDate: a.endDate }));
+          return nextA;
         });
         // Cascade to active amendments: keep lease and amendment lifecycle in sync.
         const newAmStatus = l.lifecycleStage === "terminated" ? "terminated" as const : "ended" as const;
         setAmendments(prevAm => prevAm.map(a =>
           a.leaseId === l.id && a.status === "active"
-            ? { ...a, status: newAmStatus, updatedAt: ts }
+            ? (() => {
+                const upd = { ...a, status: newAmStatus, updatedAt: ts };
+                mirror.update(TABLES.amendments, a.id, { status: newAmStatus });
+                return upd;
+              })()
             : a,
         ));
       }
@@ -498,20 +520,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteLease = useCallback((id: string) => {
     setLeases(prev => prev.filter(x => x.id !== id));
     setLeaseUnitAssignments(prev => prev.filter(a => a.leaseId !== id));
+    mirror.remove(TABLES.leases, id); // ON DELETE CASCADE cleans up children
   }, []);
 
   const confirmMoveOut = useCallback((lease: Lease) => {
     const ts = now();
     const moveOutDate = lease.moveOutActualDate ?? ts;
+    const patched: Lease = {
+      ...lease,
+      lifecycleStage: "ended" as const,
+      moveOutActualDate: moveOutDate,
+      endDate: lease.endDate || moveOutDate,
+      updatedAt: ts,
+    };
+    mirror.update(TABLES.leases, lease.id, patched);
     setLeases(prev => {
-      const next = prev.map(x => x.id === lease.id ? {
-        ...lease,
-        lifecycleStage: "ended" as const,
-        moveOutActualDate: moveOutDate,
-        // Preserve an existing legal end date; only fill it from move-out if missing.
-        endDate: lease.endDate || moveOutDate,
-        updatedAt: ts,
-      } : x);
+      const next = prev.map(x => x.id === lease.id ? patched : x);
       setTenants(prevT => reconcileTenantStatuses([lease.primaryTenantId, ...lease.coTenantIds], next, prevT));
       return next;
     });
@@ -529,13 +553,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             ? { ...u, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts }
             : u,
         ));
+        openUnitIds.forEach(uid => mirror.update(TABLES.units, uid, {
+          currentStatus: "vacant", availableFrom: moveOutDate,
+        }));
       }
-      return closeOpenAssignmentsForLease(lease.id, moveOutDate, prev, ts);
+      const nextA = closeOpenAssignmentsForLease(lease.id, moveOutDate, prev, ts);
+      const closed = nextA.filter(a => prev.some(p => p.id === a.id && !p.endDate) && a.endDate);
+      closed.forEach(a => mirror.update(TABLES.leaseUnitAssignments, a.id, { endDate: a.endDate }));
+      return nextA;
     });
     // Cascade: end any active amendments on this lease.
     setAmendments(prevAm => prevAm.map(a =>
       a.leaseId === lease.id && a.status === "active"
-        ? { ...a, status: "ended", updatedAt: ts }
+        ? (() => {
+            mirror.update(TABLES.amendments, a.id, { status: "ended" });
+            return { ...a, status: "ended" as const, updatedAt: ts };
+          })()
         : a,
     ));
   }, []);
@@ -589,7 +622,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const closed = existing
         .filter(a => !keepIds.has(a.id))
         .map(a => a.endDate ? a : { ...a, endDate: ts, updatedAt: ts });
-      return [...others, ...merged, ...closed];
+      const nextAll = [...others, ...merged, ...closed];
+      if (currentPortfolioId) {
+        mirror.upsertMany(TABLES.leaseUnitAssignments, [...merged, ...closed], currentPortfolioId);
+      }
+      return nextAll;
     });
     // Sync legacy lease.unitId to the new primary AND mirror the sum of shares into
     // lease.monthlyRent / lease.monthlyCharges so receivables, reports, exports keep
@@ -601,17 +638,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setLeases(prev => prev.map(l =>
       l.id === leaseId
-        ? {
-            ...l,
-            unitId: primary ? primary.unitId : l.unitId,
-            propertyId,
-            monthlyRent: sums.rent,
-            monthlyCharges: sums.charges,
-            updatedAt: ts,
-          }
+        ? (() => {
+            const patch = {
+              ...l,
+              unitId: primary ? primary.unitId : l.unitId,
+              propertyId,
+              monthlyRent: sums.rent,
+              monthlyCharges: sums.charges,
+              updatedAt: ts,
+            };
+            mirror.update(TABLES.leases, l.id, patch);
+            return patch;
+          })()
         : l,
     ));
-  }, []);
+  }, [currentPortfolioId]);
 
   const getLeaseAssignments = useCallback(
     (leaseId: string) => leaseUnitAssignments.filter(a => a.leaseId === leaseId),
@@ -659,34 +700,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         createdAt: ts,
         updatedAt: ts,
       };
+      const builtChanges = buildChanges(id, changesDraft, ts);
       setAmendments(prev => [...prev, created]);
-      setAmendmentChanges(prev => [...prev, ...buildChanges(id, changesDraft, ts)]);
+      setAmendmentChanges(prev => [...prev, ...builtChanges]);
+      if (currentPortfolioId) {
+        mirror.insert(TABLES.amendments, created, currentPortfolioId);
+        mirror.insertMany(TABLES.amendmentChanges, builtChanges, currentPortfolioId);
+      }
       return created;
     },
-    [amendments],
+    [amendments, currentPortfolioId],
   );
 
   const updateAmendment = useCallback(
     (a: LeaseAmendment, changesDraft: Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">[]) => {
       const ts = now();
-      setAmendments(prev => prev.map(x => x.id === a.id ? { ...a, updatedAt: ts } : x));
+      const patched = { ...a, updatedAt: ts };
+      const builtChanges = buildChanges(a.id, changesDraft, ts);
+      setAmendments(prev => prev.map(x => x.id === a.id ? patched : x));
       setAmendmentChanges(prev => [
         ...prev.filter(c => c.amendmentId !== a.id),
-        ...buildChanges(a.id, changesDraft, ts),
+        ...builtChanges,
       ]);
+      mirror.update(TABLES.amendments, a.id, patched);
+      mirror.removeWhere(TABLES.amendmentChanges, "amendment_id", a.id);
+      if (currentPortfolioId) mirror.insertMany(TABLES.amendmentChanges, builtChanges, currentPortfolioId);
     },
-    [],
+    [currentPortfolioId],
   );
 
   const deleteAmendment = useCallback((id: string) => {
     // Only safe for drafts; UI is expected to gate this. We still strip both rows.
     setAmendments(prev => prev.filter(a => a.id !== id));
     setAmendmentChanges(prev => prev.filter(c => c.amendmentId !== id));
+    mirror.remove(TABLES.amendments, id);
   }, []);
 
   const setAmendmentStatus = useCallback((id: string, status: AmendmentStatus) => {
     const ts = now();
     setAmendments(prev => prev.map(a => a.id === id ? { ...a, status, updatedAt: ts } : a));
+    mirror.update(TABLES.amendments, id, { status });
   }, []);
 
   /**
@@ -812,8 +865,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Commit all derived state in one render pass.
     setLeaseUnitAssignments(nextAssignments);
     setAmendments(nextAmendments);
+    if (currentPortfolioId) {
+      mirror.upsertMany(TABLES.leaseUnitAssignments, nextAssignments.filter(a => a.leaseId === am.leaseId), currentPortfolioId);
+      mirror.upsertMany(TABLES.amendments, nextAmendments.filter(a => a.leaseId === am.leaseId), currentPortfolioId);
+    }
     if (patched) {
       setLeases(prev => prev.map(l => l.id === patched!.id ? patched! : l));
+      mirror.update(TABLES.leases, patched.id, patched);
       const property = properties.find(p => p.id === patched.propertyId);
       const currencyCode = property?.currencyCode ?? "EUR";
       const { receivables: regen } = generateLeaseReceivables(patched, {
@@ -830,12 +888,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ri.dueDate >= eff &&
           !keptKeys.has(`${ri.leaseId}|${ri.itemType}|${ri.periodMonth}|${ri.dueDate}`),
         );
+        if (currentPortfolioId && fresh.length > 0) {
+          mirror.insertMany(TABLES.receivableItems, fresh, currentPortfolioId);
+        }
         return [...kept, ...fresh];
       });
     }
 
     return { ok: true };
-  }, [amendments, amendmentChanges, leases, leaseUnitAssignments, properties]);
+  }, [amendments, amendmentChanges, leases, leaseUnitAssignments, properties, currentPortfolioId]);
 
   const scheduleAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
     const am = amendments.find(a => a.id === id);
@@ -884,25 +945,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ===== Guarantee =====
   const addGuarantee = useCallback((g: Omit<Guarantee, "id">) => {
-    setGuarantees(prev => [...prev, { ...g, id: genId("g") }]);
-  }, []);
+    const created: Guarantee = { ...g, id: genId("g") };
+    setGuarantees(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.guarantees, created, currentPortfolioId);
+  }, [currentPortfolioId]);
   const updateGuarantee = useCallback((g: Guarantee) => {
     setGuarantees(prev => prev.map(x => x.id === g.id ? g : x));
+    mirror.update(TABLES.guarantees, g.id, g);
   }, []);
   const deleteGuarantee = useCallback((id: string) => {
     setGuarantees(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.guarantees, id);
   }, []);
 
   // ===== Receivable Items =====
   const createReceivableItem = useCallback((r: Omit<ReceivableItem, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setReceivableItems(prev => [...prev, { ...r, id: genId("ri"), createdAt: ts, updatedAt: ts }]);
-  }, []);
+    const created: ReceivableItem = { ...r, id: genId("ri"), createdAt: ts, updatedAt: ts };
+    setReceivableItems(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.receivableItems, created, currentPortfolioId);
+  }, [currentPortfolioId]);
   const updateReceivableItem = useCallback((r: ReceivableItem) => {
-    setReceivableItems(prev => prev.map(x => x.id === r.id ? { ...r, updatedAt: now() } : x));
+    const next = { ...r, updatedAt: now() };
+    setReceivableItems(prev => prev.map(x => x.id === r.id ? next : x));
+    mirror.update(TABLES.receivableItems, r.id, next);
   }, []);
   const deleteReceivableItem = useCallback((id: string) => {
     setReceivableItems(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.receivableItems, id);
   }, []);
 
   // ===== Cash Receipts =====
@@ -920,20 +990,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
 
       const result = autoAllocate(newReceipt, openItems);
-      
+      const newAllocs = result.allocations.map(a => ({ ...a, id: genId("al"), createdAt: ts, updatedAt: ts }));
       setCashReceipts(prev => [...prev, result.updatedReceipt]);
       setReceivableItems(prev => prev.map(ri => {
         const updated = result.updatedReceivables.find(u => u.id === ri.id);
         return updated ?? ri;
       }));
-      setAllocations(prev => [
-        ...prev,
-        ...result.allocations.map(a => ({ ...a, id: genId("al"), createdAt: ts, updatedAt: ts })),
-      ]);
+      setAllocations(prev => [...prev, ...newAllocs]);
+      if (currentPortfolioId) {
+        mirror.insert(TABLES.cashReceipts, result.updatedReceipt, currentPortfolioId);
+        result.updatedReceivables.forEach(ri => mirror.update(TABLES.receivableItems, ri.id, ri));
+        mirror.insertMany(TABLES.allocations, newAllocs, currentPortfolioId);
+      }
     } else {
       setCashReceipts(prev => [...prev, newReceipt]);
+      if (currentPortfolioId) mirror.insert(TABLES.cashReceipts, newReceipt, currentPortfolioId);
     }
-  }, [receivableItems]);
+  }, [receivableItems, currentPortfolioId]);
 
   // ===== Manual Allocation =====
   const allocateCashReceipt = useCallback((receiptId: string, manualAllocations: { receivableItemId: string; amount: number; notes?: string }[]) => {
@@ -985,7 +1058,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCashReceipts(prev => prev.map(r => r.id === receiptId ? updatedReceipt : r));
     setReceivableItems(prev => prev.map(ri => riUpdates.get(ri.id) ?? ri));
     setAllocations(prev => [...prev, ...newAllocations]);
-  }, [cashReceipts, receivableItems]);
+    mirror.update(TABLES.cashReceipts, receiptId, updatedReceipt);
+    riUpdates.forEach(ri => mirror.update(TABLES.receivableItems, ri.id, ri));
+    if (currentPortfolioId) mirror.insertMany(TABLES.allocations, newAllocations, currentPortfolioId);
+  }, [cashReceipts, receivableItems, currentPortfolioId]);
 
   // ===== Auto-Allocation =====
   const autoAllocateCashReceipt = useCallback((receiptId: string) => {
@@ -1008,52 +1084,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const updated = result.updatedReceivables.find(u => u.id === ri.id);
       return updated ?? ri;
     }));
-    setAllocations(prev => [
-      ...prev,
-      ...result.allocations.map(a => ({ ...a, id: genId("al"), createdAt: ts, updatedAt: ts })),
-    ]);
-  }, [cashReceipts, receivableItems]);
+    const newAllocs = result.allocations.map(a => ({ ...a, id: genId("al"), createdAt: ts, updatedAt: ts }));
+    setAllocations(prev => [...prev, ...newAllocs]);
+    mirror.update(TABLES.cashReceipts, receiptId, result.updatedReceipt);
+    result.updatedReceivables.forEach(ri => mirror.update(TABLES.receivableItems, ri.id, ri));
+    if (currentPortfolioId) mirror.insertMany(TABLES.allocations, newAllocs, currentPortfolioId);
+  }, [cashReceipts, receivableItems, currentPortfolioId]);
 
   // ===== Maintenance =====
   const addTicket = useCallback((t: Omit<MaintenanceTicket, "id">) => {
-    setTickets(prev => [...prev, { ...t, id: genId("mt") }]);
-  }, []);
+    const created: MaintenanceTicket = { ...t, id: genId("mt") };
+    setTickets(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.tickets, created, currentPortfolioId);
+  }, [currentPortfolioId]);
   const updateTicket = useCallback((t: MaintenanceTicket) => {
     setTickets(prev => prev.map(x => x.id === t.id ? t : x));
+    mirror.update(TABLES.tickets, t.id, t);
   }, []);
   const deleteTicket = useCallback((id: string) => {
     setTickets(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.tickets, id);
   }, []);
 
   // ===== Vendors =====
   const addVendor = useCallback((v: Omit<Vendor, "id">) => {
-    setVendors(prev => [...prev, {
+    const created: Vendor = {
       ...v,
-      portfolioId: v.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      portfolioId: v.portfolioId ?? currentPortfolioId ?? undefined,
       id: genId("v"),
-    }]);
+    };
+    setVendors(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.vendors, created, currentPortfolioId);
   }, [currentPortfolioId]);
   const updateVendor = useCallback((v: Vendor) => {
     setVendors(prev => prev.map(x => x.id === v.id ? v : x));
+    mirror.update(TABLES.vendors, v.id, v);
   }, []);
   const deleteVendor = useCallback((id: string) => {
     setVendors(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.vendors, id);
   }, []);
 
   // ===== Cost Categories CRUD =====
   const addCostCategory = useCallback((c: Omit<CostCategory, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setCostCategories(prev => [...prev, {
+    const created: CostCategory = {
       ...c,
-      portfolioId: c.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      portfolioId: c.portfolioId ?? currentPortfolioId ?? undefined,
       id: genId("cc"), createdAt: ts, updatedAt: ts,
-    }]);
+    };
+    setCostCategories(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.costCategories, created, currentPortfolioId);
   }, [currentPortfolioId]);
   const updateCostCategory = useCallback((c: CostCategory) => {
-    setCostCategories(prev => prev.map(x => x.id === c.id ? { ...c, updatedAt: now() } : x));
+    const next = { ...c, updatedAt: now() };
+    setCostCategories(prev => prev.map(x => x.id === c.id ? next : x));
+    mirror.update(TABLES.costCategories, c.id, next);
   }, []);
   const deleteCostCategory = useCallback((id: string) => {
     setCostCategories(prev => prev.filter(x => x.id !== id));
+    mirror.remove(TABLES.costCategories, id);
   }, []);
 
   // ===== Cost Entries CRUD =====
@@ -1061,61 +1151,72 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ts = now();
     const newEntry: CostEntry = { ...e, id: genId("ce"), createdAt: ts, updatedAt: ts };
     setCostEntries(prev => [...prev, newEntry]);
+    if (currentPortfolioId) mirror.insert(TABLES.costEntries, newEntry, currentPortfolioId);
     // Auto-run allocation if property-level with a rule
     if (!newEntry.unitId && newEntry.allocationRuleId) {
       const rule = allocationRules.find(r => r.id === newEntry.allocationRuleId);
       if (rule) {
         const results = computeAllocations(newEntry, rule, units, allocationRuleUnitShares);
-        setCostAllocationResults(prev => [
-          ...prev,
-          ...results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts })),
-        ]);
+        const stamped = results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts }));
+        setCostAllocationResults(prev => [...prev, ...stamped]);
+        if (currentPortfolioId) mirror.insertMany(TABLES.costAllocationResults, stamped, currentPortfolioId);
       }
     }
-  }, [allocationRules, units, allocationRuleUnitShares]);
+  }, [allocationRules, units, allocationRuleUnitShares, currentPortfolioId]);
 
   const updateCostEntry = useCallback((e: CostEntry) => {
     const ts = now();
-    setCostEntries(prev => prev.map(x => x.id === e.id ? { ...e, updatedAt: ts } : x));
+    const next = { ...e, updatedAt: ts };
+    setCostEntries(prev => prev.map(x => x.id === e.id ? next : x));
+    mirror.update(TABLES.costEntries, e.id, next);
     // Re-run allocation
     setCostAllocationResults(prev => prev.filter(r => r.costEntryId !== e.id));
+    mirror.removeWhere(TABLES.costAllocationResults, "cost_entry_id", e.id);
     if (!e.unitId && e.allocationRuleId) {
       const rule = allocationRules.find(r => r.id === e.allocationRuleId);
       if (rule) {
         const results = computeAllocations(e, rule, units, allocationRuleUnitShares);
-        setCostAllocationResults(prev => [
-          ...prev,
-          ...results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts })),
-        ]);
+        const stamped = results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts }));
+        setCostAllocationResults(prev => [...prev, ...stamped]);
+        if (currentPortfolioId) mirror.insertMany(TABLES.costAllocationResults, stamped, currentPortfolioId);
       }
     }
-  }, [allocationRules, units, allocationRuleUnitShares]);
+  }, [allocationRules, units, allocationRuleUnitShares, currentPortfolioId]);
 
   const deleteCostEntry = useCallback((id: string) => {
     setCostEntries(prev => prev.filter(x => x.id !== id));
     setCostAllocationResults(prev => prev.filter(r => r.costEntryId !== id));
+    mirror.remove(TABLES.costEntries, id);
   }, []);
 
   // ===== Allocation Rules CRUD =====
   const addAllocationRule = useCallback((r: Omit<AllocationRule, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setAllocationRules(prev => [...prev, { ...r, id: genId("ar"), createdAt: ts, updatedAt: ts }]);
-  }, []);
+    const created: AllocationRule = { ...r, id: genId("ar"), createdAt: ts, updatedAt: ts };
+    setAllocationRules(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.allocationRules, created, currentPortfolioId);
+  }, [currentPortfolioId]);
   const updateAllocationRule = useCallback((r: AllocationRule) => {
-    setAllocationRules(prev => prev.map(x => x.id === r.id ? { ...r, updatedAt: now() } : x));
+    const next = { ...r, updatedAt: now() };
+    setAllocationRules(prev => prev.map(x => x.id === r.id ? next : x));
+    mirror.update(TABLES.allocationRules, r.id, next);
   }, []);
   const deleteAllocationRule = useCallback((id: string) => {
     setAllocationRules(prev => prev.filter(x => x.id !== id));
     setAllocationRuleUnitShares(prev => prev.filter(s => s.allocationRuleId !== id));
+    mirror.remove(TABLES.allocationRules, id);
   }, []);
 
   // ===== Allocation Rule Unit Shares =====
   const setAllocationRuleUnitSharesFn = useCallback((ruleId: string, shares: Omit<AllocationRuleUnitShare, "id">[]) => {
+    const stamped = shares.map(s => ({ ...s, id: genId("arus") }));
     setAllocationRuleUnitShares(prev => [
       ...prev.filter(s => s.allocationRuleId !== ruleId),
-      ...shares.map(s => ({ ...s, id: genId("arus") })),
+      ...stamped,
     ]);
-  }, []);
+    mirror.removeWhere(TABLES.allocationRuleUnitShares, "allocation_rule_id", ruleId);
+    if (currentPortfolioId) mirror.insertMany(TABLES.allocationRuleUnitShares, stamped, currentPortfolioId);
+  }, [currentPortfolioId]);
 
   // ===== Run Allocation =====
   const runAllocation = useCallback((costEntryId: string) => {
@@ -1125,11 +1226,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!rule) return;
     const ts = now();
     const results = computeAllocations(entry, rule, units, allocationRuleUnitShares);
+    const stamped = results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts }));
     setCostAllocationResults(prev => [
       ...prev.filter(r => r.costEntryId !== costEntryId),
-      ...results.map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts })),
+      ...stamped,
     ]);
-  }, [costEntries, allocationRules, units, allocationRuleUnitShares]);
+    mirror.removeWhere(TABLES.costAllocationResults, "cost_entry_id", costEntryId);
+    if (currentPortfolioId) mirror.insertMany(TABLES.costAllocationResults, stamped, currentPortfolioId);
+  }, [costEntries, allocationRules, units, allocationRuleUnitShares, currentPortfolioId]);
 
   // ===== Queries =====
   const getPropertyStats = useCallback((propertyId: string): PropertyStats => {
