@@ -255,6 +255,76 @@ export type Database = {
           },
         ]
       }
+      charges_reconciliations: {
+        Row: {
+          actual_recoverable: number
+          created_at: string
+          delta: number
+          id: string
+          lease_id: string
+          notes: string
+          period_end: string
+          period_start: string
+          portfolio_id: string
+          provisions_collected: number
+          receivable_item_id: string | null
+          resolution: string
+          updated_at: string
+        }
+        Insert: {
+          actual_recoverable?: number
+          created_at?: string
+          delta?: number
+          id?: string
+          lease_id: string
+          notes?: string
+          period_end: string
+          period_start: string
+          portfolio_id: string
+          provisions_collected?: number
+          receivable_item_id?: string | null
+          resolution: string
+          updated_at?: string
+        }
+        Update: {
+          actual_recoverable?: number
+          created_at?: string
+          delta?: number
+          id?: string
+          lease_id?: string
+          notes?: string
+          period_end?: string
+          period_start?: string
+          portfolio_id?: string
+          provisions_collected?: number
+          receivable_item_id?: string | null
+          resolution?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charges_reconciliations_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charges_reconciliations_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charges_reconciliations_receivable_item_id_fkey"
+            columns: ["receivable_item_id"]
+            isOneToOne: false
+            referencedRelation: "receivable_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_allocation_results: {
         Row: {
           allocated_amount: number
@@ -780,6 +850,7 @@ export type Database = {
           advance_cycle_lead_days: number | null
           advance_payment_amount: number | null
           advance_payment_date: string | null
+          charges_billing_mode: string
           co_tenant_ids: Json
           created_at: string
           deposit_or_guarantee_amount: number | null
@@ -833,6 +904,7 @@ export type Database = {
           advance_cycle_lead_days?: number | null
           advance_payment_amount?: number | null
           advance_payment_date?: string | null
+          charges_billing_mode?: string
           co_tenant_ids?: Json
           created_at?: string
           deposit_or_guarantee_amount?: number | null
@@ -886,6 +958,7 @@ export type Database = {
           advance_cycle_lead_days?: number | null
           advance_payment_amount?: number | null
           advance_payment_date?: string | null
+          charges_billing_mode?: string
           co_tenant_ids?: Json
           created_at?: string
           deposit_or_guarantee_amount?: number | null
