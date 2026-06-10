@@ -1,14 +1,16 @@
 import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useSettings } from "@/context/SettingsContext";
 import { PortfolioSwitcher } from "./PortfolioSwitcher";
 import { UserMenu } from "./UserMenu";
+import { useAppData } from "@/context/AppContext";
 
 export function AppLayout() {
   const { t } = useSettings();
+  const { loading } = useAppData();
 
   return (
     <SidebarProvider>
@@ -33,7 +35,14 @@ export function AppLayout() {
             </div>
           </header>
           <main className="flex-1 p-6 overflow-auto">
-            <Outlet />
+            {loading ? (
+              <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                <span className="text-sm">{t("common.loading") || "Loading…"}</span>
+              </div>
+            ) : (
+              <Outlet />
+            )}
           </main>
         </div>
       </div>
