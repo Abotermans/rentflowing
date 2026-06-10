@@ -33,6 +33,9 @@ import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { getAllRentTiers } from "@/lib/rentTiers";
 
 import type { TranslationKey } from "@/i18n/translations";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import type { CostNature, CostFrequency, RecoveryType, AllocationMethod } from "@/types/costs";
 
 const UNIT_TYPES: { value: UnitType; labelKey: TranslationKey }[] = [
   { value: "apartment", labelKey: "units.apartment" },
