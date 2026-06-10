@@ -17,6 +17,8 @@ import { generateLeaseReceivables } from "@/lib/leaseReceivables";
 import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
 import { getEffectiveLeaseTerms as libGetEffectiveLeaseTerms } from "@/lib/amendments";
+import { DEMO_PORTFOLIO_ID, LS_DEMO_SEEDED_KEY } from "@/lib/portfolioScope";
+import { usePortfolio } from "@/context/PortfolioContext";
 import {
   migrateLegacyLeaseAssignments,
   getActiveLeaseForUnit as findActiveLeaseForUnit,
