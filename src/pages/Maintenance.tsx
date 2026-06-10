@@ -192,7 +192,7 @@ export default function Maintenance() {
                       <Link to={`/maintenance/${ticket.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{ticket.title}</Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">{prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
                     <TableCell className="text-xs">{t(MAINTENANCE_CATEGORY_KEYS[ticket.category])}</TableCell>
                     <TableCell><PriorityLabel priority={ticket.priority} /></TableCell>

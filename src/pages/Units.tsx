@@ -266,7 +266,7 @@ export default function Units() {
                   const prop = properties.find(p => p.id === u.propertyId);
                   return (
                     <TableRow key={u.id} className="cursor-pointer" onClick={() => navigate(`/units/${u.id}`)}>
-                      <TableCell className="text-muted-foreground">{u.unitCode}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{u.unitCode}</TableCell>
                       <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}
