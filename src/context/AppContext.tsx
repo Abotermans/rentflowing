@@ -1238,13 +1238,103 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getAllocationRuleById = useCallback((id: string) => allocationRules.find(r => r.id === id), [allocationRules]);
   const getUnitSharesByRule = useCallback((ruleId: string) => allocationRuleUnitShares.filter(s => s.allocationRuleId === ruleId), [allocationRuleUnitShares]);
 
+  // ===== Portfolio scoping ============================================
+  // All exposed collections are filtered to the active portfolio. Internal
+  // state stays unscoped so cross-portfolio bookkeeping (CRUD, receivable
+  // generation, amendments) keeps working without rewrites.
+  const scoped = useMemo(() => {
+    const pid = currentPortfolioId;
+    if (!pid) {
+      const empty = {
+        properties: [] as Property[], units: [] as Unit[], tenants: [] as Tenant[],
+        leases: [] as Lease[], guarantees: [] as Guarantee[],
+        leaseUnitAssignments: [] as LeaseUnitAssignment[],
+        amendments: [] as LeaseAmendment[], amendmentChanges: [] as LeaseAmendmentChange[],
+        receivableItems: [] as ReceivableItem[], cashReceipts: [] as CashReceipt[],
+        allocations: [] as ReceiptAllocation[],
+        tickets: [] as MaintenanceTicket[], vendors: [] as Vendor[],
+        costCategories: [] as CostCategory[], costEntries: [] as CostEntry[],
+        allocationRules: [] as AllocationRule[],
+        allocationRuleUnitShares: [] as AllocationRuleUnitShare[],
+        costAllocationResults: [] as CostAllocationResult[],
+      };
+      return empty;
+    }
+    const sProperties = properties.filter(p => p.portfolioId === pid);
+    const propIds = new Set(sProperties.map(p => p.id));
+    const sUnits = units.filter(u => propIds.has(u.propertyId));
+    const unitIds = new Set(sUnits.map(u => u.id));
+    const sTenants = tenants.filter(t => t.portfolioId === pid);
+    const tenantIds = new Set(sTenants.map(t => t.id));
+    const sLeases = leases.filter(l => propIds.has(l.propertyId));
+    const leaseIds = new Set(sLeases.map(l => l.id));
+    const sGuarantees = guarantees.filter(g => leaseIds.has(g.leaseId));
+    const sLUA = leaseUnitAssignments.filter(a => leaseIds.has(a.leaseId));
+    const sAmendments = amendments.filter(a => leaseIds.has(a.leaseId));
+    const amendmentIds = new Set(sAmendments.map(a => a.id));
+    const sAmendmentChanges = amendmentChanges.filter(c => amendmentIds.has(c.amendmentId));
+    const sReceivableItems = receivableItems.filter(ri => leaseIds.has(ri.leaseId) || tenantIds.has(ri.tenantId));
+    const receivableIds = new Set(sReceivableItems.map(ri => ri.id));
+    const sCashReceipts = cashReceipts.filter(cr =>
+      (cr.leaseId && leaseIds.has(cr.leaseId)) ||
+      (cr.tenantId && tenantIds.has(cr.tenantId)) ||
+      (cr.propertyId && propIds.has(cr.propertyId)),
+    );
+    const receiptIds = new Set(sCashReceipts.map(cr => cr.id));
+    const sAllocations = allocationsState.filter(a =>
+      receiptIds.has(a.cashReceiptId) || receivableIds.has(a.receivableItemId),
+    );
+    const sVendors = vendors.filter(v => v.portfolioId === pid);
+    const vendorIds = new Set(sVendors.map(v => v.id));
+    const sTickets = tickets.filter(t =>
+      propIds.has(t.propertyId) || (t.assignedVendorId && vendorIds.has(t.assignedVendorId)),
+    );
+    const sCostCategories = costCategories.filter(c => c.portfolioId === pid);
+    const sCostEntries = costEntries.filter(e => propIds.has(e.propertyId));
+    const sAllocationRules = allocationRules.filter(r => propIds.has(r.propertyId));
+    const ruleIds = new Set(sAllocationRules.map(r => r.id));
+    const sAllocationRuleUnitShares = allocationRuleUnitShares.filter(s => ruleIds.has(s.allocationRuleId));
+    const sCostAllocationResults = costAllocationResults.filter(r => propIds.has(r.propertyId));
+    return {
+      properties: sProperties, units: sUnits, tenants: sTenants,
+      leases: sLeases, guarantees: sGuarantees,
+      leaseUnitAssignments: sLUA,
+      amendments: sAmendments, amendmentChanges: sAmendmentChanges,
+      receivableItems: sReceivableItems, cashReceipts: sCashReceipts,
+      allocations: sAllocations,
+      tickets: sTickets, vendors: sVendors,
+      costCategories: sCostCategories, costEntries: sCostEntries,
+      allocationRules: sAllocationRules,
+      allocationRuleUnitShares: sAllocationRuleUnitShares,
+      costAllocationResults: sCostAllocationResults,
+    };
+  }, [
+    currentPortfolioId,
+    properties, units, tenants, leases, guarantees, leaseUnitAssignments,
+    amendments, amendmentChanges, receivableItems, cashReceipts, allocationsState,
+    tickets, vendors, costCategories, costEntries, allocationRules,
+    allocationRuleUnitShares, costAllocationResults,
+  ]);
+
   const value = useMemo(() => ({
-    properties, units, tenants, leases, guarantees,
-    leaseUnitAssignments,
-    amendments, amendmentChanges,
-    receivableItems, cashReceipts, allocations: allocationsState,
-    tickets, vendors,
-    costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
+    properties: scoped.properties,
+    units: scoped.units,
+    tenants: scoped.tenants,
+    leases: scoped.leases,
+    guarantees: scoped.guarantees,
+    leaseUnitAssignments: scoped.leaseUnitAssignments,
+    amendments: scoped.amendments,
+    amendmentChanges: scoped.amendmentChanges,
+    receivableItems: scoped.receivableItems,
+    cashReceipts: scoped.cashReceipts,
+    allocations: scoped.allocations,
+    tickets: scoped.tickets,
+    vendors: scoped.vendors,
+    costCategories: scoped.costCategories,
+    costEntries: scoped.costEntries,
+    allocationRules: scoped.allocationRules,
+    allocationRuleUnitShares: scoped.allocationRuleUnitShares,
+    costAllocationResults: scoped.costAllocationResults,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
@@ -1282,12 +1372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getAllocationResultsByUnit, getAllocationResultsByProperty,
     getCostCategoryById, getAllocationRuleById, getUnitSharesByRule,
   }), [
-    properties, units, tenants, leases, guarantees,
-    leaseUnitAssignments,
-    amendments, amendmentChanges,
-    receivableItems, cashReceipts, allocationsState,
-    tickets, vendors,
-    costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
+    scoped,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
