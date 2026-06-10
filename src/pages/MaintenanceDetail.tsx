@@ -5,6 +5,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { ArrowLeft, Wrench, Building2, DoorOpen, User, Clock, CalendarClock, HardHat, StickyNote, Pencil } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
@@ -54,7 +55,7 @@ export default function MaintenanceDetail() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{ticket.title}</h1>
               <StatusBadge status={ticket.status} />
-              <StatusBadge status={ticket.priority} />
+              <PriorityLabel priority={ticket.priority} />
             </div>
             <p className="text-sm text-muted-foreground mt-1">{t(MAINTENANCE_CATEGORY_KEYS[ticket.category])} · {formatDate(ticket.createdDate, property?.locale)}</p>
           </div>
@@ -133,7 +134,7 @@ export default function MaintenanceDetail() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{t("maintenance.priority")}</p>
-              <StatusBadge status={ticket.priority} />
+              <PriorityLabel priority={ticket.priority} />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{t("maintenance.status")}</p>
