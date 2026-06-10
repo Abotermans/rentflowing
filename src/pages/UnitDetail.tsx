@@ -698,11 +698,7 @@ export default function UnitDetail() {
                   });
                 }
                 for (const r of allocResults) {
-                  const entry = directEntries.find(e => e.id === r.costEntryId)
-                    ?? getCostEntriesByUnit; // fallback unused
-                  // We need the parent entry — it lives on the property, not the unit, so look it up via context helper:
-                  const parent = (entry && typeof entry !== "function") ? entry : undefined;
-                  // Allocations always reference a property-level entry. Resolve via allocation rule path.
+                  const parent = costEntries.find(e => e.id === r.costEntryId);
                   const rule = getAllocationRuleById(parent?.allocationRuleId ?? "");
                   rows.push({
                     id: `a-${r.id}`,
@@ -761,7 +757,11 @@ export default function UnitDetail() {
                     <TableBody>
                       {sorted.map(row => (
                         <TableRow key={row.id}>
-                          <TableCell><StatusBadge status={row.source === "direct" ? "sourceDirect" : "sourceAllocated"} label={t(row.source === "direct" ? "costs.sourceDirect" : "costs.sourceAllocated")} /></TableCell>
+                          <TableCell>
+                            <Badge variant={row.source === "direct" ? "secondary" : "outline"} className="text-xs font-normal">
+                              {t(row.source === "direct" ? "costs.sourceDirect" : "costs.sourceAllocated")}
+                            </Badge>
+                          </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{row.label}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{row.category}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{t(`costs.nature.${row.nature}` as TranslationKey)}</TableCell>
