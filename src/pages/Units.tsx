@@ -195,7 +195,6 @@ export default function Units() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("units.title")}</h1>
-          <p className="text-sm text-muted-foreground">{units.length} {t("units.title").toLowerCase()}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative inline-flex">
@@ -241,6 +240,9 @@ export default function Units() {
       ) : (
         <TooltipProvider>
           <Card>
+            <div className="px-4 pt-4 text-right">
+              <span className="text-sm text-muted-foreground">{units.length} {t("units.title").toLowerCase()}</span>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
