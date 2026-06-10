@@ -7,7 +7,6 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PieChart, Building2, DoorOpen } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
-import { RECOVERY_TYPE_LABELS } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
@@ -123,7 +122,7 @@ export default function CostsAllocations() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
-            Property Cost Summary
+            {t("costs.propertyCostSummary")}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
