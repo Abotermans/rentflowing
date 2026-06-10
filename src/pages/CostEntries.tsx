@@ -22,6 +22,8 @@ import {
   CostEntry, CostEntryStatus, CostFrequency, CostNature, RecoveryType,
   COST_ENTRY_STATUS_LABELS, COST_FREQUENCY_LABELS, COST_NATURE_LABELS, RECOVERY_TYPE_LABELS,
 } from "@/types/costs";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 type FormData = Omit<CostEntry, "id" | "createdAt" | "updatedAt">;
 
@@ -49,6 +51,9 @@ export default function CostEntries() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<CostEntry | null>(null);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
+
+  type ESortKey = "label" | "category" | "nature" | "property" | "unit" | "frequency" | "amount" | "recovery" | "status";
+  const { sort, toggle } = useTableSort<ESortKey>();
 
   const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setSheetOpen(true); };
   const openEdit = (e: CostEntry) => {
@@ -104,6 +109,23 @@ export default function CostEntries() {
     if (filterRecovery.length > 0 && !filterRecovery.includes(e.recoveryType)) return false;
     if (filterStatus.length > 0 && !filterStatus.includes(e.status)) return false;
     return true;
+  });
+
+  const sorted = sortRows(filtered, sort, (e, key) => {
+    const cat = getCostCategoryById(e.categoryId);
+    const prop = getPropertyById(e.propertyId);
+    const unit = e.unitId ? getUnitById(e.unitId) : null;
+    switch (key) {
+      case "label": return e.label;
+      case "category": return cat?.name ?? "";
+      case "nature": return e.isTax ? "tax" : "charge";
+      case "property": return prop?.name ?? "";
+      case "unit": return unit?.unitLabel ?? "";
+      case "frequency": return COST_FREQUENCY_LABELS[e.frequency];
+      case "amount": return e.amount;
+      case "recovery": return RECOVERY_TYPE_LABELS[e.recoveryType];
+      case "status": return e.status;
+    }
   });
 
   const statusMap: Record<CostEntryStatus, string> = {
@@ -173,20 +195,20 @@ export default function CostEntries() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("costs.label")}</TableHead>
-                  <TableHead>{t("table.category")}</TableHead>
-                  <TableHead>{t("costs.nature")}</TableHead>
-                  <TableHead>{t("table.property")}</TableHead>
-                  <TableHead>{t("table.unit")}</TableHead>
-                  <TableHead>{t("costs.frequency")}</TableHead>
-                  <TableHead className="text-right">{t("costs.amount")}</TableHead>
-                  <TableHead>{t("costs.recoveryType")}</TableHead>
-                  <TableHead>{t("filter.status")}</TableHead>
+                  <SortableTableHead sortKey="label" sort={sort} onSort={toggle}>{t("costs.label")}</SortableTableHead>
+                  <SortableTableHead sortKey="category" sort={sort} onSort={toggle}>{t("table.category")}</SortableTableHead>
+                  <SortableTableHead sortKey="nature" sort={sort} onSort={toggle}>{t("costs.nature")}</SortableTableHead>
+                  <SortableTableHead sortKey="property" sort={sort} onSort={toggle}>{t("table.property")}</SortableTableHead>
+                  <SortableTableHead sortKey="unit" sort={sort} onSort={toggle}>{t("table.unit")}</SortableTableHead>
+                  <SortableTableHead sortKey="frequency" sort={sort} onSort={toggle}>{t("costs.frequency")}</SortableTableHead>
+                  <SortableTableHead sortKey="amount" sort={sort} onSort={toggle} align="right">{t("costs.amount")}</SortableTableHead>
+                  <SortableTableHead sortKey="recovery" sort={sort} onSort={toggle}>{t("costs.recoveryType")}</SortableTableHead>
+                  <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(e => {
+                {sorted.map(e => {
                   const cat = getCostCategoryById(e.categoryId);
                   const prop = getPropertyById(e.propertyId);
                   const unit = e.unitId ? getUnitById(e.unitId) : null;
