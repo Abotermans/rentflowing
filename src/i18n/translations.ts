@@ -2214,6 +2214,7 @@ const fr: TranslationKeys = {
   "costs.source": "Source",
   "costs.sourceDirect": "Direct",
   "costs.sourceAllocated": "Réparti",
+  "costs.openRecord": "Ouvrir la fiche",
   "costs.category": "Catégorie",
   "costs.period": "Période",
   "costs.allocationMethod": "Méthode de répartition",
