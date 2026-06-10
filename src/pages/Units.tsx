@@ -31,6 +31,8 @@ import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 import type { TranslationKey } from "@/i18n/translations";
 
@@ -84,6 +86,9 @@ export default function Units() {
   const [filterOccupancy, setFilterOccupancy] = useState<DerivedOccupancy[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+
+  type USortKey = "code" | "label" | "property" | "type" | "floor" | "surface" | "rent" | "charges" | "occupancy" | "availableFrom";
+  const { sort, toggle } = useTableSort<USortKey>();
 
   useEffect(() => {
     const editId = searchParams.get("edit");
@@ -188,6 +193,24 @@ export default function Units() {
     return matchSearch && matchProp && matchType && matchOccupancy;
   });
 
+  const sorted = sortRows(filtered, sort, (row, key) => {
+    const u = row.unit;
+    const occ = row.occupancy;
+    const prop = properties.find(p => p.id === u.propertyId);
+    switch (key) {
+      case "code": return u.unitCode;
+      case "label": return u.unitLabel;
+      case "property": return prop?.name ?? "";
+      case "type": return t(UNIT_TYPE_KEYS[u.unitType]);
+      case "floor": return u.floor;
+      case "surface": return u.surfaceArea;
+      case "rent": return u.baseRent;
+      case "charges": return u.baseCharges;
+      case "occupancy": return occ.derived;
+      case "availableFrom": return occ.availableFromDate ?? u.availableFrom ?? null;
+    }
+  });
+
   const selectedProperty = form.propertyId ? properties.find(p => p.id === form.propertyId) : null;
 
   return (
@@ -248,21 +271,21 @@ export default function Units() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("units.code")}</TableHead>
-                  <TableHead>{t("units.label")}</TableHead>
-                  <TableHead>{t("units.property")}</TableHead>
-                  <TableHead>{t("units.type")}</TableHead>
-                  <TableHead className="text-center">{t("units.floor")}</TableHead>
-                  <TableHead className="text-right">{t("units.surface")}</TableHead>
-                  <TableHead className="text-right">{t("units.rent")}</TableHead>
-                  <TableHead className="text-right">{t("units.charges")}</TableHead>
-                  <TableHead>{t("occupancy.derivedLabel")}</TableHead>
-                  <TableHead>{t("units.availableFrom")}</TableHead>
+                  <SortableTableHead sortKey="code" sort={sort} onSort={toggle}>{t("units.code")}</SortableTableHead>
+                  <SortableTableHead sortKey="label" sort={sort} onSort={toggle}>{t("units.label")}</SortableTableHead>
+                  <SortableTableHead sortKey="property" sort={sort} onSort={toggle}>{t("units.property")}</SortableTableHead>
+                  <SortableTableHead sortKey="type" sort={sort} onSort={toggle}>{t("units.type")}</SortableTableHead>
+                  <SortableTableHead sortKey="floor" sort={sort} onSort={toggle} align="center">{t("units.floor")}</SortableTableHead>
+                  <SortableTableHead sortKey="surface" sort={sort} onSort={toggle} align="right">{t("units.surface")}</SortableTableHead>
+                  <SortableTableHead sortKey="rent" sort={sort} onSort={toggle} align="right">{t("units.rent")}</SortableTableHead>
+                  <SortableTableHead sortKey="charges" sort={sort} onSort={toggle} align="right">{t("units.charges")}</SortableTableHead>
+                  <SortableTableHead sortKey="occupancy" sort={sort} onSort={toggle}>{t("occupancy.derivedLabel")}</SortableTableHead>
+                  <SortableTableHead sortKey="availableFrom" sort={sort} onSort={toggle}>{t("units.availableFrom")}</SortableTableHead>
                   <TableHead className="text-right">{t("units.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(({ unit: u, occupancy }) => {
+                {sorted.map(({ unit: u, occupancy }) => {
                   const prop = properties.find(p => p.id === u.propertyId);
                   return (
                     <TableRow key={u.id} className="cursor-pointer" onClick={() => navigate(`/units/${u.id}`)}>
