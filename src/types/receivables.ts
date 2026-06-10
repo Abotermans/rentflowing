@@ -3,6 +3,7 @@
 export type ReceivableItemType =
   | "rent"
   | "charges"
+  | "charges-adjustment"
   | "deposit"
   | "guarantee"
   | "advance-payment"
@@ -158,6 +159,7 @@ export function computeReceiptStatus(
 export const ITEM_TYPE_PRIORITY: Record<ReceivableItemType, number> = {
   "rent": 10,
   "charges": 20,
+  "charges-adjustment": 25,
   "adjustment": 30,
   "late-fee": 35,
   "repair-recharge": 40,
@@ -171,6 +173,7 @@ export const ITEM_TYPE_PRIORITY: Record<ReceivableItemType, number> = {
 export const ITEM_TYPE_LABELS: Record<ReceivableItemType, string> = {
   "rent": "Rent",
   "charges": "Charges",
+  "charges-adjustment": "Charges Adjustment",
   "deposit": "Deposit",
   "guarantee": "Guarantee",
   "advance-payment": "Advance Payment",
@@ -208,6 +211,7 @@ type Translator = (key: any) => string;
 const ITEM_TYPE_TKEY: Record<ReceivableItemType, string> = {
   "rent": "payments.itemType.rent",
   "charges": "payments.itemType.charges",
+  "charges-adjustment": "payments.itemType.chargesAdjustment",
   "deposit": "payments.itemType.deposit",
   "guarantee": "payments.itemType.guarantee",
   "advance-payment": "payments.itemType.advancePayment",

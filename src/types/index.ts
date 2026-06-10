@@ -286,6 +286,17 @@ export interface Lease {
    */
   advanceCycleLeadDays?: number | null;
 
+  /**
+   * How tenant charges are billed for this lease.
+   *  - "provision-reconciled": charges paid monthly are provisions. Operator can
+   *    run an on-demand reconciliation against actual recoverable costs and
+   *    emit an adjustment (debit / refund / carry-forward).
+   *  - "flat-rate": charges are final. No reconciliation is exposed. Recoverable
+   *    costs still show on owner-side unit analytics.
+   * Defaults to "provision-reconciled" for legacy leases.
+   */
+  chargesBillingMode?: "provision-reconciled" | "flat-rate";
+
   createdAt: string;
   updatedAt: string;
 }
