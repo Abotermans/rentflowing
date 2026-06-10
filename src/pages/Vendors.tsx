@@ -80,17 +80,22 @@ export default function Vendors() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <MultiSelectFilter
-          label="Status"
-          icon={CircleCheck}
-          values={filterStatus}
-          onChange={setFilterStatus}
-          options={[
-            { value: "active", label: "Active", icon: VENDOR_STATUS_ICONS.active },
-            { value: "inactive", label: "Inactive", icon: VENDOR_STATUS_ICONS.inactive },
-          ]}
-        />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-3">
+          <MultiSelectFilter
+            label="Status"
+            icon={CircleCheck}
+            values={filterStatus}
+            onChange={setFilterStatus}
+            options={[
+              { value: "active", label: "Active", icon: VENDOR_STATUS_ICONS.active },
+              { value: "inactive", label: "Inactive", icon: VENDOR_STATUS_ICONS.inactive },
+            ]}
+          />
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
+          {filtered.length} {t("vendors.title").toLowerCase()}
+        </span>
       </div>
 
       {vendors.length === 0 ? (
@@ -99,9 +104,6 @@ export default function Vendors() {
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
-          <div className="px-4 pt-4 text-right">
-            <span className="text-sm text-muted-foreground">{vendors.length} {t("vendors.title").toLowerCase()}</span>
-          </div>
           <Table>
             <TableHeader>
               <TableRow>
