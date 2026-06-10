@@ -4,6 +4,8 @@ import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
+import type { ChargesReconciliation, ReconciliationResolution } from "@/types/chargesReconciliation";
+import { computeReconciliation as engineComputeReconciliation, type ReconciliationBreakdown, type ReconciliationWindow } from "@/lib/chargesReconciliation";
 import type { LeaseAmendment, LeaseAmendmentChange, AmendmentType, AmendmentStatus, AmendmentFieldName, AmendmentChangeType, AmendmentChangeMetadata } from "@/types/amendments";
 import { nextAmendmentNumber, getAmendmentChanges } from "@/lib/amendments";
 import { canActivateAmendment } from "@/lib/integrity/amendmentIntegrity";
@@ -74,6 +76,7 @@ interface AppState {
   allocationRules: AllocationRule[];
   allocationRuleUnitShares: AllocationRuleUnitShare[];
   costAllocationResults: CostAllocationResult[];
+  chargesReconciliations: ChargesReconciliation[];
 
   // Property CRUD
   addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => void;
@@ -213,6 +216,17 @@ interface AppState {
   getCostCategoryById: (id: string) => CostCategory | undefined;
   getAllocationRuleById: (id: string) => AllocationRule | undefined;
   getUnitSharesByRule: (ruleId: string) => AllocationRuleUnitShare[];
+
+  // ===== Charges reconciliation =====
+  getChargesReconciliationsByLease: (leaseId: string) => ChargesReconciliation[];
+  previewChargesReconciliation: (leaseId: string, window: ReconciliationWindow) => ReconciliationBreakdown | null;
+  applyChargesReconciliation: (args: {
+    leaseId: string;
+    window: ReconciliationWindow;
+    resolution: ReconciliationResolution;
+    notes?: string;
+  }) => ChargesReconciliation | null;
+  deleteChargesReconciliation: (id: string) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
