@@ -1071,7 +1071,7 @@ export type Database = {
           email: string
           expires_at: string
           id: string
-          invited_by: string
+          invited_by: string | null
           portfolio_id: string
           role: Database["public"]["Enums"]["portfolio_role"]
           token: string
@@ -1082,7 +1082,7 @@ export type Database = {
           email: string
           expires_at?: string
           id?: string
-          invited_by: string
+          invited_by?: string | null
           portfolio_id: string
           role?: Database["public"]["Enums"]["portfolio_role"]
           token?: string
@@ -1093,7 +1093,7 @@ export type Database = {
           email?: string
           expires_at?: string
           id?: string
-          invited_by?: string
+          invited_by?: string | null
           portfolio_id?: string
           role?: Database["public"]["Enums"]["portfolio_role"]
           token?: string
@@ -1143,7 +1143,7 @@ export type Database = {
       portfolios: {
         Row: {
           created_at: string
-          created_by: string
+          created_by: string | null
           default_currency: string
           default_locale: string
           id: string
@@ -1153,7 +1153,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          created_by: string
+          created_by?: string | null
           default_currency?: string
           default_locale?: string
           id?: string
@@ -1163,7 +1163,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           default_currency?: string
           default_locale?: string
           id?: string
