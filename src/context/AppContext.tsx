@@ -4,21 +4,16 @@ import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
-import { initialProperties, initialUnits, initialTenants, initialLeases, initialGuarantees, initialLeaseUnitAssignments } from "@/data/mockData";
-import { initialAmendments, initialAmendmentChanges } from "@/data/mockData";
 import type { LeaseAmendment, LeaseAmendmentChange, AmendmentType, AmendmentStatus, AmendmentFieldName, AmendmentChangeType, AmendmentChangeMetadata } from "@/types/amendments";
 import { nextAmendmentNumber, getAmendmentChanges } from "@/lib/amendments";
 import { canActivateAmendment } from "@/lib/integrity/amendmentIntegrity";
-import { initialReceivableItems, initialCashReceipts, initialAllocations } from "@/data/receivablesMockData";
-import { initialTickets, initialVendors } from "@/data/maintenanceMockData";
-import { initialCostCategories, initialCostEntries, initialAllocationRules, initialAllocationRuleUnitShares, initialCostAllocationResults } from "@/data/costsMockData";
 import { autoAllocate } from "@/lib/reconciliation";
 import { generateLeaseReceivables } from "@/lib/leaseReceivables";
 import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
 import { getEffectiveLeaseTerms as libGetEffectiveLeaseTerms } from "@/lib/amendments";
-import { DEMO_PORTFOLIO_ID, LS_DEMO_SEEDED_KEY } from "@/lib/portfolioScope";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { loadPortfolio, mirror, newId, TABLES } from "@/lib/repo";
 import {
   migrateLegacyLeaseAssignments,
   getActiveLeaseForUnit as findActiveLeaseForUnit,
