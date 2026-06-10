@@ -1027,8 +1027,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ===== Vendors =====
   const addVendor = useCallback((v: Omit<Vendor, "id">) => {
-    setVendors(prev => [...prev, { ...v, id: genId("v") }]);
-  }, []);
+    setVendors(prev => [...prev, {
+      ...v,
+      portfolioId: v.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      id: genId("v"),
+    }]);
+  }, [currentPortfolioId]);
   const updateVendor = useCallback((v: Vendor) => {
     setVendors(prev => prev.map(x => x.id === v.id ? v : x));
   }, []);
@@ -1039,8 +1043,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Cost Categories CRUD =====
   const addCostCategory = useCallback((c: Omit<CostCategory, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setCostCategories(prev => [...prev, { ...c, id: genId("cc"), createdAt: ts, updatedAt: ts }]);
-  }, []);
+    setCostCategories(prev => [...prev, {
+      ...c,
+      portfolioId: c.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      id: genId("cc"), createdAt: ts, updatedAt: ts,
+    }]);
+  }, [currentPortfolioId]);
   const updateCostCategory = useCallback((c: CostCategory) => {
     setCostCategories(prev => prev.map(x => x.id === c.id ? { ...c, updatedAt: now() } : x));
   }, []);
