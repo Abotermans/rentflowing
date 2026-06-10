@@ -38,7 +38,7 @@ export function AppLayout() {
             {loading ? (
               <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                <span className="text-sm">{t("common.loading") || "Loading…"}</span>
+                <span className="text-sm">Loading…</span>
               </div>
             ) : (
               <Outlet />
