@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { Unit, UnitType, UnitStatus } from "@/types";
@@ -33,6 +34,9 @@ import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { getAllRentTiers } from "@/lib/rentTiers";
 
 import type { TranslationKey } from "@/i18n/translations";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import type { CostNature, CostFrequency, RecoveryType, AllocationMethod } from "@/types/costs";
 
 const UNIT_TYPES: { value: UnitType; labelKey: TranslationKey }[] = [
   { value: "apartment", labelKey: "units.apartment" },
@@ -72,12 +76,16 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, leaseUnitAssignments, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, confirmMoveOut } = useAppData();
+  const { units, properties, leases, leaseUnitAssignments, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, getCostCategoryById, getAllocationRuleById, costEntries, confirmMoveOut } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
   const navigate = useNavigate();
+
+  // Sort state for the unified Costs & Taxes table (direct + allocated).
+  type CostRowKey = "source" | "label" | "category" | "nature" | "recovery" | "period" | "method" | "amount" | "ownerBorne" | "recoverable";
+  const { sort: costsSort, toggle: toggleCostsSort } = useTableSort<CostRowKey>();
 
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
@@ -645,29 +653,130 @@ export default function UnitDetail() {
                   <p className="text-lg font-bold text-success">{formatCurrency(recoverable, property.currencyCode, property.locale)}</p>
                 </div>
               </div>
-              {directEntries.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("units.directEntries")}</p>
+              {(() => {
+                type Row = {
+                  id: string;
+                  source: "direct" | "allocated";
+                  label: string;
+                  category: string;
+                  nature: CostNature;
+                  recovery: RecoveryType;
+                  periodStart: string | null;
+                  periodEnd: string | null;
+                  frequency: CostFrequency | null;
+                  method: AllocationMethod | null;
+                  amount: number;
+                  ownerBorne: number;
+                  recoverable: number;
+                };
+                const splitRecovery = (amount: number, r: RecoveryType) => {
+                  if (r === "owner-only") return { owner: amount, rec: 0 };
+                  if (r === "tenant-recoverable") return { owner: 0, rec: amount };
+                  if (r === "partially-recoverable") {
+                    const half = Math.round((amount / 2) * 100) / 100;
+                    return { owner: half, rec: Math.round((amount - half) * 100) / 100 };
+                  }
+                  return { owner: 0, rec: 0 };
+                };
+                const rows: Row[] = [];
+                for (const e of directEntries) {
+                  const s = splitRecovery(e.amount, e.recoveryType);
+                  rows.push({
+                    id: `d-${e.id}`,
+                    source: "direct",
+                    label: e.label,
+                    category: getCostCategoryById(e.categoryId)?.name ?? "—",
+                    nature: e.isTax ? "tax" : "charge",
+                    recovery: e.recoveryType,
+                    periodStart: e.startDate,
+                    periodEnd: e.endDate,
+                    frequency: e.frequency,
+                    method: null,
+                    amount: e.amount,
+                    ownerBorne: s.owner,
+                    recoverable: s.rec,
+                  });
+                }
+                for (const r of allocResults) {
+                  const parent = costEntries.find(e => e.id === r.costEntryId);
+                  const rule = getAllocationRuleById(parent?.allocationRuleId ?? "");
+                  rows.push({
+                    id: `a-${r.id}`,
+                    source: "allocated",
+                    label: parent?.label ?? "—",
+                    category: parent ? (getCostCategoryById(parent.categoryId)?.name ?? "—") : "—",
+                    nature: parent ? (parent.isTax ? "tax" : "charge") : "charge",
+                    recovery: r.recoveryType,
+                    periodStart: r.periodStart,
+                    periodEnd: r.periodEnd,
+                    frequency: parent?.frequency ?? null,
+                    method: rule?.method ?? null,
+                    amount: r.allocatedAmount,
+                    ownerBorne: r.ownerBurdenAmount,
+                    recoverable: r.recoverableAmount,
+                  });
+                }
+                if (rows.length === 0) return null;
+                const sorted = sortRows(rows, costsSort, (row, key) => {
+                  switch (key) {
+                    case "source": return row.source;
+                    case "label": return row.label;
+                    case "category": return row.category;
+                    case "nature": return row.nature;
+                    case "recovery": return row.recovery;
+                    case "period": return row.periodStart ?? "";
+                    case "method": return row.method ?? "";
+                    case "amount": return row.amount;
+                    case "ownerBorne": return row.ownerBorne;
+                    case "recoverable": return row.recoverable;
+                  }
+                });
+                const periodCell = (row: Row) => {
+                  if (row.periodStart && row.periodEnd) {
+                    return `${formatDate(row.periodStart, property.locale)} → ${formatDate(row.periodEnd, property.locale)}`;
+                  }
+                  if (row.periodStart) return formatDate(row.periodStart, property.locale);
+                  return row.frequency ? t(`costs.frequency.${row.frequency}` as TranslationKey) : "—";
+                };
+                return (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">{t("costs.label")}</TableHead>
-                        <TableHead className="text-xs">{t("units.recovery")}</TableHead>
-                        <TableHead className="text-xs text-right">{t("units.amount")}</TableHead>
+                        <SortableTableHead sortKey="source" sort={costsSort} onSort={toggleCostsSort}>{t("costs.source")}</SortableTableHead>
+                        <SortableTableHead sortKey="label" sort={costsSort} onSort={toggleCostsSort}>{t("costs.label")}</SortableTableHead>
+                        <SortableTableHead sortKey="category" sort={costsSort} onSort={toggleCostsSort}>{t("costs.category")}</SortableTableHead>
+                        <SortableTableHead sortKey="nature" sort={costsSort} onSort={toggleCostsSort}>{t("costs.nature")}</SortableTableHead>
+                        <SortableTableHead sortKey="recovery" sort={costsSort} onSort={toggleCostsSort}>{t("units.recovery")}</SortableTableHead>
+                        <SortableTableHead sortKey="period" sort={costsSort} onSort={toggleCostsSort}>{t("costs.period")}</SortableTableHead>
+                        <SortableTableHead sortKey="method" sort={costsSort} onSort={toggleCostsSort}>{t("costs.allocationMethod")}</SortableTableHead>
+                        <SortableTableHead sortKey="amount" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.allocatedAmount")}</SortableTableHead>
+                        <SortableTableHead sortKey="ownerBorne" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.ownerBorne")}</SortableTableHead>
+                        <SortableTableHead sortKey="recoverable" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.recoverable")}</SortableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {directEntries.map(e => (
-                        <TableRow key={e.id}>
-                          <TableCell className="text-sm text-foreground">{e.label}</TableCell>
-                          <TableCell><StatusBadge status={e.recoveryType} /></TableCell>
-                          <TableCell className="text-right text-sm font-medium text-foreground">{formatCurrency(e.amount, property.currencyCode, property.locale)}</TableCell>
+                      {sorted.map(row => (
+                        <TableRow key={row.id}>
+                          <TableCell>
+                            <Badge variant={row.source === "direct" ? "secondary" : "outline"} className="text-xs font-normal">
+                              {t(row.source === "direct" ? "costs.sourceDirect" : "costs.sourceAllocated")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{row.label}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{row.category}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{t(`costs.nature.${row.nature}` as TranslationKey)}</TableCell>
+                          <TableCell><StatusBadge status={row.recovery} /></TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{periodCell(row)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{row.method ? t(`costs.methodOpt.${row.method}` as TranslationKey) : "—"}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.amount, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.ownerBorne, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.recoverable, property.currencyCode, property.locale)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                </div>
-              )}
+                );
+              })()}
             </CardContent>
           </Card>
         );
