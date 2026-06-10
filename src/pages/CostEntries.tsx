@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,7 @@ export default function CostEntries() {
   } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const natureLabel = (n: CostNature) => t(`costs.nature.${n}` as TranslationKey);
   const recoveryLabel = (r: RecoveryType) => t(`costs.recovery.${r}` as TranslationKey);
@@ -68,6 +70,17 @@ export default function CostEntries() {
     setForm(rest);
     setSheetOpen(true);
   };
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId) {
+      const entry = costEntries.find(e => e.id === editId);
+      if (entry) openEdit(entry);
+      searchParams.delete("edit");
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSave = () => {
     if (!form.label.trim() || !form.propertyId || !form.categoryId || form.amount <= 0) {
