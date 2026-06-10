@@ -213,8 +213,8 @@ export default function Maintenance() {
                 const vendor = ticket.assignedVendorId ? vendors.find(v => v.id === ticket.assignedVendorId) : null;
                 return (
                   <TableRow key={ticket.id} className="cursor-pointer" onClick={() => navigate(`/maintenance/${ticket.id}`)}>
-                    <TableCell className="font-medium">
-                      <Link to={`/maintenance/${ticket.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{ticket.title}</Link>
+                    <TableCell className="text-sm text-muted-foreground">
+                      <Link to={`/maintenance/${ticket.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{ticket.title}</Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">{prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}</TableCell>

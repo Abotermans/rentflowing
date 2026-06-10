@@ -558,9 +558,9 @@ export default function Leases() {
                 const ancillaryCount = getAncillaryLeaseUnits(l.id, { activeOnly: true }).length;
                 return (
                   <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/leases/${l.id}`)}>
-                    <TableCell className="font-mono text-xs font-medium">
+                    <TableCell className="font-mono text-xs text-muted-foreground">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-foreground">{l.leaseReference}</span>
+                        <span>{l.leaseReference}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">

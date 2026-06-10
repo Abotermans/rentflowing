@@ -105,7 +105,7 @@ function RentRollReport() {
               <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No active leases found.</TableCell></TableRow>
             ) : data.map(d => (
               <TableRow key={d.l.id}>
-                <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground"><Link to={`/leases/${d.l.id}`} className="hover:underline">{d.l.leaseReference}</Link></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {d.unit?.unitCode ?? "—"}
@@ -115,10 +115,10 @@ function RentRollReport() {
                     </span>
                   )}
                 </TableCell>
-                <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
-                <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-                <TableCell className="text-right text-sm">{formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-                <TableCell className="text-right text-sm font-medium">{formatCurrency(d.total, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.total, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
                 <TableCell><StatusBadge status={d.guarantee?.status ?? "none"} /></TableCell>
               </TableRow>
             ))}
@@ -197,9 +197,9 @@ function OccupancyReport() {
               <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No units found.</TableCell></TableRow>
             ) : data.map(d => (
               <TableRow key={d.u.id}>
-                <TableCell className="font-medium"><Link to={`/units/${d.u.id}`} className="hover:underline text-foreground">{d.u.unitCode}</Link></TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground"><Link to={`/units/${d.u.id}`} className="hover:underline">{d.u.unitCode}</Link></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-                <TableCell className="text-xs capitalize">{d.u.unitType.replace(/-/g, " ")}</TableCell>
+                <TableCell className="text-xs capitalize text-muted-foreground">{d.u.unitType.replace(/-/g, " ")}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <StatusBadge status={d.u.currentStatus} />
@@ -208,8 +208,8 @@ function OccupancyReport() {
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-sm">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
-                <TableCell className="text-right text-sm">{d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{d.u.availableFrom ? formatDate(d.u.availableFrom, d.prop?.locale) : "—"}</TableCell>
               </TableRow>
             ))}
@@ -266,10 +266,10 @@ function OverdueReport() {
               <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No overdue tenants.</TableCell></TableRow>
             ) : data.map(d => (
               <TableRow key={d.tenant!.id}>
-                <TableCell className="text-sm font-medium"><Link to={`/tenants/${d.tenant!.id}`} className="hover:underline text-foreground">{getTenantFullName(d.tenant!)}</Link></TableCell>
-                <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground"><Link to={`/tenants/${d.tenant!.id}`} className="hover:underline">{getTenantFullName(d.tenant!)}</Link></TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline">{d.lease.leaseReference}</Link> : "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-                <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
                 <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.outstanding, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
               </TableRow>
             ))}
@@ -343,13 +343,13 @@ function LeaseExpiryReport() {
               <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No leases expiring in this period.</TableCell></TableRow>
             ) : data.map(d => (
               <TableRow key={d.l.id}>
-                <TableCell className="font-mono text-xs"><Link to={`/leases/${d.l.id}`} className="hover:underline text-foreground">{d.l.leaseReference}</Link></TableCell>
-                <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground"><Link to={`/leases/${d.l.id}`} className="hover:underline">{d.l.leaseReference}</Link></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-                <TableCell className="text-xs font-medium">{formatDate(d.l.endDate, d.prop?.locale)}</TableCell>
-                <TableCell className="text-right text-sm">{d.daysLeft}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{formatDate(d.l.endDate, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{d.daysLeft}</TableCell>
                 <TableCell><StatusBadge status={d.lifecycle} /></TableCell>
-                <TableCell className="text-xs">{d.l.noticeGiven ? <span className="text-success font-medium">Yes</span> : <span className="text-muted-foreground">No</span>}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{d.l.noticeGiven ? "Yes" : "No"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -422,12 +422,12 @@ function DepositsReport() {
               <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No guarantees found.</TableCell></TableRow>
             ) : data.map(d => (
               <TableRow key={d.g.id}>
-                <TableCell className="font-mono text-xs">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline text-foreground">{d.lease.leaseReference}</Link> : "—"}</TableCell>
-                <TableCell className="text-sm">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline">{d.lease.leaseReference}</Link> : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{d.tenant ? getTenantFullName(d.tenant) : "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-                <TableCell className="text-xs">{GUARANTEE_TYPE_LABELS[d.g.type]}</TableCell>
-                <TableCell className="text-right text-sm">{formatCurrency(d.g.expectedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-                <TableCell className="text-right text-sm">{formatCurrency(d.g.receivedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{GUARANTEE_TYPE_LABELS[d.g.type]}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.g.expectedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.g.receivedAmount, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
                 <TableCell><StatusBadge status={d.g.status} /></TableCell>
               </TableRow>
             ))}
@@ -523,14 +523,14 @@ function MaintenanceBacklogReport() {
               <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No open tickets.</TableCell></TableRow>
             ) : data.map(d => (
               <TableRow key={d.t.id}>
-                <TableCell className="font-medium"><Link to={`/maintenance/${d.t.id}`} className="hover:underline text-foreground">{d.t.title}</Link></TableCell>
+                <TableCell className="text-sm text-muted-foreground"><Link to={`/maintenance/${d.t.id}`} className="hover:underline">{d.t.title}</Link></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
-                <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[d.t.category]}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{d.unit?.unitCode ?? "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{MAINTENANCE_CATEGORY_LABELS[d.t.category]}</TableCell>
                 <TableCell><StatusBadge status={d.t.priority} /></TableCell>
                 <TableCell><StatusBadge status={d.t.status} /></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.vendor ? <Link to={`/vendors/${d.vendor.id}`} className="hover:underline">{d.vendor.vendorName}</Link> : "—"}</TableCell>
-                <TableCell className="text-right text-sm">{d.ageDays}d</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{d.ageDays}d</TableCell>
               </TableRow>
             ))}
           </TableBody>

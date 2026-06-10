@@ -157,11 +157,11 @@ export default function AllocationRules() {
                   const prop = getPropertyById(r.propertyId);
                   return (
                     <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.name}</TableCell>
-                      <TableCell className="text-sm">{prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-sm">{ALLOCATION_METHOD_LABELS[r.method]}</TableCell>
-                      <TableCell className="text-sm">{r.applyOnlyToOccupiedUnits ? t("common.yes") : t("common.no")}</TableCell>
-                      <TableCell className="text-sm">{r.includeUnavailableUnits ? t("common.yes") : t("common.no")}</TableCell>
+                     <TableCell className="text-sm text-muted-foreground">{r.name}</TableCell>
+                     <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                     <TableCell className="text-sm text-muted-foreground">{ALLOCATION_METHOD_LABELS[r.method]}</TableCell>
+                     <TableCell className="text-sm text-muted-foreground">{r.applyOnlyToOccupiedUnits ? t("common.yes") : t("common.no")}</TableCell>
+                     <TableCell className="text-sm text-muted-foreground">{r.includeUnavailableUnits ? t("common.yes") : t("common.no")}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}>

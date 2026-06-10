@@ -294,14 +294,14 @@ export default function Payments() {
                   {sortedReceivables.map(ri => (
                     <TableRow key={ri.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, ri.prop?.locale)}</TableCell>
-                      <TableCell className="text-sm">{ri.tenant ? <Link to={`/tenants/${ri.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(ri.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className="hover:underline text-foreground">{ri.lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{ri.tenant ? <Link to={`/tenants/${ri.tenant.id}`} className="hover:underline">{getTenantFullName(ri.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className="hover:underline">{ri.lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{ri.prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{ri.label}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.expectedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, ri.currencyCode, ri.prop?.locale) : "—"}</TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, ri.currencyCode, ri.prop?.locale) : "—"}</TableCell>
                       <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
                     </TableRow>
                   ))}
@@ -361,8 +361,8 @@ export default function Payments() {
                     <TableRow key={cr.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, cr.prop?.locale)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{cr.payerName ?? "—"}</TableCell>
-                      <TableCell className="text-sm">{cr.tenant ? <Link to={`/tenants/${cr.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(cr.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{cr.lease ? <Link to={`/leases/${cr.lease.id}`} className="hover:underline text-foreground">{cr.lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{cr.tenant ? <Link to={`/tenants/${cr.tenant.id}`} className="hover:underline">{getTenantFullName(cr.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{cr.lease ? <Link to={`/leases/${cr.lease.id}`} className="hover:underline">{cr.lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, cr.currencyCode, cr.prop?.locale)}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, cr.prop?.locale) : "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
