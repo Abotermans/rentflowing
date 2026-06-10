@@ -53,6 +53,7 @@ interface PropertyStats {
 }
 
 interface AppState {
+  loading: boolean;
   properties: Property[];
   units: Unit[];
   tenants: Tenant[];
