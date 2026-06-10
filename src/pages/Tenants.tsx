@@ -25,6 +25,8 @@ import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -46,6 +48,9 @@ export default function Tenants() {
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+
+  type TSortKey = "name" | "email" | "phone" | "status" | "unit" | "lease";
+  const { sort, toggle } = useTableSort<TSortKey>();
 
   const emptyForm: TenantFormData = {
     firstName: "", lastName: "", email: "", phone: "",
@@ -127,6 +132,19 @@ export default function Tenants() {
 
   const getActiveLease = (tenantId: string) => leases.find(l => l.primaryTenantId === tenantId && l.lifecycleStage === "active");
 
+  const sorted = sortRows(filtered, sort, (tenant, key) => {
+    const activeLease = getActiveLease(tenant.id);
+    const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
+    switch (key) {
+      case "name": return getTenantFullName(tenant);
+      case "email": return tenant.email;
+      case "phone": return tenant.phone;
+      case "status": return tenant.status;
+      case "unit": return unit?.unitCode ?? null;
+      case "lease": return activeLease?.leaseReference ?? null;
+    }
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -166,17 +184,17 @@ export default function Tenants() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("tenants.name")}</TableHead>
-                <TableHead>{t("tenants.email")}</TableHead>
-                <TableHead>{t("tenants.phone")}</TableHead>
-                <TableHead>{t("filter.status")}</TableHead>
-                <TableHead>{t("leases.unit")}</TableHead>
-                <TableHead>{t("leases.title")}</TableHead>
+                <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>{t("tenants.name")}</SortableTableHead>
+                <SortableTableHead sortKey="email" sort={sort} onSort={toggle}>{t("tenants.email")}</SortableTableHead>
+                <SortableTableHead sortKey="phone" sort={sort} onSort={toggle}>{t("tenants.phone")}</SortableTableHead>
+                <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
+                <SortableTableHead sortKey="unit" sort={sort} onSort={toggle}>{t("leases.unit")}</SortableTableHead>
+                <SortableTableHead sortKey="lease" sort={sort} onSort={toggle}>{t("leases.title")}</SortableTableHead>
                 <TableHead className="text-right">{t("tenants.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(tenant => {
+              {sorted.map(tenant => {
                 const activeLease = getActiveLease(tenant.id);
                 const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
                 return (

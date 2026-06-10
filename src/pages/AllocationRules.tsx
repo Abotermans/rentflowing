@@ -15,6 +15,8 @@ import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Scale, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { AllocationRule, AllocationMethod, ALLOCATION_METHOD_LABELS, AllocationRuleUnitShare } from "@/types/costs";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 type FormData = Omit<AllocationRule, "id" | "createdAt" | "updatedAt">;
 
@@ -37,6 +39,9 @@ export default function AllocationRules() {
   const [editing, setEditing] = useState<AllocationRule | null>(null);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
   const [unitShares, setUnitSharesLocal] = useState<Record<string, number>>({});
+
+  type RSortKey = "name" | "property" | "method" | "occupied" | "unavailable";
+  const { sort, toggle } = useTableSort<RSortKey>();
 
   const openAdd = () => {
     setEditing(null); setForm({ ...emptyForm }); setUnitSharesLocal({}); setSheetOpen(true);
@@ -104,6 +109,17 @@ export default function AllocationRules() {
     return true;
   });
 
+  const sorted = sortRows(filtered, sort, (r, key) => {
+    const prop = getPropertyById(r.propertyId);
+    switch (key) {
+      case "name": return r.name;
+      case "property": return prop?.name ?? "";
+      case "method": return ALLOCATION_METHOD_LABELS[r.method];
+      case "occupied": return r.applyOnlyToOccupiedUnits ? 1 : 0;
+      case "unavailable": return r.includeUnavailableUnits ? 1 : 0;
+    }
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -128,16 +144,16 @@ export default function AllocationRules() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("common.name")}</TableHead>
-                  <TableHead>{t("table.property")}</TableHead>
-                  <TableHead>{t("costs.method")}</TableHead>
-                  <TableHead>{t("costs.occupiedOnly")}</TableHead>
-                  <TableHead>{t("costs.includeUnavailable")}</TableHead>
+                  <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>{t("common.name")}</SortableTableHead>
+                  <SortableTableHead sortKey="property" sort={sort} onSort={toggle}>{t("table.property")}</SortableTableHead>
+                  <SortableTableHead sortKey="method" sort={sort} onSort={toggle}>{t("costs.method")}</SortableTableHead>
+                  <SortableTableHead sortKey="occupied" sort={sort} onSort={toggle}>{t("costs.occupiedOnly")}</SortableTableHead>
+                  <SortableTableHead sortKey="unavailable" sort={sort} onSort={toggle}>{t("costs.includeUnavailable")}</SortableTableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(r => {
+                {sorted.map(r => {
                   const prop = getPropertyById(r.propertyId);
                   return (
                     <TableRow key={r.id}>

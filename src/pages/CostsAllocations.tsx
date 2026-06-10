@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PieChart, Building2, DoorOpen } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { RECOVERY_TYPE_LABELS } from "@/types/costs";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 export default function CostsAllocations() {
   const {
@@ -15,6 +17,11 @@ export default function CostsAllocations() {
     getPropertyById, getUnitById, getCostCategoryById,
   } = useAppData();
   const { t } = useSettings();
+
+  type PBKey = "property" | "totalCosts" | "totalTaxes" | "total";
+  const { sort: pbSort, toggle: pbToggle } = useTableSort<PBKey>();
+  type UBKey = "unit" | "property" | "directCosts" | "allocatedCosts" | "ownerBorne" | "recoverable" | "total";
+  const { sort: ubSort, toggle: ubToggle } = useTableSort<UBKey>();
 
   const activeEntries = costEntries.filter(e => e.status === "active");
 
@@ -126,14 +133,21 @@ export default function CostsAllocations() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("table.property")}</TableHead>
-                  <TableHead className="text-right">{t("costs.totalCharges")}</TableHead>
-                  <TableHead className="text-right">{t("costs.totalTaxes")}</TableHead>
-                  <TableHead className="text-right">{t("common.total")}</TableHead>
+                  <SortableTableHead sortKey="property" sort={pbSort} onSort={pbToggle}>{t("table.property")}</SortableTableHead>
+                  <SortableTableHead sortKey="totalCosts" sort={pbSort} onSort={pbToggle} align="right">{t("costs.totalCharges")}</SortableTableHead>
+                  <SortableTableHead sortKey="totalTaxes" sort={pbSort} onSort={pbToggle} align="right">{t("costs.totalTaxes")}</SortableTableHead>
+                  <SortableTableHead sortKey="total" sort={pbSort} onSort={pbToggle} align="right">{t("common.total")}</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {propertyBreakdown.map(pb => {
+                {sortRows(propertyBreakdown, pbSort, (pb, key) => {
+                  switch (key) {
+                    case "property": return getPropertyById(pb.propertyId)?.name ?? "";
+                    case "totalCosts": return pb.totalCosts;
+                    case "totalTaxes": return pb.totalTaxes;
+                    case "total": return pb.totalCosts + pb.totalTaxes;
+                  }
+                }).map(pb => {
                   const prop = getPropertyById(pb.propertyId);
                   return (
                     <TableRow key={pb.propertyId}>
@@ -165,17 +179,27 @@ export default function CostsAllocations() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("table.unit")}</TableHead>
-                  <TableHead>{t("table.property")}</TableHead>
-                  <TableHead className="text-right">{t("costs.directCosts")}</TableHead>
-                  <TableHead className="text-right">{t("costs.allocatedCosts")}</TableHead>
-                  <TableHead className="text-right">{t("costs.ownerBorne")}</TableHead>
-                  <TableHead className="text-right">{t("costs.recoverable")}</TableHead>
-                  <TableHead className="text-right">{t("common.total")}</TableHead>
+                  <SortableTableHead sortKey="unit" sort={ubSort} onSort={ubToggle}>{t("table.unit")}</SortableTableHead>
+                  <SortableTableHead sortKey="property" sort={ubSort} onSort={ubToggle}>{t("table.property")}</SortableTableHead>
+                  <SortableTableHead sortKey="directCosts" sort={ubSort} onSort={ubToggle} align="right">{t("costs.directCosts")}</SortableTableHead>
+                  <SortableTableHead sortKey="allocatedCosts" sort={ubSort} onSort={ubToggle} align="right">{t("costs.allocatedCosts")}</SortableTableHead>
+                  <SortableTableHead sortKey="ownerBorne" sort={ubSort} onSort={ubToggle} align="right">{t("costs.ownerBorne")}</SortableTableHead>
+                  <SortableTableHead sortKey="recoverable" sort={ubSort} onSort={ubToggle} align="right">{t("costs.recoverable")}</SortableTableHead>
+                  <SortableTableHead sortKey="total" sort={ubSort} onSort={ubToggle} align="right">{t("common.total")}</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {unitBurden.map(ub => {
+                {sortRows(unitBurden, ubSort, (ub, key) => {
+                  switch (key) {
+                    case "unit": return getUnitById(ub.unitId)?.unitLabel ?? "";
+                    case "property": return getPropertyById(ub.propertyId)?.name ?? "";
+                    case "directCosts": return ub.directCosts;
+                    case "allocatedCosts": return ub.allocatedCosts;
+                    case "ownerBorne": return ub.ownerBorne;
+                    case "recoverable": return ub.recoverable;
+                    case "total": return ub.directCosts + ub.allocatedCosts;
+                  }
+                }).map(ub => {
                   const unit = getUnitById(ub.unitId);
                   const prop = getPropertyById(ub.propertyId);
                   const total = ub.directCosts + ub.allocatedCosts;

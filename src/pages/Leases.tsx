@@ -35,6 +35,8 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -92,6 +94,9 @@ export default function Leases() {
   const [filterUnderNotice, setFilterUnderNotice] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingLease, setEditingLease] = useState<Lease | null>(null);
+
+  type LSortKey = "reference" | "tenant" | "property" | "unit" | "formula" | "status" | "guarantee" | "start" | "end" | "total";
+  const { sort, toggle } = useTableSort<LSortKey>();
 
   const emptyForm: LeaseFormData = {
     leaseReference: "", propertyId: properties[0]?.id ?? "", unitId: "", primaryTenantId: "",
@@ -370,6 +375,25 @@ export default function Leases() {
     return matchSearch && matchStatus && matchProperty && matchEnding && matchNotice;
   });
 
+  const sorted = sortRows(filtered, sort, (l, key) => {
+    const tenant = tenants.find(t => t.id === l.primaryTenantId);
+    const prop = properties.find(p => p.id === l.propertyId);
+    const unit = units.find(u => u.id === l.unitId);
+    const guarantee = getGuaranteeByLease(l.id);
+    switch (key) {
+      case "reference": return l.leaseReference;
+      case "tenant": return tenant ? getTenantFullName(tenant) : "";
+      case "property": return prop?.name ?? "";
+      case "unit": return unit?.unitCode ?? "";
+      case "formula": return l.rentFormula;
+      case "status": return getLeaseStatus(l);
+      case "guarantee": return guarantee?.status ?? null;
+      case "start": return l.startDate;
+      case "end": return l.endDate;
+      case "total": return l.monthlyRent + l.monthlyCharges;
+    }
+  });
+
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
   // Intersection of advance-payment tiers across every selected unit. The
@@ -512,21 +536,21 @@ export default function Leases() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("leases.reference")}</TableHead>
-                <TableHead>{t("leases.tenant")}</TableHead>
-                <TableHead>{t("leases.property")}</TableHead>
-                <TableHead>{t("leases.unit")}</TableHead>
-                <TableHead>{t("leases.formula")}</TableHead>
-                <TableHead>{t("leases.status")}</TableHead>
-                <TableHead>{t("leases.guarantee")}</TableHead>
-                <TableHead>{t("leases.start")}</TableHead>
-                <TableHead>{t("leases.end")}</TableHead>
-                <TableHead className="text-right">{t("leases.total")}</TableHead>
+                <SortableTableHead sortKey="reference" sort={sort} onSort={toggle}>{t("leases.reference")}</SortableTableHead>
+                <SortableTableHead sortKey="tenant" sort={sort} onSort={toggle}>{t("leases.tenant")}</SortableTableHead>
+                <SortableTableHead sortKey="property" sort={sort} onSort={toggle}>{t("leases.property")}</SortableTableHead>
+                <SortableTableHead sortKey="unit" sort={sort} onSort={toggle}>{t("leases.unit")}</SortableTableHead>
+                <SortableTableHead sortKey="formula" sort={sort} onSort={toggle}>{t("leases.formula")}</SortableTableHead>
+                <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("leases.status")}</SortableTableHead>
+                <SortableTableHead sortKey="guarantee" sort={sort} onSort={toggle}>{t("leases.guarantee")}</SortableTableHead>
+                <SortableTableHead sortKey="start" sort={sort} onSort={toggle}>{t("leases.start")}</SortableTableHead>
+                <SortableTableHead sortKey="end" sort={sort} onSort={toggle}>{t("leases.end")}</SortableTableHead>
+                <SortableTableHead sortKey="total" sort={sort} onSort={toggle} align="right">{t("leases.total")}</SortableTableHead>
                 <TableHead className="text-right">{t("leases.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(l => {
+              {sorted.map(l => {
                 const tenant = tenants.find(t => t.id === l.primaryTenantId);
                 const prop = properties.find(p => p.id === l.propertyId);
                 const unit = units.find(u => u.id === l.unitId);

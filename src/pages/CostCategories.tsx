@@ -19,6 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/context/SettingsContext";
 import { CostCategory, CostNature, CostScope, RecoveryType, COST_NATURE_LABELS, COST_SCOPE_LABELS, RECOVERY_TYPE_LABELS } from "@/types/costs";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 type FormData = Omit<CostCategory, "id" | "createdAt" | "updatedAt">;
 
@@ -31,6 +33,9 @@ export default function CostCategories() {
   const [filterScope, setFilterScope] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<CostCategory | null>(null);
+
+  type CSortKey = "code" | "name" | "nature" | "scope" | "recovery" | "status";
+  const { sort, toggle } = useTableSort<CSortKey>();
 
   const emptyForm: FormData = {
     code: "", name: "", nature: "charge", scope: "property",
@@ -74,6 +79,17 @@ export default function CostCategories() {
     if (filterNature.length > 0 && !filterNature.includes(c.nature)) return false;
     if (filterScope.length > 0 && !filterScope.includes(c.scope)) return false;
     return true;
+  });
+
+  const sorted = sortRows(filtered, sort, (c, key) => {
+    switch (key) {
+      case "code": return c.code;
+      case "name": return c.name;
+      case "nature": return c.nature;
+      case "scope": return COST_SCOPE_LABELS[c.scope];
+      case "recovery": return RECOVERY_TYPE_LABELS[c.recoveryTypeDefault];
+      case "status": return c.isActive ? 1 : 0;
+    }
   });
 
   return (
@@ -123,17 +139,17 @@ export default function CostCategories() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("costs.code")}</TableHead>
-                  <TableHead>{t("common.name")}</TableHead>
-                  <TableHead>{t("costs.nature")}</TableHead>
-                  <TableHead>{t("costs.scope")}</TableHead>
-                  <TableHead>{t("costs.defaultRecovery")}</TableHead>
-                  <TableHead>{t("filter.status")}</TableHead>
+                  <SortableTableHead sortKey="code" sort={sort} onSort={toggle}>{t("costs.code")}</SortableTableHead>
+                  <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>{t("common.name")}</SortableTableHead>
+                  <SortableTableHead sortKey="nature" sort={sort} onSort={toggle}>{t("costs.nature")}</SortableTableHead>
+                  <SortableTableHead sortKey="scope" sort={sort} onSort={toggle}>{t("costs.scope")}</SortableTableHead>
+                  <SortableTableHead sortKey="recovery" sort={sort} onSort={toggle}>{t("costs.defaultRecovery")}</SortableTableHead>
+                  <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(c => (
+                {sorted.map(c => (
                   <TableRow key={c.id}>
                     <TableCell className="font-mono text-xs">{c.code}</TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>

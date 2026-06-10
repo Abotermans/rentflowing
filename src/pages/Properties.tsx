@@ -23,6 +23,8 @@ import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canArchiveProperty } from "@/lib/integrity/propertyIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 const EUROPEAN_COUNTRIES = [
   { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
@@ -68,6 +70,9 @@ export default function Properties() {
   const [filterType, setFilterType] = useState<string[]>([]);
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [filterCountry, setFilterCountry] = useState<string[]>([]);
+
+  type PSortKey = "reference" | "name" | "city" | "country" | "type" | "owner" | "units" | "occupancy" | "status";
+  const { sort, toggle } = useTableSort<PSortKey>();
 
   const propertyStatusValidation = (() => {
     if (!editing) return null;
@@ -121,6 +126,20 @@ export default function Properties() {
     const matchesStatus = filterStatus.length === 0 || filterStatus.includes(p.status);
     const matchesCountry = filterCountry.length === 0 || filterCountry.includes(p.countryCode);
     return matchesSearch && matchesType && matchesStatus && matchesCountry;
+  });
+
+  const sorted = sortRows(filtered, sort, (p, key) => {
+    switch (key) {
+      case "reference": return p.referenceCode;
+      case "name": return p.name;
+      case "city": return p.city;
+      case "country": return getCountryName(p.countryCode);
+      case "type": return getPropertyTypeLabel(p.propertyType);
+      case "owner": return p.ownerName;
+      case "units": return getPropertyStats(p.id).total;
+      case "occupancy": return getPropertyStats(p.id).occupancyRate;
+      case "status": return p.status;
+    }
   });
 
   // Get unique countries from existing properties for filter
@@ -187,20 +206,20 @@ export default function Properties() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("properties.reference")}</TableHead>
-                <TableHead>{t("properties.name")}</TableHead>
-                <TableHead>{t("properties.city")}</TableHead>
-                <TableHead>{t("properties.country")}</TableHead>
-                <TableHead>{t("properties.type")}</TableHead>
-                <TableHead>{t("properties.owner")}</TableHead>
-                <TableHead className="text-center">{t("properties.units")}</TableHead>
-                <TableHead className="text-center">{t("properties.occupancy")}</TableHead>
-                <TableHead>{t("filter.status")}</TableHead>
+                <SortableTableHead sortKey="reference" sort={sort} onSort={toggle}>{t("properties.reference")}</SortableTableHead>
+                <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>{t("properties.name")}</SortableTableHead>
+                <SortableTableHead sortKey="city" sort={sort} onSort={toggle}>{t("properties.city")}</SortableTableHead>
+                <SortableTableHead sortKey="country" sort={sort} onSort={toggle}>{t("properties.country")}</SortableTableHead>
+                <SortableTableHead sortKey="type" sort={sort} onSort={toggle}>{t("properties.type")}</SortableTableHead>
+                <SortableTableHead sortKey="owner" sort={sort} onSort={toggle}>{t("properties.owner")}</SortableTableHead>
+                <SortableTableHead sortKey="units" sort={sort} onSort={toggle} align="center">{t("properties.units")}</SortableTableHead>
+                <SortableTableHead sortKey="occupancy" sort={sort} onSort={toggle} align="center">{t("properties.occupancy")}</SortableTableHead>
+                <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
                 <TableHead className="text-right">{t("properties.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(p => {
+              {sorted.map(p => {
                 const stats = getPropertyStats(p.id);
                 return (
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/properties/${p.id}`)}>
