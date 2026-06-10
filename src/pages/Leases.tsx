@@ -475,27 +475,32 @@ export default function Leases() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <MultiSelectFilter
-          label={t("filter.status")}
-          icon={FileCheck}
-          values={filterStatus}
-          onChange={setFilterStatus}
-          options={LEASE_STATUS_FILTERS.map(s => ({ value: s.value, label: s.label, icon: LEASE_STATUS_ICONS[s.value] }))}
-        />
-        <MultiSelectFilter
-          label={t("filter.property")}
-          icon={PROPERTY_ICON}
-          values={filterProperty}
-          onChange={setFilterProperty}
-          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
-        />
-        <Button variant={filterEndingSoon ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterEndingSoon(!filterEndingSoon)}>
-          {t("filter.endingSoon")}
-        </Button>
-        <Button variant={filterUnderNotice ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterUnderNotice(!filterUnderNotice)}>
-          <Bell className="h-3.5 w-3.5 mr-1" />{t("filter.underNotice")}
-        </Button>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-3">
+          <MultiSelectFilter
+            label={t("filter.status")}
+            icon={FileCheck}
+            values={filterStatus}
+            onChange={setFilterStatus}
+            options={LEASE_STATUS_FILTERS.map(s => ({ value: s.value, label: s.label, icon: LEASE_STATUS_ICONS[s.value] }))}
+          />
+          <MultiSelectFilter
+            label={t("filter.property")}
+            icon={PROPERTY_ICON}
+            values={filterProperty}
+            onChange={setFilterProperty}
+            options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+          />
+          <Button variant={filterEndingSoon ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterEndingSoon(!filterEndingSoon)}>
+            {t("filter.endingSoon")}
+          </Button>
+          <Button variant={filterUnderNotice ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterUnderNotice(!filterUnderNotice)}>
+            <Bell className="h-3.5 w-3.5 mr-1" />{t("filter.underNotice")}
+          </Button>
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
+          {filtered.length} {t("leases.title").toLowerCase()}
+        </span>
       </div>
 
       {leases.length === 0 ? (
@@ -504,9 +509,6 @@ export default function Leases() {
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
-          <div className="px-4 pt-4 text-right">
-            <span className="text-sm text-muted-foreground">{leases.length} {t("leases.title").toLowerCase()}</span>
-          </div>
           <Table>
             <TableHeader>
               <TableRow>

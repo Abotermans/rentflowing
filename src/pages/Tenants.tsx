@@ -142,14 +142,19 @@ export default function Tenants() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <MultiSelectFilter
-          label={t("filter.status")}
-          icon={UserCheck}
-          values={filterStatus}
-          onChange={setFilterStatus}
-          options={TENANT_STATUSES.map(s => ({ value: s.value, label: s.label, icon: TENANT_STATUS_ICONS[s.value] }))}
-        />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-3">
+          <MultiSelectFilter
+            label={t("filter.status")}
+            icon={UserCheck}
+            values={filterStatus}
+            onChange={setFilterStatus}
+            options={TENANT_STATUSES.map(s => ({ value: s.value, label: s.label, icon: TENANT_STATUS_ICONS[s.value] }))}
+          />
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
+          {filtered.length} {t("tenants.title").toLowerCase()}
+        </span>
       </div>
 
       {tenants.length === 0 ? (
@@ -158,9 +163,6 @@ export default function Tenants() {
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
-          <div className="px-4 pt-4 text-right">
-            <span className="text-sm text-muted-foreground">{tenants.length} {t("tenants.title").toLowerCase()}</span>
-          </div>
           <Table>
             <TableHeader>
               <TableRow>

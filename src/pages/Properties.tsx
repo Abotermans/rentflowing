@@ -142,35 +142,40 @@ export default function Properties() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <MultiSelectFilter
-          label={t("properties.country")}
-          icon={COUNTRY_ICON}
-          values={filterCountry}
-          onChange={setFilterCountry}
-          options={usedCountries.map(code => ({ value: code, label: getCountryName(code), icon: COUNTRY_ICON }))}
-        />
-        <MultiSelectFilter
-          label={t("filter.type")}
-          icon={Tag}
-          values={filterType}
-          onChange={setFilterType}
-          options={[
-            { value: "residential", label: t("properties.residential"), icon: PROPERTY_TYPE_ICONS.residential },
-            { value: "commercial", label: t("properties.commercial"), icon: PROPERTY_TYPE_ICONS.commercial },
-            { value: "mixed-use", label: t("properties.mixedUse"), icon: PROPERTY_TYPE_ICONS["mixed-use"] },
-          ]}
-        />
-        <MultiSelectFilter
-          label={t("filter.status")}
-          icon={CircleCheck}
-          values={filterStatus}
-          onChange={setFilterStatus}
-          options={[
-            { value: "active", label: t("properties.active"), icon: PROPERTY_STATUS_ICONS.active },
-            { value: "inactive", label: t("properties.inactive"), icon: PROPERTY_STATUS_ICONS.inactive },
-          ]}
-        />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-3">
+          <MultiSelectFilter
+            label={t("properties.country")}
+            icon={COUNTRY_ICON}
+            values={filterCountry}
+            onChange={setFilterCountry}
+            options={usedCountries.map(code => ({ value: code, label: getCountryName(code), icon: COUNTRY_ICON }))}
+          />
+          <MultiSelectFilter
+            label={t("filter.type")}
+            icon={Tag}
+            values={filterType}
+            onChange={setFilterType}
+            options={[
+              { value: "residential", label: t("properties.residential"), icon: PROPERTY_TYPE_ICONS.residential },
+              { value: "commercial", label: t("properties.commercial"), icon: PROPERTY_TYPE_ICONS.commercial },
+              { value: "mixed-use", label: t("properties.mixedUse"), icon: PROPERTY_TYPE_ICONS["mixed-use"] },
+            ]}
+          />
+          <MultiSelectFilter
+            label={t("filter.status")}
+            icon={CircleCheck}
+            values={filterStatus}
+            onChange={setFilterStatus}
+            options={[
+              { value: "active", label: t("properties.active"), icon: PROPERTY_STATUS_ICONS.active },
+              { value: "inactive", label: t("properties.inactive"), icon: PROPERTY_STATUS_ICONS.inactive },
+            ]}
+          />
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
+          {filtered.length} {t("properties.title").toLowerCase()}
+        </span>
       </div>
 
       {properties.length === 0 ? (
@@ -179,9 +184,6 @@ export default function Properties() {
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
-          <div className="px-4 pt-4 text-right">
-            <span className="text-sm text-muted-foreground">{properties.length} {t("properties.title").toLowerCase()}</span>
-          </div>
           <Table>
             <TableHeader>
               <TableRow>

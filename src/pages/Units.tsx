@@ -205,32 +205,37 @@ export default function Units() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <MultiSelectFilter
-          label={t("filter.property")}
-          icon={PROPERTY_ICON}
-          values={filterProperty}
-          onChange={setFilterProperty}
-          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
-        />
-        <MultiSelectFilter
-          label={t("filter.type")}
-          icon={Tag}
-          values={filterType}
-          onChange={setFilterType}
-          options={UNIT_TYPES.map(ut => ({ value: ut.value, label: t(ut.labelKey), icon: UNIT_TYPE_ICONS[ut.value] }))}
-        />
-        <MultiSelectFilter
-          label={t("occupancy.statusFilterLabel")}
-          icon={UNIT_OCCUPANCY_ICONS.occupied}
-          values={filterOccupancy}
-          onChange={(v) => setFilterOccupancy(v as DerivedOccupancy[])}
-          options={OCCUPANCY_FILTERS.filter(o => o.value !== "all").map(o => ({
-            value: o.value as string,
-            label: t(o.labelKey),
-            icon: UNIT_OCCUPANCY_ICONS[o.value as string],
-          }))}
-        />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-3">
+          <MultiSelectFilter
+            label={t("filter.property")}
+            icon={PROPERTY_ICON}
+            values={filterProperty}
+            onChange={setFilterProperty}
+            options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+          />
+          <MultiSelectFilter
+            label={t("filter.type")}
+            icon={Tag}
+            values={filterType}
+            onChange={setFilterType}
+            options={UNIT_TYPES.map(ut => ({ value: ut.value, label: t(ut.labelKey), icon: UNIT_TYPE_ICONS[ut.value] }))}
+          />
+          <MultiSelectFilter
+            label={t("occupancy.statusFilterLabel")}
+            icon={UNIT_OCCUPANCY_ICONS.occupied}
+            values={filterOccupancy}
+            onChange={(v) => setFilterOccupancy(v as DerivedOccupancy[])}
+            options={OCCUPANCY_FILTERS.filter(o => o.value !== "all").map(o => ({
+              value: o.value as string,
+              label: t(o.labelKey),
+              icon: UNIT_OCCUPANCY_ICONS[o.value as string],
+            }))}
+          />
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
+          {filtered.length} {t("units.title").toLowerCase()}
+        </span>
       </div>
 
       {units.length === 0 ? (
@@ -240,9 +245,6 @@ export default function Units() {
       ) : (
         <TooltipProvider>
           <Card>
-            <div className="px-4 pt-4 text-right">
-              <span className="text-sm text-muted-foreground">{units.length} {t("units.title").toLowerCase()}</span>
-            </div>
             <Table>
               <TableHeader>
                 <TableRow>

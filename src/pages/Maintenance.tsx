@@ -109,48 +109,53 @@ export default function Maintenance() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <MultiSelectFilter
-          label={t("filter.status")}
-          icon={CircleDot}
-          values={filterStatus}
-          onChange={setFilterStatus}
-          options={(Object.keys(MAINTENANCE_STATUS_KEYS) as MaintenanceStatus[]).map(s => ({
-            value: s, label: t(MAINTENANCE_STATUS_KEYS[s]), icon: MAINTENANCE_STATUS_ICONS[s],
-          }))}
-        />
-        <MultiSelectFilter
-          label={t("maintenance.category")}
-          icon={Tag}
-          values={filterCategory}
-          onChange={setFilterCategory}
-          options={(Object.keys(MAINTENANCE_CATEGORY_KEYS) as MaintenanceCategory[]).map(c => ({
-            value: c, label: t(MAINTENANCE_CATEGORY_KEYS[c]), icon: MAINTENANCE_CATEGORY_ICONS[c],
-          }))}
-        />
-        <MultiSelectFilter
-          label={t("maintenance.priority")}
-          icon={AlertTriangleIcon}
-          values={filterPriority}
-          onChange={setFilterPriority}
-          options={(Object.keys(MAINTENANCE_PRIORITY_KEYS) as MaintenancePriority[]).map(p => ({
-            value: p, label: t(MAINTENANCE_PRIORITY_KEYS[p]), icon: PRIORITY_ICONS[p], iconClassName: PRIORITY_CLASSES[p],
-          }))}
-        />
-        <MultiSelectFilter
-          label={t("maintenance.property")}
-          icon={PROPERTY_ICON}
-          values={filterProperty}
-          onChange={setFilterProperty}
-          options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
-        />
-        <MultiSelectFilter
-          label={t("maintenance.vendor")}
-          icon={VENDOR_ICON}
-          values={filterVendor}
-          onChange={setFilterVendor}
-          options={vendors.map(v => ({ value: v.id, label: v.vendorName, icon: VENDOR_ICON }))}
-        />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-3">
+          <MultiSelectFilter
+            label={t("filter.status")}
+            icon={CircleDot}
+            values={filterStatus}
+            onChange={setFilterStatus}
+            options={(Object.keys(MAINTENANCE_STATUS_KEYS) as MaintenanceStatus[]).map(s => ({
+              value: s, label: t(MAINTENANCE_STATUS_KEYS[s]), icon: MAINTENANCE_STATUS_ICONS[s],
+            }))}
+          />
+          <MultiSelectFilter
+            label={t("maintenance.category")}
+            icon={Tag}
+            values={filterCategory}
+            onChange={setFilterCategory}
+            options={(Object.keys(MAINTENANCE_CATEGORY_KEYS) as MaintenanceCategory[]).map(c => ({
+              value: c, label: t(MAINTENANCE_CATEGORY_KEYS[c]), icon: MAINTENANCE_CATEGORY_ICONS[c],
+            }))}
+          />
+          <MultiSelectFilter
+            label={t("maintenance.priority")}
+            icon={AlertTriangleIcon}
+            values={filterPriority}
+            onChange={setFilterPriority}
+            options={(Object.keys(MAINTENANCE_PRIORITY_KEYS) as MaintenancePriority[]).map(p => ({
+              value: p, label: t(MAINTENANCE_PRIORITY_KEYS[p]), icon: PRIORITY_ICONS[p], iconClassName: PRIORITY_CLASSES[p],
+            }))}
+          />
+          <MultiSelectFilter
+            label={t("maintenance.property")}
+            icon={PROPERTY_ICON}
+            values={filterProperty}
+            onChange={setFilterProperty}
+            options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
+          />
+          <MultiSelectFilter
+            label={t("maintenance.vendor")}
+            icon={VENDOR_ICON}
+            values={filterVendor}
+            onChange={setFilterVendor}
+            options={vendors.map(v => ({ value: v.id, label: v.vendorName, icon: VENDOR_ICON }))}
+          />
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
+          {filtered.length} {t("maintenance.tickets")}
+        </span>
       </div>
 
       {tickets.length === 0 ? (
@@ -159,9 +164,6 @@ export default function Maintenance() {
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
         <Card>
-          <div className="px-4 pt-4 text-right">
-            <span className="text-sm text-muted-foreground">{tickets.length} {t("maintenance.tickets")}</span>
-          </div>
           <Table>
             <TableHeader>
               <TableRow>
