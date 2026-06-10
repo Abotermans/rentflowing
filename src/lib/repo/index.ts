@@ -6,6 +6,7 @@ import type { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import type {
   CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult,
 } from "@/types/costs";
+import type { ChargesReconciliation } from "@/types/chargesReconciliation";
 
 // ===== Case conversion =====
 const toSnake = (s: string) =>
@@ -55,6 +56,7 @@ export const TABLES = {
   allocationRules: "allocation_rules",
   allocationRuleUnitShares: "allocation_rule_unit_shares",
   costAllocationResults: "cost_allocation_results",
+  chargesReconciliations: "charges_reconciliations",
 } as const;
 
 export type TableKey = keyof typeof TABLES;
@@ -80,6 +82,7 @@ export interface PortfolioSnapshot {
   allocationRules: AllocationRule[];
   allocationRuleUnitShares: AllocationRuleUnitShare[];
   costAllocationResults: CostAllocationResult[];
+  chargesReconciliations: ChargesReconciliation[];
 }
 
 async function listAll<T>(table: SupabaseTable, portfolioId: string): Promise<T[]> {
@@ -101,6 +104,7 @@ export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnaps
     receivableItems, cashReceipts, allocations,
     tickets, vendors,
     costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
+    chargesReconciliations,
   ] = await Promise.all([
     listAll<Property>(TABLES.properties, portfolioId),
     listAll<Unit>(TABLES.units, portfolioId),
@@ -120,6 +124,7 @@ export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnaps
     listAll<AllocationRule>(TABLES.allocationRules, portfolioId),
     listAll<AllocationRuleUnitShare>(TABLES.allocationRuleUnitShares, portfolioId),
     listAll<CostAllocationResult>(TABLES.costAllocationResults, portfolioId),
+    listAll<ChargesReconciliation>(TABLES.chargesReconciliations, portfolioId),
   ]);
   return {
     properties, units, tenants, leases, guarantees, leaseUnitAssignments,
@@ -127,6 +132,7 @@ export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnaps
     receivableItems, cashReceipts, allocations,
     tickets, vendors,
     costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
+    chargesReconciliations,
   };
 }
 
