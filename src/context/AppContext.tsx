@@ -216,77 +216,75 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
-let counter = 500;
-const genId = (prefix: string) => `${prefix}${++counter}`;
+const genId = (_prefix?: string) => newId();
 const now = () => new Date().toISOString().split("T")[0];
-
-const LS_AMENDMENTS = "app-amendments";
-const LS_AMENDMENT_CHANGES = "app-amendment-changes";
-function loadLS<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch { return fallback; }
-}
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { currentPortfolioId } = usePortfolio();
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Seed mock data is stamped with DEMO_PORTFOLIO_ID until the first real
-  // portfolio loads (effect below) and claims the demo dataset.
-  const stampDemo = <T extends { portfolioId?: string }>(arr: T[]): T[] =>
-    arr.map(x => x.portfolioId ? x : { ...x, portfolioId: DEMO_PORTFOLIO_ID });
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [leases, setLeases] = useState<Lease[]>([]);
+  const [guarantees, setGuarantees] = useState<Guarantee[]>([]);
+  const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>([]);
+  const [amendments, setAmendments] = useState<LeaseAmendment[]>([]);
+  const [amendmentChanges, setAmendmentChanges] = useState<LeaseAmendmentChange[]>([]);
+  const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>([]);
+  const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>([]);
+  const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>([]);
+  const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [costCategories, setCostCategories] = useState<CostCategory[]>([]);
+  const [costEntries, setCostEntries] = useState<CostEntry[]>([]);
+  const [allocationRules, setAllocationRules] = useState<AllocationRule[]>([]);
+  const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>([]);
+  const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>([]);
 
-  const [properties, setProperties] = useState<Property[]>(() => stampDemo(initialProperties));
-  const [units, setUnits] = useState<Unit[]>(initialUnits);
-  const [tenants, setTenants] = useState<Tenant[]>(() => stampDemo(initialTenants));
-  const [leases, setLeases] = useState<Lease[]>(initialLeases);
-  const [guarantees, setGuarantees] = useState<Guarantee[]>(initialGuarantees);
-  const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>(
-    () => migrateLegacyLeaseAssignments(initialLeases, initialLeaseUnitAssignments),
-  );
-  const [amendments, setAmendments] = useState<LeaseAmendment[]>(
-    () => loadLS<LeaseAmendment[]>(LS_AMENDMENTS, initialAmendments),
-  );
-  const [amendmentChanges, setAmendmentChanges] = useState<LeaseAmendmentChange[]>(
-    () => loadLS<LeaseAmendmentChange[]>(LS_AMENDMENT_CHANGES, initialAmendmentChanges),
-  );
+  // Hydrate from DB whenever the active portfolio changes.
   useEffect(() => {
-    try { localStorage.setItem(LS_AMENDMENTS, JSON.stringify(amendments)); } catch {}
-  }, [amendments]);
-  useEffect(() => {
-    try { localStorage.setItem(LS_AMENDMENT_CHANGES, JSON.stringify(amendmentChanges)); } catch {}
-  }, [amendmentChanges]);
-  const [receivableItems, setReceivableItems] = useState<ReceivableItem[]>(initialReceivableItems);
-  const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
-  const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
-  const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialTickets);
-  const [vendors, setVendors] = useState<Vendor[]>(() => stampDemo(initialVendors));
-
-  // Costs & Taxes state
-  const [costCategories, setCostCategories] = useState<CostCategory[]>(() => stampDemo(initialCostCategories));
-  const [costEntries, setCostEntries] = useState<CostEntry[]>(initialCostEntries);
-  const [allocationRules, setAllocationRules] = useState<AllocationRule[]>(initialAllocationRules);
-  const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>(initialAllocationRuleUnitShares);
-  const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>(initialCostAllocationResults);
-
-  // One-time migration: the first real portfolio to load adopts the demo
-  // dataset (per browser). Subsequent portfolios start empty.
-  useEffect(() => {
-    if (!currentPortfolioId) return;
-    let seeded = localStorage.getItem(LS_DEMO_SEEDED_KEY);
-    if (!seeded) {
-      localStorage.setItem(LS_DEMO_SEEDED_KEY, currentPortfolioId);
-      seeded = currentPortfolioId;
+    let cancelled = false;
+    if (!currentPortfolioId) {
+      setProperties([]); setUnits([]); setTenants([]); setLeases([]);
+      setGuarantees([]); setLeaseUnitAssignments([]);
+      setAmendments([]); setAmendmentChanges([]);
+      setReceivableItems([]); setCashReceipts([]); setAllocations([]);
+      setTickets([]); setVendors([]);
+      setCostCategories([]); setCostEntries([]); setAllocationRules([]);
+      setAllocationRuleUnitShares([]); setCostAllocationResults([]);
+      setLoading(false);
+      return;
     }
-    if (seeded !== currentPortfolioId) return;
-    const remap = <T extends { portfolioId?: string }>(arr: T[]): T[] =>
-      arr.map(x => x.portfolioId === DEMO_PORTFOLIO_ID ? { ...x, portfolioId: currentPortfolioId } : x);
-    setProperties(prev => remap(prev));
-    setTenants(prev => remap(prev));
-    setVendors(prev => remap(prev));
-    setCostCategories(prev => remap(prev));
+    setLoading(true);
+    loadPortfolio(currentPortfolioId).then(snap => {
+      if (cancelled) return;
+      setProperties(snap.properties);
+      setUnits(snap.units);
+      setTenants(snap.tenants);
+      setLeases(snap.leases);
+      setGuarantees(snap.guarantees);
+      setLeaseUnitAssignments(
+        migrateLegacyLeaseAssignments(snap.leases, snap.leaseUnitAssignments),
+      );
+      setAmendments(snap.amendments);
+      setAmendmentChanges(snap.amendmentChanges);
+      setReceivableItems(snap.receivableItems);
+      setCashReceipts(snap.cashReceipts);
+      setAllocations(snap.allocations);
+      setTickets(snap.tickets);
+      setVendors(snap.vendors);
+      setCostCategories(snap.costCategories);
+      setCostEntries(snap.costEntries);
+      setAllocationRules(snap.allocationRules);
+      setAllocationRuleUnitShares(snap.allocationRuleUnitShares);
+      setCostAllocationResults(snap.costAllocationResults);
+      setLoading(false);
+    }).catch(err => {
+      console.error("[AppContext] loadPortfolio failed:", err);
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, [currentPortfolioId]);
 
   // ===== Advance billing: auto-generate cycle receivables when their lead
