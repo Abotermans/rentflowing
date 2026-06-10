@@ -425,27 +425,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTenants(prevT => reconcileTenantStatuses([created.primaryTenantId, ...created.coTenantIds], next, prevT));
       return next;
     });
+    if (currentPortfolioId) mirror.insert(TABLES.leases, created, currentPortfolioId);
     // Always seed a primary assignment from the legacy unitId so a lease is never unit-less.
     if (created.unitId) {
-      setLeaseUnitAssignments(prev => [
-        ...prev,
-        {
-          id: genId("lua"),
-          leaseId: created.id,
-          unitId: created.unitId,
-          assignmentType: "primary",
-          isPrimary: true,
-          startDate: created.startDate,
-          endDate: null,
-          // Strict per-unit pricing: seed the primary share from the lease totals so
-          // a freshly created single-unit lease is already coherent.
-          rentShare: created.monthlyRent,
-          chargesShare: created.monthlyCharges,
-          notes: "",
-          createdAt: ts,
-          updatedAt: ts,
-        },
-      ]);
+      const lua: LeaseUnitAssignment = {
+        id: genId("lua"),
+        leaseId: created.id,
+        unitId: created.unitId,
+        assignmentType: "primary",
+        isPrimary: true,
+        startDate: created.startDate,
+        endDate: null,
+        rentShare: created.monthlyRent,
+        chargesShare: created.monthlyCharges,
+        notes: "",
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      setLeaseUnitAssignments(prev => [...prev, lua]);
+      if (currentPortfolioId) mirror.insert(TABLES.leaseUnitAssignments, lua, currentPortfolioId);
     }
     // Auto-generate the monthly rent/charges receivables, plus a prepayment
     // CashReceipt + allocations if the lease carries an advance. This is what
@@ -456,14 +454,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { receivables } = generateLeaseReceivables(created, {
       currencyCode, genId, today: ts,
     });
-    if (receivables.length > 0) setReceivableItems(prev => [...prev, ...receivables]);
+    if (receivables.length > 0) {
+      setReceivableItems(prev => [...prev, ...receivables]);
+      if (currentPortfolioId) mirror.insertMany(TABLES.receivableItems, receivables, currentPortfolioId);
+    }
     return created;
-  }, [properties]);
+  }, [properties, currentPortfolioId]);
   const updateLease = useCallback((l: Lease) => {
     const ts = now();
+    const patched = { ...l, updatedAt: ts };
+    mirror.update(TABLES.leases, l.id, patched);
     setLeases(prev => {
       const old = prev.find(x => x.id === l.id);
-      const next = prev.map(x => x.id === l.id ? { ...l, updatedAt: ts } : x);
+      const next = prev.map(x => x.id === l.id ? patched : x);
       const affected = [
         ...(old ? [old.primaryTenantId, ...old.coTenantIds] : []),
         l.primaryTenantId, ...l.coTenantIds,
@@ -489,14 +492,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 ? { ...u, currentStatus: "vacant" as const, availableFrom: endDate, updatedAt: ts }
                 : u,
             ));
+            openUnitIds.forEach(uid => mirror.update(TABLES.units, uid, {
+              currentStatus: "vacant", availableFrom: endDate,
+            }));
           }
-          return closeOpenAssignmentsForLease(l.id, endDate, prevA, ts);
+          const nextA = closeOpenAssignmentsForLease(l.id, endDate, prevA, ts);
+          // Mirror closed assignments.
+          const closed = nextA.filter(a => prevA.some(p => p.id === a.id && !p.endDate) && a.endDate);
+          closed.forEach(a => mirror.update(TABLES.leaseUnitAssignments, a.id, { endDate: a.endDate }));
+          return nextA;
         });
         // Cascade to active amendments: keep lease and amendment lifecycle in sync.
         const newAmStatus = l.lifecycleStage === "terminated" ? "terminated" as const : "ended" as const;
         setAmendments(prevAm => prevAm.map(a =>
           a.leaseId === l.id && a.status === "active"
-            ? { ...a, status: newAmStatus, updatedAt: ts }
+            ? (() => {
+                const upd = { ...a, status: newAmStatus, updatedAt: ts };
+                mirror.update(TABLES.amendments, a.id, { status: newAmStatus });
+                return upd;
+              })()
             : a,
         ));
       }
@@ -506,20 +520,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteLease = useCallback((id: string) => {
     setLeases(prev => prev.filter(x => x.id !== id));
     setLeaseUnitAssignments(prev => prev.filter(a => a.leaseId !== id));
+    mirror.remove(TABLES.leases, id); // ON DELETE CASCADE cleans up children
   }, []);
 
   const confirmMoveOut = useCallback((lease: Lease) => {
     const ts = now();
     const moveOutDate = lease.moveOutActualDate ?? ts;
+    const patched: Lease = {
+      ...lease,
+      lifecycleStage: "ended" as const,
+      moveOutActualDate: moveOutDate,
+      endDate: lease.endDate || moveOutDate,
+      updatedAt: ts,
+    };
+    mirror.update(TABLES.leases, lease.id, patched);
     setLeases(prev => {
-      const next = prev.map(x => x.id === lease.id ? {
-        ...lease,
-        lifecycleStage: "ended" as const,
-        moveOutActualDate: moveOutDate,
-        // Preserve an existing legal end date; only fill it from move-out if missing.
-        endDate: lease.endDate || moveOutDate,
-        updatedAt: ts,
-      } : x);
+      const next = prev.map(x => x.id === lease.id ? patched : x);
       setTenants(prevT => reconcileTenantStatuses([lease.primaryTenantId, ...lease.coTenantIds], next, prevT));
       return next;
     });
@@ -537,13 +553,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             ? { ...u, currentStatus: "vacant" as const, availableFrom: moveOutDate, updatedAt: ts }
             : u,
         ));
+        openUnitIds.forEach(uid => mirror.update(TABLES.units, uid, {
+          currentStatus: "vacant", availableFrom: moveOutDate,
+        }));
       }
-      return closeOpenAssignmentsForLease(lease.id, moveOutDate, prev, ts);
+      const nextA = closeOpenAssignmentsForLease(lease.id, moveOutDate, prev, ts);
+      const closed = nextA.filter(a => prev.some(p => p.id === a.id && !p.endDate) && a.endDate);
+      closed.forEach(a => mirror.update(TABLES.leaseUnitAssignments, a.id, { endDate: a.endDate }));
+      return nextA;
     });
     // Cascade: end any active amendments on this lease.
     setAmendments(prevAm => prevAm.map(a =>
       a.leaseId === lease.id && a.status === "active"
-        ? { ...a, status: "ended", updatedAt: ts }
+        ? (() => {
+            mirror.update(TABLES.amendments, a.id, { status: "ended" });
+            return { ...a, status: "ended" as const, updatedAt: ts };
+          })()
         : a,
     ));
   }, []);
