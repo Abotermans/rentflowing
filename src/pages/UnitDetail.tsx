@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
@@ -593,7 +594,7 @@ export default function UnitDetail() {
                       <TableRow key={tk.id}>
                         <TableCell className="font-medium"><Link to={`/maintenance/${tk.id}`} className="hover:underline text-foreground">{tk.title}</Link></TableCell>
                         <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[tk.category]}</TableCell>
-                        <TableCell><StatusBadge status={tk.priority} /></TableCell>
+                        <TableCell><PriorityLabel priority={tk.priority} /></TableCell>
                         <TableCell><StatusBadge status={tk.status} /></TableCell>
                         <TableCell className="text-xs text-muted-foreground">{formatDate(tk.createdDate, property.locale)}</TableCell>
                       </TableRow>

@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Wrench, Plus, Search, Pencil, Trash2, ArrowDown, Minus, ArrowUp, AlertTriangle } from "lucide-react";
+import { PriorityLabel } from "@/components/shared/PriorityLabel";
+import { Wrench, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { formatDate } from "@/lib/formatters";
@@ -41,23 +42,6 @@ export default function Maintenance() {
   const [filterVendor, setFilterVendor] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceTicket | null>(null);
-
-  const priorityConfig: Record<MaintenancePriority, { icon: React.ElementType; colorClass: string }> = {
-    low: { icon: ArrowDown, colorClass: "text-muted-foreground" },
-    medium: { icon: Minus, colorClass: "text-primary" },
-    high: { icon: ArrowUp, colorClass: "text-warning" },
-    urgent: { icon: AlertTriangle, colorClass: "text-destructive" },
-  };
-  const PriorityLabel = ({ priority }: { priority: MaintenancePriority }) => {
-    const cfg = priorityConfig[priority];
-    const Icon = cfg.icon;
-    return (
-      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${cfg.colorClass}`}>
-        <Icon className="h-3.5 w-3.5" />
-        {t(MAINTENANCE_PRIORITY_KEYS[priority])}
-      </span>
-    );
-  };
 
   const emptyForm: TicketFormData = {
     title: "", description: "", propertyId: properties[0]?.id ?? "", unitId: "",
