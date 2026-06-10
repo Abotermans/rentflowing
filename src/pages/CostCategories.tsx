@@ -21,6 +21,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { CostCategory, CostNature, CostScope, RecoveryType, COST_NATURE_LABELS, COST_SCOPE_LABELS, RECOVERY_TYPE_LABELS } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import type { TranslationKey } from "@/i18n/translations";
 
 type FormData = Omit<CostCategory, "id" | "createdAt" | "updatedAt">;
 
@@ -28,6 +29,9 @@ export default function CostCategories() {
   const { costCategories, addCostCategory, updateCostCategory, deleteCostCategory } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const natureLabel = (n: CostNature) => t(`costs.nature.${n}` as TranslationKey);
+  const scopeLabel = (s: CostScope) => t(`costs.scope.${s}` as TranslationKey);
+  const recoveryLabel = (r: RecoveryType) => t(`costs.recovery.${r}` as TranslationKey);
   const [search, setSearch] = useState("");
   const [filterNature, setFilterNature] = useState<string[]>([]);
   const [filterScope, setFilterScope] = useState<string[]>([]);
@@ -53,7 +57,7 @@ export default function CostCategories() {
 
   const handleSave = () => {
     if (!form.code.trim() || !form.name.trim()) {
-      toast({ title: t("common.validationError"), description: "Code and name are required.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("costs.validation.categoryRequired"), variant: "destructive" });
       return;
     }
     if (editing) {
@@ -86,8 +90,8 @@ export default function CostCategories() {
       case "code": return c.code;
       case "name": return c.name;
       case "nature": return c.nature;
-      case "scope": return COST_SCOPE_LABELS[c.scope];
-      case "recovery": return RECOVERY_TYPE_LABELS[c.recoveryTypeDefault];
+      case "scope": return scopeLabel(c.scope);
+      case "recovery": return recoveryLabel(c.recoveryTypeDefault);
       case "status": return c.isActive ? 1 : 0;
     }
   });
@@ -116,7 +120,7 @@ export default function CostCategories() {
           values={filterNature}
           onChange={setFilterNature}
           options={(Object.keys(COST_NATURE_LABELS) as CostNature[]).map(n => ({
-            value: n, label: COST_NATURE_LABELS[n], icon: COST_NATURE_ICONS[n],
+            value: n, label: natureLabel(n), icon: COST_NATURE_ICONS[n],
           }))}
         />
         <MultiSelectFilter
@@ -125,7 +129,7 @@ export default function CostCategories() {
           values={filterScope}
           onChange={setFilterScope}
           options={(Object.keys(COST_SCOPE_LABELS) as CostScope[]).map(s => ({
-            value: s, label: COST_SCOPE_LABELS[s], icon: COST_SCOPE_ICONS[s],
+            value: s, label: scopeLabel(s), icon: COST_SCOPE_ICONS[s],
           }))}
         />
       </div>
@@ -154,8 +158,8 @@ export default function CostCategories() {
                     <TableCell className="font-mono text-xs text-muted-foreground">{c.code}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{c.name}</TableCell>
                     <TableCell><StatusBadge status={c.nature === "tax" ? "high" : "medium"} /></TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{COST_SCOPE_LABELS[c.scope]}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{RECOVERY_TYPE_LABELS[c.recoveryTypeDefault]}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{scopeLabel(c.scope)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{recoveryLabel(c.recoveryTypeDefault)}</TableCell>
                     <TableCell><StatusBadge status={c.isActive ? "active" : "inactive"} /></TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -199,7 +203,7 @@ export default function CostCategories() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(COST_NATURE_LABELS) as CostNature[]).map(n => (
-                    <SelectItem key={n} value={n}>{COST_NATURE_LABELS[n]}</SelectItem>
+                    <SelectItem key={n} value={n}>{natureLabel(n)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -210,7 +214,7 @@ export default function CostCategories() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(COST_SCOPE_LABELS) as CostScope[]).map(s => (
-                    <SelectItem key={s} value={s}>{COST_SCOPE_LABELS[s]}</SelectItem>
+                    <SelectItem key={s} value={s}>{scopeLabel(s)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -221,7 +225,7 @@ export default function CostCategories() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(RECOVERY_TYPE_LABELS) as RecoveryType[]).map(r => (
-                    <SelectItem key={r} value={r}>{RECOVERY_TYPE_LABELS[r]}</SelectItem>
+                    <SelectItem key={r} value={r}>{recoveryLabel(r)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

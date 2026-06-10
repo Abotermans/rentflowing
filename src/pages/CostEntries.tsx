@@ -24,6 +24,7 @@ import {
 } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import type { TranslationKey } from "@/i18n/translations";
 
 type FormData = Omit<CostEntry, "id" | "createdAt" | "updatedAt">;
 
@@ -42,6 +43,11 @@ export default function CostEntries() {
   } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
+
+  const natureLabel = (n: CostNature) => t(`costs.nature.${n}` as TranslationKey);
+  const recoveryLabel = (r: RecoveryType) => t(`costs.recovery.${r}` as TranslationKey);
+  const frequencyLabel = (f: CostFrequency) => t(`costs.frequency.${f}` as TranslationKey);
+  const statusLabel = (s: CostEntryStatus) => t(`costs.entryStatus.${s}` as TranslationKey);
 
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState<string[]>([]);
@@ -65,7 +71,7 @@ export default function CostEntries() {
 
   const handleSave = () => {
     if (!form.label.trim() || !form.propertyId || !form.categoryId || form.amount <= 0) {
-      toast({ title: t("common.validationError"), description: "Label, category, property and amount are required.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("costs.validation.entryRequired"), variant: "destructive" });
       return;
     }
     const category = getCostCategoryById(form.categoryId);
@@ -121,9 +127,9 @@ export default function CostEntries() {
       case "nature": return e.isTax ? "tax" : "charge";
       case "property": return prop?.name ?? "";
       case "unit": return unit?.unitLabel ?? "";
-      case "frequency": return COST_FREQUENCY_LABELS[e.frequency];
+      case "frequency": return frequencyLabel(e.frequency);
       case "amount": return e.amount;
-      case "recovery": return RECOVERY_TYPE_LABELS[e.recoveryType];
+      case "recovery": return recoveryLabel(e.recoveryType);
       case "status": return e.status;
     }
   });
@@ -163,7 +169,7 @@ export default function CostEntries() {
           values={filterNature}
           onChange={setFilterNature}
           options={(Object.keys(COST_NATURE_LABELS) as CostNature[]).map(n => ({
-            value: n, label: COST_NATURE_LABELS[n], icon: COST_NATURE_ICONS[n],
+            value: n, label: natureLabel(n), icon: COST_NATURE_ICONS[n],
           }))}
         />
         <MultiSelectFilter
@@ -172,7 +178,7 @@ export default function CostEntries() {
           values={filterRecovery}
           onChange={setFilterRecovery}
           options={(Object.keys(RECOVERY_TYPE_LABELS) as RecoveryType[]).map(r => ({
-            value: r, label: RECOVERY_TYPE_LABELS[r], icon: RECOVERY_TYPE_ICONS[r],
+            value: r, label: recoveryLabel(r), icon: RECOVERY_TYPE_ICONS[r],
           }))}
         />
         <MultiSelectFilter
@@ -181,7 +187,7 @@ export default function CostEntries() {
           values={filterStatus}
           onChange={setFilterStatus}
           options={(Object.keys(COST_ENTRY_STATUS_LABELS) as CostEntryStatus[]).map(s => ({
-            value: s, label: COST_ENTRY_STATUS_LABELS[s], icon: COST_ENTRY_STATUS_ICONS[s],
+            value: s, label: statusLabel(s), icon: COST_ENTRY_STATUS_ICONS[s],
           }))}
         />
       </div>
@@ -219,9 +225,9 @@ export default function CostEntries() {
                       <TableCell><StatusBadge status={e.isTax ? "high" : "medium"} /></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{unit ? unit.unitLabel : t("costs.propertyLevel")}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{COST_FREQUENCY_LABELS[e.frequency]}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{frequencyLabel(e.frequency)}</TableCell>
                       <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(e.amount, e.currencyCode)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{RECOVERY_TYPE_LABELS[e.recoveryType]}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{recoveryLabel(e.recoveryType)}</TableCell>
                       <TableCell><StatusBadge status={statusMap[e.status] as any} /></TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -259,10 +265,10 @@ export default function CostEntries() {
                 const cat = costCategories.find(c => c.id === v);
                 setForm({ ...form, categoryId: v, isTax: cat?.nature === "tax", recoveryType: cat?.recoveryTypeDefault ?? form.recoveryType });
               }}>
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("costs.selectCategory")} /></SelectTrigger>
                 <SelectContent>
                   {costCategories.filter(c => c.isActive).map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name} ({COST_NATURE_LABELS[c.nature]})</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.name} ({natureLabel(c.nature)})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -274,7 +280,7 @@ export default function CostEntries() {
                 const prop = properties.find(p => p.id === v);
                 setForm({ ...form, propertyId: v, unitId: null, allocationRuleId: null, currencyCode: prop?.currencyCode ?? "EUR" });
               }}>
-                <SelectTrigger><SelectValue placeholder="Select property" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("costs.selectProperty")} /></SelectTrigger>
                 <SelectContent>
                   {properties.filter(p => p.status === "active").map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
@@ -313,7 +319,7 @@ export default function CostEntries() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(Object.keys(COST_FREQUENCY_LABELS) as CostFrequency[]).map(f => (
-                      <SelectItem key={f} value={f}>{COST_FREQUENCY_LABELS[f]}</SelectItem>
+                      <SelectItem key={f} value={f}>{frequencyLabel(f)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -341,7 +347,7 @@ export default function CostEntries() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(RECOVERY_TYPE_LABELS) as RecoveryType[]).map(r => (
-                    <SelectItem key={r} value={r}>{RECOVERY_TYPE_LABELS[r]}</SelectItem>
+                    <SelectItem key={r} value={r}>{recoveryLabel(r)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -379,7 +385,7 @@ export default function CostEntries() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(COST_ENTRY_STATUS_LABELS) as CostEntryStatus[]).map(s => (
-                    <SelectItem key={s} value={s}>{COST_ENTRY_STATUS_LABELS[s]}</SelectItem>
+                    <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

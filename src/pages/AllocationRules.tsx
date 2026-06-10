@@ -17,6 +17,7 @@ import { Scale, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { AllocationRule, AllocationMethod, ALLOCATION_METHOD_LABELS, AllocationRuleUnitShare } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import type { TranslationKey } from "@/i18n/translations";
 
 type FormData = Omit<AllocationRule, "id" | "createdAt" | "updatedAt">;
 
@@ -33,6 +34,7 @@ export default function AllocationRules() {
   } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
+  const methodLabel = (m: AllocationMethod) => t(`costs.methodOpt.${m}` as TranslationKey);
 
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -70,7 +72,7 @@ export default function AllocationRules() {
 
   const handleSave = () => {
     if (!form.name.trim() || !form.propertyId) {
-      toast({ title: t("common.validationError"), description: "Name and property are required.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("costs.validation.ruleRequired"), variant: "destructive" });
       return;
     }
     if (form.method === "manual-percentage" && Math.abs(totalPct - 100) > 0.01) {
@@ -114,7 +116,7 @@ export default function AllocationRules() {
     switch (key) {
       case "name": return r.name;
       case "property": return prop?.name ?? "";
-      case "method": return ALLOCATION_METHOD_LABELS[r.method];
+      case "method": return methodLabel(r.method);
       case "occupied": return r.applyOnlyToOccupiedUnits ? 1 : 0;
       case "unavailable": return r.includeUnavailableUnits ? 1 : 0;
     }
@@ -159,7 +161,7 @@ export default function AllocationRules() {
                     <TableRow key={r.id}>
                      <TableCell className="text-sm text-muted-foreground">{r.name}</TableCell>
                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
-                     <TableCell className="text-sm text-muted-foreground">{ALLOCATION_METHOD_LABELS[r.method]}</TableCell>
+                     <TableCell className="text-sm text-muted-foreground">{methodLabel(r.method)}</TableCell>
                      <TableCell className="text-sm text-muted-foreground">{r.applyOnlyToOccupiedUnits ? t("common.yes") : t("common.no")}</TableCell>
                      <TableCell className="text-sm text-muted-foreground">{r.includeUnavailableUnits ? t("common.yes") : t("common.no")}</TableCell>
                       <TableCell>
@@ -194,7 +196,7 @@ export default function AllocationRules() {
             <div className="space-y-2">
               <Label>{t("table.property")} *</Label>
               <Select value={form.propertyId} onValueChange={v => { setForm({ ...form, propertyId: v }); setUnitSharesLocal({}); }}>
-                <SelectTrigger><SelectValue placeholder="Select property" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("costs.selectProperty")} /></SelectTrigger>
                 <SelectContent>
                   {properties.filter(p => p.status === "active").map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
@@ -212,7 +214,7 @@ export default function AllocationRules() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(ALLOCATION_METHOD_LABELS) as AllocationMethod[]).map(m => (
-                    <SelectItem key={m} value={m}>{ALLOCATION_METHOD_LABELS[m]}</SelectItem>
+                    <SelectItem key={m} value={m}>{methodLabel(m)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -235,7 +237,7 @@ export default function AllocationRules() {
               <div className="space-y-3 border-t border-border pt-4">
                 <Label className="text-base font-semibold">{t("costs.unitShares")}</Label>
                 {propertyUnits.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No units for this property.</p>
+                  <p className="text-sm text-muted-foreground">{t("costs.noUnitsForProperty")}</p>
                 ) : (
                   <>
                     {propertyUnits.map(u => (
@@ -252,7 +254,7 @@ export default function AllocationRules() {
                       </div>
                     ))}
                     <div className={`text-sm font-medium ${Math.abs(totalPct - 100) > 0.01 ? "text-destructive" : "text-success"}`}>
-                      Total: {totalPct.toFixed(1)}% {Math.abs(totalPct - 100) > 0.01 && `— ${t("costs.totalMustBe100")}`}
+                      {t("common.total")}: {totalPct.toFixed(1)}% {Math.abs(totalPct - 100) > 0.01 && `— ${t("costs.totalMustBe100")}`}
                     </div>
                   </>
                 )}
