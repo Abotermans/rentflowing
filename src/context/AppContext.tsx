@@ -17,6 +17,8 @@ import { generateLeaseReceivables } from "@/lib/leaseReceivables";
 import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
 import { getEffectiveLeaseTerms as libGetEffectiveLeaseTerms } from "@/lib/amendments";
+import { DEMO_PORTFOLIO_ID, LS_DEMO_SEEDED_KEY } from "@/lib/portfolioScope";
+import { usePortfolio } from "@/context/PortfolioContext";
 import {
   migrateLegacyLeaseAssignments,
   getActiveLeaseForUnit as findActiveLeaseForUnit,
@@ -234,9 +236,16 @@ function loadLS<T>(key: string, fallback: T): T {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [properties, setProperties] = useState<Property[]>(initialProperties);
+  const { currentPortfolioId } = usePortfolio();
+
+  // Seed mock data is stamped with DEMO_PORTFOLIO_ID until the first real
+  // portfolio loads (effect below) and claims the demo dataset.
+  const stampDemo = <T extends { portfolioId?: string }>(arr: T[]): T[] =>
+    arr.map(x => x.portfolioId ? x : { ...x, portfolioId: DEMO_PORTFOLIO_ID });
+
+  const [properties, setProperties] = useState<Property[]>(() => stampDemo(initialProperties));
   const [units, setUnits] = useState<Unit[]>(initialUnits);
-  const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
+  const [tenants, setTenants] = useState<Tenant[]>(() => stampDemo(initialTenants));
   const [leases, setLeases] = useState<Lease[]>(initialLeases);
   const [guarantees, setGuarantees] = useState<Guarantee[]>(initialGuarantees);
   const [leaseUnitAssignments, setLeaseUnitAssignments] = useState<LeaseUnitAssignment[]>(
@@ -258,14 +267,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [cashReceipts, setCashReceipts] = useState<CashReceipt[]>(initialCashReceipts);
   const [allocationsState, setAllocations] = useState<ReceiptAllocation[]>(initialAllocations);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialTickets);
-  const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
+  const [vendors, setVendors] = useState<Vendor[]>(() => stampDemo(initialVendors));
 
   // Costs & Taxes state
-  const [costCategories, setCostCategories] = useState<CostCategory[]>(initialCostCategories);
+  const [costCategories, setCostCategories] = useState<CostCategory[]>(() => stampDemo(initialCostCategories));
   const [costEntries, setCostEntries] = useState<CostEntry[]>(initialCostEntries);
   const [allocationRules, setAllocationRules] = useState<AllocationRule[]>(initialAllocationRules);
   const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>(initialAllocationRuleUnitShares);
   const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>(initialCostAllocationResults);
+
+  // One-time migration: the first real portfolio to load adopts the demo
+  // dataset (per browser). Subsequent portfolios start empty.
+  useEffect(() => {
+    if (!currentPortfolioId) return;
+    let seeded = localStorage.getItem(LS_DEMO_SEEDED_KEY);
+    if (!seeded) {
+      localStorage.setItem(LS_DEMO_SEEDED_KEY, currentPortfolioId);
+      seeded = currentPortfolioId;
+    }
+    if (seeded !== currentPortfolioId) return;
+    const remap = <T extends { portfolioId?: string }>(arr: T[]): T[] =>
+      arr.map(x => x.portfolioId === DEMO_PORTFOLIO_ID ? { ...x, portfolioId: currentPortfolioId } : x);
+    setProperties(prev => remap(prev));
+    setTenants(prev => remap(prev));
+    setVendors(prev => remap(prev));
+    setCostCategories(prev => remap(prev));
+  }, [currentPortfolioId]);
 
   // ===== Advance billing: auto-generate cycle receivables when their lead
   // window opens. Idempotent — keyed on (leaseId, cycleIndex). Runs whenever
@@ -337,8 +364,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setProperties(prev => [...prev, { ...p, id: genId("p"), createdAt: ts, updatedAt: ts }]);
-  }, []);
+    setProperties(prev => [...prev, {
+      ...p,
+      portfolioId: p.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      id: genId("p"), createdAt: ts, updatedAt: ts,
+    }]);
+  }, [currentPortfolioId]);
   const updateProperty = useCallback((p: Property) => {
     setProperties(prev => prev.map(x => x.id === p.id ? { ...p, updatedAt: now() } : x));
   }, []);
@@ -362,10 +393,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Tenant CRUD =====
   const addTenant = useCallback((t: Omit<Tenant, "id" | "createdAt" | "updatedAt">): Tenant => {
     const ts = now();
-    const created: Tenant = { ...t, id: genId("t"), createdAt: ts, updatedAt: ts };
+    const created: Tenant = {
+      ...t,
+      portfolioId: t.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      id: genId("t"), createdAt: ts, updatedAt: ts,
+    };
     setTenants(prev => [...prev, created]);
     return created;
-  }, []);
+  }, [currentPortfolioId]);
   const updateTenant = useCallback((t: Tenant) => {
     setTenants(prev => prev.map(x => x.id === t.id ? { ...t, updatedAt: now() } : x));
   }, []);
@@ -992,8 +1027,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ===== Vendors =====
   const addVendor = useCallback((v: Omit<Vendor, "id">) => {
-    setVendors(prev => [...prev, { ...v, id: genId("v") }]);
-  }, []);
+    setVendors(prev => [...prev, {
+      ...v,
+      portfolioId: v.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      id: genId("v"),
+    }]);
+  }, [currentPortfolioId]);
   const updateVendor = useCallback((v: Vendor) => {
     setVendors(prev => prev.map(x => x.id === v.id ? v : x));
   }, []);
@@ -1004,8 +1043,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Cost Categories CRUD =====
   const addCostCategory = useCallback((c: Omit<CostCategory, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setCostCategories(prev => [...prev, { ...c, id: genId("cc"), createdAt: ts, updatedAt: ts }]);
-  }, []);
+    setCostCategories(prev => [...prev, {
+      ...c,
+      portfolioId: c.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      id: genId("cc"), createdAt: ts, updatedAt: ts,
+    }]);
+  }, [currentPortfolioId]);
   const updateCostCategory = useCallback((c: CostCategory) => {
     setCostCategories(prev => prev.map(x => x.id === c.id ? { ...c, updatedAt: now() } : x));
   }, []);
@@ -1195,13 +1238,103 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getAllocationRuleById = useCallback((id: string) => allocationRules.find(r => r.id === id), [allocationRules]);
   const getUnitSharesByRule = useCallback((ruleId: string) => allocationRuleUnitShares.filter(s => s.allocationRuleId === ruleId), [allocationRuleUnitShares]);
 
+  // ===== Portfolio scoping ============================================
+  // All exposed collections are filtered to the active portfolio. Internal
+  // state stays unscoped so cross-portfolio bookkeeping (CRUD, receivable
+  // generation, amendments) keeps working without rewrites.
+  const scoped = useMemo(() => {
+    const pid = currentPortfolioId;
+    if (!pid) {
+      const empty = {
+        properties: [] as Property[], units: [] as Unit[], tenants: [] as Tenant[],
+        leases: [] as Lease[], guarantees: [] as Guarantee[],
+        leaseUnitAssignments: [] as LeaseUnitAssignment[],
+        amendments: [] as LeaseAmendment[], amendmentChanges: [] as LeaseAmendmentChange[],
+        receivableItems: [] as ReceivableItem[], cashReceipts: [] as CashReceipt[],
+        allocations: [] as ReceiptAllocation[],
+        tickets: [] as MaintenanceTicket[], vendors: [] as Vendor[],
+        costCategories: [] as CostCategory[], costEntries: [] as CostEntry[],
+        allocationRules: [] as AllocationRule[],
+        allocationRuleUnitShares: [] as AllocationRuleUnitShare[],
+        costAllocationResults: [] as CostAllocationResult[],
+      };
+      return empty;
+    }
+    const sProperties = properties.filter(p => p.portfolioId === pid);
+    const propIds = new Set(sProperties.map(p => p.id));
+    const sUnits = units.filter(u => propIds.has(u.propertyId));
+    const unitIds = new Set(sUnits.map(u => u.id));
+    const sTenants = tenants.filter(t => t.portfolioId === pid);
+    const tenantIds = new Set(sTenants.map(t => t.id));
+    const sLeases = leases.filter(l => propIds.has(l.propertyId));
+    const leaseIds = new Set(sLeases.map(l => l.id));
+    const sGuarantees = guarantees.filter(g => leaseIds.has(g.leaseId));
+    const sLUA = leaseUnitAssignments.filter(a => leaseIds.has(a.leaseId));
+    const sAmendments = amendments.filter(a => leaseIds.has(a.leaseId));
+    const amendmentIds = new Set(sAmendments.map(a => a.id));
+    const sAmendmentChanges = amendmentChanges.filter(c => amendmentIds.has(c.amendmentId));
+    const sReceivableItems = receivableItems.filter(ri => leaseIds.has(ri.leaseId) || tenantIds.has(ri.tenantId));
+    const receivableIds = new Set(sReceivableItems.map(ri => ri.id));
+    const sCashReceipts = cashReceipts.filter(cr =>
+      (cr.leaseId && leaseIds.has(cr.leaseId)) ||
+      (cr.tenantId && tenantIds.has(cr.tenantId)) ||
+      (cr.propertyId && propIds.has(cr.propertyId)),
+    );
+    const receiptIds = new Set(sCashReceipts.map(cr => cr.id));
+    const sAllocations = allocationsState.filter(a =>
+      receiptIds.has(a.cashReceiptId) || receivableIds.has(a.receivableItemId),
+    );
+    const sVendors = vendors.filter(v => v.portfolioId === pid);
+    const vendorIds = new Set(sVendors.map(v => v.id));
+    const sTickets = tickets.filter(t =>
+      propIds.has(t.propertyId) || (t.assignedVendorId && vendorIds.has(t.assignedVendorId)),
+    );
+    const sCostCategories = costCategories.filter(c => c.portfolioId === pid);
+    const sCostEntries = costEntries.filter(e => propIds.has(e.propertyId));
+    const sAllocationRules = allocationRules.filter(r => propIds.has(r.propertyId));
+    const ruleIds = new Set(sAllocationRules.map(r => r.id));
+    const sAllocationRuleUnitShares = allocationRuleUnitShares.filter(s => ruleIds.has(s.allocationRuleId));
+    const sCostAllocationResults = costAllocationResults.filter(r => propIds.has(r.propertyId));
+    return {
+      properties: sProperties, units: sUnits, tenants: sTenants,
+      leases: sLeases, guarantees: sGuarantees,
+      leaseUnitAssignments: sLUA,
+      amendments: sAmendments, amendmentChanges: sAmendmentChanges,
+      receivableItems: sReceivableItems, cashReceipts: sCashReceipts,
+      allocations: sAllocations,
+      tickets: sTickets, vendors: sVendors,
+      costCategories: sCostCategories, costEntries: sCostEntries,
+      allocationRules: sAllocationRules,
+      allocationRuleUnitShares: sAllocationRuleUnitShares,
+      costAllocationResults: sCostAllocationResults,
+    };
+  }, [
+    currentPortfolioId,
+    properties, units, tenants, leases, guarantees, leaseUnitAssignments,
+    amendments, amendmentChanges, receivableItems, cashReceipts, allocationsState,
+    tickets, vendors, costCategories, costEntries, allocationRules,
+    allocationRuleUnitShares, costAllocationResults,
+  ]);
+
   const value = useMemo(() => ({
-    properties, units, tenants, leases, guarantees,
-    leaseUnitAssignments,
-    amendments, amendmentChanges,
-    receivableItems, cashReceipts, allocations: allocationsState,
-    tickets, vendors,
-    costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
+    properties: scoped.properties,
+    units: scoped.units,
+    tenants: scoped.tenants,
+    leases: scoped.leases,
+    guarantees: scoped.guarantees,
+    leaseUnitAssignments: scoped.leaseUnitAssignments,
+    amendments: scoped.amendments,
+    amendmentChanges: scoped.amendmentChanges,
+    receivableItems: scoped.receivableItems,
+    cashReceipts: scoped.cashReceipts,
+    allocations: scoped.allocations,
+    tickets: scoped.tickets,
+    vendors: scoped.vendors,
+    costCategories: scoped.costCategories,
+    costEntries: scoped.costEntries,
+    allocationRules: scoped.allocationRules,
+    allocationRuleUnitShares: scoped.allocationRuleUnitShares,
+    costAllocationResults: scoped.costAllocationResults,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
@@ -1239,12 +1372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getAllocationResultsByUnit, getAllocationResultsByProperty,
     getCostCategoryById, getAllocationRuleById, getUnitSharesByRule,
   }), [
-    properties, units, tenants, leases, guarantees,
-    leaseUnitAssignments,
-    amendments, amendmentChanges,
-    receivableItems, cashReceipts, allocationsState,
-    tickets, vendors,
-    costCategories, costEntries, allocationRules, allocationRuleUnitShares, costAllocationResults,
+    scoped,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,

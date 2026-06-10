@@ -54,6 +54,8 @@ export interface CostCategory {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Workspace this category belongs to. Stamped at create-time. */
+  portfolioId?: string;
 }
 
 // ===== Cost Entry =====
