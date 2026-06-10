@@ -364,8 +364,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    setProperties(prev => [...prev, { ...p, id: genId("p"), createdAt: ts, updatedAt: ts }]);
-  }, []);
+    setProperties(prev => [...prev, {
+      ...p,
+      portfolioId: p.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      id: genId("p"), createdAt: ts, updatedAt: ts,
+    }]);
+  }, [currentPortfolioId]);
   const updateProperty = useCallback((p: Property) => {
     setProperties(prev => prev.map(x => x.id === p.id ? { ...p, updatedAt: now() } : x));
   }, []);
@@ -389,10 +393,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Tenant CRUD =====
   const addTenant = useCallback((t: Omit<Tenant, "id" | "createdAt" | "updatedAt">): Tenant => {
     const ts = now();
-    const created: Tenant = { ...t, id: genId("t"), createdAt: ts, updatedAt: ts };
+    const created: Tenant = {
+      ...t,
+      portfolioId: t.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      id: genId("t"), createdAt: ts, updatedAt: ts,
+    };
     setTenants(prev => [...prev, created]);
     return created;
-  }, []);
+  }, [currentPortfolioId]);
   const updateTenant = useCallback((t: Tenant) => {
     setTenants(prev => prev.map(x => x.id === t.id ? { ...t, updatedAt: now() } : x));
   }, []);
