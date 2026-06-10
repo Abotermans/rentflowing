@@ -114,6 +114,7 @@ export default function Leases() {
     advanceAllocationMethod: null, advanceAppliedTo: null, advanceAllocationStartDate: null,
     advanceAllocationDurationMonths: null, fixedMonthlyReductionAmount: null,
     advanceCycleLeadDays: 15,
+    chargesBillingMode: "provision-reconciled",
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
   // Unified rows for every unit attached to this lease. Exactly one row must
@@ -881,6 +882,24 @@ export default function Leases() {
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.deposit")}</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
               <div><Label>{t("leases.noticePeriod")}</Label><Input value={form.noticePeriodText} onChange={e => setForm(f => ({ ...f, noticePeriodText: e.target.value }))} /></div>
+            </div>
+            <div>
+              <Label>{t("leases.chargesBillingMode")}</Label>
+              <Select
+                value={form.chargesBillingMode ?? "provision-reconciled"}
+                onValueChange={v => setForm(f => ({ ...f, chargesBillingMode: v as "provision-reconciled" | "flat-rate" }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="provision-reconciled">{t("leases.chargesMode.provision")}</SelectItem>
+                  <SelectItem value="flat-rate">{t("leases.chargesMode.flat")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {form.chargesBillingMode === "flat-rate"
+                  ? t("leases.chargesMode.flatHelp")
+                  : t("leases.chargesMode.provisionHelp")}
+              </p>
             </div>
             <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>

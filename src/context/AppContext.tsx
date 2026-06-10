@@ -4,6 +4,8 @@ import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
+import type { ChargesReconciliation, ReconciliationResolution } from "@/types/chargesReconciliation";
+import { computeReconciliation as engineComputeReconciliation, type ReconciliationBreakdown, type ReconciliationWindow } from "@/lib/chargesReconciliation";
 import type { LeaseAmendment, LeaseAmendmentChange, AmendmentType, AmendmentStatus, AmendmentFieldName, AmendmentChangeType, AmendmentChangeMetadata } from "@/types/amendments";
 import { nextAmendmentNumber, getAmendmentChanges } from "@/lib/amendments";
 import { canActivateAmendment } from "@/lib/integrity/amendmentIntegrity";
@@ -74,6 +76,7 @@ interface AppState {
   allocationRules: AllocationRule[];
   allocationRuleUnitShares: AllocationRuleUnitShare[];
   costAllocationResults: CostAllocationResult[];
+  chargesReconciliations: ChargesReconciliation[];
 
   // Property CRUD
   addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => void;
@@ -213,6 +216,17 @@ interface AppState {
   getCostCategoryById: (id: string) => CostCategory | undefined;
   getAllocationRuleById: (id: string) => AllocationRule | undefined;
   getUnitSharesByRule: (ruleId: string) => AllocationRuleUnitShare[];
+
+  // ===== Charges reconciliation =====
+  getChargesReconciliationsByLease: (leaseId: string) => ChargesReconciliation[];
+  previewChargesReconciliation: (leaseId: string, window: ReconciliationWindow) => ReconciliationBreakdown | null;
+  applyChargesReconciliation: (args: {
+    leaseId: string;
+    window: ReconciliationWindow;
+    resolution: ReconciliationResolution;
+    notes?: string;
+  }) => ChargesReconciliation | null;
+  deleteChargesReconciliation: (id: string) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -242,6 +256,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allocationRules, setAllocationRules] = useState<AllocationRule[]>([]);
   const [allocationRuleUnitShares, setAllocationRuleUnitShares] = useState<AllocationRuleUnitShare[]>([]);
   const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>([]);
+  const [chargesReconciliations, setChargesReconciliations] = useState<ChargesReconciliation[]>([]);
 
   // Hydrate from DB whenever the active portfolio changes.
   useEffect(() => {
@@ -254,6 +269,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTickets([]); setVendors([]);
       setCostCategories([]); setCostEntries([]); setAllocationRules([]);
       setAllocationRuleUnitShares([]); setCostAllocationResults([]);
+      setChargesReconciliations([]);
       setLoading(false);
       return;
     }
@@ -280,6 +296,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAllocationRules(snap.allocationRules);
       setAllocationRuleUnitShares(snap.allocationRuleUnitShares);
       setCostAllocationResults(snap.costAllocationResults);
+      setChargesReconciliations(snap.chargesReconciliations);
       setLoading(false);
     }).catch(err => {
       console.error("[AppContext] loadPortfolio failed:", err);
@@ -1343,6 +1360,110 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getAllocationRuleById = useCallback((id: string) => allocationRules.find(r => r.id === id), [allocationRules]);
   const getUnitSharesByRule = useCallback((ruleId: string) => allocationRuleUnitShares.filter(s => s.allocationRuleId === ruleId), [allocationRuleUnitShares]);
 
+  // ===== Charges reconciliation =====
+  const getChargesReconciliationsByLease = useCallback(
+    (leaseId: string) => chargesReconciliations
+      .filter(r => r.leaseId === leaseId)
+      .sort((a, b) => b.periodEnd.localeCompare(a.periodEnd)),
+    [chargesReconciliations],
+  );
+
+  const previewChargesReconciliation = useCallback(
+    (leaseId: string, window: ReconciliationWindow): ReconciliationBreakdown | null => {
+      const lease = leases.find(l => l.id === leaseId);
+      if (!lease) return null;
+      return engineComputeReconciliation(lease, window, receivableItems, costAllocationResults, costEntries);
+    },
+    [leases, receivableItems, costAllocationResults, costEntries],
+  );
+
+  const applyChargesReconciliation = useCallback(
+    ({ leaseId, window, resolution, notes }: {
+      leaseId: string;
+      window: ReconciliationWindow;
+      resolution: ReconciliationResolution;
+      notes?: string;
+    }): ChargesReconciliation | null => {
+      const lease = leases.find(l => l.id === leaseId);
+      if (!lease) return null;
+      const breakdown = engineComputeReconciliation(lease, window, receivableItems, costAllocationResults, costEntries);
+      const ts = now();
+      const property = properties.find(p => p.id === lease.propertyId);
+      const currencyCode = property?.currencyCode ?? "EUR";
+
+      // Build the resulting receivable (if any).
+      // Convention: receivable.expectedAmount > 0 means tenant owes more (debit).
+      //             expectedAmount < 0 means refund / credit to tenant.
+      //             For carry-forward we still emit a negative receivable so it
+      //             auto-allocates against the next open charges items.
+      let receivable: ReceivableItem | null = null;
+      const delta = breakdown.delta;
+      if (resolution !== "none" && Math.abs(delta) >= 0.01) {
+        const owe = resolution === "owe";
+        // owe → tenant owes |delta| → positive receivable
+        // refund / carry-forward → surplus of |delta| → negative receivable
+        const amount = owe ? Math.abs(delta) : -Math.abs(delta);
+        const label = owe
+          ? `Charges adjustment ${window.start} → ${window.end} (tenant owes)`
+          : resolution === "refund"
+            ? `Charges refund ${window.start} → ${window.end}`
+            : `Charges carry-forward ${window.start} → ${window.end}`;
+        const ri: ReceivableItem = {
+          id: genId("ri"),
+          leaseId: lease.id,
+          tenantId: lease.primaryTenantId,
+          propertyId: lease.propertyId,
+          unitId: lease.unitId,
+          itemType: "charges-adjustment",
+          label,
+          periodMonth: window.end.slice(0, 7),
+          dueDate: ts,
+          currencyCode,
+          expectedAmount: amount,
+          allocatedAmount: 0,
+          outstandingAmount: amount,
+          status: "open",
+          priority: 25,
+          origin: "adjustment",
+          notes: notes ?? "",
+          createdAt: ts,
+          updatedAt: ts,
+        };
+        // For carry-forward / refund the outstanding is negative — flag it
+        // straight as "open" credit; the operator can manually allocate later.
+        ri.status = amount === 0 ? "paid" : "open";
+        receivable = ri;
+        setReceivableItems(prev => [...prev, ri]);
+        if (currentPortfolioId) mirror.insert(TABLES.receivableItems, ri, currentPortfolioId);
+      }
+
+      const reconciliation: ChargesReconciliation = {
+        id: genId("crec"),
+        leaseId: lease.id,
+        portfolioId: currentPortfolioId ?? undefined,
+        periodStart: window.start,
+        periodEnd: window.end,
+        provisionsCollected: breakdown.provisionsCollected,
+        actualRecoverable: breakdown.actualRecoverable,
+        delta,
+        resolution,
+        receivableItemId: receivable?.id ?? null,
+        notes: notes ?? "",
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      setChargesReconciliations(prev => [...prev, reconciliation]);
+      if (currentPortfolioId) mirror.insert(TABLES.chargesReconciliations, reconciliation, currentPortfolioId);
+      return reconciliation;
+    },
+    [leases, receivableItems, costAllocationResults, costEntries, properties, currentPortfolioId],
+  );
+
+  const deleteChargesReconciliation = useCallback((id: string) => {
+    setChargesReconciliations(prev => prev.filter(r => r.id !== id));
+    mirror.remove(TABLES.chargesReconciliations, id);
+  }, []);
+
   // ===== Portfolio scoping ============================================
   // All exposed collections are filtered to the active portfolio. Internal
   // state stays unscoped so cross-portfolio bookkeeping (CRUD, receivable
@@ -1362,6 +1483,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         allocationRules: [] as AllocationRule[],
         allocationRuleUnitShares: [] as AllocationRuleUnitShare[],
         costAllocationResults: [] as CostAllocationResult[],
+        chargesReconciliations: [] as ChargesReconciliation[],
       };
       return empty;
     }
@@ -1400,6 +1522,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ruleIds = new Set(sAllocationRules.map(r => r.id));
     const sAllocationRuleUnitShares = allocationRuleUnitShares.filter(s => ruleIds.has(s.allocationRuleId));
     const sCostAllocationResults = costAllocationResults.filter(r => propIds.has(r.propertyId));
+    const sChargesReconciliations = chargesReconciliations.filter(r => leaseIds.has(r.leaseId));
     return {
       properties: sProperties, units: sUnits, tenants: sTenants,
       leases: sLeases, guarantees: sGuarantees,
@@ -1412,13 +1535,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       allocationRules: sAllocationRules,
       allocationRuleUnitShares: sAllocationRuleUnitShares,
       costAllocationResults: sCostAllocationResults,
+      chargesReconciliations: sChargesReconciliations,
     };
   }, [
     currentPortfolioId,
     properties, units, tenants, leases, guarantees, leaseUnitAssignments,
     amendments, amendmentChanges, receivableItems, cashReceipts, allocationsState,
     tickets, vendors, costCategories, costEntries, allocationRules,
-    allocationRuleUnitShares, costAllocationResults,
+    allocationRuleUnitShares, costAllocationResults, chargesReconciliations,
   ]);
 
   const value = useMemo(() => ({
@@ -1441,6 +1565,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     allocationRules: scoped.allocationRules,
     allocationRuleUnitShares: scoped.allocationRuleUnitShares,
     costAllocationResults: scoped.costAllocationResults,
+    chargesReconciliations: scoped.chargesReconciliations,
     addProperty, updateProperty, deleteProperty,
     addUnit, updateUnit, deleteUnit,
     addTenant, updateTenant, deleteTenant,
@@ -1477,6 +1602,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getCostEntriesByProperty, getCostEntriesByUnit,
     getAllocationResultsByUnit, getAllocationResultsByProperty,
     getCostCategoryById, getAllocationRuleById, getUnitSharesByRule,
+    getChargesReconciliationsByLease, previewChargesReconciliation, applyChargesReconciliation, deleteChargesReconciliation,
   }), [
     loading,
     scoped,
@@ -1510,6 +1636,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getCostEntriesByProperty, getCostEntriesByUnit,
     getAllocationResultsByUnit, getAllocationResultsByProperty,
     getCostCategoryById, getAllocationRuleById, getUnitSharesByRule,
+    getChargesReconciliationsByLease, previewChargesReconciliation, applyChargesReconciliation, deleteChargesReconciliation,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
