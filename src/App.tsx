@@ -6,6 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/context/AppContext";
 import { OverrideProvider } from "@/context/OverrideContext";
 import { SettingsProvider } from "@/context/SettingsContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { PortfolioProvider } from "@/context/PortfolioContext";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Properties from "./pages/Properties";
@@ -27,6 +30,13 @@ import CostCategories from "./pages/CostCategories";
 import CostEntries from "./pages/CostEntries";
 import AllocationRules from "./pages/AllocationRules";
 import CostsAllocations from "./pages/CostsAllocations";
+import Profile from "./pages/Profile";
+import PortfolioSettings from "./pages/PortfolioSettings";
+import Login from "./pages/auth/Login";
+import Signup from "./pages/auth/Signup";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
+import AcceptInvite from "./pages/auth/AcceptInvite";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient(); // force HMR refresh
@@ -37,11 +47,21 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <AppProvider>
-          <OverrideProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route element={<AppLayout />}>
+        <BrowserRouter>
+          <AuthProvider>
+            <PortfolioProvider>
+              <AppProvider>
+                <OverrideProvider>
+                  <Routes>
+                    {/* Public auth routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+
+                    {/* Protected app */}
+                    <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/properties" element={<Properties />} />
                   <Route path="/properties/:id" element={<PropertyDetail />} />
@@ -63,12 +83,16 @@ const App = () => (
                   <Route path="/costs/allocations" element={<CostsAllocations />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings" element={<Settings />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </OverrideProvider>
-        </AppProvider>
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/portfolio/settings" element={<PortfolioSettings />} />
+                    </Route>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </OverrideProvider>
+              </AppProvider>
+            </PortfolioProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   </SettingsProvider>
