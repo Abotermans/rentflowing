@@ -19,6 +19,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Vendor, VendorStatus, TRADE_CATEGORIES } from "@/types/maintenance";
 import { useSettings } from "@/context/SettingsContext";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 type VendorFormData = Omit<Vendor, "id">;
 
@@ -31,6 +33,9 @@ export default function Vendors() {
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Vendor | null>(null);
+
+  type VSortKey = "name" | "trade" | "contact" | "email" | "phone" | "status";
+  const { sort, toggle } = useTableSort<VSortKey>();
 
   const emptyForm: VendorFormData = {
     vendorName: "", tradeCategory: "General Maintenance", contactName: "",
@@ -63,6 +68,17 @@ export default function Vendors() {
     const matchSearch = !q || v.vendorName.toLowerCase().includes(q) || v.tradeCategory.toLowerCase().includes(q) || v.contactName.toLowerCase().includes(q);
     const matchStatus = filterStatus.length === 0 || filterStatus.includes(v.status);
     return matchSearch && matchStatus;
+  });
+
+  const sorted = sortRows(filtered, sort, (v, key) => {
+    switch (key) {
+      case "name": return v.vendorName;
+      case "trade": return v.tradeCategory;
+      case "contact": return v.contactName;
+      case "email": return v.email;
+      case "phone": return v.phone;
+      case "status": return v.status;
+    }
   });
 
   return (
@@ -107,17 +123,17 @@ export default function Vendors() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Vendor Name</TableHead>
-                <TableHead>Trade</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>Vendor Name</SortableTableHead>
+                <SortableTableHead sortKey="trade" sort={sort} onSort={toggle}>Trade</SortableTableHead>
+                <SortableTableHead sortKey="contact" sort={sort} onSort={toggle}>Contact</SortableTableHead>
+                <SortableTableHead sortKey="email" sort={sort} onSort={toggle}>Email</SortableTableHead>
+                <SortableTableHead sortKey="phone" sort={sort} onSort={toggle}>Phone</SortableTableHead>
+                <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>Status</SortableTableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(v => (
+              {sorted.map(v => (
                 <TableRow key={v.id} className="cursor-pointer" onClick={() => navigate(`/vendors/${v.id}`)}>
                   <TableCell className="font-medium"><Link to={`/vendors/${v.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{v.vendorName}</Link></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{v.tradeCategory}</TableCell>

@@ -26,6 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getTenantFullName } from "@/types";
 import { MaintenanceTicket, MaintenanceCategory, MaintenancePriority, MaintenanceStatus, MAINTENANCE_CATEGORY_KEYS, MAINTENANCE_PRIORITY_KEYS, MAINTENANCE_STATUS_KEYS } from "@/types/maintenance";
 import { useSettings } from "@/context/SettingsContext";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 type TicketFormData = Omit<MaintenanceTicket, "id">;
 
@@ -42,6 +44,9 @@ export default function Maintenance() {
   const [filterVendor, setFilterVendor] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceTicket | null>(null);
+
+  type MSortKey = "title" | "property" | "unit" | "tenant" | "category" | "priority" | "status" | "vendor" | "created" | "scheduled";
+  const { sort, toggle } = useTableSort<MSortKey>();
 
   const emptyForm: TicketFormData = {
     title: "", description: "", propertyId: properties[0]?.id ?? "", unitId: "",
@@ -92,6 +97,26 @@ export default function Maintenance() {
     const matchProperty = filterProperty.length === 0 || filterProperty.includes(ticket.propertyId);
     const matchVendor = filterVendor.length === 0 || (ticket.assignedVendorId ? filterVendor.includes(ticket.assignedVendorId) : false);
     return matchSearch && matchStatus && matchCategory && matchPriority && matchProperty && matchVendor;
+  });
+
+  const PRIORITY_ORDER: Record<MaintenancePriority, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+  const sorted = sortRows(filtered, sort, (ticket, key) => {
+    const prop = properties.find(p => p.id === ticket.propertyId);
+    const unit = units.find(u => u.id === ticket.unitId);
+    const tenant = ticket.tenantId ? tenants.find(x => x.id === ticket.tenantId) : null;
+    const vendor = ticket.assignedVendorId ? vendors.find(v => v.id === ticket.assignedVendorId) : null;
+    switch (key) {
+      case "title": return ticket.title;
+      case "property": return prop?.name ?? "";
+      case "unit": return unit?.unitCode ?? "";
+      case "tenant": return tenant ? getTenantFullName(tenant) : "";
+      case "category": return t(MAINTENANCE_CATEGORY_KEYS[ticket.category]);
+      case "priority": return PRIORITY_ORDER[ticket.priority];
+      case "status": return ticket.status;
+      case "vendor": return vendor?.vendorName ?? "";
+      case "created": return ticket.createdDate;
+      case "scheduled": return ticket.scheduledDate;
+    }
   });
 
   return (
@@ -167,21 +192,21 @@ export default function Maintenance() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("maintenance.titleField")}</TableHead>
-                <TableHead>{t("maintenance.property")}</TableHead>
-                <TableHead>{t("maintenance.unit")}</TableHead>
-                <TableHead>{t("maintenance.tenant")}</TableHead>
-                <TableHead>{t("maintenance.category")}</TableHead>
-                <TableHead>{t("maintenance.priority")}</TableHead>
-                <TableHead>{t("filter.status")}</TableHead>
-                <TableHead>{t("maintenance.vendor")}</TableHead>
-                <TableHead>{t("maintenance.created")}</TableHead>
-                <TableHead>{t("maintenance.scheduled")}</TableHead>
+                <SortableTableHead sortKey="title" sort={sort} onSort={toggle}>{t("maintenance.titleField")}</SortableTableHead>
+                <SortableTableHead sortKey="property" sort={sort} onSort={toggle}>{t("maintenance.property")}</SortableTableHead>
+                <SortableTableHead sortKey="unit" sort={sort} onSort={toggle}>{t("maintenance.unit")}</SortableTableHead>
+                <SortableTableHead sortKey="tenant" sort={sort} onSort={toggle}>{t("maintenance.tenant")}</SortableTableHead>
+                <SortableTableHead sortKey="category" sort={sort} onSort={toggle}>{t("maintenance.category")}</SortableTableHead>
+                <SortableTableHead sortKey="priority" sort={sort} onSort={toggle}>{t("maintenance.priority")}</SortableTableHead>
+                <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
+                <SortableTableHead sortKey="vendor" sort={sort} onSort={toggle}>{t("maintenance.vendor")}</SortableTableHead>
+                <SortableTableHead sortKey="created" sort={sort} onSort={toggle}>{t("maintenance.created")}</SortableTableHead>
+                <SortableTableHead sortKey="scheduled" sort={sort} onSort={toggle}>{t("maintenance.scheduled")}</SortableTableHead>
                 <TableHead className="text-right">{t("maintenance.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(ticket => {
+              {sorted.map(ticket => {
                 const prop = properties.find(p => p.id === ticket.propertyId);
                 const unit = units.find(u => u.id === ticket.unitId);
                 const tenant = ticket.tenantId ? tenants.find(x => x.id === ticket.tenantId) : null;
