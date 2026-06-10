@@ -185,10 +185,10 @@ export default function Tenants() {
                     <TableCell className="text-muted-foreground">{tenant.email}</TableCell>
                     <TableCell className="text-muted-foreground">{tenant.phone}</TableCell>
                     <TableCell><StatusBadge status={tenant.status} /></TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="font-mono text-xs text-muted-foreground">
                       {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="font-mono text-xs text-muted-foreground">
                       {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{activeLease.leaseReference}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-right">
