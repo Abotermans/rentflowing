@@ -359,7 +359,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ts = now();
     setProperties(prev => [...prev, {
       ...p,
-      portfolioId: p.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      portfolioId: p.portfolioId ?? currentPortfolioId,
       id: genId("p"), createdAt: ts, updatedAt: ts,
     }]);
   }, [currentPortfolioId]);
@@ -388,7 +388,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ts = now();
     const created: Tenant = {
       ...t,
-      portfolioId: t.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      portfolioId: t.portfolioId ?? currentPortfolioId,
       id: genId("t"), createdAt: ts, updatedAt: ts,
     };
     setTenants(prev => [...prev, created]);
@@ -1022,7 +1022,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addVendor = useCallback((v: Omit<Vendor, "id">) => {
     setVendors(prev => [...prev, {
       ...v,
-      portfolioId: v.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      portfolioId: v.portfolioId ?? currentPortfolioId,
       id: genId("v"),
     }]);
   }, [currentPortfolioId]);
@@ -1038,7 +1038,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ts = now();
     setCostCategories(prev => [...prev, {
       ...c,
-      portfolioId: c.portfolioId ?? currentPortfolioId ?? DEMO_PORTFOLIO_ID,
+      portfolioId: c.portfolioId ?? currentPortfolioId,
       id: genId("cc"), createdAt: ts, updatedAt: ts,
     }]);
   }, [currentPortfolioId]);
