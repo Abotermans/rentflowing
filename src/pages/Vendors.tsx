@@ -135,7 +135,7 @@ export default function Vendors() {
             <TableBody>
               {sorted.map(v => (
                 <TableRow key={v.id} className="cursor-pointer" onClick={() => navigate(`/vendors/${v.id}`)}>
-                  <TableCell className="font-medium"><Link to={`/vendors/${v.id}`} className="hover:underline text-foreground" onClick={e => e.stopPropagation()}>{v.vendorName}</Link></TableCell>
+                  <TableCell className="text-sm text-muted-foreground"><Link to={`/vendors/${v.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{v.vendorName}</Link></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{v.tradeCategory}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{v.contactName}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{v.email}</TableCell>

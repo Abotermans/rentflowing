@@ -151,10 +151,10 @@ export default function CostsAllocations() {
                   const prop = getPropertyById(pb.propertyId);
                   return (
                     <TableRow key={pb.propertyId}>
-                      <TableCell className="font-medium">{prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{formatCurrency(pb.totalCosts)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{formatCurrency(pb.totalTaxes)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(pb.totalCosts + pb.totalTaxes)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(pb.totalCosts)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(pb.totalTaxes)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(pb.totalCosts + pb.totalTaxes)}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -205,13 +205,13 @@ export default function CostsAllocations() {
                   const total = ub.directCosts + ub.allocatedCosts;
                   return (
                     <TableRow key={ub.unitId}>
-                      <TableCell className="font-medium">{unit?.unitLabel ?? "—"}</TableCell>
-                      <TableCell className="text-sm">{prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{formatCurrency(ub.directCosts)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{formatCurrency(ub.allocatedCosts)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{formatCurrency(ub.ownerBorne)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{formatCurrency(ub.recoverable)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(total)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{unit?.unitLabel ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(ub.directCosts)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(ub.allocatedCosts)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(ub.ownerBorne)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(ub.recoverable)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(total)}</TableCell>
                     </TableRow>
                   );
                 })}

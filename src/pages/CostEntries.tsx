@@ -214,14 +214,14 @@ export default function CostEntries() {
                   const unit = e.unitId ? getUnitById(e.unitId) : null;
                   return (
                     <TableRow key={e.id}>
-                      <TableCell className="font-medium">{e.label}</TableCell>
-                      <TableCell className="text-sm">{cat?.name ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{e.label}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{cat?.name ?? "—"}</TableCell>
                       <TableCell><StatusBadge status={e.isTax ? "high" : "medium"} /></TableCell>
-                      <TableCell className="text-sm">{prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-sm">{unit ? unit.unitLabel : t("costs.propertyLevel")}</TableCell>
-                      <TableCell className="text-sm">{COST_FREQUENCY_LABELS[e.frequency]}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{formatCurrency(e.amount, e.currencyCode)}</TableCell>
-                      <TableCell className="text-sm">{RECOVERY_TYPE_LABELS[e.recoveryType]}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{unit ? unit.unitLabel : t("costs.propertyLevel")}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{COST_FREQUENCY_LABELS[e.frequency]}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(e.amount, e.currencyCode)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{RECOVERY_TYPE_LABELS[e.recoveryType]}</TableCell>
                       <TableCell><StatusBadge status={statusMap[e.status] as any} /></TableCell>
                       <TableCell>
                         <div className="flex gap-1">

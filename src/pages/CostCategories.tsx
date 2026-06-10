@@ -151,11 +151,11 @@ export default function CostCategories() {
               <TableBody>
                 {sorted.map(c => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-mono text-xs">{c.code}</TableCell>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{c.code}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{c.name}</TableCell>
                     <TableCell><StatusBadge status={c.nature === "tax" ? "high" : "medium"} /></TableCell>
-                    <TableCell className="text-sm">{COST_SCOPE_LABELS[c.scope]}</TableCell>
-                    <TableCell className="text-sm">{RECOVERY_TYPE_LABELS[c.recoveryTypeDefault]}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{COST_SCOPE_LABELS[c.scope]}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{RECOVERY_TYPE_LABELS[c.recoveryTypeDefault]}</TableCell>
                     <TableCell><StatusBadge status={c.isActive ? "active" : "inactive"} /></TableCell>
                     <TableCell>
                       <div className="flex gap-1">
