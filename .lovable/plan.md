@@ -1,79 +1,63 @@
 
-# Authentication & Multi-Portfolio Access
+## Goal
 
-## Naming decision
+Persist the demo dataset in the database so it no longer depends on in-memory mocks claimed via localStorage. A real portfolio named **Demo** will hold all the seed data, and your user account will be added as `owner` so you can access it from the portfolio switcher. The app keeps reading from `AppContext` for now — wiring pages to the DB is a follow-up.
 
-To avoid clashing with the existing **Tenant** (= renter of a unit), the SaaS-level container that groups properties, leases, vendors, etc. is called a **Portfolio**. A Portfolio is what a property manager logs into. One user can belong to several Portfolios and switch between them.
+## What gets created
 
-```text
-User ──belongs to──▶ Portfolio ──owns──▶ Properties ──▶ Units ──▶ Leases ──▶ Tenants (renters)
-                          └────────────▶ Vendors, Maintenance, Costs, Reports
-```
+### 1. Schema (one migration)
 
-Permissions are scoped at the **Portfolio level only** — not per property. Property-level ACLs would be overkill for this product; if a user needs different access to a subset of properties, they get a separate Portfolio. Permission *roles* (Owner / Admin / Editor / Viewer) are stored now but **enforcement is out of scope** for this task (authorization comes later, as you asked).
+Tables added under `public`, all scoped by `portfolio_id` (FK to `portfolios`, `ON DELETE CASCADE`), all with `created_at` / `updated_at` + the existing `touch_updated_at` trigger:
 
-## Auth method
+- `properties`
+- `units`
+- `tenants`
+- `leases`
+- `guarantees`
+- `lease_unit_assignments`
+- `lease_amendments`
+- `lease_amendment_changes`
+- `receivable_items`
+- `cash_receipts`
+- `receipt_allocations`
+- `maintenance_tickets`
+- `vendors`
+- `cost_categories`
+- `cost_entries`
+- `allocation_rules`
+- `allocation_rule_unit_shares`
+- `cost_allocation_results`
 
-- Email + password only (Lovable Cloud).
-- Self-serve signup creates a new Portfolio with the signer as Owner.
-- Existing members invite teammates by email; invitee accepts → joined as a member of that Portfolio.
-- Password reset flow included (`/forgot-password` + `/reset-password`).
+Columns mirror the TS types in `src/types/*`. Enum-like fields stored as `text` with `CHECK` constraints (no PG enums) to keep flexibility. Money stored as `numeric(14,2)`, dates as `date`, timestamps as `timestamptz`.
 
-## Data model (Lovable Cloud)
+Each table follows the required order: `CREATE TABLE` → `GRANT SELECT/INSERT/UPDATE/DELETE TO authenticated` + `GRANT ALL TO service_role` → `ENABLE RLS` → policies.
 
-New tables:
+### 2. RLS
 
-- `profiles` — 1:1 with `auth.users`. Fields: `id` (FK auth.users), `first_name`, `last_name`, `avatar_url`, `locale`, `phone`, `created_at`, `updated_at`. Auto-created by trigger on signup.
-- `portfolios` — `id`, `name`, `slug`, `default_currency`, `default_locale`, `created_by`, `created_at`, `updated_at`.
-- `portfolio_members` — `portfolio_id`, `user_id`, `role` (`owner` | `admin` | `editor` | `viewer`), `joined_at`. Unique on `(portfolio_id, user_id)`. Roles stored here only — never on `profiles` — to prevent privilege escalation.
-- `portfolio_invitations` — `id`, `portfolio_id`, `email`, `role`, `token`, `invited_by`, `expires_at`, `accepted_at`.
+For every table, four policies (select/insert/update/delete) gated by `public.is_portfolio_member(portfolio_id, auth.uid())`, matching the pattern already used on `portfolios` / `portfolio_members`. Insert/update/delete additionally require `has_portfolio_role(..., ARRAY['owner','editor'])`.
 
-Existing domain tables (`properties`, `units`, `leases`, `tenants`, `vendors`, `maintenance_*`, `costs_*`, …) gain a `portfolio_id` column. RLS will be wired in the authorization pass; for this task we add the column + index and route all reads/writes through a "current portfolio" filter on the client.
+### 3. Seed
 
-Mock data stays in place during build; we'll seed a default Portfolio so the existing demo continues to work for logged-in users.
+One follow-up data insert (after migration approval):
 
-## App shell changes
+1. Create a portfolio named **Demo** owned by your user (`alexanre.botermans@gmail.com`).
+2. Add your user to `portfolio_members` as `owner`.
+3. Insert the full contents of `src/data/mockData.ts`, `receivablesMockData.ts`, `maintenanceMockData.ts`, `costsMockData.ts` into the new tables, all stamped with the Demo portfolio id. IDs are remapped from the mock string ids (`p1`, `u3`, …) to fresh UUIDs via a deterministic mapping so FKs stay consistent.
 
-- New routes (public): `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/accept-invite/:token`.
-- All existing routes wrapped in a `<RequireAuth>` guard → redirects to `/login` if no session.
-- A `<RequirePortfolio>` guard inside that → if the user has 0 portfolios after login (shouldn't happen post-signup, but possible via cleared invite), send them to `/onboarding/portfolio` to create one.
-- **Portfolio switcher in the top header** (next to the user avatar): shows current portfolio name + chevron, dropdown lists all portfolios the user belongs to, plus a "Create new portfolio" item.
-- Header avatar dropdown: Profile, Settings, Logout.
+### 4. No app code changes in this step
 
-## Profile management page (`/profile`)
+`AppContext` keeps using the in-memory mocks. The Demo portfolio is now selectable in the switcher and persists in the DB, ready to be wired up in the next step.
 
-Single page, tabbed (consistent with existing B2B Dialog/density patterns — but a full page since it's a settings area):
+## Out of scope (next steps, separate request)
 
-1. **Personal info** — first name, last name, avatar upload, phone, preferred locale (mirrors `SettingsContext`).
-2. **Email & password** — change email (re-verification), change password (current + new), sign-out everywhere.
-3. **Portfolios** — list of portfolios the user belongs to, role badge, "Set as default", leave portfolio (blocked if last Owner).
-4. **Sessions** *(optional, nice-to-have)* — list of active sessions with revoke.
+- Rewriting pages / CRUD to read/write Supabase.
+- Removing `AppContext` mock state.
+- The localStorage "claim" mechanism (`LS_DEMO_SEEDED_KEY`).
+- Auto-adding future signups to the Demo portfolio.
 
-## Portfolio settings page (`/portfolio/settings`, Owner/Admin only — UI-gated for now)
+## Technical notes
 
-- General: name, default currency, default locale.
-- Members: list of `portfolio_members` with role, remove member.
-- Invitations: pending invites with resend / revoke; "Invite by email" form (email + role).
-
-## State & context
-
-- New `AuthContext` (wraps Supabase auth): `user`, `session`, `signIn`, `signUp`, `signOut`, `loading`. Uses `onAuthStateChange` + `getUser()` for trusted checks.
-- New `PortfolioContext`: `currentPortfolioId`, `portfolios`, `switchPortfolio(id)`, persisted in `localStorage` per user. All data hooks read `currentPortfolioId` from here so switching instantly re-scopes the UI.
-- `AppContext` mock data filtered by `currentPortfolioId` once portfolios exist on records.
-
-## Out of scope (deferred)
-
-- Role-based authorization / RLS enforcement (you confirmed permissions come later).
-- Google / Apple / magic link / SSO.
-- Per-property ACLs.
-- Tenant-renter portals.
-
-## Implementation order
-
-1. Enable Lovable Cloud, create migrations for `profiles`, `portfolios`, `portfolio_members`, `portfolio_invitations` (+ grants), trigger to auto-create profile on signup, trigger to create a starter Portfolio + owner membership on signup.
-2. `AuthContext` + public auth routes (login, signup, forgot/reset password).
-3. `<RequireAuth>` guard around existing routes; logout in header.
-4. `PortfolioContext` + header switcher + "Create portfolio" flow.
-5. `/profile` page (Personal info, Email & password, Portfolios tabs).
-6. `/portfolio/settings` page (General, Members, Invitations) + `/accept-invite/:token` page.
-7. Add nullable `portfolio_id` to existing domain tables (migration only; enforcement later).
+- One migration file creates all tables + RLS + GRANTs. No data inside the migration (data goes via `supabase--insert` after approval).
+- FK choices: `properties.portfolio_id → portfolios(id) ON DELETE CASCADE`; child tables FK to their parent (`units.property_id → properties(id) ON DELETE CASCADE`, etc.) plus a redundant `portfolio_id` column for RLS scoping.
+- `lease_unit_assignments`, `receipt_allocations`, `allocation_rule_unit_shares`, `cost_allocation_results`: junction/result tables — also carry `portfolio_id` for direct RLS.
+- Mock-id → UUID mapping done in a single seed script using `gen_random_uuid()` collected into a temp table keyed by legacy id, so all relations resolve.
