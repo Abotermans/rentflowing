@@ -356,14 +356,14 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
             {original && renderTermsAsList(original)}
           </TabsContent>
         </Tabs>
-
-        <AmendmentDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          lease={lease}
-          existing={editing}
-        />
       </CardContent>
+      )}
+      <AmendmentDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        lease={lease}
+        existing={editing}
+      />
     </Card>
   );
 }
