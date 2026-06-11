@@ -43,6 +43,7 @@ const en = {
   "leases.wizard.useExistingTenant": "Select existing tenant",
   "leases.wizard.createNewTenant": "Create new tenant",
   "leases.wizard.selectTenantPlaceholder": "Choose a tenant…",
+  "leases.wizard.makePrimary": "Make primary",
 
   // Filters
   "filter.all": "All",
@@ -1484,6 +1485,7 @@ const fr: TranslationKeys = {
   "leases.wizard.useExistingTenant": "Sélectionner un locataire existant",
   "leases.wizard.createNewTenant": "Créer un nouveau locataire",
   "leases.wizard.selectTenantPlaceholder": "Choisir un locataire…",
+  "leases.wizard.makePrimary": "Définir comme principal",
 
   // Filters
   "filter.all": "Tous",
