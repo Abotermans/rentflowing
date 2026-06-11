@@ -23,6 +23,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
 import { validateLeaseUnits, type DraftAssignment } from "@/lib/integrity/leaseUnitAssignmentIntegrity";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
@@ -562,8 +563,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                   value={form.lifecycleStage}
                   onValueChange={v => setForm(f => ({ ...f, lifecycleStage: v as LifecycleStage }))}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{availableStatuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectTrigger><StatusBadge status={form.lifecycleStage} /></SelectTrigger>
+                  <SelectContent>{availableStatuses.map(s => <SelectItem key={s.value} value={s.value} textValue={s.label}><StatusBadge status={s.value} /></SelectItem>)}</SelectContent>
                 </Select>
                 <StatusTransitionAlert validation={statusValidation} />
               </div>
