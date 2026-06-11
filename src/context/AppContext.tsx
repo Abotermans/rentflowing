@@ -235,7 +235,7 @@ const genId = (_prefix?: string) => newId();
 const now = () => new Date().toISOString().split("T")[0];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { currentPortfolioId } = usePortfolio();
+  const { currentPortfolioId, loading: portfolioLoading } = usePortfolio();
   const [loading, setLoading] = useState<boolean>(true);
 
   const [properties, setProperties] = useState<Property[]>([]);
@@ -261,6 +261,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Hydrate from DB whenever the active portfolio changes.
   useEffect(() => {
     let cancelled = false;
+    // While the portfolio list is still being fetched, stay in loading
+    // state and don't clear data — prevents a flash of "no portfolio".
+    if (portfolioLoading) {
+      setLoading(true);
+      return;
+    }
     if (!currentPortfolioId) {
       setProperties([]); setUnits([]); setTenants([]); setLeases([]);
       setGuarantees([]); setLeaseUnitAssignments([]);
@@ -303,7 +309,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [currentPortfolioId]);
+  }, [currentPortfolioId, portfolioLoading]);
 
   // ===== Advance billing: auto-generate cycle receivables when their lead
   // window opens. Idempotent — keyed on (leaseId, cycleIndex). Runs whenever
