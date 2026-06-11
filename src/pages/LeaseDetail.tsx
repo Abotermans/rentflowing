@@ -490,10 +490,18 @@ export default function LeaseDetail() {
     toast({ title: t("leaseToast.moveInConfirmed") }); setMoveInSheetOpen(false);
   };
 
-  const openMoveOutForm = () => { setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? ""); setMoMeter(lease.moveOutMeterReading ?? ""); setMoWaterMeter(lease.moveOutWaterMeterReading ?? ""); setMoNotes(lease.moveOutNotes); setMoveOutSheetOpen(true); };
+  const openMoveOutForm = (opts?: { prefillScheduled?: string }) => {
+    setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? opts?.prefillScheduled ?? "");
+    setMoMeter(lease.moveOutMeterReading ?? "");
+    setMoWaterMeter(lease.moveOutWaterMeterReading ?? "");
+    setMoNotes(lease.moveOutNotes);
+    setMoActualDate(lease.moveOutActualDate ?? "");
+    setMoveOutSheetOpen(true);
+  };
   const handleScheduleMoveOut = () => { updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutWaterMeterReading: moWaterMeter || null, moveOutNotes: moNotes }); toast({ title: t("leaseToast.moveOutScheduled") }); setMoveOutSheetOpen(false); };
   const handleConfirmMoveOut = () => {
-    confirmMoveOut({ ...lease, moveOutScheduledDate: lease.moveOutScheduledDate || today, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
+    const actual = moActualDate || today;
+    confirmMoveOut({ ...lease, moveOutActualDate: actual, moveOutScheduledDate: lease.moveOutScheduledDate || moScheduled || actual, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
       moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
       returnStatus: lease.returnStatus || "pending" });
     toast({ title: t("leaseToast.moveOutConfirmed") }); setMoveOutSheetOpen(false);
