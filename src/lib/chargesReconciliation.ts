@@ -75,7 +75,7 @@ export interface LeaseCostOverviewLine {
 
 export interface LeaseCostOverview {
   lines: LeaseCostOverviewLine[];
-  totals: { allocated: number; recoverable: number; ownerBurden: number };
+  totals: { allocated: number; recoverable: number; ownerBurden: number; fullAllocated: number; fullRecoverable: number };
 }
 
 function maxISO(a: string, b: string) { return a > b ? a : b; }
@@ -169,12 +169,20 @@ export function computeLeaseCostOverview(
       allocated: s.allocated + l.proRatedAllocated,
       recoverable: s.recoverable + l.proRatedRecoverable,
       ownerBurden: s.ownerBurden + l.proRatedOwnerBurden,
+      fullAllocated: s.fullAllocated + l.allocatedAmount,
+      fullRecoverable: s.fullRecoverable + l.recoverableAmount,
     }),
-    { allocated: 0, recoverable: 0, ownerBurden: 0 },
+    { allocated: 0, recoverable: 0, ownerBurden: 0, fullAllocated: 0, fullRecoverable: 0 },
   );
   return {
     lines,
-    totals: { allocated: round2(totals.allocated), recoverable: round2(totals.recoverable), ownerBurden: round2(totals.ownerBurden) },
+    totals: {
+      allocated: round2(totals.allocated),
+      recoverable: round2(totals.recoverable),
+      ownerBurden: round2(totals.ownerBurden),
+      fullAllocated: round2(totals.fullAllocated),
+      fullRecoverable: round2(totals.fullRecoverable),
+    },
   };
 }
 
