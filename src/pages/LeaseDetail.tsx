@@ -976,6 +976,8 @@ export default function LeaseDetail() {
         </CardContent>
       </Card>
 
+      <ChargesReconciliationSection lease={lease} currency={currency} locale={locale} />
+
       {/* Occupancy Operations */}
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4 text-left">{t("detail.occupancyOps")}</h2>
