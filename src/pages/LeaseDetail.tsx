@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -1267,7 +1267,7 @@ export default function LeaseDetail() {
             const moDisplay = MOVE_STATUS_DISPLAY[moveOutStatus];
             const MiIcon = miDisplay.icon;
             const MoIcon = moDisplay.icon;
-          const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void, completeLabel?: string) => (
+          const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void, completeLabel?: string, CompleteIcon: typeof MiIcon = CheckCircle2) => (
               <div className="flex items-center justify-between gap-2 min-h-[2rem]">
                 <div className="flex items-center gap-1.5 text-base font-medium">
                   {label}
@@ -1283,7 +1283,7 @@ export default function LeaseDetail() {
                     </Button>
                     {status === "scheduled" && onComplete && (
                       <Button size="sm" onClick={onComplete}>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{completeLabel ?? t("detail.complete")}
+                        <CompleteIcon className="h-3.5 w-3.5 mr-1" />{completeLabel ?? t("detail.complete")}
                       </Button>
                     )}
                   </div>
@@ -1326,7 +1326,7 @@ export default function LeaseDetail() {
 
                 {/* Move-Out column */}
                 <Card id="move-out-checklist" className="flex flex-col scroll-mt-20">
-                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm({ mode: "schedule" }), () => openMoveOutForm({ mode: "complete" }), t("lease.moveOutOverdue.recordMoveOut"))}</CardHeader>
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm({ mode: "schedule" }), () => openMoveOutForm({ mode: "complete" }), t("lease.moveOutOverdue.recordMoveOut"), LogOut)}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
                     {moveOutStatus === "not-scheduled" ? (
