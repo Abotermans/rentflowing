@@ -166,7 +166,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-xs text-right">
-                  {l.overlapDays}/{l.totalDays} ({Math.round(l.proRataFactor * 100)}%)
+                  {l.overlapDays}/{l.totalDays} {t("amendments.noticeUnit.days" as never)} ({Math.round(l.proRataFactor * 100)}%)
                 </TableCell>
                 <TableCell className="text-xs text-right font-medium">
                   <Tooltip>
