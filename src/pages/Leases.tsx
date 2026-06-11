@@ -144,6 +144,8 @@ export default function Leases() {
   const [tenantForm, setTenantForm] = useState<TenantFormData>({ ...emptyTenantForm });
   const [step, setStep] = useState(1);
   const [tenantMode, setTenantMode] = useState<"existing" | "new">("existing");
+  // ID being selected in the "Add existing tenant" sub-panel (not yet attached).
+  const [pendingExistingTenantId, setPendingExistingTenantId] = useState<string>("");
 
   const openAdd = () => {
     setEditingLease(null);
@@ -152,6 +154,7 @@ export default function Leases() {
     setUnitRows([]);
     setStep(1);
     setTenantMode(tenants.length > 0 ? "existing" : "new");
+    setPendingExistingTenantId("");
     setSheetOpen(true);
   };
   const openEdit = (l: Lease) => {
