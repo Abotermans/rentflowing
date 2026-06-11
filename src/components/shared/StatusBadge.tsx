@@ -16,7 +16,7 @@ const statusStyles: Record<StatusType, string> = {
   draft: "bg-muted text-muted-foreground border-border",
   "pending-signature": "bg-warning/15 text-warning border-warning/30",
   signed: "bg-primary/15 text-primary border-primary/30",
-  ended: "bg-muted text-muted-foreground border-border",
+  ended: "bg-neutral text-neutral-foreground border-neutral-foreground/30",
   terminated: "bg-destructive/15 text-destructive border-destructive/30",
   former: "bg-muted text-muted-foreground border-border",
   applicant: "bg-primary/15 text-primary border-primary/30",
