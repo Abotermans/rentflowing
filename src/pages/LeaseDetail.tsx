@@ -744,7 +744,7 @@ export default function LeaseDetail() {
           </AlertDescription>
         </Alert>
       )}
-      {lease.noticeGiven && (
+      {lease.noticeGiven && lease.status !== "ended" && (
         <Alert className="[&>svg]:top-1/2 [&>svg]:-translate-y-1/2">
           <Bell className="h-4 w-4" />
           <AlertDescription>
