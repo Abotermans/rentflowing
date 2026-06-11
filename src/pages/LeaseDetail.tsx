@@ -168,6 +168,7 @@ export default function LeaseDetail() {
   const [moActualDate, setMoActualDate] = useState("");
   const [moveOutMode, setMoveOutMode] = useState<"schedule" | "complete">("schedule");
   const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Return form
   const [returnSheetOpen, setReturnSheetOpen] = useState(false);
