@@ -38,6 +38,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
 
   const mode = lease.chargesBillingMode ?? "provision-reconciled";
   const history = getChargesReconciliationsByLease(lease.id);
+  const [sectionOpen, setSectionOpen] = useState(true);
   const today = new Date().toISOString().slice(0, 10);
   const lastEnd = history[0]?.periodEnd ?? null;
   const defaultStart = lastEnd ?? lease.startDate;
