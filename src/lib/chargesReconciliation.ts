@@ -18,6 +18,25 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+// Local copy of the recovery split used by the allocation engine — kept here
+// to avoid a cross-module import cycle. Mirrors computeRecoverySplit() in
+// src/lib/costAllocation.ts.
+function splitRecovery(amount: number, recoveryType: RecoveryType): { recoverableAmount: number; ownerBurdenAmount: number } {
+  switch (recoveryType) {
+    case "owner-only":
+      return { recoverableAmount: 0, ownerBurdenAmount: amount };
+    case "tenant-recoverable":
+      return { recoverableAmount: amount, ownerBurdenAmount: 0 };
+    case "partially-recoverable": {
+      const half = round2(amount / 2);
+      return { recoverableAmount: half, ownerBurdenAmount: round2(amount - half) };
+    }
+    case "informational":
+    default:
+      return { recoverableAmount: 0, ownerBurdenAmount: 0 };
+  }
+}
+
 export interface ReconciliationWindow {
   start: string; // YYYY-MM-DD inclusive
   end: string;   // YYYY-MM-DD inclusive
@@ -151,6 +170,52 @@ export function computeLeaseCostOverview(
         proRatedAllocated: round2(alloc.allocatedAmount * factor),
         proRatedRecoverable: round2(alloc.recoverableAmount * factor),
         proRatedOwnerBurden: round2(alloc.ownerBurdenAmount * factor),
+        addedByAmendment,
+        removedByAmendment,
+      });
+    }
+
+    // Unit-scoped cost entries (no allocation rule — the unit bears 100%).
+    // These never appear in costAllocationResults, so include them here so
+    // they show up on the lease's charges reconciliation overview.
+    for (const cost of costEntries) {
+      if (cost.unitId !== a.unitId) continue;
+      if (cost.status !== "active") continue;
+      // Skip if an allocation result already covers this (cost, unit) pair
+      // to avoid double-counting.
+      if (allocations.some(r => r.costEntryId === cost.id && r.unitId === a.unitId)) continue;
+      const costStart = cost.startDate;
+      const costEnd = cost.endDate ?? cost.startDate;
+      if (!costStart || !costEnd) continue;
+      const totalDays = diffDaysInclusive(costStart, costEnd);
+      if (totalDays <= 0) continue;
+      const oStart = maxISO(costStart, aStart);
+      const oEnd = minISO(costEnd, aEnd);
+      if (oStart > oEnd) continue;
+      const overlapDays = diffDaysInclusive(oStart, oEnd);
+      if (overlapDays <= 0) continue;
+      const factor = overlapDays / totalDays;
+      const split = splitRecovery(cost.amount, cost.recoveryType);
+      lines.push({
+        costEntryId: cost.id,
+        costLabel: cost.label || cost.invoiceReference || "—",
+        recoveryType: cost.recoveryType,
+        costFullAmount: cost.amount,
+        unitId: a.unitId,
+        unitLabel,
+        assignmentStart: aStart,
+        assignmentEnd: aEnd,
+        costPeriodStart: costStart,
+        costPeriodEnd: costEnd,
+        overlapDays,
+        totalDays,
+        proRataFactor: factor,
+        allocatedAmount: cost.amount,
+        recoverableAmount: split.recoverableAmount,
+        ownerBurdenAmount: split.ownerBurdenAmount,
+        proRatedAllocated: round2(cost.amount * factor),
+        proRatedRecoverable: round2(split.recoverableAmount * factor),
+        proRatedOwnerBurden: round2(split.ownerBurdenAmount * factor),
         addedByAmendment,
         removedByAmendment,
       });

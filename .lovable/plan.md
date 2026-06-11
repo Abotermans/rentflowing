@@ -1,42 +1,47 @@
-## Goal
-On the Amendments timeline table (lease detail), show how many changes each amendment carries, and let the user open a Before/After diff modal by clicking the count.
 
-## Changes
+## Problem
 
-### 1. New column in the amendments timeline table
-File: `src/components/amendments/AmendmentsSection.tsx`
+On a lease's **Charges reconciliation** section, the cost overview table only shows costs that have a row in `costAllocationResults`. That table is populated **only** when a cost entry is **property-level with an allocation rule** (see `addCostEntry` / `updateCostEntry` in `src/context/AppContext.tsx`, lines 1180 & 1199 — both guarded by `!newEntry.unitId && newEntry.allocationRuleId`).
 
-- Insert a new `<TableHead>` "Changes" between Title and Effective date.
-- For each amendment row, render a cell with the change count using `getAmendmentChanges(a.id).length` (already computed as `chs`).
-- The count is a button (`variant="link"`, size sm, `h-auto p-0`) styled as an inline link, wrapped with `e.stopPropagation()` so it doesn't trigger the row's edit click.
-- Clicking sets a new local state `diffAmendment` and opens a new modal.
-- If count is 0, show a muted "—" with no button.
+As a result:
+- A cost entry created **directly on a unit** (`unitId` set) never produces an allocation result → it never appears in the lease overview, even when the unit is on the lease and the dates overlap.
+- This matches the user's report: adding a new cost entry to the unit has no effect on the lease's reconciliation table.
 
-### 2. New "Amendment changes" modal
-New file: `src/components/amendments/AmendmentChangesDialog.tsx`
+The Costs > Allocations page already accounts for this case by reading direct unit costs from `costEntries` (lines 38–43, 63–72 of `src/pages/CostsAllocations.tsx`), but the lease-level overview does not.
 
-A Dialog (centered popup, per project convention) showing a table with columns: Field, Before, After.
+## Fix
 
-The diff is computed using the existing helper `getEffectiveLeaseTerms` from `src/lib/amendments.ts`:
-- `after` = terms on the amendment's `effectiveDate` (which already folds this amendment if active; for draft/scheduled we simulate it as active using the same shallow-copy trick used in `getLeaseAmendmentImpact`).
-- `before` = terms one day before the amendment's `effectiveDate`, excluding this amendment.
+Update `computeLeaseCostOverview` in `src/lib/chargesReconciliation.ts` so it also includes **unit-scoped cost entries** for each unit assigned to the lease, in addition to the existing `costAllocationResults` loop.
 
-Row generation mirrors the logic already in `AmendmentConfirmDialog.tsx` (same field-by-field switch over `LeaseAmendmentChange.fieldName`), so labels and formatting stay consistent across the app. We will reuse that mapping by extracting it into a small local helper inside the new dialog (kept colocated to avoid scope creep; no refactor of the confirm dialog).
+For every active lease unit assignment, iterate `costEntries` where:
+- `e.unitId === assignment.unitId`, and
+- `e.status === "active"` (skip draft / cancelled / closed), and
+- the cost period (`startDate` → `endDate ?? startDate`) overlaps the assignment window intersected with the reconciliation window,
 
-Modal structure:
-- Title: `t("amendments.changesTitle")` — "Changes in amendment #N"
-- Subheader: amendment title + effective date badge
-- Table with `Field | Before | After` columns, same compact styling as the confirm dialog table
-- Footer: single "Close" button
+then build a synthetic `LeaseCostOverviewLine` using the same pro-rata math already used for allocation results:
+- `costFullAmount = allocatedAmount = e.amount` (the unit bears 100% of a direct unit cost)
+- `recoverableAmount` / `ownerBurdenAmount` derived from `e.recoveryType` using the same split as `computeRecoverySplit` in `src/lib/costAllocation.ts` (owner-only → 0 / amount; tenant-recoverable → amount / 0; partially-recoverable → 50/50; informational → 0/0)
+- `proRataFactor`, `overlapDays`, `totalDays`, `proRatedAllocated`, `proRatedRecoverable`, `proRatedOwnerBurden` computed via the existing helpers
+- `addedByAmendment` / `removedByAmendment` flags reused from the assignment
 
-### 3. Translations
-File: `src/i18n/translations.ts`
+De-dup guard: if a `CostAllocationResult` already exists for `(costEntryId, unitId)` (covers the edge case where a unit-scoped cost also happens to have an allocation result), skip the synthetic line so the row is not double-counted.
 
-Add keys in both `en` and `fr`:
-- `amendments.col.changes` → "Changes" / "Modifications"
-- `amendments.changesTitle` → "Changes in amendment #{n}" / "Modifications de l'avenant n°{n}"
-- `amendments.field` → "Field" / "Champ" (only if not already present; otherwise reuse `amendments.summary`)
+Signature change: pass the full `costEntries` array (already passed) — no new arguments needed. Totals at the bottom of the table will reconcile automatically because they sum `lines`.
 
-## Out of scope
-- No changes to amendment data model, lib helpers, or the confirm dialog.
-- No changes to other tabs (Current terms, Original terms).
+## Technical details
+
+File to change:
+- `src/lib/chargesReconciliation.ts` — extend `computeLeaseCostOverview` with a second loop over `costEntries` for unit-scoped active entries; add a small `splitRecovery(amount, recoveryType)` helper (copy of the one in `costAllocation.ts`, kept local to avoid a circular import).
+
+No changes needed in:
+- `ChargesReconciliationSection.tsx` (already calls `computeLeaseCostOverview` with `costEntries`).
+- `AppContext.tsx` allocation logic (we deliberately do not create persisted allocation results for unit-scoped costs; they're handled at read-time, consistent with `CostsAllocations.tsx`).
+- The reconciliation engine that compares provisions vs. recoverable (`computeReconciliation`) — out of scope; user's issue is specifically the overview table not reflecting added unit costs. If desired we can extend it later in the same way, but keeping this patch focused on the reported symptom.
+
+## Verification
+
+After implementation:
+1. Open a lease whose primary unit is, say, U-101, with dates covering 2026.
+2. Go to **Costs > Entries**, add a new active cost entry scoped to U-101 with a period inside the lease window.
+3. Return to the lease → **Charges reconciliation** → the new cost appears as a row with correct full / overlap / pro-rated columns and contributes to the totals.
+4. Type-check (`tsc --noEmit`) stays clean.
