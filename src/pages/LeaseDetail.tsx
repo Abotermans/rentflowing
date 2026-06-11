@@ -1267,7 +1267,7 @@ export default function LeaseDetail() {
             const moDisplay = MOVE_STATUS_DISPLAY[moveOutStatus];
             const MiIcon = miDisplay.icon;
             const MoIcon = moDisplay.icon;
-          const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void, completeLabel?: string) => (
+          const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void, completeLabel?: string, CompleteIcon: typeof MiIcon = CheckCircle2) => (
               <div className="flex items-center justify-between gap-2 min-h-[2rem]">
                 <div className="flex items-center gap-1.5 text-base font-medium">
                   {label}
@@ -1283,7 +1283,7 @@ export default function LeaseDetail() {
                     </Button>
                     {status === "scheduled" && onComplete && (
                       <Button size="sm" onClick={onComplete}>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{completeLabel ?? t("detail.complete")}
+                        <CompleteIcon className="h-3.5 w-3.5 mr-1" />{completeLabel ?? t("detail.complete")}
                       </Button>
                     )}
                   </div>
