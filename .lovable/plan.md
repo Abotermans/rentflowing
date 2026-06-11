@@ -1,50 +1,36 @@
-# Fix move-out workflow
+# Add Keys & Badges return tracking to the Complete Move-Out modal
 
-## Problems
+## Goal
+In the Move-Out dialog (complete mode), show the list of keys and badges that were handed over to the tenant, with a date input for each so the user can record the return date item-by-item — instead of having to scroll back to the Keys & Badges section on the lease page.
 
-1. In the Move-Out card, both "Edit" and "Complete" buttons call `openMoveOutForm()` and open the same dialog. The dialog has both `Schedule` and `Confirm move-out` buttons, so editing the scheduled date often ends up running the full "confirm" path — which silently auto-checks every checklist item AND ends the lease (`lifecycleStage: "ended"` in `confirmMoveOut`).
-2. Completing the move-out should not auto-end the lease — ending a lease is a separate flow with its own integrity checks (balances, guarantees…).
-3. Meters are exposed in the schedule step, but they should only be entered when the move-out is actually completed.
-4. The "Under notice" alert shows "Intended move-out on {date}" using a phrase distinct from the `Intended move-out` label used elsewhere on the page, breaking label consistency.
+## Scope
+- File: `src/pages/LeaseDetail.tsx`, Move-Out dialog complete branch (around lines 1545–1578).
+- No business-logic changes outside this dialog. Each row writes directly to `lease.keys[*].returnedDate` via the existing `patchKeyItem` helper, so changes are immediately persisted in the same way as the inline edits in the Keys & Badges card.
 
-## Changes (in `src/pages/LeaseDetail.tsx`)
+## UI
 
-### 1. Split the move-out dialog into two explicit modes
+Inserted between the meters row and the Notes textarea:
 
-Add a `moveOutMode: "schedule" | "complete"` state. `openMoveOutForm` accepts `{ mode, prefillScheduled? }` and pre-fills the inputs from the lease.
+```text
+Keys & Badges                                          (section label)
+┌──────────────────────────────────────────────────────────────┐
+│ [Type]  Identifier                          Returned         │
+│  Key    Front door — K-12                   [ 2026-06-10 ▾ ] │
+│  Badge  Garage remote — B-04                [            ▾ ] │
+└──────────────────────────────────────────────────────────────┘
+```
 
-- **Schedule / Edit mode** (header "Edit" button, end-of-lease suggestion, move-out card "Schedule" button):
-  - Visible fields: Scheduled date, Notes.
-  - Hidden: Actual date, electricity meter, water meter.
-  - Single action button: `Save` → calls `handleScheduleMoveOut`, which only writes `moveOutScheduledDate` and `moveOutNotes` (do not touch meters or actual date).
-- **Complete mode** (header "Complete" button):
-  - Visible fields: Scheduled date (read-only display), Actual move-out date (required, defaults to today), electricity meter, water meter, Notes.
-  - Single action button: `Confirm move-out` → calls a new `handleCompleteMoveOut` (see below). Disabled until an actual date is set.
+Rules:
+- Only items with a `handedOverDate` set are listed (those are the ones actually given to the tenant). Items never handed over are hidden to keep the dialog short.
+- Each row is read-only for type/identifier (small icon + label text) and editable only for the returned date.
+- Empty state: if no handed-over items exist, the whole section is omitted (no empty box).
+- Default value for each row's returned date is the current `k.returnedDate` if set, otherwise empty. The "Confirm move-out" button stays enabled regardless (returning keys is not blocking).
+- Compact density (`h-8 text-sm`) consistent with the rest of the dialog.
 
-Header wiring in `renderHeader` for the Move-Out card:
-- `onOpen` → `openMoveOutForm({ mode: "schedule" })`
-- `onComplete` → `openMoveOutForm({ mode: "complete" })`
-
-### 2. Decouple "complete move-out" from "end lease"
-
-Replace the call into `confirmMoveOut` with a local `handleCompleteMoveOut` that simply calls `updateLease(...)` with:
-- `moveOutActualDate` (required from the form)
-- `moveOutMeterReading`, `moveOutWaterMeterReading`, `moveOutNotes` from the form (falling back to existing values)
-- `moveOutChecklist`: all items checked
-- **No** change to `lifecycleStage` and **no** unit vacating / amendment cascading. Those remain the responsibility of the existing "End lease" flow (`handleEndLease`).
-
-After saving, show a toast and, if the lease is still active, suggest the user end the lease from the existing End-lease action (no auto-redirect). Leave `confirmMoveOut` in `AppContext` untouched for now — just stop calling it from this screen.
-
-### 3. Don't capture meters during scheduling
-
-Already covered by Change 1 (meters removed from schedule mode). Also remove meter writes from `handleScheduleMoveOut` so reopening Edit never accidentally persists a blank meter.
-
-### 4. Label consistency in the "Under notice" alert
-
-Replace `leaseDetail.intendedMoveOutOn` usage in the alert with the existing `detail.intendedMoveOut` label, rendered as `"{Intended move-out}: {formattedDate}"` so it matches the rest of the lease detail page. Keep the alert layout unchanged.
+## i18n
+Reuses existing keys: `detail.keysBadges`, `detail.kindKey`, `detail.kindBadge`, `detail.returned`. No new translation strings needed.
 
 ## Out of scope
-
-- Changing `confirmMoveOut` in `AppContext`, ending lease integrity rules, or notice-cancel semantics.
-- Backend / schema changes.
-- Translations beyond reusing existing keys (no new keys required; the alert reuses `detail.intendedMoveOut`).
+- No change to the schedule branch of the move-out dialog.
+- No change to the move-out checklist logic (`keysReturned` flag continues to be derived as today).
+- No change to the standalone Keys & Badges card on the lease page.

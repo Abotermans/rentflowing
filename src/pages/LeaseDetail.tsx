@@ -1571,6 +1571,20 @@ export default function LeaseDetail() {
                   </div>
                 </div>
                 <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
+                {(lease.keys ?? []).filter(k => k.handedOverDate).length > 0 && (
+                  <div>
+                    <Label>{t("detail.keysBadges")}</Label>
+                    <div className="mt-1.5 border rounded-md divide-y">
+                      {(lease.keys ?? []).filter(k => k.handedOverDate).map(k => (
+                        <div key={k.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-1.5 text-sm">
+                          <span className="text-xs text-muted-foreground w-12">{k.kind === "badge" ? t("detail.kindBadge") : t("detail.kindKey")}</span>
+                          <span className="truncate">{k.label || "—"}</span>
+                          <Input type="date" className="h-8 text-sm w-[150px]" value={k.returnedDate ?? ""} onChange={e => patchKeyItem(k.id, { returnedDate: e.target.value || null })} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setMoveOutSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
                   <Button onClick={handleCompleteMoveOut} disabled={!moActualDate} className="flex-1">{t("leaseDialog.confirmMoveOut")}</Button>
