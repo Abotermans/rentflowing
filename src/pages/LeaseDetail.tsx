@@ -637,7 +637,7 @@ export default function LeaseDetail() {
         </Alert>
       )}
       {lease.noticeGiven && (
-        <Alert>
+        <Alert className="[&>svg]:top-1/2 [&>svg]:-translate-y-1/2">
           <Bell className="h-4 w-4" />
           <AlertDescription>
             <div className="flex items-center justify-between gap-2 flex-wrap">
