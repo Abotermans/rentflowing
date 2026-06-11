@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 export function PortfolioSwitcher() {
-  const { portfolios, currentPortfolio, switchPortfolio, refresh } = usePortfolio();
+  const { portfolios, currentPortfolio, switchPortfolio, refresh, loading } = usePortfolio();
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -53,9 +53,11 @@ export function PortfolioSwitcher() {
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 gap-2 max-w-[220px]">
+          <Button variant="outline" size="sm" className="h-8 gap-2 max-w-[220px]" disabled={loading && !currentPortfolio}>
             <Briefcase className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{currentPortfolio?.name ?? "No portfolio"}</span>
+            <span className="truncate">
+              {currentPortfolio?.name ?? (loading ? "Loading…" : "No portfolio")}
+            </span>
             <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
