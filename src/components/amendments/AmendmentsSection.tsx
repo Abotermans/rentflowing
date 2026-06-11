@@ -14,6 +14,7 @@ import {
   getEffectiveLeaseTerms, getOriginalLeaseTerms, getLeaseAmendments,
 } from "@/lib/amendments";
 import { AmendmentDialog } from "./AmendmentDialog";
+import { AmendmentChangesDialog } from "./AmendmentChangesDialog";
 import type { LeaseAmendment, AmendmentStatus } from "@/types/amendments";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 
@@ -39,6 +40,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LeaseAmendment | null>(null);
   const [sectionOpen, setSectionOpen] = useState(true);
+  const [changesDialog, setChangesDialog] = useState<LeaseAmendment | null>(null);
 
   useEffect(() => {
     if (newAmendmentSignal && newAmendmentSignal > 0) {
@@ -208,6 +210,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                     <TableHead className="h-8">#</TableHead>
                     <TableHead className="h-8">{t("amendments.type")}</TableHead>
                     <TableHead className="h-8">{t("amendments.titleField")}</TableHead>
+                    <TableHead className="h-8">{t("amendments.col.changes")}</TableHead>
                     <TableHead className="h-8">{t("amendments.effectiveDate")}</TableHead>
                     <TableHead className="h-8">{t("amendments.newEndDateCol")}</TableHead>
                     <TableHead className="h-8">{t("amendments.status")}</TableHead>
@@ -265,6 +268,19 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                            })() : t(`amendments.type.${a.amendmentType}` as any)}
                          </TableCell>
                         <TableCell className="py-1.5">{a.title}</TableCell>
+                        <TableCell className="py-1.5">
+                          {chs.length === 0 ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <Button
+                              variant="link"
+                              className="h-auto p-0 text-sm"
+                              onClick={(e) => { e.stopPropagation(); setChangesDialog(a); }}
+                            >
+                              {chs.length}
+                            </Button>
+                          )}
+                        </TableCell>
                         <TableCell className="py-1.5">
                           <span className="inline-flex items-center gap-1">
                             {formatDate(a.effectiveDate, locale)}
@@ -363,6 +379,12 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
         onOpenChange={setDialogOpen}
         lease={lease}
         existing={editing}
+      />
+      <AmendmentChangesDialog
+        open={!!changesDialog}
+        onOpenChange={(o) => { if (!o) setChangesDialog(null); }}
+        amendment={changesDialog}
+        changes={changesDialog ? getAmendmentChanges(changesDialog.id) : []}
       />
     </Card>
   );
