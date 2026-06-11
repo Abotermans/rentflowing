@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -613,6 +613,14 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {lease.lifecycleStage === "draft" && (() => {
+              const check = canSendForSignature(lease.id, integrityState);
+              return (
+                <Button onClick={() => handleSendForSignature()} size="sm" className="h-9" disabled={!check.allowed}>
+                  <FileSignature className="h-4 w-4 mr-1" />{t("lease.sendForSignature")}
+                </Button>
+              );
+            })()}
             {lease.lifecycleStage !== "draft" && lease.lifecycleStage !== "pending-signature" && (
               <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
             )}
@@ -629,14 +637,6 @@ export default function LeaseDetail() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {lease.lifecycleStage === "draft" && (() => {
-                  const check = canSendForSignature(lease.id, integrityState);
-                  return (
-                    <DropdownMenuItem onSelect={() => handleSendForSignature()} disabled={!check.allowed}>
-                      <Bell className="h-4 w-4 mr-2" />{t("lease.sendForSignature")}
-                    </DropdownMenuItem>
-                  );
-                })()}
                 {lease.lifecycleStage === "pending-signature" && (
                   <>
                     <DropdownMenuItem onSelect={() => openMarkSignedDialog()}>
