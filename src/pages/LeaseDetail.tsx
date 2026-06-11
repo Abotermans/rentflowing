@@ -564,7 +564,6 @@ export default function LeaseDetail() {
       moveOutMeterReading: moMeter || lease.moveOutMeterReading,
       moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading,
       moveOutNotes: moNotes || lease.moveOutNotes,
-      moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
       returnStatus: lease.returnStatus || "pending",
     });
     toast({ title: t("leaseToast.moveOutConfirmed") });
@@ -1268,7 +1267,7 @@ export default function LeaseDetail() {
             const moDisplay = MOVE_STATUS_DISPLAY[moveOutStatus];
             const MiIcon = miDisplay.icon;
             const MoIcon = moDisplay.icon;
-            const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void) => (
+          const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void, completeLabel?: string) => (
               <div className="flex items-center justify-between gap-2 min-h-[2rem]">
                 <div className="flex items-center gap-1.5 text-base font-medium">
                   {label}
@@ -1284,7 +1283,7 @@ export default function LeaseDetail() {
                     </Button>
                     {status === "scheduled" && onComplete && (
                       <Button size="sm" onClick={onComplete}>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{t("detail.complete")}
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{completeLabel ?? t("detail.complete")}
                       </Button>
                     )}
                   </div>
@@ -1327,7 +1326,7 @@ export default function LeaseDetail() {
 
                 {/* Move-Out column */}
                 <Card id="move-out-checklist" className="flex flex-col scroll-mt-20">
-                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm({ mode: "schedule" }), () => openMoveOutForm({ mode: "complete" }))}</CardHeader>
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm({ mode: "schedule" }), () => openMoveOutForm({ mode: "complete" }), t("lease.moveOutOverdue.recordMoveOut"))}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
                     {moveOutStatus === "not-scheduled" ? (
