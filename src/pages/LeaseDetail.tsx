@@ -491,21 +491,35 @@ export default function LeaseDetail() {
     toast({ title: t("leaseToast.moveInConfirmed") }); setMoveInSheetOpen(false);
   };
 
-  const openMoveOutForm = (opts?: { prefillScheduled?: string }) => {
+  const openMoveOutForm = (opts?: { prefillScheduled?: string; mode?: "schedule" | "complete" }) => {
+    const mode = opts?.mode ?? "schedule";
+    setMoveOutMode(mode);
     setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? opts?.prefillScheduled ?? "");
     setMoMeter(lease.moveOutMeterReading ?? "");
     setMoWaterMeter(lease.moveOutWaterMeterReading ?? "");
     setMoNotes(lease.moveOutNotes);
-    setMoActualDate(lease.moveOutActualDate ?? "");
+    setMoActualDate(lease.moveOutActualDate ?? (mode === "complete" ? today : ""));
     setMoveOutSheetOpen(true);
   };
-  const handleScheduleMoveOut = () => { updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutWaterMeterReading: moWaterMeter || null, moveOutNotes: moNotes }); toast({ title: t("leaseToast.moveOutScheduled") }); setMoveOutSheetOpen(false); };
-  const handleConfirmMoveOut = () => {
-    const actual = moActualDate || today;
-    confirmMoveOut({ ...lease, moveOutActualDate: actual, moveOutScheduledDate: lease.moveOutScheduledDate || moScheduled || actual, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
+  const handleScheduleMoveOut = () => {
+    updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutNotes: moNotes });
+    toast({ title: t("leaseToast.moveOutScheduled") });
+    setMoveOutSheetOpen(false);
+  };
+  const handleCompleteMoveOut = () => {
+    if (!moActualDate) return;
+    updateLease({
+      ...lease,
+      moveOutActualDate: moActualDate,
+      moveOutScheduledDate: lease.moveOutScheduledDate || moScheduled || moActualDate,
+      moveOutMeterReading: moMeter || lease.moveOutMeterReading,
+      moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading,
+      moveOutNotes: moNotes || lease.moveOutNotes,
       moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
-      returnStatus: lease.returnStatus || "pending" });
-    toast({ title: t("leaseToast.moveOutConfirmed") }); setMoveOutSheetOpen(false);
+      returnStatus: lease.returnStatus || "pending",
+    });
+    toast({ title: t("leaseToast.moveOutConfirmed") });
+    setMoveOutSheetOpen(false);
   };
 
   const toggleMoveInChecklist = (key: keyof MoveInChecklist) => { updateLease({ ...lease, moveInChecklist: { ...lease.moveInChecklist, [key]: !lease.moveInChecklist[key] } }); };
