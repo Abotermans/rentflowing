@@ -630,6 +630,15 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                         </TableRow>
                       );
                     })}
+                    {(currentUnits.length > 0 || unitsToAdd.length > 0) && (
+                      <TableRow className="h-9 border-t-2 border-t-border font-medium bg-muted/30">
+                        <TableCell colSpan={2} className="py-1 text-xs">{t("common.total")}</TableCell>
+                        <TableCell className="py-1 text-xs text-right tabular-nums">{totalRent.toFixed(2)}</TableCell>
+                        <TableCell className="py-1 text-xs text-right tabular-nums">{totalCharges.toFixed(2)}</TableCell>
+                        <TableCell className="py-1" />
+                        <TableCell className="py-1" />
+                      </TableRow>
+                    )}
                     {currentUnits.length === 0 && unitsToAdd.length === 0 && (
                       <TableRow><TableCell colSpan={6} className="py-3 text-center text-xs text-muted-foreground">{t("amendments.noUnitsAvailable")}</TableCell></TableRow>
                     )}
