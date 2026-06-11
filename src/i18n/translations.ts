@@ -1418,6 +1418,10 @@ const en = {
   "reconciliation.overview.tip.recoveryType.tenant-recoverable": "Tenant recoverable (100%)",
   "reconciliation.overview.tip.recoveryType.partially-recoverable": "Partially recoverable",
   "reconciliation.overview.tip.recoveryType.informational": "Informational (0%)",
+  "reconciliation.overview.bearer.ownerOnly": "Owner only",
+  "reconciliation.overview.bearer.tenantOnly": "Tenant only",
+  "reconciliation.overview.bearer.mix": "Mix",
+  "reconciliation.overview.bearer.informational": "Info",
 };
 
 type TranslationKeys = typeof en;
