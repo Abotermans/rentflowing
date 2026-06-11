@@ -185,9 +185,6 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                         <span className="font-medium">{t("reconciliation.overview.tip.timeProRata")}</span>
                         <span className="text-right font-semibold tabular-nums">{(l.proRataFactor * 100).toFixed(1)}%</span>
                       </div>
-                      <div className="text-[10px] text-muted-foreground border-t pt-1.5 font-mono">
-                        {l.overlapDays} / {l.totalDays} = {(l.proRataFactor * 100).toFixed(1)}%
-                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
