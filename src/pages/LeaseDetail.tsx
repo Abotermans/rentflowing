@@ -1305,7 +1305,7 @@ export default function LeaseDetail() {
                 </Card>
 
                 {/* Move-Out column */}
-                <Card className="flex flex-col">
+                <Card id="move-out-checklist" className="flex flex-col scroll-mt-20">
                   <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm({ mode: "schedule" }), () => openMoveOutForm({ mode: "complete" }))}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
