@@ -141,6 +141,11 @@ export interface LeaseUnitAssignment {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * @deprecated Derived from `assignmentType === "primary"` and hydrated at
+   * load time. Kept as a compatibility shim for legacy callers. Do not persist.
+   */
+  isPrimary: boolean;
 }
 
 export type AdvanceAllocationMethod = 'spread-evenly' | 'fixed-monthly-reduction';
@@ -224,9 +229,26 @@ export interface Lease {
   leaseReference: string;
   propertyId: string;
   /** Flat list of every tenant on the lease. Must contain at least 1 entry. */
-  tenantIds: string[];
+  tenantIds?: string[];
   /** Pointer to one of `tenantIds` — purely an invoicing pointer, freely swappable. */
-  billingTenantId: string;
+  billingTenantId?: string;
+  /**
+   * @deprecated Legacy mirror of `billingTenantId`. Hydrated at load time;
+   * stripped before persistence. Kept as a compatibility shim while the UI
+   * still treats one tenant as "primary".
+   */
+  primaryTenantId: string;
+  /**
+   * @deprecated Legacy mirror of `tenantIds` minus the billing tenant.
+   * Hydrated at load time; stripped before persistence.
+   */
+  coTenantIds: string[];
+  /**
+   * @deprecated Legacy pointer to the primary unit. Hydrated at load time
+   * from the first `primary` assignment; stripped before persistence. May be
+   * an empty string when the lease has no main unit (e.g. parking-only).
+   */
+  unitId: string;
   lifecycleStage: LifecycleStage;
   startDate: string;
   endDate: string;

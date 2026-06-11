@@ -104,6 +104,8 @@ export function getOriginalLeaseTerms(
     endDate: lease.endDate,
     depositAmount: lease.depositOrGuaranteeAmount,
     noticePeriodText: lease.noticePeriodText,
+    tenantIds: lease.tenantIds ?? [lease.primaryTenantId, ...lease.coTenantIds].filter(Boolean),
+    billingTenantId: lease.billingTenantId ?? lease.primaryTenantId,
     primaryTenantId: lease.primaryTenantId,
     coTenantIds: [...lease.coTenantIds],
     units: originalAssignments

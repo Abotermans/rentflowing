@@ -71,6 +71,9 @@ export function getMainLeaseUnit(
   return a ? units.find(u => u.id === a.unitId) : undefined;
 }
 
+/** @deprecated Alias of {@link getMainLeaseUnit}. Kept for legacy imports. */
+export const getPrimaryLeaseUnit = getMainLeaseUnit;
+
 /** Ancillary units for a lease (parking/cellar/storage/etc.). */
 export function getAncillaryLeaseUnits(
   leaseId: string,
