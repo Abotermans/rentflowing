@@ -22,10 +22,17 @@ export function AmendmentChangesDialog({ open, onOpenChange, amendment, changes 
   const s = useIntegrityState();
   const currency = "EUR";
 
-  const before = useMemo(
-    () => amendment ? getEffectiveLeaseTerms(amendment.leaseId, amendment.effectiveDate, s) : null,
-    [amendment, s],
-  );
+  const before = useMemo(() => {
+    if (!amendment) return null;
+    // Exclude this amendment so we get the state right before it took effect.
+    const simulated = {
+      ...s,
+      amendments: s.amendments.map(x =>
+        x.id === amendment.id ? { ...x, status: "draft" as const } : x,
+      ),
+    };
+    return getEffectiveLeaseTerms(amendment.leaseId, amendment.effectiveDate, simulated);
+  }, [amendment, s]);
 
   const lease = useMemo(
     () => amendment ? s.leases.find(l => l.id === amendment.leaseId) ?? null : null,
