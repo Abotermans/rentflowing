@@ -819,7 +819,7 @@ export default function LeaseDetail() {
       </Card>
 
       {/* Amendments / Avenants */}
-      <AmendmentsSection leaseId={lease.id} />
+      <AmendmentsSection leaseId={lease.id} newAmendmentSignal={newAmendmentSignal} />
 
       {/* Financial Summary */}
       <Card>
