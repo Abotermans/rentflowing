@@ -457,12 +457,16 @@ export default function LeaseDetail() {
   };
 
   const handleCancelNotice = () => {
+    const clearScheduled = !lease.moveOutActualDate
+      && lease.intendedMoveOutDate
+      && lease.moveOutScheduledDate === lease.intendedMoveOutDate;
     updateLease({
       ...lease,
       noticeGiven: false,
       noticeDate: null,
       intendedMoveOutDate: null,
       terminationReason: null,
+      ...(clearScheduled ? { moveOutScheduledDate: null } : {}),
     });
     toast({ title: t("lease.toastNoticeCancelled") });
   };
