@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { AmendmentDialog } from "./AmendmentDialog";
 import type { LeaseAmendment, AmendmentStatus } from "@/types/amendments";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 
-interface Props { leaseId: string }
+interface Props { leaseId: string; newAmendmentSignal?: number }
 
 const STATUS_CLS: Record<AmendmentStatus, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -26,7 +26,7 @@ const STATUS_CLS: Record<AmendmentStatus, string> = {
   terminated: "bg-muted text-muted-foreground line-through",
 };
 
-export function AmendmentsSection({ leaseId }: Props) {
+export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
   const { t, locale } = useSettings();
   const {
     leases, units, tenants,
@@ -37,6 +37,13 @@ export function AmendmentsSection({ leaseId }: Props) {
   const lease = leases.find(l => l.id === leaseId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LeaseAmendment | null>(null);
+
+  useEffect(() => {
+    if (newAmendmentSignal && newAmendmentSignal > 0) {
+      setEditing(null);
+      setDialogOpen(true);
+    }
+  }, [newAmendmentSignal]);
 
   const ams = useMemo(() => getLeaseAmendments(leaseId, s.amendments), [leaseId, s.amendments]);
   const current = useMemo(

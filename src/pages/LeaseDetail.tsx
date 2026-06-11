@@ -159,6 +159,8 @@ export default function LeaseDetail() {
   const [moMeter, setMoMeter] = useState("");
   const [moWaterMeter, setMoWaterMeter] = useState("");
   const [moNotes, setMoNotes] = useState("");
+  const [moActualDate, setMoActualDate] = useState("");
+  const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
 
   // Return form
   const [returnSheetOpen, setReturnSheetOpen] = useState(false);
@@ -283,7 +285,19 @@ export default function LeaseDetail() {
   };
 
   const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
-  const handleSaveNotice = () => { updateLease({ ...lease, noticeGiven: true, noticeDate: nDate || null, intendedMoveOutDate: nMoveOut || null, terminationReason: nReason || null }); toast({ title: t("leaseToast.noticeRegistered") }); setNoticeSheetOpen(false); };
+  const handleSaveNotice = () => {
+    const syncMoveOut = !lease.moveOutActualDate && nMoveOut;
+    updateLease({
+      ...lease,
+      noticeGiven: true,
+      noticeDate: nDate || null,
+      intendedMoveOutDate: nMoveOut || null,
+      terminationReason: nReason || null,
+      ...(syncMoveOut ? { moveOutScheduledDate: nMoveOut } : {}),
+    });
+    toast({ title: t("leaseToast.noticeRegistered") });
+    setNoticeSheetOpen(false);
+  };
   const handleActivateLease = () => {
     const validation = canActivateLease(lease.id, integrityState);
     if (!validation.allowed) {
@@ -443,12 +457,16 @@ export default function LeaseDetail() {
   };
 
   const handleCancelNotice = () => {
+    const clearScheduled = !lease.moveOutActualDate
+      && lease.intendedMoveOutDate
+      && lease.moveOutScheduledDate === lease.intendedMoveOutDate;
     updateLease({
       ...lease,
       noticeGiven: false,
       noticeDate: null,
       intendedMoveOutDate: null,
       terminationReason: null,
+      ...(clearScheduled ? { moveOutScheduledDate: null } : {}),
     });
     toast({ title: t("lease.toastNoticeCancelled") });
   };
@@ -472,10 +490,18 @@ export default function LeaseDetail() {
     toast({ title: t("leaseToast.moveInConfirmed") }); setMoveInSheetOpen(false);
   };
 
-  const openMoveOutForm = () => { setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? ""); setMoMeter(lease.moveOutMeterReading ?? ""); setMoWaterMeter(lease.moveOutWaterMeterReading ?? ""); setMoNotes(lease.moveOutNotes); setMoveOutSheetOpen(true); };
+  const openMoveOutForm = (opts?: { prefillScheduled?: string }) => {
+    setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? opts?.prefillScheduled ?? "");
+    setMoMeter(lease.moveOutMeterReading ?? "");
+    setMoWaterMeter(lease.moveOutWaterMeterReading ?? "");
+    setMoNotes(lease.moveOutNotes);
+    setMoActualDate(lease.moveOutActualDate ?? "");
+    setMoveOutSheetOpen(true);
+  };
   const handleScheduleMoveOut = () => { updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutWaterMeterReading: moWaterMeter || null, moveOutNotes: moNotes }); toast({ title: t("leaseToast.moveOutScheduled") }); setMoveOutSheetOpen(false); };
   const handleConfirmMoveOut = () => {
-    confirmMoveOut({ ...lease, moveOutScheduledDate: lease.moveOutScheduledDate || today, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
+    const actual = moActualDate || today;
+    confirmMoveOut({ ...lease, moveOutActualDate: actual, moveOutScheduledDate: lease.moveOutScheduledDate || moScheduled || actual, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
       moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
       returnStatus: lease.returnStatus || "pending" });
     toast({ title: t("leaseToast.moveOutConfirmed") }); setMoveOutSheetOpen(false);
@@ -627,6 +653,44 @@ export default function LeaseDetail() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* End-of-lease approaching */}
+      {(() => {
+        if (lease.lifecycleStage !== "active") return null;
+        if (lease.moveOutActualDate) return null;
+        const END_WARN_DAYS = 60;
+        const endIso = lease.endDate;
+        if (!endIso) return null;
+        const toUTC = (iso: string) => { const [y,m,d] = iso.split("-").map(Number); return Date.UTC(y, (m||1)-1, d||1); };
+        const days = Math.round((toUTC(endIso) - toUTC(today)) / 86400000);
+        if (days > END_WARN_DAYS) return null;
+        let headline: string;
+        if (days < 0) headline = t("lease.endingSoon.passed");
+        else if (days === 0) headline = t("lease.endingSoon.today");
+        else if (days === 1) headline = t("lease.endingSoon.tomorrow");
+        else headline = t("lease.endingSoon.title").replace("{days}", String(days));
+        const showScheduleMoveOut = !lease.noticeGiven && moveOutStatus === "not-scheduled";
+        return (
+          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
+            <Clock className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="font-medium">{headline}</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setNewAmendmentSignal(n => n + 1)}>
+                    {t("lease.endingSoon.suggestAmendment")}
+                  </Button>
+                  {showScheduleMoveOut && (
+                    <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ prefillScheduled: endIso })}>
+                      {t("lease.endingSoon.suggestMoveOut")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
 
       {/* Overdue end banner */}
       {lifecycle === "overdue-end" && (
@@ -793,7 +857,7 @@ export default function LeaseDetail() {
       </Card>
 
       {/* Amendments / Avenants */}
-      <AmendmentsSection leaseId={lease.id} />
+      <AmendmentsSection leaseId={lease.id} newAmendmentSignal={newAmendmentSignal} />
 
       {/* Financial Summary */}
       <Card>
@@ -990,7 +1054,7 @@ export default function LeaseDetail() {
             const moDisplay = MOVE_STATUS_DISPLAY[moveOutStatus];
             const MiIcon = miDisplay.icon;
             const MoIcon = moDisplay.icon;
-            const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void) => (
+            const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void) => (
               <div className="flex items-center justify-between gap-2 min-h-[2rem]">
                 <div className="flex items-center gap-1.5 text-base font-medium">
                   {label}
@@ -1000,9 +1064,16 @@ export default function LeaseDetail() {
                   </span>
                 </div>
                 {status !== "completed" && (
-                  <Button variant="outline" size="sm" onClick={onOpen}>
-                    {status === "not-scheduled" ? <><Clock className="h-3.5 w-3.5 mr-1" />{t("detail.schedule")}</> : <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</>}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={onOpen}>
+                      {status === "not-scheduled" ? <><Clock className="h-3.5 w-3.5 mr-1" />{t("detail.schedule")}</> : <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</>}
+                    </Button>
+                    {status === "scheduled" && onComplete && (
+                      <Button size="sm" onClick={onComplete}>
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{t("detail.complete")}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             );
@@ -1043,9 +1114,15 @@ export default function LeaseDetail() {
 
                 {/* Move-Out column */}
                 <Card className="flex flex-col">
-                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, openMoveOutForm)}</CardHeader>
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm(), () => openMoveOutForm())}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
+                    {moveOutStatus === "not-scheduled" ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide min-h-[1.25rem]">{t("detail.checklist")}</p>
+                        <p className="text-sm text-muted-foreground italic">{t("detail.moveOut.checklistGated")}</p>
+                      </div>
+                    ) : (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide min-h-[1.25rem]">{t("detail.checklist")}</p>
                       {Array.from({ length: maxLen }).map((_, i) => {
@@ -1065,6 +1142,7 @@ export default function LeaseDetail() {
                         );
                       })}
                     </div>
+                    )}
                     {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
                   </CardContent>
                 </Card>
@@ -1396,6 +1474,7 @@ export default function LeaseDetail() {
           <DialogHeader><DialogTitle>{t("leaseDialog.moveOut")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
+            <div><Label>{t("detail.actual")}</Label><Input type="date" value={moActualDate} onChange={e => setMoActualDate(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
               <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
