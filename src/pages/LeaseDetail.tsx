@@ -1399,15 +1399,22 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base font-medium text-left">{t("common.notes")}</CardTitle>
-          <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
-            <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
+              <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNotesOpen(o => !o)} aria-label="Toggle section">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", notesOpen ? "" : "-rotate-90")} />
+            </Button>
+          </div>
         </CardHeader>
+        {notesOpen && (
         <CardContent>
           {lease.notes
             ? <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lease.notes}</p>
             : <p className="text-sm text-muted-foreground italic">—</p>}
         </CardContent>
+        )}
       </Card>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
