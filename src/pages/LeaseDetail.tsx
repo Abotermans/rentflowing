@@ -613,6 +613,14 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {lease.lifecycleStage === "draft" && (() => {
+              const check = canSendForSignature(lease.id, integrityState);
+              return (
+                <Button onClick={() => handleSendForSignature()} size="sm" className="h-9" disabled={!check.allowed}>
+                  <FileSignature className="h-4 w-4 mr-1" />{t("lease.sendForSignature")}
+                </Button>
+              );
+            })()}
             {lease.lifecycleStage !== "draft" && lease.lifecycleStage !== "pending-signature" && (
               <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
             )}
