@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, FileEdit, Eye, Trash2, AlertTriangle, Undo2 } from "lucide-react";
+import { Plus, FileEdit, Eye, Trash2, AlertTriangle, Undo2, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
@@ -37,6 +38,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
   const lease = leases.find(l => l.id === leaseId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LeaseAmendment | null>(null);
+  const [sectionOpen, setSectionOpen] = useState(true);
 
   useEffect(() => {
     if (newAmendmentSignal && newAmendmentSignal > 0) {
@@ -178,10 +180,16 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
         <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
           {t("amendments.title")} <span className="text-muted-foreground">({ams.length})</span>
         </CardTitle>
-        <Button size="sm" className="h-8" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" />{t("amendments.add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" className="h-8" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" />{t("amendments.add")}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
+            <ChevronDown className={cn("h-4 w-4 transition-transform", sectionOpen ? "" : "-rotate-90")} />
+          </Button>
+        </div>
       </CardHeader>
+      {sectionOpen && (
       <CardContent>
         <Tabs defaultValue="timeline" className="w-full">
           <TabsList className="h-8">
