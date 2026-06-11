@@ -628,7 +628,7 @@ export default function LeaseDetail() {
         </Alert>
       )}
       {!guarantee && lease.depositOrGuaranteeAmount && lease.depositOrGuaranteeAmount > 0 && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="flex items-center">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             {t("leaseDetail.noGuaranteeBanner").replace("{amount}", formatCurrency(lease.depositOrGuaranteeAmount, currency, locale))}
