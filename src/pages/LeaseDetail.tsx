@@ -571,8 +571,30 @@ export default function LeaseDetail() {
     setMoveOutSheetOpen(false);
   };
 
-  const toggleMoveInChecklist = (key: keyof MoveInChecklist) => { updateLease({ ...lease, moveInChecklist: { ...lease.moveInChecklist, [key]: !lease.moveInChecklist[key] } }); };
-  const toggleMoveOutChecklist = (key: keyof MoveOutChecklist) => { updateLease({ ...lease, moveOutChecklist: { ...lease.moveOutChecklist, [key]: !lease.moveOutChecklist[key] } }); };
+  const toggleMoveInChecklist = (key: keyof MoveInChecklist) => {
+    const nextValue = !lease.moveInChecklist[key];
+    const nextChecklist = { ...lease.moveInChecklist, [key]: nextValue };
+    // If unchecking while move-in was completed, revert status to "scheduled"
+    // by clearing the actual move-in date.
+    const shouldRevert = !nextValue && !!lease.moveInActualDate;
+    updateLease({
+      ...lease,
+      moveInChecklist: nextChecklist,
+      ...(shouldRevert ? { moveInActualDate: "" } : {}),
+    });
+  };
+  const toggleMoveOutChecklist = (key: keyof MoveOutChecklist) => {
+    const nextValue = !lease.moveOutChecklist[key];
+    const nextChecklist = { ...lease.moveOutChecklist, [key]: nextValue };
+    // If unchecking while move-out was completed, revert status to "scheduled"
+    // by clearing the actual move-out date.
+    const shouldRevert = !nextValue && !!lease.moveOutActualDate;
+    updateLease({
+      ...lease,
+      moveOutChecklist: nextChecklist,
+      ...(shouldRevert ? { moveOutActualDate: "" } : {}),
+    });
+  };
 
   const openReturnForm = () => { setRetStatus(lease.returnStatus || "pending"); setRetNotes(lease.returnNotes); setReturnSheetOpen(true); };
   const handleSaveReturn = () => { updateLease({ ...lease, returnStatus: retStatus, returnNotes: retNotes }); toast({ title: t("leaseToast.returnStatusUpdated") }); setReturnSheetOpen(false); };
@@ -1292,7 +1314,6 @@ export default function LeaseDetail() {
                             <Checkbox
                               checked={lease.moveInChecklist[key]}
                               onCheckedChange={() => toggleMoveInChecklist(key)}
-                              disabled={moveInStatus === "completed"}
                             />
                             <span className={`text-sm ${lease.moveInChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
                               {t(MOVE_IN_CHECKLIST_KEY[key])}
@@ -1325,7 +1346,6 @@ export default function LeaseDetail() {
                             <Checkbox
                               checked={lease.moveOutChecklist[key]}
                               onCheckedChange={() => toggleMoveOutChecklist(key)}
-                              disabled={moveOutStatus === "completed"}
                             />
                             <span className={`text-sm ${lease.moveOutChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
                               {t(MOVE_OUT_CHECKLIST_KEY[key])}
