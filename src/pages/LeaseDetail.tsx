@@ -1114,9 +1114,15 @@ export default function LeaseDetail() {
 
                 {/* Move-Out column */}
                 <Card className="flex flex-col">
-                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, openMoveOutForm)}</CardHeader>
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm(), () => openMoveOutForm())}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
+                    {moveOutStatus === "not-scheduled" ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide min-h-[1.25rem]">{t("detail.checklist")}</p>
+                        <p className="text-sm text-muted-foreground italic">{t("detail.moveOut.checklistGated")}</p>
+                      </div>
+                    ) : (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide min-h-[1.25rem]">{t("detail.checklist")}</p>
                       {Array.from({ length: maxLen }).map((_, i) => {
@@ -1136,6 +1142,7 @@ export default function LeaseDetail() {
                         );
                       })}
                     </div>
+                    )}
                     {lease.moveOutNotes && <div><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{lease.moveOutNotes}</p></div>}
                   </CardContent>
                 </Card>
