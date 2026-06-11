@@ -1,114 +1,89 @@
-# Flatten tenants & units — remove the "primary" concept
-
 ## Goal
 
-Every tenant on a lease is equal. Every unit on a lease is equal. The only structural rules are:
-- A lease must always have **at least one tenant**.
-- A lease must always have **at least one unit**.
-- Anyone (any tenant, any unit) can be added or removed via amendment, as long as those two minimums hold.
-- One tenant on each lease is designated as the **billing tenant** purely for invoicing — freely swappable, no legal weight, must always point to a tenant that is on the lease.
+Make the lease lifecycle reflect the real-world contract flow:
 
-Occupancy KPIs stop relying on a "primary unit" flag and instead use the `assignmentType` already stored on every assignment (`primary` / `ancillary` / `parking` / `storage`). The word "primary" stays only as one possible assignment type label (the main residential/commercial unit) — it no longer means "the one and only main".
+```text
+draft → pending-signature → signed → active → ended
+                       ↑                ↘
+                       └── cancel        terminated (manual)
+```
 
----
+Status changes happen automatically based on dates; the user only triggers the contractual milestones (send for signature, mark signed, cancel back to draft, terminate, manage move-out after ended).
 
-## Data model changes
+## Lifecycle changes
 
-### `leases` table
-- Drop `primary_tenant_id` (single FK).
-- Drop `co_tenant_ids` (JSON array).
-- Add `tenant_ids jsonb NOT NULL DEFAULT '[]'` — flat list of tenant UUIDs (size ≥ 1 enforced app-side).
-- Add `billing_tenant_id uuid` — must be one of `tenant_ids` (enforced app-side and via amendment integrity).
-- Drop `unit_id` (legacy single-unit FK that today mirrors the primary assignment).
+Extend `LifecycleStage` in `src/types/index.ts`:
 
-### `lease_unit_assignments` table
-- Drop `is_primary` column.
-- Keep `assignment_type` (already present) as the sole role marker.
+- `draft` — being edited; minimal validation; no operational actions.
+- `pending-signature` (new) — finalized contract sent to tenants for signature.
+- `signed` (new) — signed but start date not yet reached.
+- `active` — start date ≤ today ≤ end date (auto-promoted from `signed`).
+- `ended` — end date passed naturally OR user marked ended. Contract no longer renews, but operational tasks (move-out, guarantee release, charges reconciliation, final receipts/adjustments) remain open.
+- `terminated` — early termination (unchanged).
 
-### Backfill migration
-- `tenant_ids` ← `array(primary_tenant_id) || co_tenant_ids`.
-- `billing_tenant_id` ← old `primary_tenant_id`.
-- No data loss on `assignment_type` (already populated).
+Update `getLeaseStatus()` to keep its current display logic and add `pending-signature` / `signed`. `under-notice` and `overdue-end` remain display-only overlays.
 
----
+### Auto-transition rules (lib helper `advanceLeaseLifecycle`)
 
-## TypeScript model
+Pure function, run on lease load / mutation:
 
-`src/types/index.ts`
-- `Lease.tenantIds: string[]` (replaces `primaryTenantId` + `coTenantIds`).
-- `Lease.billingTenantId: string` (replaces the billing semantics carried by `primaryTenantId`).
-- Remove `Lease.unitId`.
-- Remove `LeaseUnitAssignment.isPrimary`.
+- `signed` + `startDate ≤ today` → `active`
+- `active` + `endDate < today` → `ended` (keep notice/move-out data intact)
 
----
+Apply via the existing `loadPortfolio` hydration and on lease updates so the UI is always consistent without a cron.
 
-## Lease creation (`src/pages/Leases.tsx`)
+### Manual transitions / actions per stage
 
-- Tenant section becomes a single repeatable list (no "primary" vs "co-tenant" split). At least one row required.
-- Add a "Billing tenant" picker next to the list; defaults to the first tenant added, freely changeable.
-- Unit section keeps the rows but the "Primary?" radio is removed; user just picks an `assignmentType` per row (primary / ancillary / parking / storage). Multiple `primary`-type rows are allowed. At least one row required.
-- Validation toasts:
-  - "At least one tenant is required."
-  - "At least one unit is required."
-  - "Billing tenant must be one of the lease tenants."
+| Stage              | Allowed transitions                       | Primary buttons                                       |
+| ------------------ | ----------------------------------------- | ----------------------------------------------------- |
+| draft              | → pending-signature                       | "Send for signature" (replaces "Activate")            |
+| pending-signature  | → draft (cancel), → signed                | "Mark signed", "Cancel back to draft"                 |
+| signed             | → active (auto), → terminated             | (waits for start date)                                |
+| active             | → ended, → terminated, renew              | as today                                              |
+| ended              | → terminated (only if not fully closed)   | move-out, guarantee release, reconciliation actions   |
+| terminated         | terminal                                  | move-out, guarantee release, reconciliation actions   |
 
-## Amendments (`src/components/amendments/AmendmentDialog.tsx`, `src/lib/amendments.ts`)
+Update `ALLOWED_TRANSITIONS` in `src/pages/Leases.tsx` accordingly.
 
-- Single "Tenants" section listing every tenant on the lease with a Remove button on each row (no special-cased primary).
-- Add a "Billing tenant" amendment field (dropdown of remaining tenants after the simulated changes).
-- Single "Units" section listing every assigned unit with a Remove button on each row (no special-cased primary). `assignmentType` becomes the only role displayed.
-- Drop the `primaryUnitId` amendment field entirely.
+### Action gating
 
-## Integrity layer (`src/lib/integrity/`)
+Currently the "Record cash receipt" and "Register notice" buttons are always visible (header in `LeaseDetail.tsx` lines 578-585). New rules:
 
-- `leaseIntegrity.ts`: replace `LEASE_NO_TENANT` (checking `primaryTenantId`) with `LEASE_NO_TENANTS` (checking `tenantIds.length > 0`). Replace `LEASE_NO_PRIMARY_UNIT` with the existing `LEASE_NO_UNITS` only.
-- `leaseUnitAssignmentIntegrity.ts`: remove `LUA_NO_PRIMARY` and `LUA_MULTIPLE_PRIMARY`. Keep `LUA_NO_UNITS`.
-- `amendmentIntegrity.ts`: remove `AMD_NO_PRIMARY_LEFT`, `AMD_MULTIPLE_PRIMARIES`, `AMD_PRIMARY_CHANGE`. Add `AMD_NO_TENANTS_LEFT` (blocker when simulated `tenantIds.length === 0`) and `AMD_BILLING_TENANT_REMOVED` (blocker when the simulated `billingTenantId` is no longer in `tenantIds` and no replacement is set in the same amendment).
-- `tenantIntegrity.ts`: switch every `primaryTenantId || coTenantIds.includes()` check to `tenantIds.includes()`.
+- **Record cash receipt**: hidden when stage is `draft` or `pending-signature`. Visible from `signed` onward (including `ended` / `terminated` so leftover balances can be settled).
+- **Register notice**: hidden when stage is `draft` or `pending-signature`. Visible on `signed` and `active` (today's behavior plus `signed`).
+- **Move-out, guarantee, reconciliation, amendments**: remain available on `ended` and `terminated` (already true for most; verify the `lease.lifecycleStage !== "active"` checks in `LeaseDetail.tsx` lines 580 & 695 don't hide them inappropriately — relax to "not draft / pending-signature").
 
-## Receivables & cash receipts
+### Activation validations
 
-- `src/lib/leaseReceivables.ts`, `src/context/AppContext.tsx` (`generateReceivablesForLease`, advance cycles), `src/pages/LeaseDetail.tsx` (cash receipt creation): switch `tenantId: lease.primaryTenantId` to `tenantId: lease.billingTenantId`.
-- When `billingTenantId` changes via amendment activation, **existing** receivables/receipts are not retroactively reattributed (audit trail preserved); only newly generated ones use the new billing tenant.
+`canActivateLease()` in `leaseIntegrity.ts` becomes the validator for the `draft → pending-signature` transition (rename internally to `canSendForSignature`, keep the structural checks: ≥1 tenant, ≥1 unit, property/unit consistency, no overlap).
 
-## Tenant status reconciliation (`src/context/AppContext.tsx`)
+- Drop the `LEASE_UNSIGNED` warning (line 80) — signing is the next stage, not a warning on draft.
+- Add a new `canMarkSigned()` validator: requires `signedDate` to be set (prompt the user in a small dialog when they click "Mark signed", default = today).
 
-- `reconcileTenantStatuses` scans `lease.tenantIds` instead of `[primaryTenantId, ...coTenantIds]`. All call sites (`addLease`, `updateLease`, `confirmMoveOut`, `activateAmendment`) updated accordingly.
-- `getLeasesByTenant` filter becomes `l.tenantIds.includes(tenantId)`.
+`canChangeLeaseStatus()`: extend switch with cases for `pending-signature` and `signed`. `terminated` becomes reachable from `signed`, `active`, and `ended` (with warnings for residual open items).
 
-## Occupancy KPIs
+### "Cancel" from pending-signature
 
-- `src/pages/Dashboard.tsx`, `src/context/AppContext.tsx` (`getPropertyStats`), `src/pages/Reports.tsx`, `src/lib/occupancy.ts`:
-  - "Occupied" = there is an active assignment whose `assignmentType === 'primary'` **or** whose unit type is not in `ANCILLARY_UNIT_TYPES`.
-  - "Ancillary leased" = active assignment whose `assignmentType` is in `ANCILLARY_ASSIGNMENT_TYPES` or whose unit type is in `ANCILLARY_UNIT_TYPES`.
-  - Occupancy-rate denominator continues to exclude ancillary units.
-  - No code path requires "exactly one primary" anymore.
+New action `cancelSignature()` that sets `lifecycleStage = "draft"` and clears `signedDate`. No data loss otherwise. Confirmation dialog.
 
-## Display
+## UI changes
 
-- Lease list, LeaseDetail, AmendmentsSection: sort assignments by `assignmentType` (primary → ancillary → parking → storage) instead of by `isPrimary`. Show `assignmentType` as the badge.
-- LeaseDetail tenant section: list every tenant equally; mark the `billingTenantId` with a small "Billing" chip.
-- Dashboard overdue tenants: aggregate by `billingTenantId` (the entity actually receiving the invoice).
+- `src/types/index.ts`: extend `LifecycleStage`, `LeaseStatus`, update `getLeaseStatus()`.
+- `src/components/shared/StatusBadge.tsx`: add color + i18n keys for `pending-signature` and `signed` (e.g. amber and blue).
+- `src/i18n/translations.ts`: add status labels EN/FR plus new action labels ("Send for signature", "Mark signed", "Cancel signature").
+- `src/pages/LeaseDetail.tsx`:
+  - Replace "Activate" dropdown item with stage-appropriate primary action ("Send for signature" on draft, "Mark signed" on pending-signature, "Cancel back to draft" on pending-signature).
+  - Gate header buttons (cash receipt, notice) on stage.
+  - Replace the activation blocker panel block (lines 638-644) so it shows for both `draft` (against `canSendForSignature`) and `pending-signature` (against `canMarkSigned`), without the unsigned warning.
+- `src/pages/Leases.tsx`: update `ALLOWED_TRANSITIONS`, filter chips (add the two new statuses), and the status select inside the lease form dialog.
+- `src/lib/repo/index.ts`: call `advanceLeaseLifecycle` on hydrate so leases auto-roll to `active`/`ended` whenever the app loads.
 
-## `lib/leaseAssignments.ts`
+## Database
 
-- Remove `getPrimaryAssignment` and `getPrimaryLeaseUnit`.
-- `getAncillaryLeaseUnits` → filter by `assignmentType` membership instead of `!isPrimary`.
-- `getActiveLeaseForUnit` tie-breaker: prefer the assignment whose `assignmentType === 'primary'`, otherwise pick the earliest start date.
-- `migrateLegacyLeaseAssignments`: stop seeding `isPrimary`; backfill `assignmentType` from the legacy `lease.unitId` only during the one-shot migration, then this helper can be deleted.
-
----
-
-## Migration order (so the app keeps building between steps)
-
-1. DB migration: add `tenant_ids`, `billing_tenant_id`; backfill from existing columns. Keep old columns for one deploy.
-2. App code: switch all reads/writes to the new fields, remove `isPrimary` usages, update integrity layer, update UI.
-3. DB migration: drop `primary_tenant_id`, `co_tenant_ids`, `lease_unit_assignments.is_primary`, `leases.unit_id`.
-
----
+Add a migration that widens the `leases.lifecycle_stage` text values (no enum today — it's a free string column per current schema, to verify). No data backfill needed since existing rows keep their `draft`/`active`/`ended`/`terminated` values. If a CHECK constraint exists, expand it to include `pending-signature` and `signed`.
 
 ## Out of scope
 
-- No change to cost allocation logic (it already operates on `rentShare` / `chargesShare` per unit, not on `isPrimary`).
-- No change to amendment versioning / activation flow itself — only the set of fields it can carry changes.
-- Historical receivables/receipts are not rewritten when `billingTenantId` changes.
+- Background scheduler for date-driven transitions (we recompute on read, which is sufficient for an interactive app).
+- Changing how amendments, receivables, or move-out flows themselves work.
+- New columns; `signedDate` already exists and is reused.

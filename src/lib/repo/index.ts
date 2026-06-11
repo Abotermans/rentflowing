@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Property, Unit, Tenant, Lease, Guarantee, LeaseUnitAssignment } from "@/types";
+import { Property, Unit, Tenant, Lease, Guarantee, LeaseUnitAssignment, advanceLeaseLifecycle } from "@/types";
 import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
 import type { ReceivableItem, CashReceipt, ReceiptAllocation } from "@/types/receivables";
 import type { MaintenanceTicket, Vendor } from "@/types/maintenance";
@@ -185,7 +185,8 @@ export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnaps
     listAll<ChargesReconciliation>(TABLES.chargesReconciliations, portfolioId),
   ]);
   const hydratedAssignments = leaseUnitAssignments.map(hydrateAssignment);
-  const hydratedLeases = leases.map(l => hydrateLease(l, hydratedAssignments));
+  const today = new Date().toISOString().slice(0, 10);
+  const hydratedLeases = leases.map(l => advanceLeaseLifecycle(hydrateLease(l, hydratedAssignments), today));
   return {
     properties, units, tenants,
     leases: hydratedLeases,

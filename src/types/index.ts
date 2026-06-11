@@ -78,7 +78,13 @@ export function getTenantFullName(t: Tenant): string {
   return `${t.firstName} ${t.lastName}`;
 }
 
-export type LifecycleStage = "draft" | "active" | "ended" | "terminated";
+export type LifecycleStage =
+  | "draft"
+  | "pending-signature"
+  | "signed"
+  | "active"
+  | "ended"
+  | "terminated";
 
 // ===== Lease ↔ Unit assignment (multi-unit leases) =====
 // A lease is a contract-level container that can cover several units of the
@@ -323,10 +329,20 @@ export interface Lease {
   updatedAt: string;
 }
 
-export type LeaseStatus = "draft" | "active" | "under-notice" | "overdue-end" | "ended" | "terminated";
+export type LeaseStatus =
+  | "draft"
+  | "pending-signature"
+  | "signed"
+  | "active"
+  | "under-notice"
+  | "overdue-end"
+  | "ended"
+  | "terminated";
 
 export function getLeaseStatus(lease: Lease): LeaseStatus {
   if (lease.lifecycleStage === "draft") return "draft";
+  if (lease.lifecycleStage === "pending-signature") return "pending-signature";
+  if (lease.lifecycleStage === "signed") return "signed";
   if (lease.lifecycleStage === "ended") return "ended";
   if (lease.lifecycleStage === "terminated") return "terminated";
   // active lease
@@ -336,6 +352,25 @@ export function getLeaseStatus(lease: Lease): LeaseStatus {
   const todayISO = today.toISOString().slice(0, 10);
   if (lease.endDate < todayISO) return "overdue-end";
   return "active";
+}
+
+/**
+ * Auto-advance a lease's lifecycle based on dates:
+ *   signed + startDate ≤ today  → active
+ *   active + endDate   < today  → ended
+ * Operational data (notice, move-out, guarantees, …) is left untouched.
+ * Pure: returns a new lease only when the stage actually changes, otherwise
+ * returns the original reference.
+ */
+export function advanceLeaseLifecycle(lease: Lease, todayISO?: string): Lease {
+  const today = todayISO ?? new Date().toISOString().slice(0, 10);
+  if (lease.lifecycleStage === "signed" && lease.startDate && lease.startDate <= today) {
+    return { ...lease, lifecycleStage: "active" };
+  }
+  if (lease.lifecycleStage === "active" && lease.endDate && lease.endDate < today) {
+    return { ...lease, lifecycleStage: "ended", endReason: lease.endReason ?? "natural-expiry" };
+  }
+  return lease;
 }
 
 export type MoveInStatus = "not-scheduled" | "scheduled" | "completed";

@@ -30,7 +30,7 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canChangeLeaseStatus, canActivateLease, canRenewLease } from "@/lib/integrity/leaseIntegrity";
+import { canChangeLeaseStatus, canActivateLease, canRenewLease, canSendForSignature, canMarkSigned } from "@/lib/integrity/leaseIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
@@ -317,6 +317,43 @@ export default function LeaseDetail() {
     }
   };
 
+  // ===== Lifecycle: signature flow =====
+  const [signDialogOpen, setSignDialogOpen] = useState(false);
+  const [signDateInput, setSignDateInput] = useState<string>(today);
+
+  const handleSendForSignature = () => {
+    const validation = canSendForSignature(lease.id, integrityState);
+    if (!validation.allowed) {
+      toast({ title: t("leaseToast.cannotActivate"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      return;
+    }
+    updateLease({ ...lease, lifecycleStage: "pending-signature" });
+    toast({ title: t("lease.toastSentForSignature") });
+  };
+
+  const openMarkSignedDialog = () => {
+    setSignDateInput(lease.signedDate ?? today);
+    setSignDialogOpen(true);
+  };
+
+  const handleMarkSigned = () => {
+    if (!signDateInput) {
+      toast({ title: t("common.validationError"), description: t("lease.signedDateRequired"), variant: "destructive" });
+      return;
+    }
+    const stage: typeof lease.lifecycleStage =
+      (lease.startDate && lease.startDate <= today) ? "active" : "signed";
+    const next = { ...lease, signedDate: signDateInput, lifecycleStage: stage };
+    updateLease(next);
+    toast({ title: t("lease.toastSigned") });
+    setSignDialogOpen(false);
+  };
+
+  const handleCancelSignature = () => {
+    updateLease({ ...lease, lifecycleStage: "draft", signedDate: null });
+    toast({ title: t("lease.toastCanceledSignature") });
+  };
+
   const openEndDialog = () => {
     setEndDateInput(lease.moveOutActualDate ?? lease.intendedMoveOutDate ?? lease.endDate ?? today);
     setEndReasonInput(lease.noticeGiven ? "notice-completed" : "natural-expiry");
@@ -576,8 +613,10 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
-            {(lease.lifecycleStage === "active" || lease.lifecycleStage === "draft") && !lease.noticeGiven && (
+            {lease.lifecycleStage !== "draft" && lease.lifecycleStage !== "pending-signature" && (
+              <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
+            )}
+            {(lease.lifecycleStage === "active" || lease.lifecycleStage === "signed") && !lease.noticeGiven && (
               <Button variant="outline" size="sm" className="h-9" onClick={openNoticeForm}>
                 <Bell className="h-4 w-4 mr-1" />
                 {t("detail.registerNotice")}
@@ -591,11 +630,34 @@ export default function LeaseDetail() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 {lease.lifecycleStage === "draft" && (() => {
-                  const activationCheck = canActivateLease(lease.id, integrityState);
+                  const check = canSendForSignature(lease.id, integrityState);
                   return (
-                    <DropdownMenuItem onSelect={() => handleActivateLease()} disabled={!activationCheck.allowed}>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />{t("leaseDetail.activateLease")}
+                    <DropdownMenuItem onSelect={() => handleSendForSignature()} disabled={!check.allowed}>
+                      <Bell className="h-4 w-4 mr-2" />{t("lease.sendForSignature")}
                     </DropdownMenuItem>
+                  );
+                })()}
+                {lease.lifecycleStage === "pending-signature" && (
+                  <>
+                    <DropdownMenuItem onSelect={() => openMarkSignedDialog()}>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />{t("lease.markSigned")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleCancelSignature()}>
+                      <Undo2 className="h-4 w-4 mr-2" />{t("lease.cancelSignature")}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {lease.lifecycleStage === "signed" && (() => {
+                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
+                  return (
+                    <>
+                      <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
+                        <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
                   );
                 })()}
                 {lease.lifecycleStage === "active" && (() => {
@@ -611,6 +673,18 @@ export default function LeaseDetail() {
                       <DropdownMenuItem onSelect={() => handleMarkEnded()} disabled={endDisabled}>
                         <CheckCircle2 className="h-4 w-4 mr-2" />{t("detail.markEnded")}
                       </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
+                        <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  );
+                })()}
+                {lease.lifecycleStage === "ended" && (() => {
+                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
+                  return (
+                    <>
                       <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
                         <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
                       </DropdownMenuItem>
@@ -635,11 +709,13 @@ export default function LeaseDetail() {
         </div>
       </div>
 
-      {/* Activation Blocker Panel (draft leases) */}
-      {lease.lifecycleStage === "draft" && (() => {
-        const activationCheck = canActivateLease(lease.id, integrityState);
-        return (activationCheck.blockers.length > 0 || activationCheck.warnings.length > 0) ? (
-          <StatusTransitionAlert validation={activationCheck} />
+      {/* Activation Blocker Panel (draft / pending-signature) */}
+      {(lease.lifecycleStage === "draft" || lease.lifecycleStage === "pending-signature") && (() => {
+        const check = lease.lifecycleStage === "draft"
+          ? canSendForSignature(lease.id, integrityState)
+          : canMarkSigned(lease.id, integrityState);
+        return (check.blockers.length > 0 || check.warnings.length > 0) ? (
+          <StatusTransitionAlert validation={check} />
         ) : null;
       })()}
 
@@ -1715,6 +1791,20 @@ export default function LeaseDetail() {
             <div><Label>{t("lease.renewDialog.newRent")}</Label><Input type="number" step="0.01" value={renewNewRent} onChange={e => setRenewNewRent(e.target.value)} placeholder={String(lease.monthlyRent)} /></div>
             <div><Label>{t("lease.renewDialog.newCharges")}</Label><Input type="number" step="0.01" value={renewNewCharges} onChange={e => setRenewNewCharges(e.target.value)} placeholder={String(lease.monthlyCharges)} /></div>
             <Button className="w-full" onClick={handleRenewLease} disabled={!renewNewEndDate}>{t("lease.renewDialog.confirm")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark Signed dialog */}
+      <Dialog open={signDialogOpen} onOpenChange={setSignDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{t("lease.markSigned")}</DialogTitle></DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div>
+              <Label>{t("leases.signedDate")}</Label>
+              <Input type="date" value={signDateInput} onChange={e => setSignDateInput(e.target.value)} />
+            </div>
+            <Button className="w-full" onClick={handleMarkSigned} disabled={!signDateInput}>{t("lease.markSigned")}</Button>
           </div>
         </DialogContent>
       </Dialog>
