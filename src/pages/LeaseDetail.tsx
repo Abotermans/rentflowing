@@ -1054,7 +1054,7 @@ export default function LeaseDetail() {
             const moDisplay = MOVE_STATUS_DISPLAY[moveOutStatus];
             const MiIcon = miDisplay.icon;
             const MoIcon = moDisplay.icon;
-            const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void) => (
+            const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void) => (
               <div className="flex items-center justify-between gap-2 min-h-[2rem]">
                 <div className="flex items-center gap-1.5 text-base font-medium">
                   {label}
@@ -1064,9 +1064,16 @@ export default function LeaseDetail() {
                   </span>
                 </div>
                 {status !== "completed" && (
-                  <Button variant="outline" size="sm" onClick={onOpen}>
-                    {status === "not-scheduled" ? <><Clock className="h-3.5 w-3.5 mr-1" />{t("detail.schedule")}</> : <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</>}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={onOpen}>
+                      {status === "not-scheduled" ? <><Clock className="h-3.5 w-3.5 mr-1" />{t("detail.schedule")}</> : <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</>}
+                    </Button>
+                    {status === "scheduled" && onComplete && (
+                      <Button size="sm" onClick={onComplete}>
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />{t("detail.complete")}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             );
