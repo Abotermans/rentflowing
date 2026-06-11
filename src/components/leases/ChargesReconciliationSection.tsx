@@ -113,6 +113,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                   {l.recoveryType === "partially-recoverable" && t("reconciliation.overview.bearer.mix" as never)}
                   {l.recoveryType === "informational" && t("reconciliation.overview.bearer.informational" as never)}
                 </TableCell>
+                <TableCell className="text-xs text-right">{formatCurrency(l.allocatedAmount, currency, locale)}</TableCell>
                 <TableCell className="text-xs text-right">{formatCurrency(l.recoverableAmount, currency, locale)}</TableCell>
                 <TableCell className="text-xs text-right">{l.overlapDays}/{l.totalDays} ({Math.round(l.proRataFactor * 100)}%)</TableCell>
                 <TableCell className="text-xs text-right font-medium">
