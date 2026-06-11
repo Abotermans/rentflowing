@@ -615,6 +615,11 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {lease.lifecycleStage === "draft" && (
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setEditDialogOpen(true)}>
+                <Pencil className="h-4 w-4 mr-1" />{t("action.edit")}
+              </Button>
+            )}
             {lease.lifecycleStage === "draft" && (() => {
               const check = canSendForSignature(lease.id, integrityState);
               return (
