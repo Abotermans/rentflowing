@@ -692,7 +692,7 @@ export default function Leases() {
               {unitRows.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic px-3 py-4 text-center">{t("leases.units.empty")}</p>
               ) : (
-                <Table className="w-auto [&_th]:px-2 [&_td]:px-2">
+                <Table className="w-full [&_th]:px-2 [&_td]:px-2">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
@@ -712,7 +712,7 @@ export default function Leases() {
                         <TableRow key={idx}>
                           <TableCell className="py-1.5">
                             <Select value={row.unitId} onValueChange={v => updateUnitRow(idx, { unitId: v })}>
-                              <SelectTrigger className="h-8 w-auto min-w-[140px]"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
+                              <SelectTrigger className="h-8 w-full min-w-[140px]"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                               <SelectContent>
                                 {options.map(u => {
                                   const existing = getActiveLease(u.id);
@@ -728,7 +728,7 @@ export default function Leases() {
                           </TableCell>
                           <TableCell className="py-1.5">
                             <Select value={row.assignmentType} onValueChange={v => setRoleForRow(idx, v as LeaseUnitAssignmentType)}>
-                              <SelectTrigger className="h-8 w-auto min-w-[90px]"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-8 w-full min-w-[90px]"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {(["primary","parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
                                   <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
