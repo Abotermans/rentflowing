@@ -620,7 +620,7 @@ export default function LeaseDetail() {
 
       {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
-        <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
+        <Alert className="flex items-center border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
           <Clock className="h-4 w-4" />
           <AlertDescription>
             {t("leaseDetail.guaranteeBannerPrefix")} <strong>{t("guarantee.waiting")}</strong>. {t("leaseDetail.guaranteeBannerExpected")}: {formatCurrency(guarantee.expectedAmount, currency, locale)}, {t("leaseDetail.guaranteeBannerReceived")}: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
