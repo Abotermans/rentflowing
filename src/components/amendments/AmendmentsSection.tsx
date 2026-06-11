@@ -66,28 +66,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
     return tn ? `${tn.firstName} ${tn.lastName}` : id;
   };
 
-  const renderTerms = (terms: NonNullable<typeof current>) => (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-      <div><p className="text-xs text-muted-foreground">Rent</p><p className="font-medium">{formatCurrency(terms.monthlyRent, currency, locale)}</p></div>
-      <div><p className="text-xs text-muted-foreground">Charges</p><p className="font-medium">{formatCurrency(terms.monthlyCharges, currency, locale)}</p></div>
-      <div><p className="text-xs text-muted-foreground">End date</p><p className="font-medium">{formatDate(terms.endDate, locale)}</p></div>
-      <div><p className="text-xs text-muted-foreground">Deposit</p><p className="font-medium">{terms.depositAmount != null ? formatCurrency(terms.depositAmount, currency, locale) : "—"}</p></div>
-      <div><p className="text-xs text-muted-foreground">Notice</p><p className="font-medium">{terms.noticePeriodText || "—"}</p></div>
-      <div><p className="text-xs text-muted-foreground">Primary tenant</p><p className="font-medium">{tenantLabel(terms.primaryTenantId)}</p></div>
-      <div className="col-span-2 md:col-span-3">
-        <p className="text-xs text-muted-foreground mb-1">Units</p>
-        <div className="flex flex-wrap gap-1">
-          {terms.units.map(u => (
-            <Badge key={u.unitId} variant={u.isPrimary ? "default" : "secondary"}>
-              {unitLabel(u.unitId)} · {formatCurrency(u.rentShare, currency, locale)}
-            </Badge>
-          ))}
-          {terms.units.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
-        </div>
-      </div>
-    </div>
-  );
-
   const openEdit = (a: LeaseAmendment) => { setEditing(a); setDialogOpen(true); };
 
   const renderTermsAsList = (terms: NonNullable<typeof current>) => {
@@ -196,7 +174,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
         <Tabs defaultValue="timeline" className="w-full">
           <TabsList className="h-8">
             <TabsTrigger value="timeline" className="text-xs">{t("amendments.timeline")}</TabsTrigger>
-            <TabsTrigger value="current" className="text-xs">{t("amendments.currentTerms")}</TabsTrigger>
             <TabsTrigger value="original" className="text-xs">{t("amendments.originalTerms")}</TabsTrigger>
           </TabsList>
 
@@ -337,31 +314,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
             )}
           </TabsContent>
 
-          <TabsContent value="current" className="pt-3">
-            {current && (() => {
-              const today = new Date().toISOString().slice(0, 10);
-              const activeApplied = ams
-                .filter(a => a.status === "active" && a.effectiveDate <= today)
-                .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate))[0];
-              return (
-                <div className="space-y-3">
-                  {activeApplied ? (
-                    <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <FileEdit className="h-3.5 w-3.5" />
-                      <span>
-                        {t("amendments.basedOn").replace("{n}", String(activeApplied.amendmentNumber))}
-                        {" · "}
-                        {t("amendments.effectiveDate")}: {formatDate(activeApplied.effectiveDate, locale)}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">{t("amendments.originalTerms")}</div>
-                  )}
-                  {renderTerms(current)}
-                </div>
-              );
-            })()}
-          </TabsContent>
+
 
           <TabsContent value="original" className="pt-3">
             {original && renderTermsAsList(original)}
