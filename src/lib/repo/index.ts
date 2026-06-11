@@ -16,7 +16,21 @@ const toCamel = (s: string) =>
 
 const SKIP_TO_ROW = new Set(["createdAt", "updatedAt"]);
 
-function toRow<T extends Record<string, any>>(obj: T, portfolioId?: string): Record<string, any> {
+/**
+ * Table-scoped legacy fields that exist on the in-memory model as compatibility
+ * shims (hydrated at load time) but are NOT real DB columns. They must be
+ * stripped from every write payload.
+ */
+const LEGACY_FIELDS_BY_TABLE: Partial<Record<SupabaseTable, ReadonlySet<string>>> = {
+  leases: new Set(["primary_tenant_id", "co_tenant_ids", "unit_id"]),
+  lease_unit_assignments: new Set(["is_primary"]),
+};
+
+function toRow<T extends Record<string, any>>(
+  obj: T,
+  portfolioId?: string,
+  table?: SupabaseTable,
+): Record<string, any> {
   const row: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (SKIP_TO_ROW.has(k)) continue;
@@ -24,6 +38,21 @@ function toRow<T extends Record<string, any>>(obj: T, portfolioId?: string): Rec
     row[toSnake(k)] = v;
   }
   if (portfolioId && !("portfolio_id" in row)) row.portfolio_id = portfolioId;
+  // Derive new-schema fields from legacy compatibility shims, then drop the
+  // legacy columns so we never try to persist them.
+  if (table === "leases") {
+    if (!("tenant_ids" in row) || row.tenant_ids == null) {
+      const tIds = [obj.primaryTenantId, ...(obj.coTenantIds ?? [])].filter(
+        (x: unknown): x is string => typeof x === "string" && x.length > 0,
+      );
+      if (tIds.length > 0) row.tenant_ids = tIds;
+    }
+    if (!("billing_tenant_id" in row) || row.billing_tenant_id == null) {
+      if (obj.primaryTenantId) row.billing_tenant_id = obj.primaryTenantId;
+    }
+  }
+  const legacy = table ? LEGACY_FIELDS_BY_TABLE[table] : undefined;
+  if (legacy) for (const k of legacy) delete row[k];
   return row;
 }
 
@@ -34,6 +63,35 @@ function fromRow<T = any>(row: Record<string, any>): T {
     obj[toCamel(k)] = v;
   }
   return obj as T;
+}
+
+/**
+ * Hydrate legacy compatibility shims on a loaded Lease row:
+ *   primaryTenantId ← billing_tenant_id ?? tenant_ids[0]
+ *   coTenantIds     ← tenant_ids minus primaryTenantId
+ *   unitId          ← first `primary` assignment, else first assignment
+ */
+function hydrateLease(lease: Lease, assignments: readonly LeaseUnitAssignment[]): Lease {
+  const tIds: string[] = Array.isArray(lease.tenantIds) ? lease.tenantIds as string[] : [];
+  const primaryTenantId: string =
+    (lease.billingTenantId as string | undefined) || tIds[0] || "";
+  const coTenantIds: string[] = tIds.filter(t => t !== primaryTenantId);
+  const my = assignments.filter(a => a.leaseId === lease.id);
+  const primaryAssignment =
+    my.find(a => a.assignmentType === "primary") ?? my[0];
+  return {
+    ...lease,
+    tenantIds: tIds,
+    billingTenantId: lease.billingTenantId ?? primaryTenantId,
+    primaryTenantId,
+    coTenantIds,
+    unitId: primaryAssignment?.unitId ?? "",
+  };
+}
+
+/** Hydrate compatibility `isPrimary` from `assignmentType === "primary"`. */
+function hydrateAssignment(a: LeaseUnitAssignment): LeaseUnitAssignment {
+  return { ...a, isPrimary: a.assignmentType === "primary" };
 }
 
 // ===== Table names =====
@@ -126,8 +184,13 @@ export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnaps
     listAll<CostAllocationResult>(TABLES.costAllocationResults, portfolioId),
     listAll<ChargesReconciliation>(TABLES.chargesReconciliations, portfolioId),
   ]);
+  const hydratedAssignments = leaseUnitAssignments.map(hydrateAssignment);
+  const hydratedLeases = leases.map(l => hydrateLease(l, hydratedAssignments));
   return {
-    properties, units, tenants, leases, guarantees, leaseUnitAssignments,
+    properties, units, tenants,
+    leases: hydratedLeases,
+    guarantees,
+    leaseUnitAssignments: hydratedAssignments,
     amendments, amendmentChanges,
     receivableItems, cashReceipts, allocations,
     tickets, vendors,
@@ -143,21 +206,21 @@ function logErr(label: string, err: any) {
 
 export const mirror = {
   insert<T extends Record<string, any>>(table: SupabaseTable, obj: T, portfolioId: string): void {
-    const row = toRow(obj, portfolioId);
+    const row = toRow(obj, portfolioId, table);
     void (supabase as any).from(table).insert(row).then(({ error }: any) => logErr(`insert ${table}`, error));
   },
   insertMany<T extends Record<string, any>>(table: SupabaseTable, objs: T[], portfolioId: string): void {
     if (objs.length === 0) return;
-    const rows = objs.map((o) => toRow(o, portfolioId));
+    const rows = objs.map((o) => toRow(o, portfolioId, table));
     void (supabase as any).from(table).insert(rows).then(({ error }: any) => logErr(`insertMany ${table}`, error));
   },
   upsertMany<T extends Record<string, any>>(table: SupabaseTable, objs: T[], portfolioId: string): void {
     if (objs.length === 0) return;
-    const rows = objs.map((o) => toRow(o, portfolioId));
+    const rows = objs.map((o) => toRow(o, portfolioId, table));
     void (supabase as any).from(table).upsert(rows).then(({ error }: any) => logErr(`upsertMany ${table}`, error));
   },
   update<T extends Record<string, any>>(table: SupabaseTable, id: string, obj: T): void {
-    const row = toRow(obj);
+    const row = toRow(obj, undefined, table);
     delete row.id;
     delete row.portfolio_id;
     void (supabase as any).from(table).update(row).eq("id", id).then(({ error }: any) => logErr(`update ${table}`, error));
