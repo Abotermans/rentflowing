@@ -341,11 +341,9 @@ export default function LeaseDetail() {
       toast({ title: t("common.validationError"), description: t("lease.signedDateRequired"), variant: "destructive" });
       return;
     }
-    const next = { ...lease, signedDate: signDateInput, lifecycleStage: "signed" as const };
-    // Auto-promote to active when start date is already in the past.
-    if (lease.startDate && lease.startDate <= today) {
-      next.lifecycleStage = "active";
-    }
+    const stage: typeof lease.lifecycleStage =
+      (lease.startDate && lease.startDate <= today) ? "active" : "signed";
+    const next = { ...lease, signedDate: signDateInput, lifecycleStage: stage };
     updateLease(next);
     toast({ title: t("lease.toastSigned") });
     setSignDialogOpen(false);
