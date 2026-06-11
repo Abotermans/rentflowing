@@ -245,7 +245,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
             </span>
           </CardTitle>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform", sectionOpen ? "" : "-rotate-90")} />
+            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
           </Button>
         </CardHeader>
         {sectionOpen && (
@@ -276,7 +276,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
               <Calculator className="h-3.5 w-3.5 mr-1" />{t("reconciliation.runButton")}
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", sectionOpen ? "" : "-rotate-90")} />
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
             </Button>
           </div>
         </div>

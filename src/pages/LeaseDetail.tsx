@@ -884,7 +884,7 @@ export default function LeaseDetail() {
         <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2">
           <CardTitle className="text-base font-medium text-left">{t("detail.financialSummary")}</CardTitle>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFinSumOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform", finSumOpen ? "" : "-rotate-90")} />
+            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", finSumOpen && "rotate-180")} />
           </Button>
         </CardHeader>
         {finSumOpen && (
@@ -922,7 +922,7 @@ export default function LeaseDetail() {
               {t("advanceCycle.title")} <span className="text-muted-foreground">— {t("advanceCycle.everyN").replace("{n}", String(lease.rentFormula))}</span>
             </CardTitle>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAdvanceBillingOpen(o => !o)} aria-label="Toggle section">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", advanceBillingOpen ? "" : "-rotate-90")} />
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", advanceBillingOpen && "rotate-180")} />
             </Button>
           </CardHeader>
           {advanceBillingOpen && (
@@ -1053,7 +1053,7 @@ export default function LeaseDetail() {
                 {guarantee ? <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</> : <><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addGuarantee")}</>}
               </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDepositOpen(o => !o)} aria-label="Toggle section">
-                <ChevronDown className={cn("h-4 w-4 transition-transform", depositOpen ? "" : "-rotate-90")} />
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", depositOpen && "rotate-180")} />
               </Button>
             </div>
           </div>
@@ -1086,7 +1086,7 @@ export default function LeaseDetail() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground text-left">{t("detail.occupancyOps")}</h2>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOccupancyOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform", occupancyOpen ? "" : "-rotate-90")} />
+            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", occupancyOpen && "rotate-180")} />
           </Button>
         </div>
         {occupancyOpen && (
@@ -1404,7 +1404,7 @@ export default function LeaseDetail() {
               <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNotesOpen(o => !o)} aria-label="Toggle section">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", notesOpen ? "" : "-rotate-90")} />
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
             </Button>
           </div>
         </CardHeader>

@@ -185,7 +185,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
             <Plus className="h-4 w-4 mr-1" />{t("amendments.add")}
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform", sectionOpen ? "" : "-rotate-90")} />
+            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
           </Button>
         </div>
       </CardHeader>
