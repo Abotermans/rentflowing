@@ -166,10 +166,13 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-xs text-right">
+                  {l.overlapDays}/{l.totalDays} ({Math.round(l.proRataFactor * 100)}%)
+                </TableCell>
+                <TableCell className="text-xs text-right font-medium">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
-                        {l.overlapDays}/{l.totalDays} ({Math.round(l.proRataFactor * 100)}%)
+                        {formatCurrency(l.proRatedRecoverable, currency, locale)}
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
@@ -187,9 +190,6 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                       </div>
                     </TooltipContent>
                   </Tooltip>
-                </TableCell>
-                <TableCell className="text-xs text-right font-medium">
-                  {formatCurrency(l.proRatedRecoverable, currency, locale)}
                 </TableCell>
               </TableRow>
             ))}
