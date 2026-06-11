@@ -43,6 +43,7 @@ const en = {
   "leases.wizard.useExistingTenant": "Select existing tenant",
   "leases.wizard.createNewTenant": "Create new tenant",
   "leases.wizard.selectTenantPlaceholder": "Choose a tenant…",
+  "leases.wizard.makePrimary": "Make primary",
 
   // Filters
   "filter.all": "All",
