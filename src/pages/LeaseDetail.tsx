@@ -1027,6 +1027,7 @@ export default function LeaseDetail() {
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
+          )}
         </Card>
       )}
 
