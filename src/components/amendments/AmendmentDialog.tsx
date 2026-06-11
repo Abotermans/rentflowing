@@ -252,6 +252,22 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       unitsToAdd, unitsToRemove, editedShares, currentUnits, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
+  const { totalRent, totalCharges } = useMemo(() => {
+    let totalRent = 0;
+    let totalCharges = 0;
+    for (const r of currentUnits) {
+      if (unitsToRemove.includes(r.unit.id)) continue;
+      const e = editedShares[r.unit.id];
+      totalRent += e?.rentShare !== undefined && e.rentShare !== "" ? Number(e.rentShare) : (r.assignment.rentShare ?? 0);
+      totalCharges += e?.chargesShare !== undefined && e.chargesShare !== "" ? Number(e.chargesShare) : (r.assignment.chargesShare ?? 0);
+    }
+    for (const a of unitsToAdd) {
+      totalRent += Number(a.rentShare || 0);
+      totalCharges += Number(a.chargesShare || 0);
+    }
+    return { totalRent, totalCharges };
+  }, [currentUnits, unitsToRemove, editedShares, unitsToAdd]);
+
   const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
   const derivedCategories = useMemo(() => {
     const cats = new Set<AmendmentType>();
@@ -515,26 +531,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                   </PopoverContent>
                 </Popover>
               </div>
-              {(() => {
-                let totalRent = 0;
-                let totalCharges = 0;
-                for (const r of currentUnits) {
-                  if (unitsToRemove.includes(r.unit.id)) continue;
-                  const e = editedShares[r.unit.id];
-                  totalRent += e?.rentShare !== undefined && e.rentShare !== "" ? Number(e.rentShare) : (r.assignment.rentShare ?? 0);
-                  totalCharges += e?.chargesShare !== undefined && e.chargesShare !== "" ? Number(e.chargesShare) : (r.assignment.chargesShare ?? 0);
-                }
-                for (const a of unitsToAdd) {
-                  totalRent += Number(a.rentShare || 0);
-                  totalCharges += Number(a.chargesShare || 0);
-                }
-                return (
-                  <div className="flex gap-4 text-xs bg-muted/30 rounded px-2 py-1.5">
-                    <div><span className="text-muted-foreground">{t("amendments.totalRent")}: </span><span className="font-medium tabular-nums">{totalRent.toFixed(2)}</span></div>
-                    <div><span className="text-muted-foreground">{t("amendments.totalCharges")}: </span><span className="font-medium tabular-nums">{totalCharges.toFixed(2)}</span></div>
-                  </div>
-                );
-              })()}
               <div className="rounded border overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -634,6 +630,15 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                         </TableRow>
                       );
                     })}
+                    {(currentUnits.length > 0 || unitsToAdd.length > 0) && (
+                      <TableRow className="h-9 border-t-2 border-t-border font-medium bg-muted/30">
+                        <TableCell colSpan={2} className="py-1 text-xs">{t("common.total")}</TableCell>
+                        <TableCell className="py-1 text-xs text-right tabular-nums">{totalRent.toFixed(2)}</TableCell>
+                        <TableCell className="py-1 text-xs text-right tabular-nums">{totalCharges.toFixed(2)}</TableCell>
+                        <TableCell className="py-1" />
+                        <TableCell className="py-1" />
+                      </TableRow>
+                    )}
                     {currentUnits.length === 0 && unitsToAdd.length === 0 && (
                       <TableRow><TableCell colSpan={6} className="py-3 text-center text-xs text-muted-foreground">{t("amendments.noUnitsAvailable")}</TableCell></TableRow>
                     )}
