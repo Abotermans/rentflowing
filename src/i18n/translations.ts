@@ -196,6 +196,8 @@ const en = {
   "status.active": "Active",
   "status.inactive": "Inactive",
   "status.draft": "Draft",
+ "status.pendingSignature": "Pending Signature",
+ "status.signed": "Signed",
   "status.ended": "Ended",
   "status.terminated": "Terminated",
   "status.former": "Former",
