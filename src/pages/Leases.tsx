@@ -910,57 +910,188 @@ export default function Leases() {
             </>)}
             {step === 2 && (
               <div className="space-y-4">
-                <div className="inline-flex rounded-md border border-input p-0.5 bg-muted/30">
-                  <button
-                    type="button"
-                    onClick={() => setTenantMode("existing")}
-                    disabled={tenants.length === 0}
-                    className={`px-3 py-1.5 text-xs rounded-sm transition-colors ${tenantMode === "existing" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"} disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {t("leases.wizard.useExistingTenant")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTenantMode("new")}
-                    className={`px-3 py-1.5 text-xs rounded-sm transition-colors ${tenantMode === "new" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    {t("leases.wizard.createNewTenant")}
-                  </button>
-                </div>
-                {tenantMode === "existing" ? (
-                  <div>
-                    <Label>{t("leases.primaryTenant")} *</Label>
-                    <Select value={form.primaryTenantId} onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))}>
-                      <SelectTrigger><SelectValue placeholder={t("leases.wizard.selectTenantPlaceholder")} /></SelectTrigger>
-                      <SelectContent>
-                        {tenants.map(tt => (
-                          <SelectItem key={tt.id} value={tt.id}>
-                            {getTenantFullName(tt)} — {tt.email}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (<>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label>{t("tenants.firstName")} *</Label><Input value={tenantForm.firstName} onChange={e => setTenantForm(f => ({ ...f, firstName: e.target.value }))} /></div>
-                  <div><Label>{t("tenants.lastName")} *</Label><Input value={tenantForm.lastName} onChange={e => setTenantForm(f => ({ ...f, lastName: e.target.value }))} /></div>
-                </div>
-                <div><Label>{t("tenants.email")} *</Label><Input type="email" value={tenantForm.email} onChange={e => setTenantForm(f => ({ ...f, email: e.target.value }))} /></div>
-                <div><Label>{t("tenants.phone")}</Label><Input value={tenantForm.phone} onChange={e => setTenantForm(f => ({ ...f, phone: e.target.value }))} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label>{t("tenants.dateOfBirth")}</Label><Input type="date" value={tenantForm.dateOfBirth ?? ""} onChange={e => setTenantForm(f => ({ ...f, dateOfBirth: e.target.value || null }))} /></div>
-                  <div><Label>{t("filter.status")} *</Label>
-                    <Select value={tenantForm.status} onValueChange={v => setTenantForm(f => ({ ...f, status: v as TenantStatus }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div><Label>{t("tenants.identificationNumber")}</Label><Input value={tenantForm.identificationNumber ?? ""} onChange={e => setTenantForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>
-                <div><Label>{t("tenants.currentAddress")}</Label><Textarea value={tenantForm.currentAddress ?? ""} onChange={e => setTenantForm(f => ({ ...f, currentAddress: e.target.value || null }))} rows={2} /></div>
-                <div><Label>{t("common.notes")}</Label><Textarea value={tenantForm.notes} onChange={e => setTenantForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
-                </>)}
+                {(() => {
+                  const attachedIds = [form.primaryTenantId, ...form.coTenantIds].filter(Boolean);
+                  const attachAsPrimary = (id: string) => {
+                    setForm(f => {
+                      if (!f.primaryTenantId) return { ...f, primaryTenantId: id };
+                      if (f.primaryTenantId === id || f.coTenantIds.includes(id)) return f;
+                      return { ...f, coTenantIds: [...f.coTenantIds, id] };
+                    });
+                  };
+                  const removeAttached = (id: string) => {
+                    setForm(f => {
+                      if (f.primaryTenantId === id) {
+                        const [next, ...rest] = f.coTenantIds;
+                        return { ...f, primaryTenantId: next ?? "", coTenantIds: rest ?? [] };
+                      }
+                      return { ...f, coTenantIds: f.coTenantIds.filter(x => x !== id) };
+                    });
+                  };
+                  const makePrimary = (id: string) => {
+                    setForm(f => {
+                      if (f.primaryTenantId === id) return f;
+                      const oldPrimary = f.primaryTenantId;
+                      const co = f.coTenantIds.filter(x => x !== id);
+                      if (oldPrimary) co.unshift(oldPrimary);
+                      return { ...f, primaryTenantId: id, coTenantIds: co };
+                    });
+                  };
+                  const availableExisting = tenants.filter(tt => !attachedIds.includes(tt.id));
+                  return (
+                    <>
+                      <div>
+                        <Label className="text-sm">{t("leases.wizard.tenantDetails")}</Label>
+                        {attachedIds.length === 0 ? (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {t("leases.wizard.selectTenantPlaceholder")}
+                          </p>
+                        ) : (
+                          <div className="mt-2 rounded-md border">
+                            <Table className="w-full">
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>{t("leases.tenant")}</TableHead>
+                                  <TableHead className="w-[140px]">{t("filter.status")}</TableHead>
+                                  <TableHead className="w-[60px]" />
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {attachedIds.map(id => {
+                                  const tt = tenants.find(x => x.id === id);
+                                  const isPrimary = id === form.primaryTenantId;
+                                  return (
+                                    <TableRow key={id}>
+                                      <TableCell>
+                                        <div className="font-medium text-sm">{tt ? getTenantFullName(tt) : "—"}</div>
+                                        <div className="text-xs text-muted-foreground">{tt?.email}</div>
+                                      </TableCell>
+                                      <TableCell>
+                                        {isPrimary ? (
+                                          <Badge variant="default">{t("leases.primaryTenant")}</Badge>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => makePrimary(id)}
+                                            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                                          >
+                                            {t("leases.wizard.makePrimary")}
+                                          </button>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => removeAttached(id)}
+                                        >
+                                          <XIcon className="h-4 w-4" />
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+                        <div className="inline-flex rounded-md border border-input p-0.5 bg-background">
+                          <button
+                            type="button"
+                            onClick={() => setTenantMode("existing")}
+                            disabled={availableExisting.length === 0}
+                            className={`px-3 py-1.5 text-xs rounded-sm transition-colors ${tenantMode === "existing" ? "bg-muted shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"} disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {t("leases.wizard.useExistingTenant")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTenantMode("new")}
+                            className={`px-3 py-1.5 text-xs rounded-sm transition-colors ${tenantMode === "new" ? "bg-muted shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                          >
+                            {t("leases.wizard.createNewTenant")}
+                          </button>
+                        </div>
+
+                        {tenantMode === "existing" ? (
+                          <div className="flex items-end gap-2">
+                            <div className="flex-1">
+                              <Label className="text-xs">{t("leases.tenant")}</Label>
+                              <Select value={pendingExistingTenantId} onValueChange={setPendingExistingTenantId}>
+                                <SelectTrigger><SelectValue placeholder={t("leases.wizard.selectTenantPlaceholder")} /></SelectTrigger>
+                                <SelectContent>
+                                  {availableExisting.map(tt => (
+                                    <SelectItem key={tt.id} value={tt.id}>
+                                      {getTenantFullName(tt)} — {tt.email}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={!pendingExistingTenantId}
+                              onClick={() => {
+                                if (!pendingExistingTenantId) return;
+                                attachAsPrimary(pendingExistingTenantId);
+                                setPendingExistingTenantId("");
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-1" /> {t("action.add")}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div><Label className="text-xs">{t("tenants.firstName")} *</Label><Input value={tenantForm.firstName} onChange={e => setTenantForm(f => ({ ...f, firstName: e.target.value }))} /></div>
+                              <div><Label className="text-xs">{t("tenants.lastName")} *</Label><Input value={tenantForm.lastName} onChange={e => setTenantForm(f => ({ ...f, lastName: e.target.value }))} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div><Label className="text-xs">{t("tenants.email")} *</Label><Input type="email" value={tenantForm.email} onChange={e => setTenantForm(f => ({ ...f, email: e.target.value }))} /></div>
+                              <div><Label className="text-xs">{t("tenants.phone")}</Label><Input value={tenantForm.phone} onChange={e => setTenantForm(f => ({ ...f, phone: e.target.value }))} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div><Label className="text-xs">{t("tenants.dateOfBirth")}</Label><Input type="date" value={tenantForm.dateOfBirth ?? ""} onChange={e => setTenantForm(f => ({ ...f, dateOfBirth: e.target.value || null }))} /></div>
+                              <div><Label className="text-xs">{t("filter.status")} *</Label>
+                                <Select value={tenantForm.status} onValueChange={v => setTenantForm(f => ({ ...f, status: v as TenantStatus }))}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div><Label className="text-xs">{t("tenants.identificationNumber")}</Label><Input value={tenantForm.identificationNumber ?? ""} onChange={e => setTenantForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>
+                            <div><Label className="text-xs">{t("tenants.currentAddress")}</Label><Textarea value={tenantForm.currentAddress ?? ""} onChange={e => setTenantForm(f => ({ ...f, currentAddress: e.target.value || null }))} rows={2} /></div>
+                            <div><Label className="text-xs">{t("common.notes")}</Label><Textarea value={tenantForm.notes} onChange={e => setTenantForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+                            <div className="flex justify-end">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
+                                    toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+                                    return;
+                                  }
+                                  const created = addTenant(tenantForm);
+                                  attachAsPrimary(created.id);
+                                  setTenantForm({ ...emptyTenantForm });
+                                  toast({ title: "Tenant created", description: getTenantFullName(created) });
+                                  if (tenants.length + 1 > 0) setTenantMode("existing");
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-1" /> {t("leases.wizard.createNewTenant")}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
