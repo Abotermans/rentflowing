@@ -1630,6 +1630,8 @@ const fr: TranslationKeys = {
   "status.active": "Actif",
   "status.inactive": "Inactif",
   "status.draft": "Brouillon",
+  "status.pendingSignature": "En attente de signature",
+  "status.signed": "Signé",
   "status.ended": "Terminé",
   "status.terminated": "Résilié",
   "status.former": "Ancien",
