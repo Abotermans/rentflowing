@@ -1,36 +1,42 @@
-# Add Keys & Badges return tracking to the Complete Move-Out modal
-
 ## Goal
-In the Move-Out dialog (complete mode), show the list of keys and badges that were handed over to the tenant, with a date input for each so the user can record the return date item-by-item — instead of having to scroll back to the Keys & Badges section on the lease page.
+On the Amendments timeline table (lease detail), show how many changes each amendment carries, and let the user open a Before/After diff modal by clicking the count.
 
-## Scope
-- File: `src/pages/LeaseDetail.tsx`, Move-Out dialog complete branch (around lines 1545–1578).
-- No business-logic changes outside this dialog. Each row writes directly to `lease.keys[*].returnedDate` via the existing `patchKeyItem` helper, so changes are immediately persisted in the same way as the inline edits in the Keys & Badges card.
+## Changes
 
-## UI
+### 1. New column in the amendments timeline table
+File: `src/components/amendments/AmendmentsSection.tsx`
 
-Inserted between the meters row and the Notes textarea:
+- Insert a new `<TableHead>` "Changes" between Title and Effective date.
+- For each amendment row, render a cell with the change count using `getAmendmentChanges(a.id).length` (already computed as `chs`).
+- The count is a button (`variant="link"`, size sm, `h-auto p-0`) styled as an inline link, wrapped with `e.stopPropagation()` so it doesn't trigger the row's edit click.
+- Clicking sets a new local state `diffAmendment` and opens a new modal.
+- If count is 0, show a muted "—" with no button.
 
-```text
-Keys & Badges                                          (section label)
-┌──────────────────────────────────────────────────────────────┐
-│ [Type]  Identifier                          Returned         │
-│  Key    Front door — K-12                   [ 2026-06-10 ▾ ] │
-│  Badge  Garage remote — B-04                [            ▾ ] │
-└──────────────────────────────────────────────────────────────┘
-```
+### 2. New "Amendment changes" modal
+New file: `src/components/amendments/AmendmentChangesDialog.tsx`
 
-Rules:
-- Only items with a `handedOverDate` set are listed (those are the ones actually given to the tenant). Items never handed over are hidden to keep the dialog short.
-- Each row is read-only for type/identifier (small icon + label text) and editable only for the returned date.
-- Empty state: if no handed-over items exist, the whole section is omitted (no empty box).
-- Default value for each row's returned date is the current `k.returnedDate` if set, otherwise empty. The "Confirm move-out" button stays enabled regardless (returning keys is not blocking).
-- Compact density (`h-8 text-sm`) consistent with the rest of the dialog.
+A Dialog (centered popup, per project convention) showing a table with columns: Field, Before, After.
 
-## i18n
-Reuses existing keys: `detail.keysBadges`, `detail.kindKey`, `detail.kindBadge`, `detail.returned`. No new translation strings needed.
+The diff is computed using the existing helper `getEffectiveLeaseTerms` from `src/lib/amendments.ts`:
+- `after` = terms on the amendment's `effectiveDate` (which already folds this amendment if active; for draft/scheduled we simulate it as active using the same shallow-copy trick used in `getLeaseAmendmentImpact`).
+- `before` = terms one day before the amendment's `effectiveDate`, excluding this amendment.
+
+Row generation mirrors the logic already in `AmendmentConfirmDialog.tsx` (same field-by-field switch over `LeaseAmendmentChange.fieldName`), so labels and formatting stay consistent across the app. We will reuse that mapping by extracting it into a small local helper inside the new dialog (kept colocated to avoid scope creep; no refactor of the confirm dialog).
+
+Modal structure:
+- Title: `t("amendments.changesTitle")` — "Changes in amendment #N"
+- Subheader: amendment title + effective date badge
+- Table with `Field | Before | After` columns, same compact styling as the confirm dialog table
+- Footer: single "Close" button
+
+### 3. Translations
+File: `src/i18n/translations.ts`
+
+Add keys in both `en` and `fr`:
+- `amendments.col.changes` → "Changes" / "Modifications"
+- `amendments.changesTitle` → "Changes in amendment #{n}" / "Modifications de l'avenant n°{n}"
+- `amendments.field` → "Field" / "Champ" (only if not already present; otherwise reuse `amendments.summary`)
 
 ## Out of scope
-- No change to the schedule branch of the move-out dialog.
-- No change to the move-out checklist logic (`keysReturned` flag continues to be derived as today).
-- No change to the standalone Keys & Badges card on the lease page.
+- No changes to amendment data model, lib helpers, or the confirm dialog.
+- No changes to other tabs (Current terms, Original terms).
