@@ -1111,13 +1111,8 @@ export default function Leases() {
                       return;
                     }
                   } else if (step === 2) {
-                    if (tenantMode === "new") {
-                      if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
-                        toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
-                        return;
-                      }
-                    } else if (!form.primaryTenantId) {
-                      toast({ title: "Validation Error", description: "Please select a tenant.", variant: "destructive" });
+                    if (!form.primaryTenantId) {
+                      toast({ title: "Validation Error", description: "Please attach at least one tenant to the lease.", variant: "destructive" });
                       return;
                     }
                   }
