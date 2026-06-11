@@ -664,7 +664,7 @@ export default function LeaseDetail() {
               <span>
                 {t("leaseDetail.underNotice")}
                 {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-                {lease.intendedMoveOutDate && <> · {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
+                {lease.intendedMoveOutDate && <> {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
               </span>
               <div className="flex items-center gap-2">
                 {!lease.moveOutActualDate && (
