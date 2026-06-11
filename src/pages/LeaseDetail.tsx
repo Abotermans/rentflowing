@@ -1267,7 +1267,9 @@ export default function LeaseDetail() {
           <CollapsibleTrigger asChild>
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 text-left">{t("leaseDetail.openReceivables")}</CardTitle>
-              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
+              </span>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
