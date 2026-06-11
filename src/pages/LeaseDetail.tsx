@@ -1794,6 +1794,20 @@ export default function LeaseDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Mark Signed dialog */}
+      <Dialog open={signDialogOpen} onOpenChange={setSignDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{t("lease.markSigned")}</DialogTitle></DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div>
+              <Label>{t("leases.signedDate")}</Label>
+              <Input type="date" value={signDateInput} onChange={e => setSignDateInput(e.target.value)} />
+            </div>
+            <Button className="w-full" onClick={handleMarkSigned} disabled={!signDateInput}>{t("lease.markSigned")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
