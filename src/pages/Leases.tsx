@@ -40,6 +40,8 @@ import { SortableTableHead } from "@/components/shared/SortableTableHead";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
+  { value: "pending-signature", label: "Pending Signature" },
+  { value: "signed", label: "Signed" },
   { value: "active", label: "Active" },
   { value: "ended", label: "Ended" },
   { value: "terminated", label: "Terminated" },
@@ -47,6 +49,8 @@ const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
 
 const LEASE_STATUS_FILTERS: { value: LeaseStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
+  { value: "pending-signature", label: "Pending Signature" },
+  { value: "signed", label: "Signed" },
   { value: "active", label: "Active" },
   { value: "under-notice", label: "Under notice" },
   { value: "overdue-end", label: "Overdue end" },
@@ -72,9 +76,11 @@ const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: T
 };
 
 const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
-  draft: ["draft", "active"],
+  draft: ["draft", "pending-signature"],
+  "pending-signature": ["pending-signature", "draft", "signed"],
+  signed: ["signed", "active", "terminated"],
   active: ["active", "ended", "terminated"],
-  ended: ["ended"],
+  ended: ["ended", "terminated"],
   terminated: ["terminated"],
 };
 
