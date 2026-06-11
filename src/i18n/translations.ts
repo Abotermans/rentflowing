@@ -2837,6 +2837,10 @@ const fr: TranslationKeys = {
   "reconciliation.overview.tip.recoveryType.tenant-recoverable": "Récupérable locataire (100 %)",
   "reconciliation.overview.tip.recoveryType.partially-recoverable": "Partiellement récupérable",
   "reconciliation.overview.tip.recoveryType.informational": "Informatif (0 %)",
+  "reconciliation.overview.bearer.ownerOnly": "Bailleur",
+  "reconciliation.overview.bearer.tenantOnly": "Locataire",
+  "reconciliation.overview.bearer.mix": "Mixte",
+  "reconciliation.overview.bearer.informational": "Info",
 };
 
 export type TranslationKey = keyof typeof en;
