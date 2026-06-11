@@ -132,7 +132,6 @@ export interface LeaseUnitAssignment {
   leaseId: string;
   unitId: string;
   assignmentType: LeaseUnitAssignmentType;
-  isPrimary: boolean;
   startDate: string;
   endDate: string | null;
   /** Optional internal split — share of lease-level monthly rent for this unit. */
@@ -224,9 +223,10 @@ export interface Lease {
   id: string;
   leaseReference: string;
   propertyId: string;
-  unitId: string;
-  primaryTenantId: string;
-  coTenantIds: string[];
+  /** Flat list of every tenant on the lease. Must contain at least 1 entry. */
+  tenantIds: string[];
+  /** Pointer to one of `tenantIds` — purely an invoicing pointer, freely swappable. */
+  billingTenantId: string;
   lifecycleStage: LifecycleStage;
   startDate: string;
   endDate: string;
