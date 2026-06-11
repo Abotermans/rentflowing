@@ -1402,6 +1402,7 @@ const en = {
   "reconciliation.overview.empty": "No costs allocated to this lease's units during the lease period.",
   "reconciliation.overview.col.unit": "Unit",
   "reconciliation.overview.col.allocated": "Recoverable share",
+  "reconciliation.overview.col.bearer": "Bearer",
   "reconciliation.overview.totals": "Total pro-rated recoverable",
   "reconciliation.overview.addedByAmendment": "Added",
   "reconciliation.overview.removedByAmendment": "Removed",
@@ -1417,6 +1418,10 @@ const en = {
   "reconciliation.overview.tip.recoveryType.tenant-recoverable": "Tenant recoverable (100%)",
   "reconciliation.overview.tip.recoveryType.partially-recoverable": "Partially recoverable",
   "reconciliation.overview.tip.recoveryType.informational": "Informational (0%)",
+  "reconciliation.overview.bearer.ownerOnly": "Owner only",
+  "reconciliation.overview.bearer.tenantOnly": "Tenant only",
+  "reconciliation.overview.bearer.mix": "Mix",
+  "reconciliation.overview.bearer.informational": "Info",
 };
 
 type TranslationKeys = typeof en;
@@ -2816,6 +2821,7 @@ const fr: TranslationKeys = {
   "reconciliation.overview.empty": "Aucun coût alloué aux lots de ce bail pendant la période du bail.",
   "reconciliation.overview.col.unit": "Lot",
   "reconciliation.overview.col.allocated": "Part récupérable",
+  "reconciliation.overview.col.bearer": "Support",
   "reconciliation.overview.totals": "Total récupérable au prorata",
   "reconciliation.overview.addedByAmendment": "Ajouté",
   "reconciliation.overview.removedByAmendment": "Retiré",
@@ -2831,6 +2837,10 @@ const fr: TranslationKeys = {
   "reconciliation.overview.tip.recoveryType.tenant-recoverable": "Récupérable locataire (100 %)",
   "reconciliation.overview.tip.recoveryType.partially-recoverable": "Partiellement récupérable",
   "reconciliation.overview.tip.recoveryType.informational": "Informatif (0 %)",
+  "reconciliation.overview.bearer.ownerOnly": "Bailleur",
+  "reconciliation.overview.bearer.tenantOnly": "Locataire",
+  "reconciliation.overview.bearer.mix": "Mixte",
+  "reconciliation.overview.bearer.informational": "Info",
 };
 
 export type TranslationKey = keyof typeof en;
