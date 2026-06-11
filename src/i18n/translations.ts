@@ -2817,6 +2817,7 @@ const fr: TranslationKeys = {
   "reconciliation.overview.empty": "Aucun coût alloué aux lots de ce bail pendant la période du bail.",
   "reconciliation.overview.col.unit": "Lot",
   "reconciliation.overview.col.allocated": "Part récupérable",
+  "reconciliation.overview.col.bearer": "Support",
   "reconciliation.overview.totals": "Total récupérable au prorata",
   "reconciliation.overview.addedByAmendment": "Ajouté",
   "reconciliation.overview.removedByAmendment": "Retiré",
