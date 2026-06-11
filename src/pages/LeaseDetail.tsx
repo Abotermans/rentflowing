@@ -764,9 +764,10 @@ export default function LeaseDetail() {
                 }] : []);
             return (
               <div className="space-y-4 pb-4 border-b border-border">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1.5">{t("leases.tenant")}</p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground mb-1.5">{t("leases.tenant")}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {tenant && (
                       <div className="flex items-center gap-2 text-sm">
                         <HoverCard openDelay={150}>
@@ -795,6 +796,12 @@ export default function LeaseDetail() {
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
                       </div>
                     ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2">
+                    <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{t("leaseDetail.dueDayOfMonth").replace("{day}", String(lease.dueDayOfMonth))}</p></div>
+                    <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{effNotice || "—"}{amSuffix(noticeAmNum)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">{t("detail.noticeGiven")}</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? t("common.yes") : t("common.no")}</p></div>
                   </div>
                 </div>
                 <div>
@@ -882,9 +889,6 @@ export default function LeaseDetail() {
             );
           })()}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div><p className="text-xs text-muted-foreground">{t("leases.dueDay")}</p><p className="text-sm font-medium text-foreground">{t("leaseDetail.dueDayOfMonth").replace("{day}", String(lease.dueDayOfMonth))}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{effNotice || "—"}{amSuffix(noticeAmNum)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("detail.noticeGiven")}</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? t("common.yes") : t("common.no")}</p></div>
             {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
             {lease.terminationReason && <div><p className="text-xs text-muted-foreground">{t("detail.reason")}</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
           </div>
