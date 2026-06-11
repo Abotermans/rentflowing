@@ -282,7 +282,11 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                           <TableRow><TableCell colSpan={5} className="text-xs text-muted-foreground text-center py-3">{t("reconciliation.noCosts")}</TableCell></TableRow>
                         ) : breakdown.lines.map(l => (
                           <TableRow key={l.costEntryId} className="h-8">
-                            <TableCell className="text-xs">{l.label}</TableCell>
+                            <TableCell className="text-xs">
+                              <Link to={`/costs/entries?edit=${l.costEntryId}`} className="hover:underline text-primary">
+                                {l.label}
+                              </Link>
+                            </TableCell>
                             <TableCell className="text-xs">{formatDate(l.costPeriodStart, locale)} → {formatDate(l.costPeriodEnd, locale)}</TableCell>
                             <TableCell className="text-xs text-right">{formatCurrency(l.fullRecoverable, currency, locale)}</TableCell>
                             <TableCell className="text-xs text-right">{l.overlapDays}/{l.totalDays} ({Math.round(l.proRataFactor * 100)}%)</TableCell>
