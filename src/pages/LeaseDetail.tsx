@@ -1422,6 +1422,7 @@ export default function LeaseDetail() {
           <DialogHeader><DialogTitle>{t("leaseDialog.moveOut")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
+            <div><Label>{t("detail.actual")}</Label><Input type="date" value={moActualDate} onChange={e => setMoActualDate(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
               <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
