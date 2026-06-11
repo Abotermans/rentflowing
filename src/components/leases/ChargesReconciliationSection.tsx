@@ -15,7 +15,7 @@ import { Trash2, Calculator, Info } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { Lease } from "@/types";
 import type { ReconciliationResolution } from "@/types/chargesReconciliation";
-import { suggestResolution, type ReconciliationWindow } from "@/lib/chargesReconciliation";
+import { suggestResolution, computeLeaseCostOverview, type ReconciliationWindow } from "@/lib/chargesReconciliation";
 
 interface Props { lease: Lease; currency: string; locale: string; }
 
@@ -27,6 +27,10 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
     previewChargesReconciliation,
     applyChargesReconciliation,
     deleteChargesReconciliation,
+    leaseUnitAssignments,
+    units,
+    costAllocationResults,
+    costEntries,
   } = useAppData();
 
   const mode = lease.chargesBillingMode ?? "provision-reconciled";
@@ -48,6 +52,73 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
     return previewChargesReconciliation(lease.id, window);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, start, end, lease.id]);
+
+  const overview = useMemo(
+    () => computeLeaseCostOverview(lease, leaseUnitAssignments, units, costAllocationResults, costEntries),
+    [lease, leaseUnitAssignments, units, costAllocationResults, costEntries],
+  );
+
+  const overviewCard = (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{t("reconciliation.overview.title")}</Label>
+        {overview.lines.length > 0 && (
+          <div className="text-xs text-muted-foreground">
+            {t("reconciliation.overview.totals")}:{" "}
+            <span className="font-medium text-foreground">{formatCurrency(overview.totals.recoverable, currency, locale)}</span>
+            <span className="mx-1">·</span>
+            {t("reconciliation.col.full")}: {formatCurrency(overview.totals.allocated, currency, locale)}
+          </div>
+        )}
+      </div>
+      <div className="rounded border overflow-hidden">
+        <Table className="[&_th]:px-2 [&_td]:px-2">
+          <TableHeader>
+            <TableRow className="h-8">
+              <TableHead className="h-8 text-xs">{t("reconciliation.col.cost")}</TableHead>
+              <TableHead className="h-8 text-xs">{t("reconciliation.overview.col.unit")}</TableHead>
+              <TableHead className="h-8 text-xs">{t("reconciliation.col.period")}</TableHead>
+              <TableHead className="h-8 text-xs text-right">{t("reconciliation.overview.col.allocated")}</TableHead>
+              <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.overlap")}</TableHead>
+              <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.prorated")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {overview.lines.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-xs text-muted-foreground text-center py-3">
+                  {t("reconciliation.overview.empty")}
+                </TableCell>
+              </TableRow>
+            ) : overview.lines.map((l, idx) => (
+              <TableRow key={`${l.costEntryId}-${l.unitId}-${idx}`} className="h-8">
+                <TableCell className="text-xs">{l.costLabel}</TableCell>
+                <TableCell className="text-xs">
+                  <div className="flex items-center gap-1">
+                    <span>{l.unitLabel}</span>
+                    {l.addedByAmendment && (
+                      <span className="text-[10px] text-primary border border-primary/30 rounded px-1 py-0">
+                        {t("reconciliation.overview.addedByAmendment")}
+                      </span>
+                    )}
+                    {l.removedByAmendment && (
+                      <span className="text-[10px] text-muted-foreground border border-border rounded px-1 py-0">
+                        {t("reconciliation.overview.removedByAmendment")}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs">{formatDate(l.costPeriodStart, locale)} → {formatDate(l.costPeriodEnd, locale)}</TableCell>
+                <TableCell className="text-xs text-right">{formatCurrency(l.recoverableAmount, currency, locale)}</TableCell>
+                <TableCell className="text-xs text-right">{l.overlapDays}/{l.totalDays} ({Math.round(l.proRataFactor * 100)}%)</TableCell>
+                <TableCell className="text-xs text-right font-medium">{formatCurrency(l.proRatedRecoverable, currency, locale)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
 
   const openDialog = () => {
     const s = lastEnd ?? lease.startDate;
@@ -84,11 +155,12 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>{t("reconciliation.flatExplain")}</AlertDescription>
           </Alert>
+          {overviewCard}
         </CardContent>
       </Card>
     );
@@ -109,7 +181,8 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {overviewCard}
         {history.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("reconciliation.noHistory")}</p>
         ) : (

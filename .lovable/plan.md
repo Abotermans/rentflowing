@@ -1,69 +1,108 @@
+
 ## Goal
 
-Let the owner decide, per lease, how tenant charges are billed and reconciled — flat-rate (no adjustment) or provision with on-demand reconciliation against actual recoverable costs allocated to the unit, pro-rated by lease coverage of each cost period.
+On a lease's **Charges Reconciliation** section, display a structured table of every cost allocated to the lease's units during the lease period, with amounts pro-rated by:
+1. The **cost's own period** vs the **unit-assignment window** (handles costs that span partly outside the lease).
+2. The **allocation share** already produced by the allocation engine (handles costs shared across units in a property).
+3. **Amendment-driven unit changes** (new units added mid-lease, units removed early) — naturally handled by reading `leaseUnitAssignments` rather than only `lease.unitId`.
 
-## Model
+Today the section only shows pro-rated lines *inside the reconciliation dialog*, scoped to the primary unit. This plan adds a permanent overview table on the section itself, scoped to **all** assigned units across the **full lease period**.
 
-Add a single field on `Lease`:
+## Scope
 
-- `chargesBillingMode: "flat-rate" | "provision-reconciled"` (default `"provision-reconciled"`).
+```text
+┌─ Charges Reconciliation ──────────────────────────────┐
+│ [Provision + reconciliation]            [Run reconc.] │
+├───────────────────────────────────────────────────────┤
+│ Cost overview during lease (new)                      │
+│ ┌──────────┬──────┬──────────┬───────┬───────┬──────┐ │
+│ │ Cost     │ Unit │ Period   │ Alloc │ Over- │ Pro- │ │
+│ │          │      │          │ share │ lap   │ rated│ │
+│ ├──────────┼──────┼──────────┼───────┼───────┼──────┤ │
+│ │ Insur.   │ A101 │ 01/01 →  │ 240 € │ 243/  │ 160 €│ │
+│ │ 2026     │      │ 31/12/26 │       │ 365   │      │ │
+│ │ Insur.   │ A102*│ same     │ 120 € │ 90/365│  30 €│ │
+│ │ Water Q1 │ A101 │ Jan-Mar  │  60 € │ 90/90 │  60 €│ │
+│ └──────────┴──────┴──────────┴───────┴───────┴──────┘ │
+│ * added via amendment on 01/10/2026                   │
+│ Totals: Recoverable 250 € · Owner burden 0 €          │
+├───────────────────────────────────────────────────────┤
+│ Past reconciliations table (unchanged)                │
+└───────────────────────────────────────────────────────┘
+```
 
-No change to how `monthlyCharges` generates the charges receivable stream — both modes keep the same monthly/cycle provisions. The mode only changes what happens at reconciliation time.
+## Approach
 
-### Flat-rate
+### 1. Extend `src/lib/chargesReconciliation.ts`
 
-- Charges paid are final. No reconciliation action exposed.
-- Recoverable cost allocations still display on the unit's Costs & Taxes burden table (owner analytics), but are **never** pushed to the tenant ledger.
-- UI: reconciliation panel hidden; small badge "Flat-rate charges" on the lease header.
+Add a new pure function that walks every `leaseUnitAssignment` for the lease and intersects each assignment's [start, end] window with each cost allocation's period.
 
-### Provision + reconciliation (on-demand)
+```ts
+computeLeaseCostOverview(
+  lease, assignments, leases-end-fallback,
+  allocations, costEntries,
+  windowOverride?: { start; end }
+): {
+  lines: Array<{
+    costEntryId; costLabel; costNature; recoveryType;
+    unitId; unitName;
+    assignmentStart; assignmentEnd;            // window used
+    costPeriodStart; costPeriodEnd;
+    allocatedAmount;                            // from allocation result
+    recoverableAmount; ownerBurdenAmount;
+    overlapDays; totalDays; proRataFactor;
+    proRatedAllocated; proRatedRecoverable; proRatedOwnerBurden;
+    addedByAmendment: boolean;                  // assignment.startDate > lease.startDate
+    removedByAmendment: boolean;                // assignment.endDate && < lease.endDate
+  }>;
+  totals: { allocated; recoverable; ownerBurden };
+}
+```
 
-- Operator opens a **Reconcile charges** dialog on the Lease Detail page and picks any `[periodStart, periodEnd]` window (defaults: lease start → today, or last reconciliation end → today).
-- The engine computes:
-  1. **Provisions collected** = sum of `charges` `ReceivableItem.allocatedAmount` whose `dueDate` falls inside the window, for this lease.
-  2. **Actual recoverable** = sum across `CostAllocationResult` rows for the lease's unit, where `recoveryType` is `tenant-recoverable` (full) or `partially-recoverable` (recoverable share), **pro-rated** by the overlap between the cost's `[periodStart, periodEnd]` and the reconciliation window divided by the cost's full period length in days. Example: yearly insurance 1 Jan → 31 Dec 2026, lease ends 1 Sep 2026, window ends 1 Sep → factor = 244/365.
-  3. **Delta** = provisions − actual. Positive = tenant overpaid (surplus). Negative = tenant owes more.
-- Operator confirms and picks the resolution:
-  - **Tenant owes** → emit one `ReceivableItem` of type `charges-adjustment`, priority right after current charges, due today, labelled with the window.
-  - **Tenant overpaid** → operator picks per reconciliation:
-    - **Refund** → negative `ReceivableItem` (credit note) of type `charges-adjustment`.
-    - **Carry-forward** → auto-allocate the surplus against the next open `charges` receivables (oldest first), via the existing `autoAllocate` plumbing.
-- Each reconciliation is persisted (`ChargesReconciliation` record) so future windows can default to "last end + 1 day" and the lease shows a history table. Reconciliations are repeatable — the engine excludes provisions and recoverable amounts already settled by a previous reconciliation in the same window to prevent double-counting.
+Window per unit = intersection of:
+- The cost allocation's `periodStart/periodEnd` (fallback to `costEntry.startDate/endDate`).
+- The assignment's `startDate/endDate` (open-ended end → use `lease.endDate` or `today`).
+- Optional override (for the dialog reuse).
 
-## Files to change
+Pro-rata factor = `overlapDays / costTotalDays` applied to the **already-allocation-split** `allocatedAmount` / `recoverableAmount` / `ownerBurdenAmount`. This naturally compounds property-level sharing (allocation engine) and time-based sharing (overlap days).
 
-### Types & schema
-1. `src/types/index.ts` — add `chargesBillingMode` to `Lease`, default `"provision-reconciled"`.
-2. `src/types/receivables.ts` — add `"charges-adjustment"` to the receivable item type union; set its priority just above adjustments/fees.
-3. New `src/types/chargesReconciliation.ts` — `ChargesReconciliation { id, leaseId, periodStart, periodEnd, provisionsCollected, actualRecoverable, delta, resolution: "owe"|"refund"|"carry-forward", receivableItemId?, notes, createdAt }`.
-4. Supabase migration: new `lease.charges_billing_mode` column; new `charges_reconciliations` table with the standard 4-step GRANT + RLS + policies tied to portfolio membership (mirrors `cost_entries`).
+### 2. Reuse for the existing dialog
 
-### Engine
-5. New `src/lib/chargesReconciliation.ts` — pure functions:
-   - `proRateCostToWindow(cost, window)` → recoverable amount for the overlap.
-   - `computeReconciliation(lease, window, receivables, costAllocations, costEntries, priorReconciliations)` → `{ provisionsCollected, actualRecoverable, delta, lines[] }` with per-cost breakdown for the dialog.
-   - `applyReconciliation(...)` → returns the new `ReceivableItem` (and optional `ReceiptAllocation` set for carry-forward) without mutating state.
-6. `src/lib/leaseReceivables.ts` — unchanged for flat-rate (provisions still generated identically). Comment-only update.
+Refactor the dialog's `computeReconciliation` to call `computeLeaseCostOverview` under the hood with the dialog window, then sum `proRatedRecoverable` for `actualRecoverable`. This guarantees consistency between the overview table and the reconciliation breakdown, and also fixes the current bug where the dialog only considers the primary unit.
 
-### UI
-7. `src/components/leases/LeaseDialog.tsx` (or wherever the lease form lives) — add a `chargesBillingMode` select with the two options, helper text explaining the difference.
-8. `src/pages/LeaseDetail.tsx`:
-   - Header badge showing the mode.
-   - New "Charges reconciliation" section (provision mode only): list of prior reconciliations + **Reconcile charges** button opening a centered Dialog (per B2B UI memory) with:
-     - Period start/end pickers (defaults as above).
-     - Read-only breakdown table: provisions collected, per-cost recoverable lines with pro-rata factor, totals, delta.
-     - Resolution radio (auto-selected based on sign): owe / refund / carry-forward.
-     - Optional notes (10 char min when overriding the suggested resolution — reuses Override pattern).
-     - Confirm button writes the `ChargesReconciliation` + receivable via `AppContext`.
-9. `src/pages/UnitDetail.tsx` — costs & taxes burden table gets a small "Reconciled" indicator on rows already settled by a reconciliation for the current lease (read-only signal, no behaviour change).
-10. `src/i18n/translations.ts` — keys for mode labels, dialog copy, badges, resolutions, errors.
+### 3. UI: add the overview table to `ChargesReconciliationSection.tsx`
 
-### Context
-11. `src/context/AppContext.tsx` — CRUD for `chargesReconciliations`, action `reconcileCharges(leaseId, window, resolution, notes)` orchestrating engine + receivable creation + optional auto-allocation.
+- New `CardContent` block above the history table titled **"Costs during lease"**.
+- Columns: Cost, Unit, Period, Allocated, Overlap (`days/totalDays · %`), Pro-rated recoverable.
+- Rows grouped by cost, then by unit; small badge on the unit when `addedByAmendment` or `removedByAmendment`.
+- Footer row with totals (pro-rated allocated, recoverable, owner burden) in the lease currency.
+- Empty state: "No costs allocated to this lease's units during the lease period."
+- Render the table for **both** billing modes (flat-rate and provision-reconciled) — under flat-rate it serves as a read-only owner-information view; the existing flat-rate info Alert stays above it.
+
+Use existing `useAppData()` selectors: `leaseUnitAssignments`, `costAllocationResults`, `costEntries`, `units`. No state changes.
+
+### 4. Translations
+
+Add EN/FR keys to `src/i18n/translations.ts`:
+
+- `reconciliation.overview.title`
+- `reconciliation.overview.empty`
+- `reconciliation.overview.col.cost / unit / period / allocated / overlap / prorated`
+- `reconciliation.overview.totals`
+- `reconciliation.overview.addedByAmendment` / `removedByAmendment`
+
+## Technical notes
+
+- **No DB / schema changes**, no migration. All data already exists (`lease_unit_assignments`, `cost_allocation_results`, `cost_entries`).
+- **No business logic change** to allocations or to receivables — purely a derived read view.
+- **Performance**: O(assignments × allocations) per lease; lease pages typically have <20 assignments and a few hundred allocations max. Fine to compute on render with `useMemo`.
+- **Currency**: assume single currency per lease (existing assumption); display in `lease.currencyCode` like the rest of the section.
+- **Lease period bounds**: use `lease.startDate` and `lease.endDate ?? lease.moveOutActualDate ?? today` so an open-ended lease still shows costs up to today.
+- **Ancillary units** (parking, storage) are included automatically because they have their own assignment rows.
 
 ## Out of scope
 
-- No change to how monthly provisions are generated, no per-cycle automatic reconciliation, no scheduled jobs.
-- No change to flat-rate behaviour beyond the new mode flag (recoverable allocations remain owner-side analytics).
-- No deep-link from the reconciliation line to the cost record (already covered by existing burden table navigation).
-- No partial-recovery percentage UI (still uses the existing 50/50 placeholder in `computeRecoverySplit`).
+- Editing allocations or recovery type from this view.
+- Drill-down to cost entry detail (can be a follow-up).
+- Multi-currency aggregation.
+- Persisting the overview as a snapshot (it's always live).

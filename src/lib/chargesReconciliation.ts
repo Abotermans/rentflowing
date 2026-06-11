@@ -1,6 +1,6 @@
-import type { Lease } from "@/types";
+import type { Lease, LeaseUnitAssignment, Unit } from "@/types";
 import type { ReceivableItem } from "@/types/receivables";
-import type { CostAllocationResult, CostEntry } from "@/types/costs";
+import type { CostAllocationResult, CostEntry, RecoveryType } from "@/types/costs";
 import type { ChargesReconciliation } from "@/types/chargesReconciliation";
 
 // ===== Date helpers (UTC, day granularity) =====
@@ -42,6 +42,137 @@ export interface ReconciliationBreakdown {
   delta: number;
   /** Sign: positive => surplus (tenant overpaid). Negative => tenant owes more. */
   lines: ReconciliationCostLine[];
+}
+
+// ===== Lease-wide cost overview =====
+
+export interface LeaseCostOverviewLine {
+  costEntryId: string;
+  costLabel: string;
+  recoveryType: RecoveryType;
+  unitId: string;
+  unitLabel: string;
+  assignmentStart: string;
+  assignmentEnd: string;
+  costPeriodStart: string;
+  costPeriodEnd: string;
+  overlapDays: number;
+  totalDays: number;
+  proRataFactor: number;
+  /** Full allocation share for that unit (before time pro-rata). */
+  allocatedAmount: number;
+  recoverableAmount: number;
+  ownerBurdenAmount: number;
+  /** After time pro-rata against the assignment window. */
+  proRatedAllocated: number;
+  proRatedRecoverable: number;
+  proRatedOwnerBurden: number;
+  addedByAmendment: boolean;
+  removedByAmendment: boolean;
+}
+
+export interface LeaseCostOverview {
+  lines: LeaseCostOverviewLine[];
+  totals: { allocated: number; recoverable: number; ownerBurden: number };
+}
+
+function maxISO(a: string, b: string) { return a > b ? a : b; }
+function minISO(a: string, b: string) { return a < b ? a : b; }
+
+/**
+ * Compute every cost allocated to the units assigned to a lease (primary +
+ * ancillary, including units added or removed via amendments), pro-rated by:
+ *   - the allocation share already split across units by the allocation engine;
+ *   - the overlap (in days) between the cost period and the unit-assignment
+ *     window intersected with the lease period.
+ *
+ * Pure — no state mutations. Suitable for useMemo on render.
+ */
+export function computeLeaseCostOverview(
+  lease: Lease,
+  assignments: readonly LeaseUnitAssignment[],
+  units: readonly Unit[],
+  allocations: readonly CostAllocationResult[],
+  costEntries: readonly CostEntry[],
+  opts: { windowOverride?: ReconciliationWindow; todayISO?: string } = {},
+): LeaseCostOverview {
+  const today = opts.todayISO ?? new Date().toISOString().slice(0, 10);
+  const leaseStart = lease.startDate;
+  const leaseEnd = lease.moveOutActualDate ?? lease.endDate ?? today;
+  const winStart = opts.windowOverride ? maxISO(opts.windowOverride.start, leaseStart) : leaseStart;
+  const winEnd = opts.windowOverride ? minISO(opts.windowOverride.end, leaseEnd) : leaseEnd;
+
+  const leaseAssignments = assignments.filter(a => a.leaseId === lease.id);
+  const lines: LeaseCostOverviewLine[] = [];
+
+  for (const a of leaseAssignments) {
+    const aStart = maxISO(a.startDate, winStart);
+    const aEnd = minISO(a.endDate ?? leaseEnd, winEnd);
+    if (aStart > aEnd) continue;
+    const unit = units.find(u => u.id === a.unitId);
+    const unitLabel = unit ? (unit.unitLabel || unit.unitCode || unit.id) : a.unitId;
+    const addedByAmendment = a.startDate > leaseStart;
+    const removedByAmendment = !!a.endDate && a.endDate < (lease.endDate ?? today);
+
+    for (const alloc of allocations) {
+      if (alloc.unitId !== a.unitId) continue;
+      const cost = costEntries.find(c => c.id === alloc.costEntryId);
+      if (!cost) continue;
+      const costStart = alloc.periodStart ?? cost.startDate;
+      const costEnd = alloc.periodEnd ?? cost.endDate ?? cost.startDate;
+      if (!costStart || !costEnd) continue;
+      const totalDays = diffDaysInclusive(costStart, costEnd);
+      if (totalDays <= 0) continue;
+      const oStart = maxISO(costStart, aStart);
+      const oEnd = minISO(costEnd, aEnd);
+      if (oStart > oEnd) continue;
+      const overlapDays = diffDaysInclusive(oStart, oEnd);
+      if (overlapDays <= 0) continue;
+      const factor = overlapDays / totalDays;
+      lines.push({
+        costEntryId: cost.id,
+        costLabel: cost.label || cost.invoiceReference || "—",
+        recoveryType: alloc.recoveryType,
+        unitId: a.unitId,
+        unitLabel,
+        assignmentStart: aStart,
+        assignmentEnd: aEnd,
+        costPeriodStart: costStart,
+        costPeriodEnd: costEnd,
+        overlapDays,
+        totalDays,
+        proRataFactor: factor,
+        allocatedAmount: alloc.allocatedAmount,
+        recoverableAmount: alloc.recoverableAmount,
+        ownerBurdenAmount: alloc.ownerBurdenAmount,
+        proRatedAllocated: round2(alloc.allocatedAmount * factor),
+        proRatedRecoverable: round2(alloc.recoverableAmount * factor),
+        proRatedOwnerBurden: round2(alloc.ownerBurdenAmount * factor),
+        addedByAmendment,
+        removedByAmendment,
+      });
+    }
+  }
+
+  // Sort: by cost label, then unit label, then assignment start
+  lines.sort((x, y) =>
+    x.costLabel.localeCompare(y.costLabel)
+    || x.unitLabel.localeCompare(y.unitLabel)
+    || x.assignmentStart.localeCompare(y.assignmentStart),
+  );
+
+  const totals = lines.reduce(
+    (s, l) => ({
+      allocated: s.allocated + l.proRatedAllocated,
+      recoverable: s.recoverable + l.proRatedRecoverable,
+      ownerBurden: s.ownerBurden + l.proRatedOwnerBurden,
+    }),
+    { allocated: 0, recoverable: 0, ownerBurden: 0 },
+  );
+  return {
+    lines,
+    totals: { allocated: round2(totals.allocated), recoverable: round2(totals.recoverable), ownerBurden: round2(totals.ownerBurden) },
+  };
 }
 
 /**
