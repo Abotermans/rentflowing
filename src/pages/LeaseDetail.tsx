@@ -1083,7 +1083,13 @@ export default function LeaseDetail() {
 
       {/* Occupancy Operations */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4 text-left">{t("detail.occupancyOps")}</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground text-left">{t("detail.occupancyOps")}</h2>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOccupancyOpen(o => !o)} aria-label="Toggle section">
+            <ChevronDown className={cn("h-4 w-4 transition-transform", occupancyOpen ? "" : "-rotate-90")} />
+          </Button>
+        </div>
+        {occupancyOpen && (
         <div className="grid gap-6 lg:grid-cols-2">
           {(() => {
             const miKeys = Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[];
