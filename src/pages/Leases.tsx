@@ -264,16 +264,9 @@ export default function Leases() {
         toast({ title: "Validation Error", description: "Reference, property, unit, start date, and end date are required.", variant: "destructive" });
         return;
       }
-      if (tenantMode === "new") {
-        if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
-          toast({ title: "Validation Error", description: "Tenant first name, last name, and email are required.", variant: "destructive" });
-          return;
-        }
-      } else {
-        if (!form.primaryTenantId) {
-          toast({ title: "Validation Error", description: "Please select a tenant.", variant: "destructive" });
-          return;
-        }
+      if (!form.primaryTenantId) {
+        toast({ title: "Validation Error", description: "Please attach at least one tenant to the lease.", variant: "destructive" });
+        return;
       }
     }
     // Every selected unit must support the chosen rent formula.
