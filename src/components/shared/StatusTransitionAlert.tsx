@@ -12,26 +12,26 @@ export function StatusTransitionAlert({ validation }: StatusTransitionAlertProps
   return (
     <div className="space-y-2 mt-2">
       {validation.blockers.length > 0 && (
-        <Alert variant="destructive" className="py-2 flex items-start gap-3 [&>svg]:static [&>svg]:translate-y-0.5 [&>svg~*]:pl-0">
+        <Alert variant="destructive" className="py-2 flex items-center gap-3 [&>svg]:static [&>svg]:translate-y-0 [&>svg~*]:pl-0">
           <XCircle className="h-4 w-4 shrink-0" />
           <AlertDescription>
-            <ul className="list-disc list-inside text-xs space-y-0.5">
+            <div className="text-xs space-y-0.5">
               {validation.blockers.map(b => (
-                <li key={b.code}>{b.message}</li>
+                <div key={b.code}>{b.message}</div>
               ))}
-            </ul>
+            </div>
           </AlertDescription>
         </Alert>
       )}
       {validation.warnings.length > 0 && (
-        <Alert className="py-2 flex items-start gap-3 border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600 [&>svg]:static [&>svg]:translate-y-0.5 [&>svg~*]:pl-0">
+        <Alert className="py-2 flex items-center gap-3 border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600 [&>svg]:static [&>svg]:translate-y-0 [&>svg~*]:pl-0">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <AlertDescription>
-            <ul className="list-disc list-inside text-xs space-y-0.5">
+            <div className="text-xs space-y-0.5">
               {validation.warnings.map(w => (
-                <li key={w.code}>{w.message}</li>
+                <div key={w.code}>{w.message}</div>
               ))}
-            </ul>
+            </div>
           </AlertDescription>
         </Alert>
       )}
