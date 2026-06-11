@@ -84,7 +84,7 @@ export default function LeaseDetail() {
     leases, tenants, units, properties,
     getReceivableItemsByLease, getCashReceiptsByLease, getAllocationsByReceipt,
     getLeaseOutstanding, getGuaranteeByLease, allocations,
-    addGuarantee, updateGuarantee, updateLease, updateUnit, deleteLease, confirmMoveOut,
+    addGuarantee, updateGuarantee, updateLease, updateUnit, deleteLease,
     createCashReceipt, getTenantUnappliedCredit,
     getLeaseAssignments,
   } = useAppData();
