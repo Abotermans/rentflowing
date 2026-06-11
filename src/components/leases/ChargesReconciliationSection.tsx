@@ -323,7 +323,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           </div>
         )}
       </CardContent>
-
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
