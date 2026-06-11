@@ -98,6 +98,11 @@ export default function LeaseDetail() {
   const [receivablesOpen, setReceivablesOpen] = useState(false);
   const [cashReceiptsOpen, setCashReceiptsOpen] = useState(false);
   const [allocationsOpen, setAllocationsOpen] = useState(false);
+  const [finSumOpen, setFinSumOpen] = useState(true);
+  const [advanceBillingOpen, setAdvanceBillingOpen] = useState(true);
+  const [depositOpen, setDepositOpen] = useState(true);
+  const [occupancyOpen, setOccupancyOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(true);
 
   // Cash receipt form
   const [receiptSheetOpen, setReceiptSheetOpen] = useState(false);
@@ -876,7 +881,13 @@ export default function LeaseDetail() {
 
       {/* Financial Summary */}
       <Card>
-        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-base font-medium text-left">{t("detail.financialSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2">
+          <CardTitle className="text-base font-medium text-left">{t("detail.financialSummary")}</CardTitle>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFinSumOpen(o => !o)} aria-label="Toggle section">
+            <ChevronDown className={cn("h-4 w-4 transition-transform", finSumOpen ? "" : "-rotate-90")} />
+          </Button>
+        </CardHeader>
+        {finSumOpen && (
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
@@ -899,17 +910,22 @@ export default function LeaseDetail() {
             )}
           </div>
         </CardContent>
+        )}
       </Card>
 
 
       {/* Advance Billing — only when rentFormula > 1 */}
       {isAdvanceBilling && (
         <Card>
-          <CardHeader className="pb-3 flex-row items-center space-y-0">
+          <CardHeader className="pb-3 flex-row items-center space-y-0 gap-2">
             <CardTitle className="text-base font-medium flex-1 text-left">
               {t("advanceCycle.title")} <span className="text-muted-foreground">— {t("advanceCycle.everyN").replace("{n}", String(lease.rentFormula))}</span>
             </CardTitle>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAdvanceBillingOpen(o => !o)} aria-label="Toggle section">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", advanceBillingOpen ? "" : "-rotate-90")} />
+            </Button>
           </CardHeader>
+          {advanceBillingOpen && (
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
@@ -1011,6 +1027,7 @@ export default function LeaseDetail() {
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
+          )}
         </Card>
       )}
 
@@ -1031,11 +1048,17 @@ export default function LeaseDetail() {
                 );
               })()}
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
-              {guarantee ? <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</> : <><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addGuarantee")}</>}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
+                {guarantee ? <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</> : <><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addGuarantee")}</>}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDepositOpen(o => !o)} aria-label="Toggle section">
+                <ChevronDown className={cn("h-4 w-4 transition-transform", depositOpen ? "" : "-rotate-90")} />
+              </Button>
+            </div>
           </div>
         </CardHeader>
+        {depositOpen && (
         <CardContent>
           {guarantee ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1053,13 +1076,20 @@ export default function LeaseDetail() {
             <p className="text-sm text-muted-foreground">{t("detail.noGuaranteeDesc")}</p>
           )}
         </CardContent>
+        )}
       </Card>
 
       <ChargesReconciliationSection lease={lease} currency={currency} locale={locale} />
 
       {/* Occupancy Operations */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4 text-left">{t("detail.occupancyOps")}</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground text-left">{t("detail.occupancyOps")}</h2>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOccupancyOpen(o => !o)} aria-label="Toggle section">
+            <ChevronDown className={cn("h-4 w-4 transition-transform", occupancyOpen ? "" : "-rotate-90")} />
+          </Button>
+        </div>
+        {occupancyOpen && (
         <div className="grid gap-6 lg:grid-cols-2">
           {(() => {
             const miKeys = Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[];
@@ -1228,6 +1258,7 @@ export default function LeaseDetail() {
             </CardContent>
           </Card>
         </div>
+        )}
       </div>
 
       {/* Receivables */}
@@ -1368,15 +1399,22 @@ export default function LeaseDetail() {
       <Card>
         <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base font-medium text-left">{t("common.notes")}</CardTitle>
-          <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
-            <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
+              <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNotesOpen(o => !o)} aria-label="Toggle section">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", notesOpen ? "" : "-rotate-90")} />
+            </Button>
+          </div>
         </CardHeader>
+        {notesOpen && (
         <CardContent>
           {lease.notes
             ? <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lease.notes}</p>
             : <p className="text-sm text-muted-foreground italic">—</p>}
         </CardContent>
+        )}
       </Card>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
