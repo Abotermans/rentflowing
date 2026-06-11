@@ -80,7 +80,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           <TableBody>
             {overview.lines.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-xs text-muted-foreground text-center py-3">
+                <TableCell colSpan={8} className="text-xs text-muted-foreground text-center py-3">
                   {t("reconciliation.overview.empty")}
                 </TableCell>
               </TableRow>
