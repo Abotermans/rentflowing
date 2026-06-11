@@ -763,7 +763,7 @@ export default function LeaseDetail() {
                   chargesShare: lease.monthlyCharges,
                 }] : []);
             return (
-              <div className="space-y-4 pb-4 border-b border-border">
+              <div className="space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground mb-1.5">{t("leases.tenant")}</p>
