@@ -1048,11 +1048,17 @@ export default function LeaseDetail() {
                 );
               })()}
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
-              {guarantee ? <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</> : <><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addGuarantee")}</>}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
+                {guarantee ? <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</> : <><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addGuarantee")}</>}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDepositOpen(o => !o)} aria-label="Toggle section">
+                <ChevronDown className={cn("h-4 w-4 transition-transform", depositOpen ? "" : "-rotate-90")} />
+              </Button>
+            </div>
           </div>
         </CardHeader>
+        {depositOpen && (
         <CardContent>
           {guarantee ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
