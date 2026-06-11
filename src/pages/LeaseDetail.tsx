@@ -1314,7 +1314,6 @@ export default function LeaseDetail() {
                             <Checkbox
                               checked={lease.moveInChecklist[key]}
                               onCheckedChange={() => toggleMoveInChecklist(key)}
-                              disabled={moveInStatus === "completed"}
                             />
                             <span className={`text-sm ${lease.moveInChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
                               {t(MOVE_IN_CHECKLIST_KEY[key])}
@@ -1347,7 +1346,6 @@ export default function LeaseDetail() {
                             <Checkbox
                               checked={lease.moveOutChecklist[key]}
                               onCheckedChange={() => toggleMoveOutChecklist(key)}
-                              disabled={moveOutStatus === "completed"}
                             />
                             <span className={`text-sm ${lease.moveOutChecklist[key] ? "text-muted-foreground line-through" : "text-foreground"}`}>
                               {t(MOVE_OUT_CHECKLIST_KEY[key])}
