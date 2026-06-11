@@ -252,6 +252,22 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       unitsToAdd, unitsToRemove, editedShares, currentUnits, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
+  const { totalRent, totalCharges } = useMemo(() => {
+    let totalRent = 0;
+    let totalCharges = 0;
+    for (const r of currentUnits) {
+      if (unitsToRemove.includes(r.unit.id)) continue;
+      const e = editedShares[r.unit.id];
+      totalRent += e?.rentShare !== undefined && e.rentShare !== "" ? Number(e.rentShare) : (r.assignment.rentShare ?? 0);
+      totalCharges += e?.chargesShare !== undefined && e.chargesShare !== "" ? Number(e.chargesShare) : (r.assignment.chargesShare ?? 0);
+    }
+    for (const a of unitsToAdd) {
+      totalRent += Number(a.rentShare || 0);
+      totalCharges += Number(a.chargesShare || 0);
+    }
+    return { totalRent, totalCharges };
+  }, [currentUnits, unitsToRemove, editedShares, unitsToAdd]);
+
   const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
   const derivedCategories = useMemo(() => {
     const cats = new Set<AmendmentType>();
