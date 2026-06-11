@@ -161,9 +161,11 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
           {t("amendments.title")} <span className="text-muted-foreground">({ams.length})</span>
         </CardTitle>
         <div className="flex items-center gap-2">
-          <Button size="sm" className="h-8" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-1" />{t("amendments.add")}
-          </Button>
+          {lease.lifecycleStage !== "draft" && (
+            <Button size="sm" className="h-8" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1" />{t("amendments.add")}
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
             <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
           </Button>
