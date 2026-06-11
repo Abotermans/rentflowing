@@ -219,8 +219,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                 <TableBody>
                   {ams.map(a => {
                     const chs = getAmendmentChanges(a.id);
-                    const newEndCh = chs.find(c => c.fieldName === "leaseEndDate");
-                    const newEnd = newEndCh ? String(newEndCh.newValue) : null;
                     const hasGap = a.effectiveDate > currentEndDate;
                     return (
                        <TableRow
