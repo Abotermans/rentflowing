@@ -30,7 +30,7 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canChangeLeaseStatus, canActivateLease, canRenewLease } from "@/lib/integrity/leaseIntegrity";
+import { canChangeLeaseStatus, canActivateLease, canRenewLease, canSendForSignature, canMarkSigned } from "@/lib/integrity/leaseIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
@@ -315,6 +315,45 @@ export default function LeaseDetail() {
     } else {
       toast({ title: t("leaseToast.activated") });
     }
+  };
+
+  // ===== Lifecycle: signature flow =====
+  const [signDialogOpen, setSignDialogOpen] = useState(false);
+  const [signDateInput, setSignDateInput] = useState<string>(today);
+
+  const handleSendForSignature = () => {
+    const validation = canSendForSignature(lease.id, integrityState);
+    if (!validation.allowed) {
+      toast({ title: t("leaseToast.cannotActivate"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
+      return;
+    }
+    updateLease({ ...lease, lifecycleStage: "pending-signature" });
+    toast({ title: t("lease.toastSentForSignature") });
+  };
+
+  const openMarkSignedDialog = () => {
+    setSignDateInput(lease.signedDate ?? today);
+    setSignDialogOpen(true);
+  };
+
+  const handleMarkSigned = () => {
+    if (!signDateInput) {
+      toast({ title: t("common.validationError"), description: t("lease.signedDateRequired"), variant: "destructive" });
+      return;
+    }
+    const next = { ...lease, signedDate: signDateInput, lifecycleStage: "signed" as const };
+    // Auto-promote to active when start date is already in the past.
+    if (lease.startDate && lease.startDate <= today) {
+      next.lifecycleStage = "active";
+    }
+    updateLease(next);
+    toast({ title: t("lease.toastSigned") });
+    setSignDialogOpen(false);
+  };
+
+  const handleCancelSignature = () => {
+    updateLease({ ...lease, lifecycleStage: "draft", signedDate: null });
+    toast({ title: t("lease.toastCanceledSignature") });
   };
 
   const openEndDialog = () => {
