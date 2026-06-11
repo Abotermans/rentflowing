@@ -159,6 +159,8 @@ export default function LeaseDetail() {
   const [moMeter, setMoMeter] = useState("");
   const [moWaterMeter, setMoWaterMeter] = useState("");
   const [moNotes, setMoNotes] = useState("");
+  const [moActualDate, setMoActualDate] = useState("");
+  const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
 
   // Return form
   const [returnSheetOpen, setReturnSheetOpen] = useState(false);
