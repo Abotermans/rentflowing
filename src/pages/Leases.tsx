@@ -224,16 +224,9 @@ export default function Leases() {
       persistAssignments(editingLease.id);
       toast({ title: "Lease updated" });
     } else {
-      if (tenantMode === "new") {
-        const newTenant = addTenant(tenantForm);
-        const created = addLease({ ...formToPersist, primaryTenantId: newTenant.id });
-        persistAssignments(created.id);
-        toast({ title: "Lease added", description: `Tenant ${getTenantFullName(newTenant)} created` });
-      } else {
-        const created = addLease({ ...formToPersist });
-        persistAssignments(created.id);
-        toast({ title: "Lease added" });
-      }
+      const created = addLease({ ...formToPersist });
+      persistAssignments(created.id);
+      toast({ title: "Lease added" });
     }
     setSheetOpen(false);
   };
