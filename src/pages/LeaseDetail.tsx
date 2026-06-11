@@ -613,8 +613,10 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
-            {(lease.lifecycleStage === "active" || lease.lifecycleStage === "draft") && !lease.noticeGiven && (
+            {lease.lifecycleStage !== "draft" && lease.lifecycleStage !== "pending-signature" && (
+              <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
+            )}
+            {(lease.lifecycleStage === "active" || lease.lifecycleStage === "signed") && !lease.noticeGiven && (
               <Button variant="outline" size="sm" className="h-9" onClick={openNoticeForm}>
                 <Bell className="h-4 w-4 mr-1" />
                 {t("detail.registerNotice")}
@@ -628,11 +630,34 @@ export default function LeaseDetail() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 {lease.lifecycleStage === "draft" && (() => {
-                  const activationCheck = canActivateLease(lease.id, integrityState);
+                  const check = canSendForSignature(lease.id, integrityState);
                   return (
-                    <DropdownMenuItem onSelect={() => handleActivateLease()} disabled={!activationCheck.allowed}>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />{t("leaseDetail.activateLease")}
+                    <DropdownMenuItem onSelect={() => handleSendForSignature()} disabled={!check.allowed}>
+                      <Bell className="h-4 w-4 mr-2" />{t("lease.sendForSignature")}
                     </DropdownMenuItem>
+                  );
+                })()}
+                {lease.lifecycleStage === "pending-signature" && (
+                  <>
+                    <DropdownMenuItem onSelect={() => openMarkSignedDialog()}>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />{t("lease.markSigned")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleCancelSignature()}>
+                      <Undo2 className="h-4 w-4 mr-2" />{t("lease.cancelSignature")}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {lease.lifecycleStage === "signed" && (() => {
+                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
+                  return (
+                    <>
+                      <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
+                        <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
                   );
                 })()}
                 {lease.lifecycleStage === "active" && (() => {
@@ -648,6 +673,18 @@ export default function LeaseDetail() {
                       <DropdownMenuItem onSelect={() => handleMarkEnded()} disabled={endDisabled}>
                         <CheckCircle2 className="h-4 w-4 mr-2" />{t("detail.markEnded")}
                       </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
+                        <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  );
+                })()}
+                {lease.lifecycleStage === "ended" && (() => {
+                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
+                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
+                  return (
+                    <>
                       <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
                         <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
                       </DropdownMenuItem>
