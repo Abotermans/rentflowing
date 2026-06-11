@@ -98,6 +98,11 @@ export default function LeaseDetail() {
   const [receivablesOpen, setReceivablesOpen] = useState(false);
   const [cashReceiptsOpen, setCashReceiptsOpen] = useState(false);
   const [allocationsOpen, setAllocationsOpen] = useState(false);
+  const [finSumOpen, setFinSumOpen] = useState(true);
+  const [advanceBillingOpen, setAdvanceBillingOpen] = useState(true);
+  const [depositOpen, setDepositOpen] = useState(true);
+  const [occupancyOpen, setOccupancyOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(true);
 
   // Cash receipt form
   const [receiptSheetOpen, setReceiptSheetOpen] = useState(false);
