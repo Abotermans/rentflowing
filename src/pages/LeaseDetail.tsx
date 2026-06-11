@@ -1258,6 +1258,7 @@ export default function LeaseDetail() {
             </CardContent>
           </Card>
         </div>
+        )}
       </div>
 
       {/* Receivables */}
