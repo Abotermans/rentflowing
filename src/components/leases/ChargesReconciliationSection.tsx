@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, Calculator, Info } from "lucide-react";
+import { Trash2, Calculator, Info, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { Lease } from "@/types";
 import type { ReconciliationResolution } from "@/types/chargesReconciliation";
