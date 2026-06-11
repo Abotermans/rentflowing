@@ -1076,6 +1076,7 @@ export default function LeaseDetail() {
             <p className="text-sm text-muted-foreground">{t("detail.noGuaranteeDesc")}</p>
           )}
         </CardContent>
+        )}
       </Card>
 
       <ChargesReconciliationSection lease={lease} currency={currency} locale={locale} />
