@@ -1129,7 +1129,7 @@ export default function LeaseDetail() {
 
                 {/* Move-Out column */}
                 <Card className="flex flex-col">
-                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm(), () => openMoveOutForm())}</CardHeader>
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm({ mode: "schedule" }), () => openMoveOutForm({ mode: "complete" }))}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
                     {moveOutStatus === "not-scheduled" ? (
