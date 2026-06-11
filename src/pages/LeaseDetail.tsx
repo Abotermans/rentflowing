@@ -881,7 +881,13 @@ export default function LeaseDetail() {
 
       {/* Financial Summary */}
       <Card>
-        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-base font-medium text-left">{t("detail.financialSummary")}</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2">
+          <CardTitle className="text-base font-medium text-left">{t("detail.financialSummary")}</CardTitle>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFinSumOpen(o => !o)} aria-label="Toggle section">
+            <ChevronDown className={cn("h-4 w-4 transition-transform", finSumOpen ? "" : "-rotate-90")} />
+          </Button>
+        </CardHeader>
+        {finSumOpen && (
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
@@ -904,6 +910,7 @@ export default function LeaseDetail() {
             )}
           </div>
         </CardContent>
+        )}
       </Card>
 
 
