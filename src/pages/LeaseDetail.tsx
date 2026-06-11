@@ -160,6 +160,7 @@ export default function LeaseDetail() {
   const [moWaterMeter, setMoWaterMeter] = useState("");
   const [moNotes, setMoNotes] = useState("");
   const [moActualDate, setMoActualDate] = useState("");
+  const [moveOutMode, setMoveOutMode] = useState<"schedule" | "complete">("schedule");
   const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
 
   // Return form
