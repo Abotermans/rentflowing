@@ -80,6 +80,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
               <TableHead className="h-8 text-xs">{t("reconciliation.col.cost")}</TableHead>
               <TableHead className="h-8 text-xs">{t("reconciliation.overview.col.unit")}</TableHead>
               <TableHead className="h-8 text-xs">{t("reconciliation.col.period")}</TableHead>
+              <TableHead className="h-8 text-xs">{t("reconciliation.overview.col.bearer")}</TableHead>
               <TableHead className="h-8 text-xs text-right">{t("reconciliation.overview.col.allocated")}</TableHead>
               <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.overlap")}</TableHead>
               <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.prorated")}</TableHead>
@@ -88,7 +89,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           <TableBody>
             {overview.lines.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-xs text-muted-foreground text-center py-3">
+                <TableCell colSpan={7} className="text-xs text-muted-foreground text-center py-3">
                   {t("reconciliation.overview.empty")}
                 </TableCell>
               </TableRow>
