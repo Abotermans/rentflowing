@@ -292,14 +292,13 @@ export default function LeaseDetail() {
 
   const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
   const handleSaveNotice = () => {
-    const syncMoveOut = !lease.moveOutActualDate && nMoveOut;
     updateLease({
       ...lease,
       noticeGiven: true,
       noticeDate: nDate || null,
       intendedMoveOutDate: nMoveOut || null,
       terminationReason: nReason || null,
-      ...(syncMoveOut ? { moveOutScheduledDate: nMoveOut } : {}),
+      ...(lease.moveOutActualDate ? {} : { moveOutScheduledDate: nMoveOut || null }),
     });
     toast({ title: t("leaseToast.noticeRegistered") });
     setNoticeSheetOpen(false);
@@ -463,9 +462,7 @@ export default function LeaseDetail() {
   };
 
   const handleCancelNotice = () => {
-    const clearScheduled = !lease.moveOutActualDate
-      && lease.intendedMoveOutDate
-      && lease.moveOutScheduledDate === lease.intendedMoveOutDate;
+    const clearScheduled = !lease.moveOutActualDate;
     updateLease({
       ...lease,
       noticeGiven: false,
@@ -507,16 +504,24 @@ export default function LeaseDetail() {
     setMoveOutSheetOpen(true);
   };
   const handleScheduleMoveOut = () => {
-    updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutNotes: moNotes });
+    const next = moScheduled || null;
+    updateLease({
+      ...lease,
+      moveOutScheduledDate: next,
+      moveOutNotes: moNotes,
+      ...(lease.noticeGiven ? { intendedMoveOutDate: next } : {}),
+    });
     toast({ title: t("leaseToast.moveOutScheduled") });
     setMoveOutSheetOpen(false);
   };
   const handleCompleteMoveOut = () => {
     if (!moActualDate) return;
+    const scheduled = lease.moveOutScheduledDate || moScheduled || moActualDate;
     updateLease({
       ...lease,
       moveOutActualDate: moActualDate,
-      moveOutScheduledDate: lease.moveOutScheduledDate || moScheduled || moActualDate,
+      moveOutScheduledDate: scheduled,
+      ...(lease.noticeGiven ? { intendedMoveOutDate: scheduled } : {}),
       moveOutMeterReading: moMeter || lease.moveOutMeterReading,
       moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading,
       moveOutNotes: moNotes || lease.moveOutNotes,
@@ -881,7 +886,6 @@ export default function LeaseDetail() {
             <div><p className="text-xs text-muted-foreground">{t("leases.noticePeriod")}</p><p className="text-sm font-medium text-foreground">{effNotice || "—"}{amSuffix(noticeAmNum)}</p></div>
             <div><p className="text-xs text-muted-foreground">{t("detail.noticeGiven")}</p><p className="text-sm font-medium text-foreground">{lease.noticeGiven ? t("common.yes") : t("common.no")}</p></div>
             {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
-            {lease.intendedMoveOutDate && <div><p className="text-xs text-muted-foreground">{t("detail.intendedMoveOut")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.intendedMoveOutDate, locale)}</p></div>}
             {lease.terminationReason && <div><p className="text-xs text-muted-foreground">{t("detail.reason")}</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
           </div>
         </CardContent>
