@@ -237,14 +237,18 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
   if (mode === "flat-rate") {
     return (
       <Card>
-        <CardHeader className="pb-3 flex-row items-center space-y-0">
+        <CardHeader className="pb-3 flex-row items-center space-y-0 gap-2">
           <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 text-left">
             {t("reconciliation.title")}
             <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5">
               {t("reconciliation.flatBadge")}
             </span>
           </CardTitle>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
+            <ChevronDown className={cn("h-4 w-4 transition-transform", sectionOpen ? "" : "-rotate-90")} />
+          </Button>
         </CardHeader>
+        {sectionOpen && (
         <CardContent className="space-y-4">
           <Alert>
             <Info className="h-4 w-4" />
@@ -252,6 +256,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           </Alert>
           {overviewCard}
         </CardContent>
+        )}
       </Card>
     );
   }
@@ -266,11 +271,17 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
               {t("reconciliation.provisionBadge")}
             </span>
           </CardTitle>
-          <Button variant="outline" size="sm" onClick={openDialog}>
-            <Calculator className="h-3.5 w-3.5 mr-1" />{t("reconciliation.runButton")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={openDialog}>
+              <Calculator className="h-3.5 w-3.5 mr-1" />{t("reconciliation.runButton")}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", sectionOpen ? "" : "-rotate-90")} />
+            </Button>
+          </div>
         </div>
       </CardHeader>
+      {sectionOpen && (
       <CardContent className="space-y-4">
         {overviewCard}
         {history.length === 0 ? (
