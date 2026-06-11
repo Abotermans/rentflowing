@@ -62,17 +62,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
 
   const overviewCard = (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs">{t("reconciliation.overview.title")}</Label>
-        {overview.lines.length > 0 && (
-          <div className="text-xs text-muted-foreground">
-            {t("reconciliation.overview.totals")}:{" "}
-            <span className="font-medium text-foreground">{formatCurrency(overview.totals.recoverable, currency, locale)}</span>
-            <span className="mx-1">·</span>
-            {t("reconciliation.col.full")}: {formatCurrency(overview.totals.allocated, currency, locale)}
-          </div>
-        )}
-      </div>
+      <Label className="text-xs">{t("reconciliation.overview.title")}</Label>
       <div className="rounded border overflow-hidden">
         <Table className="[&_th]:px-2 [&_td]:px-2">
           <TableHeader>
@@ -81,7 +71,8 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
               <TableHead className="h-8 text-xs">{t("reconciliation.overview.col.unit")}</TableHead>
               <TableHead className="h-8 text-xs">{t("reconciliation.col.period")}</TableHead>
               <TableHead className="h-8 text-xs">{t("reconciliation.overview.col.bearer")}</TableHead>
-              <TableHead className="h-8 text-xs text-right">{t("reconciliation.overview.col.allocated")}</TableHead>
+              <TableHead className="h-8 text-xs text-right">{t("reconciliation.overview.col.totalAmount")}</TableHead>
+              <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.full")}</TableHead>
               <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.overlap")}</TableHead>
               <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.prorated")}</TableHead>
             </TableRow>
@@ -89,7 +80,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           <TableBody>
             {overview.lines.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-xs text-muted-foreground text-center py-3">
+                <TableCell colSpan={8} className="text-xs text-muted-foreground text-center py-3">
                   {t("reconciliation.overview.empty")}
                 </TableCell>
               </TableRow>
@@ -122,6 +113,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                   {l.recoveryType === "partially-recoverable" && t("reconciliation.overview.bearer.mix" as never)}
                   {l.recoveryType === "informational" && t("reconciliation.overview.bearer.informational" as never)}
                 </TableCell>
+                <TableCell className="text-xs text-right">{formatCurrency(l.allocatedAmount, currency, locale)}</TableCell>
                 <TableCell className="text-xs text-right">{formatCurrency(l.recoverableAmount, currency, locale)}</TableCell>
                 <TableCell className="text-xs text-right">{l.overlapDays}/{l.totalDays} ({Math.round(l.proRataFactor * 100)}%)</TableCell>
                 <TableCell className="text-xs text-right font-medium">
@@ -182,6 +174,15 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                 </TableCell>
               </TableRow>
             ))}
+            {overview.lines.length > 0 && (
+              <TableRow className="h-8 border-t bg-muted/30">
+                <TableCell className="text-xs font-semibold" colSpan={4}>{t("reconciliation.overview.totals")}</TableCell>
+                <TableCell className="text-xs text-right font-semibold tabular-nums">{formatCurrency(overview.totals.fullAllocated, currency, locale)}</TableCell>
+                <TableCell className="text-xs text-right font-semibold tabular-nums">{formatCurrency(overview.totals.fullRecoverable, currency, locale)}</TableCell>
+                <TableCell className="text-xs text-right" />
+                <TableCell className="text-xs text-right font-semibold tabular-nums">{formatCurrency(overview.totals.recoverable, currency, locale)}</TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
