@@ -266,18 +266,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                          </TableCell>
                         <TableCell className="py-1.5">{a.title}</TableCell>
                         <TableCell className="py-1.5">
-                          {chs.length === 0 ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : (
-                            <span
-                              className="cursor-pointer underline decoration-dotted underline-offset-2 text-sm text-foreground"
-                              onClick={(e) => { e.stopPropagation(); setChangesDialog(a); }}
-                            >
-                              {chs.length}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-1.5">
                           <span className="inline-flex items-center gap-1">
                             {formatDate(a.effectiveDate, locale)}
                             {hasGap && (
@@ -290,7 +278,18 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                             )}
                           </span>
                         </TableCell>
-                        <TableCell className="py-1.5">{newEnd ? formatDate(newEnd, locale) : "—"}</TableCell>
+                        <TableCell className="py-1.5">
+                          {chs.length === 0 ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <span
+                              className="cursor-pointer underline decoration-dotted underline-offset-2 text-sm text-foreground"
+                              onClick={(e) => { e.stopPropagation(); setChangesDialog(a); }}
+                            >
+                              {chs.length}
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell className="py-1.5">
                           <Badge className={STATUS_CLS[a.status]} variant="outline">
                             {a.status === "active" ? t("amendments.badge.current") : t(`amendments.statusLabel.${a.status}` as any)}
