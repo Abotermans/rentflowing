@@ -773,6 +773,51 @@ export default function LeaseDetail() {
         </Alert>
       )}
 
+      {(() => {
+        const scheduled = lease.moveOutScheduledDate;
+        if (!scheduled) return null;
+        if (scheduled >= today) return null;
+        const checklistValues = Object.values(lease.moveOutChecklist);
+        const total = checklistValues.length;
+        const done = checklistValues.filter(Boolean).length;
+        if (done === total) return null;
+        return (
+          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {t("lease.moveOutOverdue.title").replace("{date}", formatDate(scheduled, locale))}
+                  </span>
+                  <span className="text-sm">
+                    {t("lease.moveOutOverdue.description")
+                      .replace("{done}", String(done))
+                      .replace("{total}", String(total))}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      document.getElementById("move-out-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    {t("lease.moveOutOverdue.completeChecklist")}
+                  </Button>
+                  {!lease.moveOutActualDate && (
+                    <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ mode: "complete" })}>
+                      {t("lease.moveOutOverdue.recordMoveOut")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
+
       {/* End-of-lease approaching */}
       {(() => {
         if (lease.lifecycleStage !== "active") return null;
@@ -1260,7 +1305,7 @@ export default function LeaseDetail() {
                 </Card>
 
                 {/* Move-Out column */}
-                <Card className="flex flex-col">
+                <Card id="move-out-checklist" className="flex flex-col scroll-mt-20">
                   <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm({ mode: "schedule" }), () => openMoveOutForm({ mode: "complete" }))}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
