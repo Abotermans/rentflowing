@@ -564,7 +564,6 @@ export default function LeaseDetail() {
       moveOutMeterReading: moMeter || lease.moveOutMeterReading,
       moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading,
       moveOutNotes: moNotes || lease.moveOutNotes,
-      moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
       returnStatus: lease.returnStatus || "pending",
     });
     toast({ title: t("leaseToast.moveOutConfirmed") });
