@@ -62,17 +62,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
 
   const overviewCard = (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs">{t("reconciliation.overview.title")}</Label>
-        {overview.lines.length > 0 && (
-          <div className="text-xs text-muted-foreground">
-            {t("reconciliation.overview.totals")}:{" "}
-            <span className="font-medium text-foreground">{formatCurrency(overview.totals.recoverable, currency, locale)}</span>
-            <span className="mx-1">·</span>
-            {t("reconciliation.col.full")}: {formatCurrency(overview.totals.allocated, currency, locale)}
-          </div>
-        )}
-      </div>
+      <Label className="text-xs">{t("reconciliation.overview.title")}</Label>
       <div className="rounded border overflow-hidden">
         <Table className="[&_th]:px-2 [&_td]:px-2">
           <TableHeader>
