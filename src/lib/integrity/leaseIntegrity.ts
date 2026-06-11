@@ -77,7 +77,6 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   }
 
   // Warnings
-  if (!lease.signedDate) warnings.push({ code: "LEASE_UNSIGNED", message: "Lease has not been signed yet", severity: "medium" });
   if (!lease.depositOrGuaranteeAmount && s.guarantees.filter(g => g.leaseId === leaseId).length === 0) {
     warnings.push({ code: "LEASE_NO_DEPOSIT", message: "No deposit or guarantee recorded", severity: "medium" });
   }
@@ -88,11 +87,38 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   return ok();
 }
 
+/**
+ * Same structural checks as `canActivateLease` — used to gate the
+ * `draft → pending-signature` transition. Re-exported under a clearer name so
+ * call sites describe the actual action.
+ */
+export const canSendForSignature = canActivateLease;
+
+/**
+ * Gate the `pending-signature → signed` transition: a signed date must be set.
+ * The dialog that triggers this transition is responsible for collecting the
+ * date and updating the lease before calling the transition.
+ */
+export function canMarkSigned(leaseId: string, s: IntegrityState): ValidationResult {
+  const lease = s.leases.find(l => l.id === leaseId);
+  if (!lease) return blocked([{ code: "LEASE_NOT_FOUND", message: "Lease not found" }]);
+  if (!lease.signedDate) {
+    return blocked([{ code: "LEASE_SIGNED_DATE_REQUIRED", message: "A signed date is required" }]);
+  }
+  return ok();
+}
+
 export function canChangeLeaseStatus(leaseId: string, targetStatus: LifecycleStage, s: IntegrityState): ValidationResult {
   const lease = s.leases.find(l => l.id === leaseId);
   if (!lease) return blocked([{ code: "LEASE_NOT_FOUND", message: "Lease not found" }]);
 
   switch (targetStatus) {
+    case "pending-signature":
+      return canSendForSignature(leaseId, s);
+
+    case "signed":
+      return canMarkSigned(leaseId, s);
+
     case "active":
       return canActivateLease(leaseId, s);
 
@@ -119,7 +145,9 @@ export function canChangeLeaseStatus(leaseId: string, targetStatus: LifecycleSta
     }
 
     case "draft":
-      if (lease.lifecycleStage !== "draft") {
+      // Cancel-signature flow: only pending-signature can be sent back to
+      // draft. Active/ended/terminated leases stay where they are.
+      if (lease.lifecycleStage !== "draft" && lease.lifecycleStage !== "pending-signature") {
         return blocked([{ code: "LEASE_CANNOT_REVERT_DRAFT", message: "Cannot revert a non-draft lease back to draft status" }]);
       }
       return ok();
