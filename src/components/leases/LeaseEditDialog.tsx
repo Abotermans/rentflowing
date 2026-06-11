@@ -573,18 +573,9 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
               <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
               <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4 items-end">
-              <div className="rounded-md border border-border px-3 py-2 text-xs">
-                <div className="text-muted-foreground uppercase tracking-wide text-[10px]">{t("leases.units.grandTotal")}</div>
-                <div className="mt-1 text-foreground">
-                  {t("leases.monthlyRent")}: <span className="font-medium">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
-                  {" · "}
-                  {t("leases.monthlyCharges")}: <span className="font-medium">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
-                  {" · "}
-                  {t("leases.units.total")}: <span className="font-medium">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
-                </div>
-              </div>
-              <div><Label>{t("leases.dueDay")}</Label><Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} /></div>
+            <div>
+              <Label>{t("leases.dueDay")}</Label>
+              <Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.deposit")}</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
