@@ -654,6 +654,44 @@ export default function LeaseDetail() {
         </Alert>
       )}
 
+      {/* End-of-lease approaching */}
+      {(() => {
+        if (lease.lifecycleStage !== "active") return null;
+        if (lease.moveOutActualDate) return null;
+        const END_WARN_DAYS = 60;
+        const endIso = lease.endDate;
+        if (!endIso) return null;
+        const toUTC = (iso: string) => { const [y,m,d] = iso.split("-").map(Number); return Date.UTC(y, (m||1)-1, d||1); };
+        const days = Math.round((toUTC(endIso) - toUTC(today)) / 86400000);
+        if (days > END_WARN_DAYS) return null;
+        let headline: string;
+        if (days < 0) headline = t("lease.endingSoon.passed");
+        else if (days === 0) headline = t("lease.endingSoon.today");
+        else if (days === 1) headline = t("lease.endingSoon.tomorrow");
+        else headline = t("lease.endingSoon.title").replace("{days}", String(days));
+        const showScheduleMoveOut = !lease.noticeGiven && moveOutStatus === "not-scheduled";
+        return (
+          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
+            <Clock className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="font-medium">{headline}</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setNewAmendmentSignal(n => n + 1)}>
+                    {t("lease.endingSoon.suggestAmendment")}
+                  </Button>
+                  {showScheduleMoveOut && (
+                    <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ prefillScheduled: endIso })}>
+                      {t("lease.endingSoon.suggestMoveOut")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
+
       {/* Overdue end banner */}
       {lifecycle === "overdue-end" && (
         <Alert variant="destructive">
