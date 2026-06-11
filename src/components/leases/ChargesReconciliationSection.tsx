@@ -174,6 +174,15 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                 </TableCell>
               </TableRow>
             ))}
+            {overview.lines.length > 0 && (
+              <TableRow className="h-8 border-t bg-muted/30">
+                <TableCell className="text-xs font-semibold" colSpan={4}>{t("reconciliation.overview.totals")}</TableCell>
+                <TableCell className="text-xs text-right font-semibold tabular-nums">{formatCurrency(overview.totals.fullAllocated, currency, locale)}</TableCell>
+                <TableCell className="text-xs text-right font-semibold tabular-nums">{formatCurrency(overview.totals.fullRecoverable, currency, locale)}</TableCell>
+                <TableCell className="text-xs text-right" />
+                <TableCell className="text-xs text-right font-semibold tabular-nums">{formatCurrency(overview.totals.recoverable, currency, locale)}</TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
