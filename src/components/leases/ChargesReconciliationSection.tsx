@@ -135,11 +135,6 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                         <span className="font-medium">{t("reconciliation.overview.col.totalAmount")}</span>
                         <span className="text-right font-semibold tabular-nums">{formatCurrency(l.allocatedAmount, currency, locale)}</span>
                       </div>
-                      <div className="text-[10px] text-muted-foreground border-t pt-1.5 font-mono">
-                        {formatCurrency(l.costFullAmount, currency, locale)}
-                        {" × "}
-                        {l.costFullAmount > 0 ? `${((l.allocatedAmount / l.costFullAmount) * 100).toFixed(1)}%` : "—"}
-                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
