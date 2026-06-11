@@ -1398,6 +1398,13 @@ const en = {
   "reconciliation.toast.created": "Reconciliation saved",
   "reconciliation.toast.deleted": "Reconciliation removed",
   "reconciliation.delete": "Delete",
+  "reconciliation.overview.title": "Costs during lease",
+  "reconciliation.overview.empty": "No costs allocated to this lease's units during the lease period.",
+  "reconciliation.overview.col.unit": "Unit",
+  "reconciliation.overview.col.allocated": "Recoverable share",
+  "reconciliation.overview.totals": "Total pro-rated recoverable",
+  "reconciliation.overview.addedByAmendment": "Added",
+  "reconciliation.overview.removedByAmendment": "Removed",
 };
 
 type TranslationKeys = typeof en;
