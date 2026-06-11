@@ -1,108 +1,65 @@
+# Improve Move-Out Flow
 
-## Goal
+Tighten the link between Notice registration, the Move-Out card, and the natural end of the lease, and surface contextual suggestions as the end date approaches.
 
-On a lease's **Charges Reconciliation** section, display a structured table of every cost allocated to the lease's units during the lease period, with amounts pro-rated by:
-1. The **cost's own period** vs the **unit-assignment window** (handles costs that span partly outside the lease).
-2. The **allocation share** already produced by the allocation engine (handles costs shared across units in a property).
-3. **Amendment-driven unit changes** (new units added mid-lease, units removed early) — naturally handled by reading `leaseUnitAssignments` rather than only `lease.unitId`.
+## 1. Sync notice ↔ move-out scheduled date
 
-Today the section only shows pro-rated lines *inside the reconciliation dialog*, scoped to the primary unit. This plan adds a permanent overview table on the section itself, scoped to **all** assigned units across the **full lease period**.
+In `src/pages/LeaseDetail.tsx`, `handleSaveNotice`:
+- When the user saves a notice, also write `moveOutScheduledDate` using the intended move-out date from the notice form (if `moveOutActualDate` is not yet set).
+- This automatically flips the Move-Out card from "Not scheduled" to "Scheduled" (driven by existing `getMoveOutStatus`).
+- `handleCancelNotice`: clear `moveOutScheduledDate` too, but only if move-out is not yet completed and the current scheduled date matches the notice's intended date (don't blow away a manually edited date).
 
-## Scope
+## 2. Gate the move-out checklist on scheduling
 
-```text
-┌─ Charges Reconciliation ──────────────────────────────┐
-│ [Provision + reconciliation]            [Run reconc.] │
-├───────────────────────────────────────────────────────┤
-│ Cost overview during lease (new)                      │
-│ ┌──────────┬──────┬──────────┬───────┬───────┬──────┐ │
-│ │ Cost     │ Unit │ Period   │ Alloc │ Over- │ Pro- │ │
-│ │          │      │          │ share │ lap   │ rated│ │
-│ ├──────────┼──────┼──────────┼───────┼───────┼──────┤ │
-│ │ Insur.   │ A101 │ 01/01 →  │ 240 € │ 243/  │ 160 €│ │
-│ │ 2026     │      │ 31/12/26 │       │ 365   │      │ │
-│ │ Insur.   │ A102*│ same     │ 120 € │ 90/365│  30 €│ │
-│ │ Water Q1 │ A101 │ Jan-Mar  │  60 € │ 90/90 │  60 €│ │
-│ └──────────┴──────┴──────────┴───────┴───────┴──────┘ │
-│ * added via amendment on 01/10/2026                   │
-│ Totals: Recoverable 250 € · Owner burden 0 €          │
-├───────────────────────────────────────────────────────┤
-│ Past reconciliations table (unchanged)                │
-└───────────────────────────────────────────────────────┘
-```
+In the Move-Out card (around lines 1046-1068):
+- When `moveOutStatus === "not-scheduled"`, hide the checklist entirely and instead show a muted placeholder: "Schedule the move-out to start the checklist." The Schedule button in the header stays as the call to action.
+- Keep the dates row visible (both will show "—").
+- Checklist appears as soon as a scheduled date exists (status = `scheduled`), and becomes read-only after `completed` (already the case).
 
-## Approach
+## 3. "Complete" move-out flow
 
-### 1. Extend `src/lib/chargesReconciliation.ts`
+Today the move-out Sheet already has a confirm path. Tighten the UX:
+- In the Move-Out card header, when status is `scheduled`, add a primary `Complete` button next to the existing `Edit` button.
+- Clicking `Complete` opens the existing move-out Sheet pre-focused on the **actual move-out date** field (required). Saving sets `moveOutActualDate` and marks all checklist items done (existing `handleConfirmMoveOut` logic).
+- Keep `Edit` for adjusting scheduled date / meters / notes without completing.
 
-Add a new pure function that walks every `leaseUnitAssignment` for the lease and intersects each assignment's [start, end] window with each cost allocation's period.
+## 4. End-of-lease suggestion banner
 
-```ts
-computeLeaseCostOverview(
-  lease, assignments, leases-end-fallback,
-  allocations, costEntries,
-  windowOverride?: { start; end }
-): {
-  lines: Array<{
-    costEntryId; costLabel; costNature; recoveryType;
-    unitId; unitName;
-    assignmentStart; assignmentEnd;            // window used
-    costPeriodStart; costPeriodEnd;
-    allocatedAmount;                            // from allocation result
-    recoverableAmount; ownerBurdenAmount;
-    overlapDays; totalDays; proRataFactor;
-    proRatedAllocated; proRatedRecoverable; proRatedOwnerBurden;
-    addedByAmendment: boolean;                  // assignment.startDate > lease.startDate
-    removedByAmendment: boolean;                // assignment.endDate && < lease.endDate
-  }>;
-  totals: { allocated; recoverable; ownerBurden };
-}
-```
+Add a new banner on `LeaseDetail` shown when **all** of these are true:
+- `lease.lifecycleStage === "active"`
+- `lease.endDate` is within the next 60 days (inclusive), based on today's ISO date
+- `lease.moveOutActualDate` is null
 
-Window per unit = intersection of:
-- The cost allocation's `periodStart/periodEnd` (fallback to `costEntry.startDate/endDate`).
-- The assignment's `startDate/endDate` (open-ended end → use `lease.endDate` or `today`).
-- Optional override (for the dialog reuse).
+Banner content:
+- Headline: "The end of the lease is in X days" (X = days between today and `endDate`, min 0; "today" / "tomorrow" handled).
+- If `endDate` is already past: "The lease end date has passed" (same banner, different copy).
+- Two action buttons:
+  - **Create an amendment** → opens the existing Amendment dialog (reuse the trigger used by the Amendments section; pass an optional pre-fill hint for `endDate`).
+  - **Schedule move-out** → opens the existing Move-Out Sheet via `openMoveOutForm`, pre-filling scheduled date with `endDate` if empty.
+- If notice is already given OR move-out is already scheduled, hide the "Schedule move-out" action and only show "Create an amendment".
+- Styling: use the same warning Alert pattern as the existing pending-guarantee banner (`border-warning/50 bg-warning/10 text-warning` + `Clock` icon) for visual consistency.
 
-Pro-rata factor = `overlapDays / costTotalDays` applied to the **already-allocation-split** `allocatedAmount` / `recoverableAmount` / `ownerBurdenAmount`. This naturally compounds property-level sharing (allocation engine) and time-based sharing (overlap days).
+Place the banner directly under the existing "under notice" banner block (around line 613) so all lifecycle alerts cluster together.
 
-### 2. Reuse for the existing dialog
+## 5. i18n keys (added to `src/i18n/translations.ts`, EN + FR)
 
-Refactor the dialog's `computeReconciliation` to call `computeLeaseCostOverview` under the hood with the dialog window, then sum `proRatedRecoverable` for `actualRecoverable`. This guarantees consistency between the overview table and the reconciliation breakdown, and also fixes the current bug where the dialog only considers the primary unit.
-
-### 3. UI: add the overview table to `ChargesReconciliationSection.tsx`
-
-- New `CardContent` block above the history table titled **"Costs during lease"**.
-- Columns: Cost, Unit, Period, Allocated, Overlap (`days/totalDays · %`), Pro-rated recoverable.
-- Rows grouped by cost, then by unit; small badge on the unit when `addedByAmendment` or `removedByAmendment`.
-- Footer row with totals (pro-rated allocated, recoverable, owner burden) in the lease currency.
-- Empty state: "No costs allocated to this lease's units during the lease period."
-- Render the table for **both** billing modes (flat-rate and provision-reconciled) — under flat-rate it serves as a read-only owner-information view; the existing flat-rate info Alert stays above it.
-
-Use existing `useAppData()` selectors: `leaseUnitAssignments`, `costAllocationResults`, `costEntries`, `units`. No state changes.
-
-### 4. Translations
-
-Add EN/FR keys to `src/i18n/translations.ts`:
-
-- `reconciliation.overview.title`
-- `reconciliation.overview.empty`
-- `reconciliation.overview.col.cost / unit / period / allocated / overlap / prorated`
-- `reconciliation.overview.totals`
-- `reconciliation.overview.addedByAmendment` / `removedByAmendment`
+- `lease.endingSoon.title` — "The end of the lease is in {days} days"
+- `lease.endingSoon.today` / `tomorrow` / `passed`
+- `lease.endingSoon.suggestAmendment` — "Create an amendment"
+- `lease.endingSoon.suggestMoveOut` — "Schedule move-out"
+- `detail.moveOut.checklistGated` — "Schedule the move-out to start the checklist."
+- `detail.complete` — "Complete"
 
 ## Technical notes
 
-- **No DB / schema changes**, no migration. All data already exists (`lease_unit_assignments`, `cost_allocation_results`, `cost_entries`).
-- **No business logic change** to allocations or to receivables — purely a derived read view.
-- **Performance**: O(assignments × allocations) per lease; lease pages typically have <20 assignments and a few hundred allocations max. Fine to compute on render with `useMemo`.
-- **Currency**: assume single currency per lease (existing assumption); display in `lease.currencyCode` like the rest of the section.
-- **Lease period bounds**: use `lease.startDate` and `lease.endDate ?? lease.moveOutActualDate ?? today` so an open-ended lease still shows costs up to today.
-- **Ancillary units** (parking, storage) are included automatically because they have their own assignment rows.
+- Threshold constant `END_OF_LEASE_WARNING_DAYS = 60`, local to `LeaseDetail.tsx`.
+- Day-diff helper: compare ISO `YYYY-MM-DD` strings via `Date.UTC` to avoid timezone drift, consistent with existing `getLeaseStatus`.
+- Notice→move-out sync uses `intendedMoveOutDate`; if blank, do nothing.
+- No backend/schema changes — purely presentation + update calls into existing `updateLease`.
+- No changes to `getMoveOutStatus`, `Lease` type, or domain integrity.
 
 ## Out of scope
 
-- Editing allocations or recovery type from this view.
-- Drill-down to cost entry detail (can be a follow-up).
-- Multi-currency aggregation.
-- Persisting the overview as a snapshot (it's always live).
+- Auto-creating amendments or move-out records without user confirmation.
+- Email/notification reminders.
+- Changing the notice cancellation semantics beyond clearing the auto-set scheduled date.
