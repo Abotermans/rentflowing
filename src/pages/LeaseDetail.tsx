@@ -285,7 +285,19 @@ export default function LeaseDetail() {
   };
 
   const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
-  const handleSaveNotice = () => { updateLease({ ...lease, noticeGiven: true, noticeDate: nDate || null, intendedMoveOutDate: nMoveOut || null, terminationReason: nReason || null }); toast({ title: t("leaseToast.noticeRegistered") }); setNoticeSheetOpen(false); };
+  const handleSaveNotice = () => {
+    const syncMoveOut = !lease.moveOutActualDate && nMoveOut;
+    updateLease({
+      ...lease,
+      noticeGiven: true,
+      noticeDate: nDate || null,
+      intendedMoveOutDate: nMoveOut || null,
+      terminationReason: nReason || null,
+      ...(syncMoveOut ? { moveOutScheduledDate: nMoveOut } : {}),
+    });
+    toast({ title: t("leaseToast.noticeRegistered") });
+    setNoticeSheetOpen(false);
+  };
   const handleActivateLease = () => {
     const validation = canActivateLease(lease.id, integrityState);
     if (!validation.allowed) {
