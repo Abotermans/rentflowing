@@ -917,11 +917,15 @@ export default function LeaseDetail() {
       {/* Advance Billing — only when rentFormula > 1 */}
       {isAdvanceBilling && (
         <Card>
-          <CardHeader className="pb-3 flex-row items-center space-y-0">
+          <CardHeader className="pb-3 flex-row items-center space-y-0 gap-2">
             <CardTitle className="text-base font-medium flex-1 text-left">
               {t("advanceCycle.title")} <span className="text-muted-foreground">— {t("advanceCycle.everyN").replace("{n}", String(lease.rentFormula))}</span>
             </CardTitle>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAdvanceBillingOpen(o => !o)} aria-label="Toggle section">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", advanceBillingOpen ? "" : "-rotate-90")} />
+            </Button>
           </CardHeader>
+          {advanceBillingOpen && (
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
