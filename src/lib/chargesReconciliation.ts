@@ -50,6 +50,8 @@ export interface LeaseCostOverviewLine {
   costEntryId: string;
   costLabel: string;
   recoveryType: RecoveryType;
+  /** Full cost amount (before any unit split). */
+  costFullAmount: number;
   unitId: string;
   unitLabel: string;
   assignmentStart: string;
@@ -133,6 +135,7 @@ export function computeLeaseCostOverview(
         costEntryId: cost.id,
         costLabel: cost.label || cost.invoiceReference || "—",
         recoveryType: alloc.recoveryType,
+        costFullAmount: cost.amount,
         unitId: a.unitId,
         unitLabel,
         assignmentStart: aStart,

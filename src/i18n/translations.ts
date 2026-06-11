@@ -1405,6 +1405,18 @@ const en = {
   "reconciliation.overview.totals": "Total pro-rated recoverable",
   "reconciliation.overview.addedByAmendment": "Added",
   "reconciliation.overview.removedByAmendment": "Removed",
+  "reconciliation.overview.tip.title": "Recoverable share breakdown",
+  "reconciliation.overview.tip.fullCost": "Full cost",
+  "reconciliation.overview.tip.split": "Unit split",
+  "reconciliation.overview.tip.unitShare": "Unit share",
+  "reconciliation.overview.tip.recovery": "Recovery",
+  "reconciliation.overview.tip.recoverable": "Recoverable share",
+  "reconciliation.overview.tip.timeProRata": "Time pro-rata",
+  "reconciliation.overview.tip.final": "Final pro-rated recoverable",
+  "reconciliation.overview.tip.recoveryType.owner-only": "Owner-only (0%)",
+  "reconciliation.overview.tip.recoveryType.tenant-recoverable": "Tenant recoverable (100%)",
+  "reconciliation.overview.tip.recoveryType.partially-recoverable": "Partially recoverable",
+  "reconciliation.overview.tip.recoveryType.informational": "Informational (0%)",
 };
 
 type TranslationKeys = typeof en;
@@ -2807,6 +2819,18 @@ const fr: TranslationKeys = {
   "reconciliation.overview.totals": "Total récupérable au prorata",
   "reconciliation.overview.addedByAmendment": "Ajouté",
   "reconciliation.overview.removedByAmendment": "Retiré",
+  "reconciliation.overview.tip.title": "Détail de la part récupérable",
+  "reconciliation.overview.tip.fullCost": "Coût total",
+  "reconciliation.overview.tip.split": "Répartition par lot",
+  "reconciliation.overview.tip.unitShare": "Part du lot",
+  "reconciliation.overview.tip.recovery": "Récupération",
+  "reconciliation.overview.tip.recoverable": "Part récupérable",
+  "reconciliation.overview.tip.timeProRata": "Prorata temporel",
+  "reconciliation.overview.tip.final": "Total récupérable au prorata",
+  "reconciliation.overview.tip.recoveryType.owner-only": "Bailleur uniquement (0 %)",
+  "reconciliation.overview.tip.recoveryType.tenant-recoverable": "Récupérable locataire (100 %)",
+  "reconciliation.overview.tip.recoveryType.partially-recoverable": "Partiellement récupérable",
+  "reconciliation.overview.tip.recoveryType.informational": "Informatif (0 %)",
 };
 
 export type TranslationKey = keyof typeof en;
