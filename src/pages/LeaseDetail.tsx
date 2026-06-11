@@ -637,14 +637,6 @@ export default function LeaseDetail() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {lease.lifecycleStage === "draft" && (() => {
-                  const check = canSendForSignature(lease.id, integrityState);
-                  return (
-                    <DropdownMenuItem onSelect={() => handleSendForSignature()} disabled={!check.allowed}>
-                      <Bell className="h-4 w-4 mr-2" />{t("lease.sendForSignature")}
-                    </DropdownMenuItem>
-                  );
-                })()}
                 {lease.lifecycleStage === "pending-signature" && (
                   <>
                     <DropdownMenuItem onSelect={() => openMarkSignedDialog()}>
