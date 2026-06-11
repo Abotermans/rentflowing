@@ -210,9 +210,8 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                     <TableHead className="h-8">#</TableHead>
                     <TableHead className="h-8">{t("amendments.type")}</TableHead>
                     <TableHead className="h-8">{t("amendments.titleField")}</TableHead>
-                    <TableHead className="h-8">{t("amendments.col.changes")}</TableHead>
                     <TableHead className="h-8">{t("amendments.effectiveDate")}</TableHead>
-                    <TableHead className="h-8">{t("amendments.newEndDateCol")}</TableHead>
+                    <TableHead className="h-8">{t("amendments.col.changes")}</TableHead>
                     <TableHead className="h-8">{t("amendments.status")}</TableHead>
                     <TableHead className="h-8 w-1" />
                   </TableRow>
