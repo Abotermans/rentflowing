@@ -1581,11 +1581,15 @@ export default function LeaseDetail() {
                     </div>
                   </div>
                 </div>
-                <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
                 {(lease.keys ?? []).filter(k => k.handedOverDate).length > 0 && (
                   <div>
                     <Label>{t("detail.keysBadges")}</Label>
                     <div className="mt-1.5 border rounded-md divide-y">
+                      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-1 text-[11px] text-muted-foreground uppercase tracking-wide border-b bg-muted/40">
+                        <span className="w-12">{t("detail.kindKey")}</span>
+                        <span>{t("detail.identifier")}</span>
+                        <span className="w-[150px] text-right pr-2">{t("detail.returned")}</span>
+                      </div>
                       {(lease.keys ?? []).filter(k => k.handedOverDate).map(k => (
                         <div key={k.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-1.5 text-sm">
                           <span className="text-xs text-muted-foreground w-12">{k.kind === "badge" ? t("detail.kindBadge") : t("detail.kindKey")}</span>
@@ -1596,6 +1600,7 @@ export default function LeaseDetail() {
                     </div>
                   </div>
                 )}
+                <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setMoveOutSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
                   <Button onClick={handleCompleteMoveOut} disabled={!moActualDate} className="flex-1">{t("leaseDialog.confirmMoveOut")}</Button>
