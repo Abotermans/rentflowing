@@ -572,10 +572,10 @@ export default function LeaseDetail() {
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
-            {(lease.lifecycleStage === "active" || lease.lifecycleStage === "draft") && (
+            {(lease.lifecycleStage === "active" || lease.lifecycleStage === "draft") && !lease.noticeGiven && (
               <Button variant="outline" size="sm" className="h-9" onClick={openNoticeForm}>
                 <Bell className="h-4 w-4 mr-1" />
-                {lease.noticeGiven ? t("detail.editNotice") : t("detail.registerNotice")}
+                {t("detail.registerNotice")}
               </Button>
             )}
             <DropdownMenu>
@@ -666,9 +666,20 @@ export default function LeaseDetail() {
                 {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
                 {lease.intendedMoveOutDate && <> · {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
               </span>
-              {!lease.moveOutActualDate && (
-                <Button variant="outline" size="sm" onClick={handleCancelNotice}>{t("lease.cancelNotice")}</Button>
-              )}
+              <div className="flex items-center gap-2">
+                {!lease.moveOutActualDate && (
+                  <Button variant="outline" size="sm" onClick={openNoticeForm}>
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    {t("detail.editNotice")}
+                  </Button>
+                )}
+                {!lease.moveOutActualDate && (
+                  <Button variant="outline" size="sm" onClick={handleCancelNotice}>
+                    <XCircle className="h-3.5 w-3.5 mr-1" />
+                    {t("lease.cancelNotice")}
+                  </Button>
+                )}
+              </div>
             </div>
           </AlertDescription>
         </Alert>
