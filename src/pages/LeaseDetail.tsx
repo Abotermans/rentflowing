@@ -1488,17 +1488,33 @@ export default function LeaseDetail() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{t("leaseDialog.moveOut")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
-            <div><Label>{t("detail.actual")}</Label><Input type="date" value={moActualDate} onChange={e => setMoActualDate(e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
-              <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
-            </div>
-            <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
-            <div className="flex gap-2">
-              <Button onClick={handleScheduleMoveOut} variant="outline" className="flex-1">{t("leaseDialog.schedule")}</Button>
-              <Button onClick={handleConfirmMoveOut} className="flex-1">{t("leaseDialog.confirmMoveOut")}</Button>
-            </div>
+            {moveOutMode === "schedule" ? (
+              <>
+                <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
+                <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setMoveOutSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
+                  <Button onClick={handleScheduleMoveOut} className="flex-1">{t("action.save")}</Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label>{t("leaseDialog.scheduledDate")}</Label>
+                  <p className="text-sm text-muted-foreground mt-1">{moScheduled ? formatDate(moScheduled, locale) : "—"}</p>
+                </div>
+                <div><Label>{t("detail.actual")}</Label><Input type="date" value={moActualDate} onChange={e => setMoActualDate(e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
+                  <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
+                </div>
+                <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setMoveOutSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
+                  <Button onClick={handleCompleteMoveOut} disabled={!moActualDate} className="flex-1">{t("leaseDialog.confirmMoveOut")}</Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
