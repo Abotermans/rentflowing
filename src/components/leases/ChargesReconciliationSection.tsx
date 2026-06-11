@@ -71,7 +71,8 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
               <TableHead className="h-8 text-xs">{t("reconciliation.overview.col.unit")}</TableHead>
               <TableHead className="h-8 text-xs">{t("reconciliation.col.period")}</TableHead>
               <TableHead className="h-8 text-xs">{t("reconciliation.overview.col.bearer")}</TableHead>
-              <TableHead className="h-8 text-xs text-right">{t("reconciliation.overview.col.allocated")}</TableHead>
+              <TableHead className="h-8 text-xs text-right">{t("reconciliation.overview.col.totalAmount")}</TableHead>
+              <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.full")}</TableHead>
               <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.overlap")}</TableHead>
               <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.prorated")}</TableHead>
             </TableRow>
