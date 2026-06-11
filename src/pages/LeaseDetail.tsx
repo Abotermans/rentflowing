@@ -1543,8 +1543,26 @@ export default function LeaseDetail() {
                 </div>
                 <div><Label>{t("detail.actual")}</Label><Input type="date" value={moActualDate} onChange={e => setMoActualDate(e.target.value)} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
-                  <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
+                  <div>
+                    <Label className="flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5 text-warning" />
+                      {t("leaseDialog.electricityMeter")}
+                    </Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={moMeter} onChange={e => setMoMeter(e.target.value)} className="h-8 text-sm pr-10" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="flex items-center gap-1.5">
+                      <Droplet className="h-3.5 w-3.5 text-primary" />
+                      {t("leaseDialog.waterMeter")}
+                    </Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} className="h-8 text-sm pr-8" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span>
+                    </div>
+                  </div>
                 </div>
                 <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
                 <div className="flex gap-2">
