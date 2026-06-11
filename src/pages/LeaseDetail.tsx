@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
 import { cn } from "@/lib/utils";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
@@ -167,6 +168,7 @@ export default function LeaseDetail() {
   const [moActualDate, setMoActualDate] = useState("");
   const [moveOutMode, setMoveOutMode] = useState<"schedule" | "complete">("schedule");
   const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Return form
   const [returnSheetOpen, setReturnSheetOpen] = useState(false);
@@ -613,6 +615,11 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {lease.lifecycleStage === "draft" && (
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setEditDialogOpen(true)}>
+                <Pencil className="h-4 w-4 mr-1" />{t("action.edit")}
+              </Button>
+            )}
             {lease.lifecycleStage === "draft" && (() => {
               const check = canSendForSignature(lease.id, integrityState);
               return (
@@ -1794,6 +1801,9 @@ export default function LeaseDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Mark Signed dialog */}
+      <LeaseEditDialog lease={lease} open={editDialogOpen} onOpenChange={setEditDialogOpen} />
 
       {/* Mark Signed dialog */}
       <Dialog open={signDialogOpen} onOpenChange={setSignDialogOpen}>

@@ -37,6 +37,7 @@ import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -632,25 +633,35 @@ export default function Leases() {
         </Card>
       )}
 
+      {editingLease && (
+        <LeaseEditDialog
+          lease={editingLease}
+          open={sheetOpen}
+          onOpenChange={(open) => {
+            setSheetOpen(open);
+            if (!open) setEditingLease(null);
+          }}
+        />
+      )}
+
+      {!editingLease && (
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
         <DialogContent className="w-[760px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingLease ? t("leases.edit") : t("leases.add")}</DialogTitle>
-            {!editingLease && (
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  {[1, 2, 3].map(n => (
-                    <div key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? "bg-primary" : "bg-muted"}`} />
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t("leases.wizard.step")} {step} {t("leases.wizard.of")} 3 — {step === 1 ? t("leases.wizard.leaseDetails") : step === 2 ? t("leases.wizard.tenantDetails") : t("leases.wizard.terms")}
-                </p>
+            <DialogTitle>{t("leases.add")}</DialogTitle>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2">
+                {[1, 2, 3].map(n => (
+                  <div key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? "bg-primary" : "bg-muted"}`} />
+                ))}
               </div>
-            )}
+              <p className="text-xs text-muted-foreground">
+                {t("leases.wizard.step")} {step} {t("leases.wizard.of")} 3 — {step === 1 ? t("leases.wizard.leaseDetails") : step === 2 ? t("leases.wizard.tenantDetails") : t("leases.wizard.terms")}
+              </p>
+            </div>
           </DialogHeader>
           <div className="space-y-4 mt-6">
-            {(editingLease || step === 1) && (<>
+            {step === 1 && (<>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
               <div><Label>{t("leases.property")} *</Label>
@@ -772,18 +783,16 @@ export default function Leases() {
               )}
             </div>
             </>)}
-            {(editingLease || step === 3) && (<>
+            {step === 3 && (<>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.primaryTenant")} *</Label>
-                <Select value={form.primaryTenantId} onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))} disabled={!editingLease}>
+                <Select value={form.primaryTenantId} onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))} disabled={true}>
                   <SelectTrigger><SelectValue placeholder={t("leases.selectTenant")} /></SelectTrigger>
                   <SelectContent>{tenants.map(t => <SelectItem key={t.id} value={t.id}>{getTenantFullName(t)}</SelectItem>)}</SelectContent>
                 </Select>
-                {!editingLease && (
                   <p className="text-xs text-muted-foreground mt-1">
                     {getTenantFullName({ ...tenantForm, id: "", createdAt: "", updatedAt: "" } as Tenant).trim() || "—"}
                   </p>
-                )}
               </div>
             <div><Label>{t("leases.status")} *</Label>
                 <Select value={form.lifecycleStage} onValueChange={v => setForm(f => ({ ...f, lifecycleStage: v as LifecycleStage }))}>
@@ -798,7 +807,7 @@ export default function Leases() {
               <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
             </div>
             </>)}
-            {(editingLease || step === 1) && (
+            {step === 1 && (
             <div>
               <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-4">
                 <div>
@@ -871,7 +880,7 @@ export default function Leases() {
               )}
             </div>
             )}
-            {(editingLease || step === 3) && (<>
+            {step === 3 && (<>
             <div className="grid grid-cols-2 gap-4 items-end">
               <div className="rounded-md border border-border px-3 py-2 text-xs">
                 <div className="text-muted-foreground uppercase tracking-wide text-[10px]">{t("leases.units.grandTotal")}</div>
@@ -910,7 +919,7 @@ export default function Leases() {
             <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
             </>)}
-            {!editingLease && step === 2 && (
+            {step === 2 && (
               <div className="space-y-4">
                 <div className="inline-flex rounded-md border border-input p-0.5 bg-muted/30">
                   <button
@@ -967,47 +976,41 @@ export default function Leases() {
             )}
           </div>
           <DialogFooter className="mt-6">
-            {editingLease ? (
-              <>
+            <>
+              {step > 1 ? (
+                <Button variant="outline" onClick={() => setStep(s => s - 1)}>{t("action.back")}</Button>
+              ) : (
                 <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
-                <Button onClick={handleSave}>{t("action.save")}</Button>
-              </>
-            ) : (
-              <>
-                {step > 1 ? (
-                  <Button variant="outline" onClick={() => setStep(s => s - 1)}>{t("action.back")}</Button>
-                ) : (
-                  <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
-                )}
-                {step < 3 ? (
-                  <Button onClick={() => {
-                    if (step === 1) {
-                      const primaryRow = unitRows.find(r => r.assignmentType === "primary");
-                      if (!form.leaseReference.trim() || !form.propertyId || unitRows.length === 0 || !primaryRow?.unitId || unitRows.some(r => !r.unitId)) {
-                        toast({ title: "Validation Error", description: "Reference, property, and at least one unit (with a Primary role) are required.", variant: "destructive" });
-                        return;
-                      }
-                    } else if (step === 2) {
-                      if (tenantMode === "new") {
-                        if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
-                          toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
-                          return;
-                        }
-                      } else if (!form.primaryTenantId) {
-                        toast({ title: "Validation Error", description: "Please select a tenant.", variant: "destructive" });
-                        return;
-                      }
+              )}
+              {step < 3 ? (
+                <Button onClick={() => {
+                  if (step === 1) {
+                    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+                    if (!form.leaseReference.trim() || !form.propertyId || unitRows.length === 0 || !primaryRow?.unitId || unitRows.some(r => !r.unitId)) {
+                      toast({ title: "Validation Error", description: "Reference, property, and at least one unit (with a Primary role) are required.", variant: "destructive" });
+                      return;
                     }
-                    setStep(s => s + 1);
-                  }}>{t("action.next")}</Button>
-                ) : (
-                  <Button onClick={handleSave}>{t("leases.add")}</Button>
-                )}
-              </>
-            )}
+                  } else if (step === 2) {
+                    if (tenantMode === "new") {
+                      if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
+                        toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+                        return;
+                      }
+                    } else if (!form.primaryTenantId) {
+                      toast({ title: "Validation Error", description: "Please select a tenant.", variant: "destructive" });
+                      return;
+                    }
+                  }
+                  setStep(s => s + 1);
+                }}>{t("action.next")}</Button>
+              ) : (
+                <Button onClick={handleSave}>{t("leases.add")}</Button>
+              )}
+            </>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Override Confirm Dialog */}
       {pendingOverrideValidation && (
