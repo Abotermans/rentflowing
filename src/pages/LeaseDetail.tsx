@@ -1083,7 +1083,7 @@ export default function LeaseDetail() {
 
       {/* Occupancy Operations */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 px-6">
           <h2 className="text-lg font-semibold text-foreground text-left">{t("detail.occupancyOps")}</h2>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOccupancyOpen(o => !o)} aria-label="Toggle section">
             <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", occupancyOpen && "rotate-180")} />
