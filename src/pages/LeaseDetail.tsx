@@ -659,7 +659,7 @@ export default function LeaseDetail() {
               <span>
                 {t("leaseDetail.underNotice")}
                 {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-                {lease.intendedMoveOutDate && <> {t("leaseDetail.intendedMoveOutOn").replace("{date}", formatDate(lease.intendedMoveOutDate, locale))}</>}
+                {lease.intendedMoveOutDate && <> · {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
               </span>
               {!lease.moveOutActualDate && (
                 <Button variant="outline" size="sm" onClick={handleCancelNotice}>{t("lease.cancelNotice")}</Button>
