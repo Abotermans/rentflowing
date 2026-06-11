@@ -84,7 +84,7 @@ export default function LeaseDetail() {
     leases, tenants, units, properties,
     getReceivableItemsByLease, getCashReceiptsByLease, getAllocationsByReceipt,
     getLeaseOutstanding, getGuaranteeByLease, allocations,
-    addGuarantee, updateGuarantee, updateLease, updateUnit, deleteLease, confirmMoveOut,
+    addGuarantee, updateGuarantee, updateLease, updateUnit, deleteLease,
     createCashReceipt, getTenantUnappliedCredit,
     getLeaseAssignments,
   } = useAppData();
@@ -160,6 +160,7 @@ export default function LeaseDetail() {
   const [moWaterMeter, setMoWaterMeter] = useState("");
   const [moNotes, setMoNotes] = useState("");
   const [moActualDate, setMoActualDate] = useState("");
+  const [moveOutMode, setMoveOutMode] = useState<"schedule" | "complete">("schedule");
   const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
 
   // Return form
@@ -490,21 +491,35 @@ export default function LeaseDetail() {
     toast({ title: t("leaseToast.moveInConfirmed") }); setMoveInSheetOpen(false);
   };
 
-  const openMoveOutForm = (opts?: { prefillScheduled?: string }) => {
+  const openMoveOutForm = (opts?: { prefillScheduled?: string; mode?: "schedule" | "complete" }) => {
+    const mode = opts?.mode ?? "schedule";
+    setMoveOutMode(mode);
     setMoScheduled(lease.moveOutScheduledDate ?? lease.intendedMoveOutDate ?? opts?.prefillScheduled ?? "");
     setMoMeter(lease.moveOutMeterReading ?? "");
     setMoWaterMeter(lease.moveOutWaterMeterReading ?? "");
     setMoNotes(lease.moveOutNotes);
-    setMoActualDate(lease.moveOutActualDate ?? "");
+    setMoActualDate(lease.moveOutActualDate ?? (mode === "complete" ? today : ""));
     setMoveOutSheetOpen(true);
   };
-  const handleScheduleMoveOut = () => { updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutMeterReading: moMeter || null, moveOutWaterMeterReading: moWaterMeter || null, moveOutNotes: moNotes }); toast({ title: t("leaseToast.moveOutScheduled") }); setMoveOutSheetOpen(false); };
-  const handleConfirmMoveOut = () => {
-    const actual = moActualDate || today;
-    confirmMoveOut({ ...lease, moveOutActualDate: actual, moveOutScheduledDate: lease.moveOutScheduledDate || moScheduled || actual, moveOutMeterReading: moMeter || lease.moveOutMeterReading, moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading, moveOutNotes: moNotes || lease.moveOutNotes,
+  const handleScheduleMoveOut = () => {
+    updateLease({ ...lease, moveOutScheduledDate: moScheduled || null, moveOutNotes: moNotes });
+    toast({ title: t("leaseToast.moveOutScheduled") });
+    setMoveOutSheetOpen(false);
+  };
+  const handleCompleteMoveOut = () => {
+    if (!moActualDate) return;
+    updateLease({
+      ...lease,
+      moveOutActualDate: moActualDate,
+      moveOutScheduledDate: lease.moveOutScheduledDate || moScheduled || moActualDate,
+      moveOutMeterReading: moMeter || lease.moveOutMeterReading,
+      moveOutWaterMeterReading: moWaterMeter || lease.moveOutWaterMeterReading,
+      moveOutNotes: moNotes || lease.moveOutNotes,
       moveOutChecklist: { noticeConfirmed: true, moveOutDateConfirmed: true, keysReturned: true, moveOutMeterReadingCaptured: true, balanceReviewed: true, guaranteeReviewCompleted: true },
-      returnStatus: lease.returnStatus || "pending" });
-    toast({ title: t("leaseToast.moveOutConfirmed") }); setMoveOutSheetOpen(false);
+      returnStatus: lease.returnStatus || "pending",
+    });
+    toast({ title: t("leaseToast.moveOutConfirmed") });
+    setMoveOutSheetOpen(false);
   };
 
   const toggleMoveInChecklist = (key: keyof MoveInChecklist) => { updateLease({ ...lease, moveInChecklist: { ...lease.moveInChecklist, [key]: !lease.moveInChecklist[key] } }); };
@@ -644,7 +659,7 @@ export default function LeaseDetail() {
               <span>
                 {t("leaseDetail.underNotice")}
                 {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-                {lease.intendedMoveOutDate && <> {t("leaseDetail.intendedMoveOutOn").replace("{date}", formatDate(lease.intendedMoveOutDate, locale))}</>}
+                {lease.intendedMoveOutDate && <> · {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
               </span>
               {!lease.moveOutActualDate && (
                 <Button variant="outline" size="sm" onClick={handleCancelNotice}>{t("lease.cancelNotice")}</Button>
@@ -1114,7 +1129,7 @@ export default function LeaseDetail() {
 
                 {/* Move-Out column */}
                 <Card className="flex flex-col">
-                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm(), () => openMoveOutForm())}</CardHeader>
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveOut"), moDisplay, MoIcon, moveOutStatus, () => openMoveOutForm({ mode: "schedule" }), () => openMoveOutForm({ mode: "complete" }))}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveOutScheduledDate, lease.moveOutActualDate)}
                     {moveOutStatus === "not-scheduled" ? (
@@ -1473,17 +1488,33 @@ export default function LeaseDetail() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{t("leaseDialog.moveOut")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
-            <div><Label>{t("detail.actual")}</Label><Input type="date" value={moActualDate} onChange={e => setMoActualDate(e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
-              <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
-            </div>
-            <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
-            <div className="flex gap-2">
-              <Button onClick={handleScheduleMoveOut} variant="outline" className="flex-1">{t("leaseDialog.schedule")}</Button>
-              <Button onClick={handleConfirmMoveOut} className="flex-1">{t("leaseDialog.confirmMoveOut")}</Button>
-            </div>
+            {moveOutMode === "schedule" ? (
+              <>
+                <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={moScheduled} onChange={e => setMoScheduled(e.target.value)} /></div>
+                <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setMoveOutSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
+                  <Button onClick={handleScheduleMoveOut} className="flex-1">{t("action.save")}</Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label>{t("leaseDialog.scheduledDate")}</Label>
+                  <p className="text-sm text-muted-foreground mt-1">{moScheduled ? formatDate(moScheduled, locale) : "—"}</p>
+                </div>
+                <div><Label>{t("detail.actual")}</Label><Input type="date" value={moActualDate} onChange={e => setMoActualDate(e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={moMeter} onChange={e => setMoMeter(e.target.value)} placeholder="kWh" /></div>
+                  <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={moWaterMeter} onChange={e => setMoWaterMeter(e.target.value)} placeholder="m³" /></div>
+                </div>
+                <div><Label>{t("common.notes")}</Label><Textarea value={moNotes} onChange={e => setMoNotes(e.target.value)} rows={2} /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setMoveOutSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
+                  <Button onClick={handleCompleteMoveOut} disabled={!moActualDate} className="flex-1">{t("leaseDialog.confirmMoveOut")}</Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

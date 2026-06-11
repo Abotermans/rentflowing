@@ -1,65 +1,50 @@
-# Improve Move-Out Flow
+# Fix move-out workflow
 
-Tighten the link between Notice registration, the Move-Out card, and the natural end of the lease, and surface contextual suggestions as the end date approaches.
+## Problems
 
-## 1. Sync notice ↔ move-out scheduled date
+1. In the Move-Out card, both "Edit" and "Complete" buttons call `openMoveOutForm()` and open the same dialog. The dialog has both `Schedule` and `Confirm move-out` buttons, so editing the scheduled date often ends up running the full "confirm" path — which silently auto-checks every checklist item AND ends the lease (`lifecycleStage: "ended"` in `confirmMoveOut`).
+2. Completing the move-out should not auto-end the lease — ending a lease is a separate flow with its own integrity checks (balances, guarantees…).
+3. Meters are exposed in the schedule step, but they should only be entered when the move-out is actually completed.
+4. The "Under notice" alert shows "Intended move-out on {date}" using a phrase distinct from the `Intended move-out` label used elsewhere on the page, breaking label consistency.
 
-In `src/pages/LeaseDetail.tsx`, `handleSaveNotice`:
-- When the user saves a notice, also write `moveOutScheduledDate` using the intended move-out date from the notice form (if `moveOutActualDate` is not yet set).
-- This automatically flips the Move-Out card from "Not scheduled" to "Scheduled" (driven by existing `getMoveOutStatus`).
-- `handleCancelNotice`: clear `moveOutScheduledDate` too, but only if move-out is not yet completed and the current scheduled date matches the notice's intended date (don't blow away a manually edited date).
+## Changes (in `src/pages/LeaseDetail.tsx`)
 
-## 2. Gate the move-out checklist on scheduling
+### 1. Split the move-out dialog into two explicit modes
 
-In the Move-Out card (around lines 1046-1068):
-- When `moveOutStatus === "not-scheduled"`, hide the checklist entirely and instead show a muted placeholder: "Schedule the move-out to start the checklist." The Schedule button in the header stays as the call to action.
-- Keep the dates row visible (both will show "—").
-- Checklist appears as soon as a scheduled date exists (status = `scheduled`), and becomes read-only after `completed` (already the case).
+Add a `moveOutMode: "schedule" | "complete"` state. `openMoveOutForm` accepts `{ mode, prefillScheduled? }` and pre-fills the inputs from the lease.
 
-## 3. "Complete" move-out flow
+- **Schedule / Edit mode** (header "Edit" button, end-of-lease suggestion, move-out card "Schedule" button):
+  - Visible fields: Scheduled date, Notes.
+  - Hidden: Actual date, electricity meter, water meter.
+  - Single action button: `Save` → calls `handleScheduleMoveOut`, which only writes `moveOutScheduledDate` and `moveOutNotes` (do not touch meters or actual date).
+- **Complete mode** (header "Complete" button):
+  - Visible fields: Scheduled date (read-only display), Actual move-out date (required, defaults to today), electricity meter, water meter, Notes.
+  - Single action button: `Confirm move-out` → calls a new `handleCompleteMoveOut` (see below). Disabled until an actual date is set.
 
-Today the move-out Sheet already has a confirm path. Tighten the UX:
-- In the Move-Out card header, when status is `scheduled`, add a primary `Complete` button next to the existing `Edit` button.
-- Clicking `Complete` opens the existing move-out Sheet pre-focused on the **actual move-out date** field (required). Saving sets `moveOutActualDate` and marks all checklist items done (existing `handleConfirmMoveOut` logic).
-- Keep `Edit` for adjusting scheduled date / meters / notes without completing.
+Header wiring in `renderHeader` for the Move-Out card:
+- `onOpen` → `openMoveOutForm({ mode: "schedule" })`
+- `onComplete` → `openMoveOutForm({ mode: "complete" })`
 
-## 4. End-of-lease suggestion banner
+### 2. Decouple "complete move-out" from "end lease"
 
-Add a new banner on `LeaseDetail` shown when **all** of these are true:
-- `lease.lifecycleStage === "active"`
-- `lease.endDate` is within the next 60 days (inclusive), based on today's ISO date
-- `lease.moveOutActualDate` is null
+Replace the call into `confirmMoveOut` with a local `handleCompleteMoveOut` that simply calls `updateLease(...)` with:
+- `moveOutActualDate` (required from the form)
+- `moveOutMeterReading`, `moveOutWaterMeterReading`, `moveOutNotes` from the form (falling back to existing values)
+- `moveOutChecklist`: all items checked
+- **No** change to `lifecycleStage` and **no** unit vacating / amendment cascading. Those remain the responsibility of the existing "End lease" flow (`handleEndLease`).
 
-Banner content:
-- Headline: "The end of the lease is in X days" (X = days between today and `endDate`, min 0; "today" / "tomorrow" handled).
-- If `endDate` is already past: "The lease end date has passed" (same banner, different copy).
-- Two action buttons:
-  - **Create an amendment** → opens the existing Amendment dialog (reuse the trigger used by the Amendments section; pass an optional pre-fill hint for `endDate`).
-  - **Schedule move-out** → opens the existing Move-Out Sheet via `openMoveOutForm`, pre-filling scheduled date with `endDate` if empty.
-- If notice is already given OR move-out is already scheduled, hide the "Schedule move-out" action and only show "Create an amendment".
-- Styling: use the same warning Alert pattern as the existing pending-guarantee banner (`border-warning/50 bg-warning/10 text-warning` + `Clock` icon) for visual consistency.
+After saving, show a toast and, if the lease is still active, suggest the user end the lease from the existing End-lease action (no auto-redirect). Leave `confirmMoveOut` in `AppContext` untouched for now — just stop calling it from this screen.
 
-Place the banner directly under the existing "under notice" banner block (around line 613) so all lifecycle alerts cluster together.
+### 3. Don't capture meters during scheduling
 
-## 5. i18n keys (added to `src/i18n/translations.ts`, EN + FR)
+Already covered by Change 1 (meters removed from schedule mode). Also remove meter writes from `handleScheduleMoveOut` so reopening Edit never accidentally persists a blank meter.
 
-- `lease.endingSoon.title` — "The end of the lease is in {days} days"
-- `lease.endingSoon.today` / `tomorrow` / `passed`
-- `lease.endingSoon.suggestAmendment` — "Create an amendment"
-- `lease.endingSoon.suggestMoveOut` — "Schedule move-out"
-- `detail.moveOut.checklistGated` — "Schedule the move-out to start the checklist."
-- `detail.complete` — "Complete"
+### 4. Label consistency in the "Under notice" alert
 
-## Technical notes
-
-- Threshold constant `END_OF_LEASE_WARNING_DAYS = 60`, local to `LeaseDetail.tsx`.
-- Day-diff helper: compare ISO `YYYY-MM-DD` strings via `Date.UTC` to avoid timezone drift, consistent with existing `getLeaseStatus`.
-- Notice→move-out sync uses `intendedMoveOutDate`; if blank, do nothing.
-- No backend/schema changes — purely presentation + update calls into existing `updateLease`.
-- No changes to `getMoveOutStatus`, `Lease` type, or domain integrity.
+Replace `leaseDetail.intendedMoveOutOn` usage in the alert with the existing `detail.intendedMoveOut` label, rendered as `"{Intended move-out}: {formattedDate}"` so it matches the rest of the lease detail page. Keep the alert layout unchanged.
 
 ## Out of scope
 
-- Auto-creating amendments or move-out records without user confirmation.
-- Email/notification reminders.
-- Changing the notice cancellation semantics beyond clearing the auto-set scheduled date.
+- Changing `confirmMoveOut` in `AppContext`, ending lease integrity rules, or notice-cancel semantics.
+- Backend / schema changes.
+- Translations beyond reusing existing keys (no new keys required; the alert reuses `detail.intendedMoveOut`).
