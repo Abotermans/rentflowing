@@ -272,13 +272,12 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                           {chs.length === 0 ? (
                             <span className="text-muted-foreground">—</span>
                           ) : (
-                            <Button
-                              variant="link"
-                              className="h-auto p-0 text-sm"
+                            <span
+                              className="cursor-pointer underline decoration-dotted underline-offset-2 text-sm text-foreground"
                               onClick={(e) => { e.stopPropagation(); setChangesDialog(a); }}
                             >
                               {chs.length}
-                            </Button>
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="py-1.5">
