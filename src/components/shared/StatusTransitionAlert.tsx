@@ -12,8 +12,8 @@ export function StatusTransitionAlert({ validation }: StatusTransitionAlertProps
   return (
     <div className="space-y-2 mt-2">
       {validation.blockers.length > 0 && (
-        <Alert variant="destructive" className="py-2">
-          <XCircle className="h-4 w-4" />
+        <Alert variant="destructive" className="py-2 flex items-start gap-3 [&>svg]:static [&>svg]:translate-y-0.5 [&>svg~*]:pl-0">
+          <XCircle className="h-4 w-4 shrink-0" />
           <AlertDescription>
             <ul className="list-disc list-inside text-xs space-y-0.5">
               {validation.blockers.map(b => (
@@ -24,8 +24,8 @@ export function StatusTransitionAlert({ validation }: StatusTransitionAlertProps
         </Alert>
       )}
       {validation.warnings.length > 0 && (
-        <Alert className="py-2 border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
-          <AlertTriangle className="h-4 w-4" />
+        <Alert className="py-2 flex items-start gap-3 border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600 [&>svg]:static [&>svg]:translate-y-0.5 [&>svg~*]:pl-0">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
           <AlertDescription>
             <ul className="list-disc list-inside text-xs space-y-0.5">
               {validation.warnings.map(w => (
