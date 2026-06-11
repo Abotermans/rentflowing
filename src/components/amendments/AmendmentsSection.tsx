@@ -174,7 +174,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
         <Tabs defaultValue="timeline" className="w-full">
           <TabsList className="h-8">
             <TabsTrigger value="timeline" className="text-xs">{t("amendments.timeline")}</TabsTrigger>
-            <TabsTrigger value="current" className="text-xs">{t("amendments.currentTerms")}</TabsTrigger>
             <TabsTrigger value="original" className="text-xs">{t("amendments.originalTerms")}</TabsTrigger>
           </TabsList>
 
