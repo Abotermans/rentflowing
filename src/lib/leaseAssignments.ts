@@ -1,6 +1,9 @@
 import type { Lease, LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { isAncillaryAssignmentType, ANCILLARY_UNIT_TYPES, type Unit } from "@/types";
 
+/** True when this assignment role represents a "main" (non-ancillary) unit. */
+export const isMainAssignmentType = (t: LeaseUnitAssignmentType) => !isAncillaryAssignmentType(t);
+
 /** True if assignment row covers the given ISO date. */
 export function assignmentIsActiveOn(a: LeaseUnitAssignment, isoDate: string): boolean {
   if (a.startDate > isoDate) return false;
@@ -25,16 +28,9 @@ export function getActiveAssignmentsForLease(
   return assignments.filter(a => a.leaseId === leaseId && assignmentIsActiveOn(a, onDate));
 }
 
-export function getPrimaryAssignment(
-  leaseId: string,
-  assignments: readonly LeaseUnitAssignment[],
-): LeaseUnitAssignment | undefined {
-  return assignments.find(a => a.leaseId === leaseId && a.isPrimary);
-}
-
 /**
  * Resolve every Unit attached to a lease (with optional active-only filtering).
- * Returns rows in primary-first order. Units missing from the units array are skipped.
+ * Returns rows ordered with main (`primary` role) units first, ancillaries last.
  */
 export function getLeaseAssignedUnits(
   leaseId: string,
@@ -54,20 +50,28 @@ export function getLeaseAssignedUnits(
       return unit ? { unit, assignment: a } : null;
     })
     .filter((r): r is { unit: Unit; assignment: LeaseUnitAssignment } => r !== null)
-    .sort((x, y) => (y.assignment.isPrimary ? 1 : 0) - (x.assignment.isPrimary ? 1 : 0));
+    .sort((x, y) => {
+      const xm = isMainAssignmentType(x.assignment.assignmentType) ? 1 : 0;
+      const ym = isMainAssignmentType(y.assignment.assignmentType) ? 1 : 0;
+      return ym - xm;
+    });
 }
 
-/** Primary unit attached to a lease (active or historical). */
-export function getPrimaryLeaseUnit(
+/**
+ * First main unit attached to a lease (active or historical). Returns the first
+ * assignment whose role is not ancillary. Used purely as a display fallback —
+ * leases may now have zero, one, or several main units.
+ */
+export function getMainLeaseUnit(
   leaseId: string,
   assignments: readonly LeaseUnitAssignment[],
   units: readonly Unit[],
 ): Unit | undefined {
-  const a = assignments.find(x => x.leaseId === leaseId && x.isPrimary);
+  const a = assignments.find(x => x.leaseId === leaseId && isMainAssignmentType(x.assignmentType));
   return a ? units.find(u => u.id === a.unitId) : undefined;
 }
 
-/** Ancillary units for a lease (non-primary assignments). */
+/** Ancillary units for a lease (parking/cellar/storage/etc.). */
 export function getAncillaryLeaseUnits(
   leaseId: string,
   assignments: readonly LeaseUnitAssignment[],
@@ -75,7 +79,7 @@ export function getAncillaryLeaseUnits(
   opts: { activeOnly?: boolean; onDate?: string } = {},
 ): { unit: Unit; assignment: LeaseUnitAssignment }[] {
   return getLeaseAssignedUnits(leaseId, assignments, units, opts)
-    .filter(r => !r.assignment.isPrimary);
+    .filter(r => isAncillaryRole(r.assignment.assignmentType, r.unit));
 }
 
 /** True when a unit is currently attached to any active lease (primary OR ancillary). */
@@ -144,8 +148,13 @@ export function getActiveLeaseForUnit(
     a.unitId === unitId && assignmentIsActiveOn(a, onDate),
   );
   if (matches.length === 0) return undefined;
-  // Prefer primary then earliest
-  const sorted = [...matches].sort((x, y) => (y.isPrimary ? 1 : 0) - (x.isPrimary ? 1 : 0));
+  // Prefer main role then earliest start.
+  const sorted = [...matches].sort((x, y) => {
+    const xm = isMainAssignmentType(x.assignmentType) ? 1 : 0;
+    const ym = isMainAssignmentType(y.assignmentType) ? 1 : 0;
+    if (xm !== ym) return ym - xm;
+    return x.startDate.localeCompare(y.startDate);
+  });
   for (const a of sorted) {
     const lease = leases.find(l => l.id === a.leaseId && l.lifecycleStage === "active");
     if (lease) return { lease, assignment: a };
@@ -154,48 +163,15 @@ export function getActiveLeaseForUnit(
 }
 
 /**
- * Migrate legacy single-unit leases into one primary LeaseUnitAssignment row each.
- * Idempotent: only seeds a row when the lease has no assignment yet.
+ * Legacy migration helper — no-op now. The DB migration that dropped
+ * `lease.unitId` already backfilled every assignment row. Kept as a passthrough
+ * to avoid touching every caller in a single change.
  */
 export function migrateLegacyLeaseAssignments(
-  leases: readonly Lease[],
+  _leases: readonly Lease[],
   existing: readonly LeaseUnitAssignment[],
 ): LeaseUnitAssignment[] {
-  // A lease is considered already migrated when it already has a primary row.
-  const hasPrimary = new Set(existing.filter(a => a.isPrimary).map(a => a.leaseId));
-  const added: LeaseUnitAssignment[] = [];
-  let counter = 0;
-  for (const l of leases) {
-    if (hasPrimary.has(l.id)) continue;
-    if (!l.unitId) continue;
-    // Backfill primary share: lease total minus whatever ancillary shares already exist
-    // (pre-seeded mockData rows). Floor at 0 to avoid negative shares from inconsistent data.
-    const ancRent = existing
-      .filter(a => a.leaseId === l.id)
-      .reduce((s, a) => s + (a.rentShare ?? 0), 0);
-    const ancCharges = existing
-      .filter(a => a.leaseId === l.id)
-      .reduce((s, a) => s + (a.chargesShare ?? 0), 0);
-    const primaryRent = Math.max(0, l.monthlyRent - ancRent);
-    const primaryCharges = Math.max(0, l.monthlyCharges - ancCharges);
-    added.push({
-      id: `lua-mig-${l.id}-${++counter}`,
-      leaseId: l.id,
-      unitId: l.unitId,
-      assignmentType: "primary",
-      isPrimary: true,
-      startDate: l.startDate,
-      endDate: l.lifecycleStage === "ended" || l.lifecycleStage === "terminated"
-        ? (l.moveOutActualDate || l.endDate || null)
-        : null,
-      rentShare: primaryRent,
-      chargesShare: primaryCharges,
-      notes: "",
-      createdAt: l.createdAt,
-      updatedAt: l.updatedAt,
-    });
-  }
-  return [...existing, ...added];
+  return [...existing];
 }
 
 /**

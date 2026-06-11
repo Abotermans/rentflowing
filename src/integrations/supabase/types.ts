@@ -775,7 +775,6 @@ export type Database = {
           created_at: string
           end_date: string | null
           id: string
-          is_primary: boolean
           lease_id: string
           legacy_id: string | null
           notes: string
@@ -791,7 +790,6 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
-          is_primary?: boolean
           lease_id: string
           legacy_id?: string | null
           notes?: string
@@ -807,7 +805,6 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
-          is_primary?: boolean
           lease_id?: string
           legacy_id?: string | null
           notes?: string
@@ -850,8 +847,8 @@ export type Database = {
           advance_cycle_lead_days: number | null
           advance_payment_amount: number | null
           advance_payment_date: string | null
+          billing_tenant_id: string | null
           charges_billing_mode: string
-          co_tenant_ids: Json
           created_at: string
           deposit_or_guarantee_amount: number | null
           due_day_of_month: number
@@ -885,15 +882,14 @@ export type Database = {
           notice_given: boolean
           notice_period_text: string
           portfolio_id: string
-          primary_tenant_id: string | null
           property_id: string
           rent_formula: number
           return_notes: string
           return_status: string | null
           signed_date: string | null
           start_date: string
+          tenant_ids: Json
           termination_reason: string | null
-          unit_id: string | null
           updated_at: string
         }
         Insert: {
@@ -904,8 +900,8 @@ export type Database = {
           advance_cycle_lead_days?: number | null
           advance_payment_amount?: number | null
           advance_payment_date?: string | null
+          billing_tenant_id?: string | null
           charges_billing_mode?: string
-          co_tenant_ids?: Json
           created_at?: string
           deposit_or_guarantee_amount?: number | null
           due_day_of_month?: number
@@ -939,15 +935,14 @@ export type Database = {
           notice_given?: boolean
           notice_period_text?: string
           portfolio_id: string
-          primary_tenant_id?: string | null
           property_id: string
           rent_formula?: number
           return_notes?: string
           return_status?: string | null
           signed_date?: string | null
           start_date: string
+          tenant_ids?: Json
           termination_reason?: string | null
-          unit_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -958,8 +953,8 @@ export type Database = {
           advance_cycle_lead_days?: number | null
           advance_payment_amount?: number | null
           advance_payment_date?: string | null
+          billing_tenant_id?: string | null
           charges_billing_mode?: string
-          co_tenant_ids?: Json
           created_at?: string
           deposit_or_guarantee_amount?: number | null
           due_day_of_month?: number
@@ -993,18 +988,24 @@ export type Database = {
           notice_given?: boolean
           notice_period_text?: string
           portfolio_id?: string
-          primary_tenant_id?: string | null
           property_id?: string
           rent_formula?: number
           return_notes?: string
           return_status?: string | null
           signed_date?: string | null
           start_date?: string
+          tenant_ids?: Json
           termination_reason?: string | null
-          unit_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "leases_billing_tenant_id_fkey"
+            columns: ["billing_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leases_portfolio_id_fkey"
             columns: ["portfolio_id"]
@@ -1013,24 +1014,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "leases_primary_tenant_id_fkey"
-            columns: ["primary_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "leases_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leases_unit_id_fkey"
-            columns: ["unit_id"]
-            isOneToOne: false
-            referencedRelation: "units"
             referencedColumns: ["id"]
           },
         ]

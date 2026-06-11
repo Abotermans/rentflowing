@@ -38,14 +38,13 @@ export type AmendmentFieldName =
   | "leaseEndDate"
   | "depositAmount"
   | "noticePeriodText"
-  | "primaryTenantId"
-  | "coTenantIds"
+  | "tenantIds"
+  | "billingTenantId"
   | "guaranteeSummary"
   | "unitAssignments"      // add/remove unit (metadata carries unitId + assignmentType)
   | "unitRentShare"        // per-unit rent share change (metadata.unitId)
   | "unitChargesShare"     // per-unit charges share change (metadata.unitId)
   | "unitAssignmentType"   // role change on an existing unit
-  | "primaryUnitId"        // swap which unit is primary
   | "clauseSummary";
 
 export type AmendmentChangeType = "set" | "add" | "remove" | "replace";
@@ -107,13 +106,12 @@ export interface EffectiveLeaseTerms {
   endDate: string;
   depositAmount: number | null;
   noticePeriodText: string;
-  primaryTenantId: string;
-  coTenantIds: string[];
+  tenantIds: string[];
+  billingTenantId: string;
   /** Unit assignments active on `asOfDate`, primary first. */
   units: {
     unitId: string;
     assignmentType: LeaseUnitAssignmentType;
-    isPrimary: boolean;
     rentShare: number;
     chargesShare: number;
   }[];

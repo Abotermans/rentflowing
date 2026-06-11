@@ -37,9 +37,12 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
 
-  // Must have primary tenant
-  if (!lease.primaryTenantId) {
-    blockers.push({ code: "LEASE_NO_TENANT", message: "Lease has no primary tenant assigned" });
+  // Must have at least one tenant
+  if (!lease.tenantIds || lease.tenantIds.length === 0) {
+    blockers.push({ code: "LEASE_NO_TENANTS", message: "Lease must have at least one tenant" });
+  }
+  if (lease.billingTenantId && lease.tenantIds && !lease.tenantIds.includes(lease.billingTenantId)) {
+    blockers.push({ code: "LEASE_BILLING_TENANT_INVALID", message: "Billing tenant must be one of the lease tenants" });
   }
 
   // Property consistency: every assigned unit must belong to the lease's property
@@ -47,9 +50,6 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   const myAssignments = s.leaseUnitAssignments.filter(a => a.leaseId === leaseId);
   if (myAssignments.length === 0) {
     blockers.push({ code: "LEASE_NO_UNITS", message: "Lease has no units assigned" });
-  }
-  if (!myAssignments.some(a => a.isPrimary)) {
-    blockers.push({ code: "LEASE_NO_PRIMARY_UNIT", message: "Lease must have exactly one primary unit" });
   }
   for (const a of myAssignments) {
     const unit = s.units.find(u => u.id === a.unitId);
