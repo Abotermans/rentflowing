@@ -799,7 +799,7 @@ export default function LeaseDetail() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1.5">
-                    {sortedAssignments.length > 1 ? `${t("table.unit")}s · ${sortedAssignments.length}` : t("table.unit")}
+                    {sortedAssignments.length > 1 ? `${t("table.unit")}s` : t("table.unit")}
                   </p>
                   <div className="rounded border overflow-hidden">
                     <Table className="[&_th]:px-2 [&_td]:px-2">
