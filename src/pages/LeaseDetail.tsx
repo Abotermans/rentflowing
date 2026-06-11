@@ -1803,9 +1803,6 @@ export default function LeaseDetail() {
       </Dialog>
 
       {/* Mark Signed dialog */}
-      <Dialog open={signDialogOpen} onOpenChange={setSignDialogOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{t("lease.markSigned")}</DialogTitle></DialogHeader>
       <LeaseEditDialog lease={lease} open={editDialogOpen} onOpenChange={setEditDialogOpen} />
 
       {/* Mark Signed dialog */}
