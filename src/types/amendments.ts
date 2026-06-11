@@ -40,6 +40,12 @@ export type AmendmentFieldName =
   | "noticePeriodText"
   | "tenantIds"
   | "billingTenantId"
+  /** @deprecated Use `billingTenantId`. Kept for legacy amendment rows. */
+  | "primaryTenantId"
+  /** @deprecated Use `tenantIds`. Kept for legacy amendment rows. */
+  | "coTenantIds"
+  /** @deprecated Use `unitAssignments` + `assignmentType`. Kept for legacy rows. */
+  | "primaryUnitId"
   | "guaranteeSummary"
   | "unitAssignments"      // add/remove unit (metadata carries unitId + assignmentType)
   | "unitRentShare"        // per-unit rent share change (metadata.unitId)
@@ -108,12 +114,18 @@ export interface EffectiveLeaseTerms {
   noticePeriodText: string;
   tenantIds: string[];
   billingTenantId: string;
+  /** @deprecated Legacy mirror of `billingTenantId`. */
+  primaryTenantId: string;
+  /** @deprecated Legacy mirror of `tenantIds` minus the billing tenant. */
+  coTenantIds: string[];
   /** Unit assignments active on `asOfDate`, primary first. */
   units: {
     unitId: string;
     assignmentType: LeaseUnitAssignmentType;
     rentShare: number;
     chargesShare: number;
+    /** @deprecated Derived from `assignmentType === "primary"`. */
+    isPrimary: boolean;
   }[];
 }
 
