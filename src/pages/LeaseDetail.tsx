@@ -871,6 +871,48 @@ export default function LeaseDetail() {
         );
       })()}
 
+      {(() => {
+        const stage = lease.lifecycleStage;
+        if (stage !== "pending-signature" && stage !== "signed" && stage !== "active" && stage !== "under-notice") return null;
+        const checklistValues = Object.values(lease.moveInChecklist);
+        const total = checklistValues.length;
+        const done = checklistValues.filter(Boolean).length;
+        if (done === total) return null;
+        return (
+          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex flex-col">
+                  <span className="font-medium">{t("lease.moveInIncomplete.title")}</span>
+                  <span className="text-sm">
+                    {t("lease.moveInIncomplete.description")
+                      .replace("{done}", String(done))
+                      .replace("{total}", String(total))}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      document.getElementById("move-in-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    {t("lease.moveInIncomplete.completeChecklist")}
+                  </Button>
+                  {!lease.moveInActualDate && (
+                    <Button size="sm" variant="outline" onClick={() => openMoveInForm({ mode: "complete" })}>
+                      {t("lease.moveInIncomplete.recordMoveIn")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
+
       {/* End-of-lease approaching */}
       {(() => {
         if (lease.lifecycleStage !== "active") return null;
