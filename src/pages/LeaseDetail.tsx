@@ -649,6 +649,11 @@ export default function LeaseDetail() {
                 </Button>
               );
             })()}
+            {lease.lifecycleStage === "pending-signature" && (
+              <Button onClick={() => openMarkSignedDialog()} size="sm" className="h-9">
+                <CheckCircle2 className="h-4 w-4 mr-1" />{t("lease.markSigned")}
+              </Button>
+            )}
             {lease.lifecycleStage !== "draft" && lease.lifecycleStage !== "pending-signature" && (
               <Button onClick={() => setReceiptSheetOpen(true)} size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" />{t("lease.recordCashReceipt")}</Button>
             )}
