@@ -1801,7 +1801,40 @@ export default function LeaseDetail() {
                     </div>
                   </div>
                 </div>
-                <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>{t("leaseDialog.keysHandedOver")}</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={() => addKeyItem("key")}>
+                      <Plus className="h-3.5 w-3.5 mr-1" />{t("action.add")}
+                    </Button>
+                  </div>
+                  {(lease.keys ?? []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">{t("detail.noKeysBadges")}</p>
+                  ) : (
+                    <div className="overflow-x-auto -mx-2 px-2">
+                      <div className="grid grid-cols-[minmax(80px,1fr)_minmax(0,2fr)_minmax(120px,1fr)_auto] gap-2 items-center text-sm min-w-[420px]">
+                        <div className="text-muted-foreground font-medium text-xs">{t("detail.type")}</div>
+                        <div className="text-muted-foreground font-medium text-xs">{t("detail.identifier")}</div>
+                        <div className="text-muted-foreground font-medium text-xs">{t("detail.handedOver")}</div>
+                        <div></div>
+                        {(lease.keys ?? []).map(k => (
+                          <div key={k.id} className="contents">
+                            <Select value={k.kind} onValueChange={(v) => patchKeyItem(k.id, { kind: v as "key" | "badge" })}>
+                              <SelectTrigger className="h-8 text-sm min-w-0 w-full"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="key">{t("detail.kindKey")}</SelectItem>
+                                <SelectItem value="badge">{t("detail.kindBadge")}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input className="h-8 text-sm min-w-0 w-full" placeholder={t("detail.identifier")} value={k.label} onChange={e => patchKeyItem(k.id, { label: e.target.value })} />
+                            <Input type="date" className="h-8 text-sm min-w-0 w-full" value={k.handedOverDate ?? ""} onChange={e => patchKeyItem(k.id, { handedOverDate: e.target.value || null })} />
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeKeyItem(k.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setMoveInSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
                   <Button onClick={handleConfirmMoveIn} disabled={!miActualDate} className="flex-1">{t("leaseDialog.confirmMoveIn")}</Button>
