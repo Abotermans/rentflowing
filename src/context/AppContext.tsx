@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
-import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee } from "@/types";
+import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee, getTenantFullName } from "@/types";
 import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
@@ -443,7 +443,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== Lease CRUD =====
   const addLease = useCallback((l: Omit<Lease, "id" | "createdAt" | "updatedAt">) => {
     const ts = now();
-    const created: Lease = { ...l, id: genId("l"), createdAt: ts, updatedAt: ts };
+    // Seed a default payer account from the billing/first tenant when none was
+    // provided — needed for bank-feed reconciliation to have a name to match on.
+    let payerAccounts = l.payerAccounts ?? [];
+    if (payerAccounts.length === 0) {
+      const tIds = (l.tenantIds && l.tenantIds.length > 0)
+        ? l.tenantIds
+        : [l.primaryTenantId, ...(l.coTenantIds ?? [])].filter((x): x is string => !!x);
+      const seedId = l.billingTenantId ?? tIds[0];
+      if (seedId) {
+        // tenants is in scope (closure)
+        const seedTenant = tenants.find(tt => tt.id === seedId);
+        if (seedTenant) {
+          payerAccounts = [{
+            id: genId("pa"),
+            payerName: getTenantFullName(seedTenant),
+            payerIban: null,
+            payerBic: null,
+            isDefault: true,
+            notes: "",
+          }];
+        }
+      }
+    }
+    const created: Lease = { ...l, payerAccounts, id: genId("l"), createdAt: ts, updatedAt: ts };
     setLeases(prev => {
       const next = [...prev, created];
       setTenants(prevT => reconcileTenantStatuses([created.primaryTenantId, ...created.coTenantIds], next, prevT));

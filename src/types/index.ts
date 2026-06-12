@@ -325,8 +325,28 @@ export interface Lease {
    */
   chargesBillingMode?: "provision-reconciled" | "flat-rate";
 
+  /**
+   * Expected payer account(s) for this lease. Used to auto-match incoming
+   * bank receipts to the lease independently of who is named as tenant.
+   */
+  payerAccounts?: LeasePayerAccount[];
+
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A payer account declared on a lease. The combination of `payerName` and
+ * `payerIban` is what the reconciliation engine compares against the
+ * `cash_receipts` rows imported from a bank feed.
+ */
+export interface LeasePayerAccount {
+  id: string;
+  payerName: string;
+  payerIban: string | null;
+  payerBic: string | null;
+  isDefault: boolean;
+  notes: string;
 }
 
 export type LeaseStatus =

@@ -40,6 +40,8 @@ import type { TranslationKey } from "@/i18n/translations";
 import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
 import { ChargesReconciliationSection } from "@/components/leases/ChargesReconciliationSection";
 import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
+import { newId } from "@/lib/repo";
+import type { LeasePayerAccount } from "@/types";
 
 const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
   "cash-deposit": "guarantee.type.cashDeposit",
@@ -177,6 +179,15 @@ export default function LeaseDetail() {
   const [retStatus, setRetStatus] = useState<ReturnStatus>("pending");
   const [retNotes, setRetNotes] = useState("");
 
+  // Payer accounts dialog
+  const [payerDialogOpen, setPayerDialogOpen] = useState(false);
+  const [payerEditingId, setPayerEditingId] = useState<string | null>(null);
+  const [payerName, setPayerName] = useState("");
+  const [payerIban, setPayerIban] = useState("");
+  const [payerBic, setPayerBic] = useState("");
+  const [payerIsDefault, setPayerIsDefault] = useState(false);
+  const [payerNotes, setPayerNotes] = useState("");
+
   const lease = leases.find(l => l.id === id);
   if (!lease) {
     return (
@@ -295,6 +306,54 @@ export default function LeaseDetail() {
   };
 
   const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
+
+  // === Payer accounts ===
+  const openPayerForm = (payerId: string | null) => {
+    const existing = payerId ? (lease.payerAccounts ?? []).find(p => p.id === payerId) : null;
+    setPayerEditingId(payerId);
+    setPayerName(existing?.payerName ?? (tenant ? getTenantFullName(tenant) : ""));
+    setPayerIban(existing?.payerIban ?? "");
+    setPayerBic(existing?.payerBic ?? "");
+    setPayerIsDefault(existing ? existing.isDefault : (lease.payerAccounts ?? []).length === 0);
+    setPayerNotes(existing?.notes ?? "");
+    setPayerDialogOpen(true);
+  };
+  const savePayerAccount = () => {
+    const trimmedName = payerName.trim();
+    if (!trimmedName) {
+      toast({ title: t("lease.payerName"), description: t("lease.payerNamePlaceholder"), variant: "destructive" });
+      return;
+    }
+    const current = lease.payerAccounts ?? [];
+    const entry: LeasePayerAccount = {
+      id: payerEditingId ?? newId(),
+      payerName: trimmedName,
+      payerIban: payerIban.trim() ? payerIban.replace(/\s+/g, "").toUpperCase() : null,
+      payerBic: payerBic.trim() ? payerBic.replace(/\s+/g, "").toUpperCase() : null,
+      isDefault: payerIsDefault,
+      notes: payerNotes.trim(),
+    };
+    let next = payerEditingId
+      ? current.map(p => p.id === payerEditingId ? entry : p)
+      : [...current, entry];
+    if (entry.isDefault) {
+      next = next.map(p => p.id === entry.id ? p : { ...p, isDefault: false });
+    } else if (!next.some(p => p.isDefault) && next.length > 0) {
+      next = next.map((p, i) => i === 0 ? { ...p, isDefault: true } : p);
+    }
+    updateLease({ ...lease, payerAccounts: next });
+    setPayerDialogOpen(false);
+  };
+  const removePayerAccount = (payerId: string) => {
+    const current = lease.payerAccounts ?? [];
+    const removed = current.find(p => p.id === payerId);
+    let next = current.filter(p => p.id !== payerId);
+    if (removed?.isDefault && next.length > 0 && !next.some(p => p.isDefault)) {
+      next = next.map((p, i) => i === 0 ? { ...p, isDefault: true } : p);
+    }
+    updateLease({ ...lease, payerAccounts: next });
+  };
+
   const handleSaveNotice = () => {
     updateLease({
       ...lease,
@@ -1002,7 +1061,6 @@ export default function LeaseDetail() {
                             <div className="flex items-center gap-2 text-xs"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{tenant.phone || "—"}</span></div>
                           </HoverCardContent>
                         </HoverCard>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
                       </div>
                     )}
                     {coTenants.map(ct => (
@@ -1016,7 +1074,6 @@ export default function LeaseDetail() {
                             <div className="flex items-center gap-2 text-xs"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{ct.phone || "—"}</span></div>
                           </HoverCardContent>
                         </HoverCard>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
                       </div>
                     ))}
                     </div>
@@ -1115,6 +1172,67 @@ export default function LeaseDetail() {
             {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
             {lease.terminationReason && <div><p className="text-xs text-muted-foreground">{t("detail.reason")}</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Payer Accounts */}
+      <Card>
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2">
+          <div className="min-w-0">
+            <CardTitle className="text-base font-medium text-left">{t("lease.payerAccounts")}</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">{t("lease.payerAccounts.desc")}</p>
+          </div>
+          <Button size="sm" variant="outline" className="h-8" onClick={() => openPayerForm(null)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> {t("lease.addPayer")}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {(lease.payerAccounts ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("lease.payerEmpty")}</p>
+          ) : (
+            <div className="rounded border overflow-hidden">
+              <Table className="[&_th]:px-2 [&_td]:px-2">
+                <TableHeader>
+                  <TableRow className="h-8">
+                    <TableHead className="h-8 text-sm">{t("lease.payerName")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("lease.payerIban")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("lease.payerBic")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("lease.payerNotes")}</TableHead>
+                    <TableHead className="h-8 text-sm w-[1%]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(lease.payerAccounts ?? []).map(pa => (
+                    <TableRow key={pa.id} className="h-9">
+                      <TableCell className="text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{pa.payerName || "—"}</span>
+                          {pa.isDefault && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                              {t("lease.payerDefault")}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm font-mono text-foreground">{pa.payerIban || "—"}</TableCell>
+                      <TableCell className="text-sm font-mono text-foreground">{pa.payerBic || "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{pa.notes || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openPayerForm(pa.id)} aria-label={t("lease.editPayer")}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removePayerAccount(pa.id)} aria-label={t("lease.removePayer")}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -2031,6 +2149,40 @@ export default function LeaseDetail() {
               <Input type="date" value={signDateInput} onChange={e => setSignDateInput(e.target.value)} />
             </div>
             <Button className="w-full" onClick={handleMarkSigned} disabled={!signDateInput}>{t("lease.markSigned")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payer account Dialog */}
+      <Dialog open={payerDialogOpen} onOpenChange={setPayerDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{payerEditingId ? t("lease.editPayer") : t("lease.addPayer")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="payer-name">{t("lease.payerName")} *</Label>
+              <Input id="payer-name" value={payerName} onChange={e => setPayerName(e.target.value)} placeholder={t("lease.payerNamePlaceholder")} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="payer-iban">{t("lease.payerIban")}</Label>
+                <Input id="payer-iban" value={payerIban} onChange={e => setPayerIban(e.target.value)} className="font-mono" placeholder="FR76 …" />
+              </div>
+              <div>
+                <Label htmlFor="payer-bic">{t("lease.payerBic")}</Label>
+                <Input id="payer-bic" value={payerBic} onChange={e => setPayerBic(e.target.value)} className="font-mono" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="payer-notes">{t("lease.payerNotes")}</Label>
+              <Input id="payer-notes" value={payerNotes} onChange={e => setPayerNotes(e.target.value)} placeholder={t("lease.payerNotesPlaceholder")} />
+            </div>
+            <div className="flex items-center justify-between rounded border p-2">
+              <Label htmlFor="payer-default" className="text-sm font-normal">{t("lease.payerDefault")}</Label>
+              <Switch id="payer-default" checked={payerIsDefault} onCheckedChange={setPayerIsDefault} />
+            </div>
+            <Button className="w-full" onClick={savePayerAccount}>{t("action.save")}</Button>
           </div>
         </DialogContent>
       </Dialog>

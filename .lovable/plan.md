@@ -1,58 +1,83 @@
 ## Goal
-Align the move-in flow with the move-out flow on the lease detail page: same two-action header (Schedule / Record), a richer "Record move-in" modal with utility-meter icons and a notes field, and a warning banner when the move-in checklist is still incomplete on a signed/active/under-notice lease.
 
-## Changes in `src/pages/LeaseDetail.tsx`
+Stop treating any tenant on a lease as "primary". All co-tenants are equal. Introduce an explicit **expected payer** on the lease (name + IBAN/BIC) that drives reconciliation with bank imports — independent of who is named on the lease.
 
-### 1. Move-in section header — mirror move-out
-In the `renderHeader` call for move-in, pass the same `onOpen` / `onComplete` / `completeLabel` / `CompleteIcon` props as move-out:
-- `onOpen` → `() => openMoveInForm({ mode: "schedule" })` (edit scheduled date)
-- `onComplete` → `() => openMoveInForm({ mode: "complete" })` (record move-in)
-- `completeLabel` → new i18n key `lease.recordMoveIn`
-- `CompleteIcon` → `LogIn` from lucide-react
+## Why
 
-The existing header logic already shows "Schedule" / "Edit" + a primary "Record" button when status is `scheduled`, so no `renderHeader` change is needed beyond the new args.
+- A lease can be held by several tenants (couple, flatmates, company + guarantor). None is more important than the others.
+- Bank transactions carry a payer name/IBAN that may not match any tenant: a parent pays for a student, a holding pays for a subsidiary, a spouse pays from a personal account, or a single shared joint-account name covers two tenants.
+- Reconciliation should match on the **lease's declared payer account**, not on a tenant pointer. That makes auto-matching work for programmatic bank feeds and avoids forcing operators to pick a fake "primary tenant".
 
-### 2. Move-in dialog — two-mode (schedule vs complete) like move-out
-- Add `moveInMode: "schedule" | "complete"` state and `moNotes`-equivalent `miNotes` + `miActualDate` states.
-- Rework `openMoveInForm({ mode })`:
-  - schedule mode → load scheduled date + meters + keys, no actual date.
-  - complete mode → preload `miActualDate` with today (or existing actual), keep meters/keys editable, show scheduled date as read-only label.
-- Rework handlers:
-  - `handleScheduleMoveIn` → saves scheduled date, meters, keys, notes. **Does NOT touch the checklist** (same pattern as schedule move-out).
-  - `handleConfirmMoveIn` → requires `miActualDate`; saves actual date + meters + keys + notes; **does NOT auto-check the checklist** (mirrors the move-out fix). Keep `moveInScheduledDate` filled in from the actual date if missing.
-- Add `lease.moveInNotes` usage if it exists; otherwise reuse existing fields only (no schema changes — check `types/index.ts` during build; if `moveInNotes` is not present, skip the notes field rather than extending the model).
+## Use cases covered
 
-### 3. Modal visuals — utility icons
-In the move-in dialog, wrap the electricity and water meter labels the same way the move-out dialog does:
-```
-<Label className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-warning" /> Electricity</Label>
-<Label className="flex items-center gap-1.5"><Droplet className="h-3.5 w-3.5 text-primary" /> Water</Label>
-```
-Apply to both schedule and complete modes for visual consistency.
+1. Single tenant pays from their own IBAN → payer = tenant, auto-detected when lease is created.
+2. Couple, one IBAN held by one of them → payer name/IBAN entered manually, may differ from the other co-tenant's name.
+3. Parent pays for a student tenant → payer name = parent, IBAN = parent's; tenant on the lease is the student.
+4. Company pays for an employee's housing → payer = company, with its IBAN.
+5. Two separate payers (rare: split rent) → support a list of accepted payer accounts on the lease, any match counts.
+6. Direct debit (SEPA) → the IBAN is the mandate account; same field reused.
 
-### 4. Warning banner — move-in checklist incomplete
-Add a new conditional banner alongside the other lease banners (near the existing "move-out overdue" block, before the End-of-lease section). Show when:
-- `lease.lifecycleStage` is `pending-signature`, `active`, or `under-notice` (i.e. lease is signed / live / under notice)
-- AND at least one value in `lease.moveInChecklist` is `false`
+## Scope of changes
 
-Reuse the warning Alert styling already in the file (`border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning`, `AlertTriangle` icon). Title + description show `{done}/{total} done` and offer two actions:
-- Primary "Complete checklist" → scrolls to the move-in card (add `id="move-in-checklist"` + `scroll-mt-20` to it).
-- Secondary "Record move-in" → `openMoveInForm({ mode: "complete" })`, hidden when `moveInActualDate` is already set.
+### Data model (Lease)
+- Add `payerAccounts: LeasePayerAccount[]` — small list, usually 1 entry.
+  - `payerName: string` (free text, what shows on the bank statement)
+  - `payerIban: string | null`
+  - `payerBic: string | null`
+  - `isDefault: boolean` (the one prefilled on manual receipts)
+  - `notes: string` (e.g. "parent", "joint account")
+- Drop `billingTenantId` from the UI surface; keep the field internally as deprecated, no longer shown or required.
+- Remove `primaryTenantId` / `coTenantIds` from the UI vocabulary. They remain in the type as `@deprecated` mirrors only (already the case). Replace every read site that needs "a tenant to display" with either the full tenant list or — for invoicing labels — the lease's default payer name.
 
-Note: the exact lifecycle-stage trigger is "signed or active or under notice"; we map "signed" to `pending-signature` only if the lease is awaiting signature post-signing — in this codebase a signed lease becomes `active`, so the trigger effectively reduces to `active` or `under-notice`. We'll include `pending-signature` too so the banner fires the moment the user marks the lease signed before any other status change.
+### Tenants on the lease
+- Lease creation/edit dialog: single "Tenants" picker, multi-select, no primary toggle, no "Primary" badge.
+- Lease detail header: list every tenant as equal chips.
+- Remove `t("leases.primaryTenant")` badge usages in `Leases.tsx`, `LeaseDetail.tsx`, `AmendmentsSection.tsx`.
 
-### 5. i18n — `src/i18n/translations.ts`
-Add EN + FR strings:
-- `lease.recordMoveIn` — "Record move-in" / "Enregistrer l'emménagement"
-- `lease.moveInIncomplete.title` — "Move-in checklist incomplete"
-- `lease.moveInIncomplete.description` — "Complete the move-in checklist. ({done}/{total} done)"
-- `lease.moveInIncomplete.completeChecklist` — "Complete checklist"
-- `lease.moveInIncomplete.recordMoveIn` — same as `lease.recordMoveIn`
+### Payer section on the lease
+- New "Payer account(s)" card on `LeaseDetail.tsx`, under the tenants block.
+- CRUD via the standard centered Dialog (per project memory). Fields: payer name, IBAN, BIC, default toggle, note.
+- When a lease is first created with exactly one tenant, prefill one payer entry: name = tenant full name, IBAN/BIC empty (operator fills when known).
 
-## Files touched
-- `src/pages/LeaseDetail.tsx` — header wiring, dialog refactor, banner, anchor id, `LogIn` import.
-- `src/i18n/translations.ts` — new EN/FR keys.
+### Reconciliation logic
+- Update `src/lib/reconciliation.ts` matching pipeline:
+  1. Match candidate leases by `cash_receipts.payerIban` → any lease whose `payerAccounts[*].payerIban` equals it.
+  2. Fallback: normalized `payerName` (trim, casefold, strip accents) equals one of the lease's `payerAccounts[*].payerName`.
+  3. Fallback (current behavior): tenant name match across `tenantIds`.
+  4. Fallback: remittance reference contains the lease reference.
+- Surface match confidence (`iban` > `payer-name` > `tenant-name` > `reference`) for the Payments page to display.
+- When an unmatched receipt is manually attached to a lease, offer "Add this payer to the lease for future auto-match" (one-click adds the receipt's payerName/IBAN to `payerAccounts`).
+
+### Receivables generation
+- `src/lib/leaseReceivables.ts` currently stamps `tenantId: lease.primaryTenantId` on every receivable. Switch to a neutral approach: `tenantId` becomes optional / nullable on `ReceivableItem`, or stores the full `tenantIds` array. Lists that show "Tenant" use a joined label of all tenants. Invoicing label uses the lease's default payer name.
+
+### Backend
+- Migration: add `payer_accounts JSONB NOT NULL DEFAULT '[]'::jsonb` on `public.leases` (small, lease-scoped, no need for a separate table since cardinality is tiny and always loaded with the lease). RLS is unchanged — it inherits from the existing lease policies.
+- One-time data backfill: for each existing lease with a `billing_tenant_id` (or `primary_tenant_id`), insert one `payerAccounts` entry from that tenant's name; IBAN/BIC left null.
+
+### i18n
+- Add: `lease.payerAccounts`, `lease.payerName`, `lease.payerIban`, `lease.payerBic`, `lease.payerDefault`, `lease.addPayer`, `lease.payerAutoLearn`, `lease.matchedBy.iban|name|tenant|reference` (EN + FR).
+- Remove `leases.primaryTenant` usages; keep the key for now to avoid breaking other references, mark for deletion next pass.
+
+### UI cleanup
+- `Leases.tsx` form: remove "Primary tenant" Select + the Badge in the tenant list editor.
+- `LeaseDetail.tsx`: remove the "Primary" chip next to the first tenant; show all tenants symmetrically.
+- `AmendmentsSection.tsx`: same removal in the rendered amendment terms.
+- Amendments engine (`src/lib/amendments.ts`): keep `primaryTenantId` handling as deprecated compatibility but stop emitting amendment change rows for it; amendments now act on `tenantIds` and `payerAccounts`.
 
 ## Out of scope
-- No schema or data-model changes. Checklist auto-check behavior is intentionally removed from "Record move-in" to mirror the corrected move-out flow.
-- No changes to meters table, keys card, or other sections.
+
+- Reading from a real bank feed (still mocked).
+- Splitting one receipt across multiple leases — kept as today.
+- Per-payer accounting / sub-ledgers.
+
+## Technical notes
+
+- `LeasePayerAccount` type lives in `src/types/index.ts` next to `Lease`.
+- Normalized name comparison helper in `src/lib/reconciliation.ts` (NFKD + strip diacritics + lowercase + collapse whitespace).
+- IBAN comparison strips spaces and uppercases.
+- The Payments page's match-confidence column is additive; existing rows render `tenant-name` for legacy matches.
+
+## Open question
+
+Do you want me to also let the operator mark a payer entry as "direct-debit mandate" (storing a mandate reference + signature date), or keep payer accounts purely descriptive for now and add SEPA mandate fields in a later pass?
