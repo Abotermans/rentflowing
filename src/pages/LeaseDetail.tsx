@@ -40,6 +40,8 @@ import type { TranslationKey } from "@/i18n/translations";
 import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
 import { ChargesReconciliationSection } from "@/components/leases/ChargesReconciliationSection";
 import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
+import { newId } from "@/lib/repo";
+import type { LeasePayerAccount } from "@/types";
 
 const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
   "cash-deposit": "guarantee.type.cashDeposit",
@@ -176,6 +178,15 @@ export default function LeaseDetail() {
   const [returnSheetOpen, setReturnSheetOpen] = useState(false);
   const [retStatus, setRetStatus] = useState<ReturnStatus>("pending");
   const [retNotes, setRetNotes] = useState("");
+
+  // Payer accounts dialog
+  const [payerDialogOpen, setPayerDialogOpen] = useState(false);
+  const [payerEditingId, setPayerEditingId] = useState<string | null>(null);
+  const [payerName, setPayerName] = useState("");
+  const [payerIban, setPayerIban] = useState("");
+  const [payerBic, setPayerBic] = useState("");
+  const [payerIsDefault, setPayerIsDefault] = useState(false);
+  const [payerNotes, setPayerNotes] = useState("");
 
   const lease = leases.find(l => l.id === id);
   if (!lease) {
