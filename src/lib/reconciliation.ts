@@ -1,5 +1,74 @@
 import type { ReceivableItem, CashReceipt, ReceiptAllocation } from "@/types/receivables";
 import { ITEM_TYPE_PRIORITY, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
+import type { Lease, Tenant } from "@/types";
+import { getTenantFullName } from "@/types";
+
+// ===== Lease matching from a bank-imported cash receipt =====
+
+/**
+ * Normalize a string for fuzzy name comparison: NFKD, strip diacritics,
+ * lowercase, collapse whitespace.
+ */
+export function normalizePayerName(s: string | null | undefined): string {
+  if (!s) return "";
+  return s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/** Normalize IBAN by stripping spaces and upper-casing. Returns "" when empty. */
+export function normalizeIban(s: string | null | undefined): string {
+  if (!s) return "";
+  return s.replace(/\s+/g, "").toUpperCase();
+}
+
+export type MatchConfidence = "iban" | "payer-name" | "tenant-name" | "reference" | "none";
+
+export interface LeaseMatch {
+  leaseId: string;
+  confidence: MatchConfidence;
+}
+
+/**
+ * Try to match an imported cash receipt to a single lease.
+ * Priority: lease payerAccount IBAN > payerAccount name > tenant name > lease reference in remittance.
+ * Returns `null` when no candidate is found, the first candidate otherwise.
+ */
+export function matchReceiptToLease(
+  receipt: Pick<CashReceipt, "payerIban" | "payerName" | "remittanceInformation" | "reference">,
+  leases: readonly Lease[],
+  tenants: readonly Tenant[],
+): LeaseMatch | null {
+  const iban = normalizeIban(receipt.payerIban);
+  const name = normalizePayerName(receipt.payerName);
+
+  if (iban) {
+    const byIban = leases.find(l =>
+      (l.payerAccounts ?? []).some(p => normalizeIban(p.payerIban) === iban),
+    );
+    if (byIban) return { leaseId: byIban.id, confidence: "iban" };
+  }
+  if (name) {
+    const byPayerName = leases.find(l =>
+      (l.payerAccounts ?? []).some(p => normalizePayerName(p.payerName) === name),
+    );
+    if (byPayerName) return { leaseId: byPayerName.id, confidence: "payer-name" };
+
+    const byTenantName = leases.find(l => {
+      const tIds = l.tenantIds ?? [l.primaryTenantId, ...(l.coTenantIds ?? [])].filter(Boolean);
+      return tIds.some(tid => {
+        const tn = tenants.find(x => x.id === tid);
+        return tn && normalizePayerName(getTenantFullName(tn)) === name;
+      });
+    });
+    if (byTenantName) return { leaseId: byTenantName.id, confidence: "tenant-name" };
+  }
+  const haystack = `${receipt.remittanceInformation ?? ""} ${receipt.reference ?? ""}`.toLowerCase();
+  if (haystack.trim()) {
+    const byRef = leases.find(l => l.leaseReference && haystack.includes(l.leaseReference.toLowerCase()));
+    if (byRef) return { leaseId: byRef.id, confidence: "reference" };
+  }
+  return null;
+}
 
 /**
  * Auto-allocation policy:
