@@ -2152,6 +2152,40 @@ export default function LeaseDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Payer account Dialog */}
+      <Dialog open={payerDialogOpen} onOpenChange={setPayerDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{payerEditingId ? t("lease.editPayer") : t("lease.addPayer")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="payer-name">{t("lease.payerName")} *</Label>
+              <Input id="payer-name" value={payerName} onChange={e => setPayerName(e.target.value)} placeholder={t("lease.payerNamePlaceholder")} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="payer-iban">{t("lease.payerIban")}</Label>
+                <Input id="payer-iban" value={payerIban} onChange={e => setPayerIban(e.target.value)} className="font-mono" placeholder="FR76 …" />
+              </div>
+              <div>
+                <Label htmlFor="payer-bic">{t("lease.payerBic")}</Label>
+                <Input id="payer-bic" value={payerBic} onChange={e => setPayerBic(e.target.value)} className="font-mono" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="payer-notes">{t("lease.payerNotes")}</Label>
+              <Input id="payer-notes" value={payerNotes} onChange={e => setPayerNotes(e.target.value)} placeholder={t("lease.payerNotesPlaceholder")} />
+            </div>
+            <div className="flex items-center justify-between rounded border p-2">
+              <Label htmlFor="payer-default" className="text-sm font-normal">{t("lease.payerDefault")}</Label>
+              <Switch id="payer-default" checked={payerIsDefault} onCheckedChange={setPayerIsDefault} />
+            </div>
+            <Button className="w-full" onClick={savePayerAccount}>{t("action.save")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
