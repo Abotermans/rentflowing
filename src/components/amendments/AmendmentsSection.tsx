@@ -83,12 +83,10 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-medium text-foreground">{tenantLabel(terms.primaryTenantId)}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
                 </div>
                 {coTenants.map(id => (
                   <div key={id} className="flex items-center gap-2 text-sm">
                     <span className="font-medium text-foreground">{tenantLabel(id)}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
                   </div>
                 ))}
               </div>
