@@ -1353,7 +1353,7 @@ export default function LeaseDetail() {
                 {status !== "completed" && (
                   <div className="flex gap-2 ml-auto flex-shrink-0">
                     <Button variant="outline" size="sm" onClick={onOpen}>
-                      {status === "not-scheduled" ? <><Clock className="h-3.5 w-3.5 mr-1" />{t("detail.schedule")}</> : <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</>}
+                      {status === "not-scheduled" ? <><Clock className="h-3.5 w-3.5 mr-1" />{t("detail.schedule")}</> : <Pencil className="h-3.5 w-3.5" />}
                     </Button>
                     {status === "scheduled" && onComplete && (
                       <Button size="sm" onClick={onComplete}>
