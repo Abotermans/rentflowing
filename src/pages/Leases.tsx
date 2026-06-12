@@ -967,17 +967,7 @@ export default function Leases() {
                                         <div className="text-xs text-muted-foreground">{tt?.email}</div>
                                       </TableCell>
                                       <TableCell>
-                                        {isPrimary ? (
-                                          <Badge variant="default">{t("leases.primaryTenant")}</Badge>
-                                        ) : (
-                                          <button
-                                            type="button"
-                                            onClick={() => makePrimary(id)}
-                                            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-                                          >
-                                            {t("leases.wizard.makePrimary")}
-                                          </button>
-                                        )}
+                                        <span className="text-xs text-muted-foreground">—</span>
                                       </TableCell>
                                       <TableCell>
                                         <Button

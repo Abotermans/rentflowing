@@ -1002,7 +1002,6 @@ export default function LeaseDetail() {
                             <div className="flex items-center gap-2 text-xs"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{tenant.phone || "—"}</span></div>
                           </HoverCardContent>
                         </HoverCard>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
                       </div>
                     )}
                     {coTenants.map(ct => (
@@ -1016,7 +1015,6 @@ export default function LeaseDetail() {
                             <div className="flex items-center gap-2 text-xs"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{ct.phone || "—"}</span></div>
                           </HoverCardContent>
                         </HoverCard>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("amendments.coTenants")}</span>
                       </div>
                     ))}
                     </div>
