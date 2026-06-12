@@ -306,6 +306,54 @@ export default function LeaseDetail() {
   };
 
   const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
+
+  // === Payer accounts ===
+  const openPayerForm = (payerId: string | null) => {
+    const existing = payerId ? (lease.payerAccounts ?? []).find(p => p.id === payerId) : null;
+    setPayerEditingId(payerId);
+    setPayerName(existing?.payerName ?? (tenant ? getTenantFullName(tenant) : ""));
+    setPayerIban(existing?.payerIban ?? "");
+    setPayerBic(existing?.payerBic ?? "");
+    setPayerIsDefault(existing ? existing.isDefault : (lease.payerAccounts ?? []).length === 0);
+    setPayerNotes(existing?.notes ?? "");
+    setPayerDialogOpen(true);
+  };
+  const savePayerAccount = () => {
+    const trimmedName = payerName.trim();
+    if (!trimmedName) {
+      toast({ title: t("lease.payerName"), description: t("lease.payerNamePlaceholder"), variant: "destructive" });
+      return;
+    }
+    const current = lease.payerAccounts ?? [];
+    const entry: LeasePayerAccount = {
+      id: payerEditingId ?? newId(),
+      payerName: trimmedName,
+      payerIban: payerIban.trim() ? payerIban.replace(/\s+/g, "").toUpperCase() : null,
+      payerBic: payerBic.trim() ? payerBic.replace(/\s+/g, "").toUpperCase() : null,
+      isDefault: payerIsDefault,
+      notes: payerNotes.trim(),
+    };
+    let next = payerEditingId
+      ? current.map(p => p.id === payerEditingId ? entry : p)
+      : [...current, entry];
+    if (entry.isDefault) {
+      next = next.map(p => p.id === entry.id ? p : { ...p, isDefault: false });
+    } else if (!next.some(p => p.isDefault) && next.length > 0) {
+      next = next.map((p, i) => i === 0 ? { ...p, isDefault: true } : p);
+    }
+    updateLease({ ...lease, payerAccounts: next });
+    setPayerDialogOpen(false);
+  };
+  const removePayerAccount = (payerId: string) => {
+    const current = lease.payerAccounts ?? [];
+    const removed = current.find(p => p.id === payerId);
+    let next = current.filter(p => p.id !== payerId);
+    if (removed?.isDefault && next.length > 0 && !next.some(p => p.isDefault)) {
+      next = next.map((p, i) => i === 0 ? { ...p, isDefault: true } : p);
+    }
+    updateLease({ ...lease, payerAccounts: next });
+  };
+
   const handleSaveNotice = () => {
     updateLease({
       ...lease,
