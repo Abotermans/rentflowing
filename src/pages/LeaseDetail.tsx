@@ -1753,16 +1753,61 @@ export default function LeaseDetail() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{t("leaseDialog.moveIn")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} placeholder="kWh" /></div>
-              <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} placeholder="m³" /></div>
-            </div>
-            <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
-            <div className="flex gap-2">
-              <Button onClick={handleScheduleMoveIn} variant="outline" className="flex-1">{t("leaseDialog.schedule")}</Button>
-              <Button onClick={handleConfirmMoveIn} className="flex-1">{t("leaseDialog.confirmMoveIn")}</Button>
-            </div>
+            {moveInMode === "schedule" ? (
+              <>
+                <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-warning" />{t("leaseDialog.electricityMeter")}</Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={miMeter} onChange={e => setMiMeter(e.target.value)} className="h-8 text-sm pr-10" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="flex items-center gap-1.5"><Droplet className="h-3.5 w-3.5 text-primary" />{t("leaseDialog.waterMeter")}</Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} className="h-8 text-sm pr-8" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span>
+                    </div>
+                  </div>
+                </div>
+                <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setMoveInSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
+                  <Button onClick={handleScheduleMoveIn} className="flex-1">{t("action.save")}</Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label>{t("leaseDialog.scheduledDate")}</Label>
+                  <p className="text-sm text-muted-foreground mt-1">{miScheduled ? formatDate(miScheduled, locale) : "—"}</p>
+                </div>
+                <div><Label>{t("detail.actual")}</Label><Input type="date" value={miActualDate} onChange={e => setMiActualDate(e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-warning" />{t("leaseDialog.electricityMeter")}</Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={miMeter} onChange={e => setMiMeter(e.target.value)} className="h-8 text-sm pr-10" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="flex items-center gap-1.5"><Droplet className="h-3.5 w-3.5 text-primary" />{t("leaseDialog.waterMeter")}</Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} className="h-8 text-sm pr-8" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span>
+                    </div>
+                  </div>
+                </div>
+                <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setMoveInSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
+                  <Button onClick={handleConfirmMoveIn} disabled={!miActualDate} className="flex-1">{t("leaseDialog.confirmMoveIn")}</Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
