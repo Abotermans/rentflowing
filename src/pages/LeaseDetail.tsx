@@ -1331,8 +1331,8 @@ export default function LeaseDetail() {
             return (
               <>
                 {/* Move-In column */}
-                <Card className="flex flex-col">
-                  <CardHeader className="pb-3">{renderHeader(t("detail.moveIn"), miDisplay, MiIcon, moveInStatus, openMoveInForm)}</CardHeader>
+                <Card id="move-in-checklist" className="flex flex-col scroll-mt-20">
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveIn"), miDisplay, MiIcon, moveInStatus, () => openMoveInForm({ mode: "schedule" }), () => openMoveInForm({ mode: "complete" }), t("lease.recordMoveIn"), LogIn)}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveInScheduledDate, lease.moveInActualDate)}
                     <div className="space-y-2">
