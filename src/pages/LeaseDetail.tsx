@@ -526,12 +526,33 @@ export default function LeaseDetail() {
     setPendingOverrideAction("");
   };
 
-  const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiWaterMeter(lease.moveInWaterMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
-  const handleScheduleMoveIn = () => { updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, moveInWaterMeterReading: miWaterMeter || null, keyHandoverCount: parseInt(miKeys) || 0 }); toast({ title: t("leaseToast.moveInScheduled") }); setMoveInSheetOpen(false); };
+  const openMoveInForm = (opts?: { mode?: "schedule" | "complete" }) => {
+    const mode = opts?.mode ?? "schedule";
+    setMoveInMode(mode);
+    setMiScheduled(lease.moveInScheduledDate ?? "");
+    setMiMeter(lease.moveInMeterReading ?? "");
+    setMiWaterMeter(lease.moveInWaterMeterReading ?? "");
+    setMiKeys(String(lease.keyHandoverCount));
+    setMiActualDate(lease.moveInActualDate ?? (mode === "complete" ? today : ""));
+    setMoveInSheetOpen(true);
+  };
+  const handleScheduleMoveIn = () => {
+    updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, moveInWaterMeterReading: miWaterMeter || null, keyHandoverCount: parseInt(miKeys) || 0 });
+    toast({ title: t("leaseToast.moveInScheduled") });
+    setMoveInSheetOpen(false);
+  };
   const handleConfirmMoveIn = () => {
-    updateLease({ ...lease, moveInActualDate: today, moveInScheduledDate: lease.moveInScheduledDate || today, moveInMeterReading: miMeter || lease.moveInMeterReading, moveInWaterMeterReading: miWaterMeter || lease.moveInWaterMeterReading, keyHandoverCount: parseInt(miKeys) || lease.keyHandoverCount,
-      moveInChecklist: { leaseSigned: true, firstPaymentReceived: true, guaranteeConfirmed: true, keysHandedOver: true, meterReadingCaptured: true, tenantDocumentsComplete: true } });
-    toast({ title: t("leaseToast.moveInConfirmed") }); setMoveInSheetOpen(false);
+    if (!miActualDate) return;
+    updateLease({
+      ...lease,
+      moveInActualDate: miActualDate,
+      moveInScheduledDate: lease.moveInScheduledDate || miScheduled || miActualDate,
+      moveInMeterReading: miMeter || lease.moveInMeterReading,
+      moveInWaterMeterReading: miWaterMeter || lease.moveInWaterMeterReading,
+      keyHandoverCount: parseInt(miKeys) || lease.keyHandoverCount,
+    });
+    toast({ title: t("leaseToast.moveInConfirmed") });
+    setMoveInSheetOpen(false);
   };
 
   const openMoveOutForm = (opts?: { prefillScheduled?: string; mode?: "schedule" | "complete" }) => {
