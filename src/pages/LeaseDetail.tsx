@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -157,6 +157,8 @@ export default function LeaseDetail() {
   const [miScheduled, setMiScheduled] = useState("");
   const [miMeter, setMiMeter] = useState("");
   const [miWaterMeter, setMiWaterMeter] = useState("");
+  const [miActualDate, setMiActualDate] = useState("");
+  const [moveInMode, setMoveInMode] = useState<"schedule" | "complete">("schedule");
   const [miKeys, setMiKeys] = useState("");
 
   // Move-out form
@@ -524,12 +526,33 @@ export default function LeaseDetail() {
     setPendingOverrideAction("");
   };
 
-  const openMoveInForm = () => { setMiScheduled(lease.moveInScheduledDate ?? ""); setMiMeter(lease.moveInMeterReading ?? ""); setMiWaterMeter(lease.moveInWaterMeterReading ?? ""); setMiKeys(String(lease.keyHandoverCount)); setMoveInSheetOpen(true); };
-  const handleScheduleMoveIn = () => { updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, moveInWaterMeterReading: miWaterMeter || null, keyHandoverCount: parseInt(miKeys) || 0 }); toast({ title: t("leaseToast.moveInScheduled") }); setMoveInSheetOpen(false); };
+  const openMoveInForm = (opts?: { mode?: "schedule" | "complete" }) => {
+    const mode = opts?.mode ?? "schedule";
+    setMoveInMode(mode);
+    setMiScheduled(lease.moveInScheduledDate ?? "");
+    setMiMeter(lease.moveInMeterReading ?? "");
+    setMiWaterMeter(lease.moveInWaterMeterReading ?? "");
+    setMiKeys(String(lease.keyHandoverCount));
+    setMiActualDate(lease.moveInActualDate ?? (mode === "complete" ? today : ""));
+    setMoveInSheetOpen(true);
+  };
+  const handleScheduleMoveIn = () => {
+    updateLease({ ...lease, moveInScheduledDate: miScheduled || null, moveInMeterReading: miMeter || null, moveInWaterMeterReading: miWaterMeter || null, keyHandoverCount: parseInt(miKeys) || 0 });
+    toast({ title: t("leaseToast.moveInScheduled") });
+    setMoveInSheetOpen(false);
+  };
   const handleConfirmMoveIn = () => {
-    updateLease({ ...lease, moveInActualDate: today, moveInScheduledDate: lease.moveInScheduledDate || today, moveInMeterReading: miMeter || lease.moveInMeterReading, moveInWaterMeterReading: miWaterMeter || lease.moveInWaterMeterReading, keyHandoverCount: parseInt(miKeys) || lease.keyHandoverCount,
-      moveInChecklist: { leaseSigned: true, firstPaymentReceived: true, guaranteeConfirmed: true, keysHandedOver: true, meterReadingCaptured: true, tenantDocumentsComplete: true } });
-    toast({ title: t("leaseToast.moveInConfirmed") }); setMoveInSheetOpen(false);
+    if (!miActualDate) return;
+    updateLease({
+      ...lease,
+      moveInActualDate: miActualDate,
+      moveInScheduledDate: lease.moveInScheduledDate || miScheduled || miActualDate,
+      moveInMeterReading: miMeter || lease.moveInMeterReading,
+      moveInWaterMeterReading: miWaterMeter || lease.moveInWaterMeterReading,
+      keyHandoverCount: parseInt(miKeys) || lease.keyHandoverCount,
+    });
+    toast({ title: t("leaseToast.moveInConfirmed") });
+    setMoveInSheetOpen(false);
   };
 
   const openMoveOutForm = (opts?: { prefillScheduled?: string; mode?: "schedule" | "complete" }) => {
@@ -839,6 +862,48 @@ export default function LeaseDetail() {
                   {!lease.moveOutActualDate && (
                     <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ mode: "complete" })}>
                       {t("lease.moveOutOverdue.recordMoveOut")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
+
+      {(() => {
+        const stage = lease.lifecycleStage;
+        if (stage !== "pending-signature" && stage !== "signed" && stage !== "active") return null;
+        const checklistValues = Object.values(lease.moveInChecklist);
+        const total = checklistValues.length;
+        const done = checklistValues.filter(Boolean).length;
+        if (done === total) return null;
+        return (
+          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex flex-col">
+                  <span className="font-medium">{t("lease.moveInIncomplete.title")}</span>
+                  <span className="text-sm">
+                    {t("lease.moveInIncomplete.description")
+                      .replace("{done}", String(done))
+                      .replace("{total}", String(total))}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      document.getElementById("move-in-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    {t("lease.moveInIncomplete.completeChecklist")}
+                  </Button>
+                  {!lease.moveInActualDate && (
+                    <Button size="sm" variant="outline" onClick={() => openMoveInForm({ mode: "complete" })}>
+                      {t("lease.moveInIncomplete.recordMoveIn")}
                     </Button>
                   )}
                 </div>
@@ -1308,8 +1373,8 @@ export default function LeaseDetail() {
             return (
               <>
                 {/* Move-In column */}
-                <Card className="flex flex-col">
-                  <CardHeader className="pb-3">{renderHeader(t("detail.moveIn"), miDisplay, MiIcon, moveInStatus, openMoveInForm)}</CardHeader>
+                <Card id="move-in-checklist" className="flex flex-col scroll-mt-20">
+                  <CardHeader className="pb-3">{renderHeader(t("detail.moveIn"), miDisplay, MiIcon, moveInStatus, () => openMoveInForm({ mode: "schedule" }), () => openMoveInForm({ mode: "complete" }), t("lease.recordMoveIn"), LogIn)}</CardHeader>
                   <CardContent className="space-y-3 flex-1">
                     {renderDates(lease.moveInScheduledDate, lease.moveInActualDate)}
                     <div className="space-y-2">
@@ -1688,16 +1753,61 @@ export default function LeaseDetail() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{t("leaseDialog.moveIn")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>{t("leaseDialog.electricityMeter")}</Label><Input value={miMeter} onChange={e => setMiMeter(e.target.value)} placeholder="kWh" /></div>
-              <div><Label>{t("leaseDialog.waterMeter")}</Label><Input value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} placeholder="m³" /></div>
-            </div>
-            <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
-            <div className="flex gap-2">
-              <Button onClick={handleScheduleMoveIn} variant="outline" className="flex-1">{t("leaseDialog.schedule")}</Button>
-              <Button onClick={handleConfirmMoveIn} className="flex-1">{t("leaseDialog.confirmMoveIn")}</Button>
-            </div>
+            {moveInMode === "schedule" ? (
+              <>
+                <div><Label>{t("leaseDialog.scheduledDate")}</Label><Input type="date" value={miScheduled} onChange={e => setMiScheduled(e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-warning" />{t("leaseDialog.electricityMeter")}</Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={miMeter} onChange={e => setMiMeter(e.target.value)} className="h-8 text-sm pr-10" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="flex items-center gap-1.5"><Droplet className="h-3.5 w-3.5 text-primary" />{t("leaseDialog.waterMeter")}</Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} className="h-8 text-sm pr-8" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span>
+                    </div>
+                  </div>
+                </div>
+                <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setMoveInSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
+                  <Button onClick={handleScheduleMoveIn} className="flex-1">{t("action.save")}</Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label>{t("leaseDialog.scheduledDate")}</Label>
+                  <p className="text-sm text-muted-foreground mt-1">{miScheduled ? formatDate(miScheduled, locale) : "—"}</p>
+                </div>
+                <div><Label>{t("detail.actual")}</Label><Input type="date" value={miActualDate} onChange={e => setMiActualDate(e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-warning" />{t("leaseDialog.electricityMeter")}</Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={miMeter} onChange={e => setMiMeter(e.target.value)} className="h-8 text-sm pr-10" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="flex items-center gap-1.5"><Droplet className="h-3.5 w-3.5 text-primary" />{t("leaseDialog.waterMeter")}</Label>
+                    <div className="relative mt-1.5">
+                      <Input inputMode="decimal" value={miWaterMeter} onChange={e => setMiWaterMeter(e.target.value)} className="h-8 text-sm pr-8" placeholder="—" />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span>
+                    </div>
+                  </div>
+                </div>
+                <div><Label>{t("leaseDialog.keysHandedOver")}</Label><Input type="number" min={0} value={miKeys} onChange={e => setMiKeys(e.target.value)} /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setMoveInSheetOpen(false)} className="flex-1">{t("action.cancel")}</Button>
+                  <Button onClick={handleConfirmMoveIn} disabled={!miActualDate} className="flex-1">{t("leaseDialog.confirmMoveIn")}</Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
