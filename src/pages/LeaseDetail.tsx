@@ -1342,16 +1342,16 @@ export default function LeaseDetail() {
             const MiIcon = miDisplay.icon;
             const MoIcon = moDisplay.icon;
           const renderHeader = (label: string, display: typeof miDisplay, Icon: typeof MiIcon, status: typeof moveInStatus, onOpen: () => void, onComplete?: () => void, completeLabel?: string, CompleteIcon: typeof MiIcon = CheckCircle2) => (
-              <div className="flex items-center justify-between gap-2 min-h-[2rem]">
-                <div className="flex items-center gap-1.5 text-base font-medium">
+              <div className="flex items-start justify-between gap-2 min-h-[2rem] flex-wrap">
+                <div className="flex items-center gap-1.5 text-base font-medium min-w-0">
                   {label}
                   <span className={`ml-1.5 inline-flex items-center gap-1 text-xs ${display.className}`}>
-                    <Icon className="h-3.5 w-3.5" />
-                    {t(display.labelKey)}
+                    <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="whitespace-nowrap">{t(display.labelKey)}</span>
                   </span>
                 </div>
                 {status !== "completed" && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 ml-auto flex-shrink-0">
                     <Button variant="outline" size="sm" onClick={onOpen}>
                       {status === "not-scheduled" ? <><Clock className="h-3.5 w-3.5 mr-1" />{t("detail.schedule")}</> : <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</>}
                     </Button>
