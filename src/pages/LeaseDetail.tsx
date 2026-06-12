@@ -742,11 +742,15 @@ export default function LeaseDetail() {
         </div>
       </div>
 
-      {/* Activation Blocker Panel (draft / pending-signature) */}
-      {(lease.lifecycleStage === "draft" || lease.lifecycleStage === "pending-signature") && (() => {
-        const check = lease.lifecycleStage === "draft"
-          ? canSendForSignature(lease.id, integrityState)
-          : canMarkSigned(lease.id, integrityState);
+      {/* Activation Blocker Panel */}
+      {lease.lifecycleStage === "draft" && (() => {
+        const check = canSendForSignature(lease.id, integrityState);
+        return (check.blockers.length > 0 || check.warnings.length > 0) ? (
+          <StatusTransitionAlert validation={check} />
+        ) : null;
+      })()}
+      {lease.lifecycleStage === "active" && !lease.signedDate && (() => {
+        const check = canMarkSigned(lease.id, integrityState);
         return (check.blockers.length > 0 || check.warnings.length > 0) ? (
           <StatusTransitionAlert validation={check} />
         ) : null;
