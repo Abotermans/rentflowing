@@ -881,6 +881,7 @@ export type Database = {
           notice_date: string | null
           notice_given: boolean
           notice_period_text: string
+          payer_accounts: Json
           portfolio_id: string
           property_id: string
           rent_formula: number
@@ -934,6 +935,7 @@ export type Database = {
           notice_date?: string | null
           notice_given?: boolean
           notice_period_text?: string
+          payer_accounts?: Json
           portfolio_id: string
           property_id: string
           rent_formula?: number
@@ -987,6 +989,7 @@ export type Database = {
           notice_date?: string | null
           notice_given?: boolean
           notice_period_text?: string
+          payer_accounts?: Json
           portfolio_id?: string
           property_id?: string
           rent_formula?: number
