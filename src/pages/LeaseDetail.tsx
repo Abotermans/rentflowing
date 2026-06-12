@@ -1127,6 +1127,67 @@ export default function LeaseDetail() {
         </CardContent>
       </Card>
 
+      {/* Payer Accounts */}
+      <Card>
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2">
+          <div className="min-w-0">
+            <CardTitle className="text-base font-medium text-left">{t("lease.payerAccounts")}</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">{t("lease.payerAccounts.desc")}</p>
+          </div>
+          <Button size="sm" variant="outline" className="h-8" onClick={() => openPayerForm(null)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> {t("lease.addPayer")}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {(lease.payerAccounts ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("lease.payerEmpty")}</p>
+          ) : (
+            <div className="rounded border overflow-hidden">
+              <Table className="[&_th]:px-2 [&_td]:px-2">
+                <TableHeader>
+                  <TableRow className="h-8">
+                    <TableHead className="h-8 text-sm">{t("lease.payerName")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("lease.payerIban")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("lease.payerBic")}</TableHead>
+                    <TableHead className="h-8 text-sm">{t("lease.payerNotes")}</TableHead>
+                    <TableHead className="h-8 text-sm w-[1%]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(lease.payerAccounts ?? []).map(pa => (
+                    <TableRow key={pa.id} className="h-9">
+                      <TableCell className="text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{pa.payerName || "—"}</span>
+                          {pa.isDefault && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                              {t("lease.payerDefault")}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm font-mono text-foreground">{pa.payerIban || "—"}</TableCell>
+                      <TableCell className="text-sm font-mono text-foreground">{pa.payerBic || "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{pa.notes || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openPayerForm(pa.id)} aria-label={t("lease.editPayer")}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removePayerAccount(pa.id)} aria-label={t("lease.removePayer")}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Amendments / Avenants */}
       <AmendmentsSection leaseId={lease.id} newAmendmentSignal={newAmendmentSignal} />
 
