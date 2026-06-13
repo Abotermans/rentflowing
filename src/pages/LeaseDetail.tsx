@@ -1152,7 +1152,7 @@ export default function LeaseDetail() {
                               <TableCell colSpan={5} className="py-1 text-sm font-medium text-muted-foreground">Σ</TableCell>
                               <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
                               <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
-                              <TableCell className="py-1 text-right text-sm font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
+                              <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
                             </TableRow>
                           );
                         })()}
