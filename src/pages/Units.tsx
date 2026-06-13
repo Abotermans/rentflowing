@@ -33,6 +33,8 @@ import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 
 import type { TranslationKey } from "@/i18n/translations";
 
@@ -211,6 +213,8 @@ export default function Units() {
     }
   });
 
+  const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
+
   const selectedProperty = form.propertyId ? properties.find(p => p.id === form.propertyId) : null;
 
   return (
@@ -285,7 +289,7 @@ export default function Units() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sorted.map(({ unit: u, occupancy }) => {
+                {pageItems.map(({ unit: u, occupancy }) => {
                   const prop = properties.find(p => p.id === u.propertyId);
                   return (
                     <TableRow key={u.id} className="cursor-pointer" onClick={() => navigate(`/units/${u.id}`)}>
@@ -342,6 +346,7 @@ export default function Units() {
                 })}
               </TableBody>
             </Table>
+            <TablePagination page={page} pageSize={pageSize} total={total} totalPages={totalPages} from={from} to={to} onPageChange={setPage} onPageSizeChange={setPageSize} />
           </Card>
         </TooltipProvider>
       )}
