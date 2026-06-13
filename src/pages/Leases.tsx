@@ -552,7 +552,8 @@ export default function Leases() {
                 const prop = properties.find(p => p.id === l.propertyId);
                 const unit = units.find(u => u.id === l.unitId);
                 const guarantee = getGuaranteeByLease(l.id);
-                const ancillaryCount = getAncillaryLeaseUnits(l.id, { activeOnly: true }).length;
+                const ancillaryUnits = getAncillaryLeaseUnits(l.id, { activeOnly: true });
+                const ancillaryCount = ancillaryUnits.length;
                 return (
                   <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/leases/${l.id}`)}>
                     <TableCell className="font-mono text-xs text-muted-foreground">
@@ -570,12 +571,22 @@ export default function Leases() {
                       <div className="flex items-center gap-1.5">
                         {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
                         {ancillaryCount > 0 && (
-                          <span
-                            className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
-                            title={`${ancillaryCount} ${t("leases.role.ancillary")}`}
-                          >
-                            +{ancillaryCount}
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground cursor-help"
+                              >
+                                +{ancillaryCount}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <div className="space-y-0.5">
+                                {ancillaryUnits.map(({ unit: u }) => (
+                                  <div key={u.id} className="text-xs">{u.unitCode}</div>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </TableCell>
