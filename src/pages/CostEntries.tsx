@@ -25,6 +25,8 @@ import {
 } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 import type { TranslationKey } from "@/i18n/translations";
 
 type FormData = Omit<CostEntry, "id" | "createdAt" | "updatedAt">;
@@ -147,6 +149,8 @@ export default function CostEntries() {
     }
   });
 
+  const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
+
   const statusMap: Record<CostEntryStatus, string> = {
     draft: "draft", active: "active", cancelled: "cancelled", closed: "closed",
   };
@@ -227,7 +231,7 @@ export default function CostEntries() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sorted.map(e => {
+                {pageItems.map(e => {
                   const cat = getCostCategoryById(e.categoryId);
                   const prop = getPropertyById(e.propertyId);
                   const unit = e.unitId ? getUnitById(e.unitId) : null;
@@ -260,6 +264,9 @@ export default function CostEntries() {
                 })}
               </TableBody>
             </Table>
+          )}
+          {filtered.length > 0 && (
+            <TablePagination page={page} pageSize={pageSize} total={total} totalPages={totalPages} from={from} to={to} onPageChange={setPage} onPageSizeChange={setPageSize} />
           )}
         </CardContent>
       </Card>

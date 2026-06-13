@@ -1466,6 +1466,11 @@ const en = {
   "reconciliation.overview.bearer.tenantOnly": "Tenant only",
   "reconciliation.overview.bearer.mix": "Mix",
   "reconciliation.overview.bearer.informational": "Info",
+
+  // Pagination
+  "pagination.rowsPerPage": "Rows per page:",
+  "pagination.of": "of",
+  "pagination.page": "Page",
 };
 
 type TranslationKeys = typeof en;
@@ -2929,6 +2934,11 @@ const fr: TranslationKeys = {
   "reconciliation.overview.bearer.tenantOnly": "Locataire",
   "reconciliation.overview.bearer.mix": "Mixte",
   "reconciliation.overview.bearer.informational": "Info",
+
+  // Pagination
+  "pagination.rowsPerPage": "Lignes par page :",
+  "pagination.of": "sur",
+  "pagination.page": "Page",
 };
 
 export type TranslationKey = keyof typeof en;

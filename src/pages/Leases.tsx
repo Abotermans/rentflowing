@@ -37,6 +37,8 @@ import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
@@ -391,6 +393,8 @@ export default function Leases() {
     }
   });
 
+  const { pageItems: pagedLeases, page: leasePage, pageSize: leasePageSize, setPage: setLeasePage, setPageSize: setLeasePageSize, total: leaseTotal, totalPages: leaseTotalPages, from: leaseFrom, to: leaseTo } = usePagination(sorted);
+
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
   // Intersection of advance-payment tiers across every selected unit. The
@@ -547,7 +551,7 @@ export default function Leases() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(l => {
+              {pagedLeases.map(l => {
                 const tenant = tenants.find(t => t.id === l.primaryTenantId);
                 const prop = properties.find(p => p.id === l.propertyId);
                 const unit = units.find(u => u.id === l.unitId);
@@ -630,6 +634,7 @@ export default function Leases() {
               })}
             </TableBody>
           </Table>
+          <TablePagination page={leasePage} pageSize={leasePageSize} total={leaseTotal} totalPages={leaseTotalPages} from={leaseFrom} to={leaseTo} onPageChange={setLeasePage} onPageSizeChange={setLeasePageSize} />
         </Card>
       )}
 

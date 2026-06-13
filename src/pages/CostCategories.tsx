@@ -21,6 +21,8 @@ import { useSettings } from "@/context/SettingsContext";
 import { CostCategory, CostNature, CostScope, RecoveryType, COST_NATURE_LABELS, COST_SCOPE_LABELS, RECOVERY_TYPE_LABELS } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 import type { TranslationKey } from "@/i18n/translations";
 
 type FormData = Omit<CostCategory, "id" | "createdAt" | "updatedAt">;
@@ -96,6 +98,8 @@ export default function CostCategories() {
     }
   });
 
+  const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -153,7 +157,7 @@ export default function CostCategories() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sorted.map(c => (
+                {pageItems.map(c => (
                   <TableRow key={c.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{c.code}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{c.name}</TableCell>
@@ -178,6 +182,9 @@ export default function CostCategories() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {filtered.length > 0 && (
+            <TablePagination page={page} pageSize={pageSize} total={total} totalPages={totalPages} from={from} to={to} onPageChange={setPage} onPageSizeChange={setPageSize} />
           )}
         </CardContent>
       </Card>

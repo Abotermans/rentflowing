@@ -21,6 +21,8 @@ import { Vendor, VendorStatus, TRADE_CATEGORIES } from "@/types/maintenance";
 import { useSettings } from "@/context/SettingsContext";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 
 type VendorFormData = Omit<Vendor, "id">;
 
@@ -81,6 +83,8 @@ export default function Vendors() {
     }
   });
 
+  const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -133,7 +137,7 @@ export default function Vendors() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(v => (
+              {pageItems.map(v => (
                 <TableRow key={v.id} className="cursor-pointer" onClick={() => navigate(`/vendors/${v.id}`)}>
                   <TableCell className="text-sm text-muted-foreground"><Link to={`/vendors/${v.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{v.vendorName}</Link></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{v.tradeCategory}</TableCell>
@@ -157,6 +161,7 @@ export default function Vendors() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination page={page} pageSize={pageSize} total={total} totalPages={totalPages} from={from} to={to} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </Card>
       )}
 

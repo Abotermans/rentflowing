@@ -17,6 +17,8 @@ import { Scale, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { AllocationRule, AllocationMethod, ALLOCATION_METHOD_LABELS, AllocationRuleUnitShare } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 import type { TranslationKey } from "@/i18n/translations";
 
 type FormData = Omit<AllocationRule, "id" | "createdAt" | "updatedAt">;
@@ -122,6 +124,8 @@ export default function AllocationRules() {
     }
   });
 
+  const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -155,7 +159,7 @@ export default function AllocationRules() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sorted.map(r => {
+                {pageItems.map(r => {
                   const prop = getPropertyById(r.propertyId);
                   return (
                     <TableRow key={r.id}>
@@ -182,6 +186,9 @@ export default function AllocationRules() {
                 })}
               </TableBody>
             </Table>
+          )}
+          {filtered.length > 0 && (
+            <TablePagination page={page} pageSize={pageSize} total={total} totalPages={totalPages} from={from} to={to} onPageChange={setPage} onPageSizeChange={setPageSize} />
           )}
         </CardContent>
       </Card>

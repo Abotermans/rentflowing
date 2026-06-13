@@ -25,6 +25,8 @@ import { canArchiveProperty } from "@/lib/integrity/propertyIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 
 const EUROPEAN_COUNTRIES = [
   { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
@@ -142,6 +144,8 @@ export default function Properties() {
     }
   });
 
+  const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
+
   // Get unique countries from existing properties for filter
   const usedCountries = [...new Set(properties.map(p => p.countryCode))].sort();
 
@@ -219,7 +223,7 @@ export default function Properties() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(p => {
+              {pageItems.map(p => {
                 const stats = getPropertyStats(p.id);
                 return (
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => navigate(`/properties/${p.id}`)}>
@@ -246,6 +250,7 @@ export default function Properties() {
               })}
             </TableBody>
           </Table>
+          <TablePagination page={page} pageSize={pageSize} total={total} totalPages={totalPages} from={from} to={to} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </Card>
       )}
 

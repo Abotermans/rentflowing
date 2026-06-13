@@ -28,6 +28,8 @@ import { MaintenanceTicket, MaintenanceCategory, MaintenancePriority, Maintenanc
 import { useSettings } from "@/context/SettingsContext";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 
 type TicketFormData = Omit<MaintenanceTicket, "id">;
 
@@ -119,6 +121,8 @@ export default function Maintenance() {
     }
   });
 
+  const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -206,7 +210,7 @@ export default function Maintenance() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(ticket => {
+              {pageItems.map(ticket => {
                 const prop = properties.find(p => p.id === ticket.propertyId);
                 const unit = units.find(u => u.id === ticket.unitId);
                 const tenant = ticket.tenantId ? tenants.find(x => x.id === ticket.tenantId) : null;
@@ -242,6 +246,7 @@ export default function Maintenance() {
               })}
             </TableBody>
           </Table>
+          <TablePagination page={page} pageSize={pageSize} total={total} totalPages={totalPages} from={from} to={to} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </Card>
       )}
 
