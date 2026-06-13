@@ -27,6 +27,8 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 
 const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -145,6 +147,8 @@ export default function Tenants() {
     }
   });
 
+  const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -194,7 +198,7 @@ export default function Tenants() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(tenant => {
+              {pageItems.map(tenant => {
                 const activeLease = getActiveLease(tenant.id);
                 const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
                 return (
@@ -220,6 +224,7 @@ export default function Tenants() {
               })}
             </TableBody>
           </Table>
+          <TablePagination page={page} pageSize={pageSize} total={total} totalPages={totalPages} from={from} to={to} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </Card>
       )}
 
