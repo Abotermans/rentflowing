@@ -26,6 +26,8 @@ import { Link } from "react-router-dom";
 import { useSettings } from "@/context/SettingsContext";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 
 export default function Payments() {
   const { t } = useSettings();
@@ -156,6 +158,10 @@ export default function Payments() {
     const tenant = ri?.tenantId ? tenants.find(tn => tn.id === ri.tenantId) : undefined;
     return { ...al, receipt, ri, tenant };
   }).sort((a, b) => b.allocationDate.localeCompare(a.allocationDate));
+
+  const rvPg = usePagination(sortedReceivables);
+  const crPg = usePagination(sortedReceipts);
+  const alPg = usePagination(enrichedAllocations);
 
   const selectedLease = formLeaseId ? leases.find(l => l.id === formLeaseId) : undefined;
   const selectedProp = selectedLease ? properties.find(p => p.id === selectedLease.propertyId) : undefined;
@@ -291,7 +297,7 @@ export default function Payments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedReceivables.map(ri => (
+                  {rvPg.pageItems.map(ri => (
                     <TableRow key={ri.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, ri.prop?.locale)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{ri.tenant ? <Link to={`/tenants/${ri.tenant.id}`} className="hover:underline">{getTenantFullName(ri.tenant)}</Link> : "—"}</TableCell>
@@ -307,6 +313,7 @@ export default function Payments() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination page={rvPg.page} pageSize={rvPg.pageSize} total={rvPg.total} totalPages={rvPg.totalPages} from={rvPg.from} to={rvPg.to} onPageChange={rvPg.setPage} onPageSizeChange={rvPg.setPageSize} />
             </Card>
           )}
         </TabsContent>
@@ -357,7 +364,7 @@ export default function Payments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedReceipts.map(cr => (
+                  {crPg.pageItems.map(cr => (
                     <TableRow key={cr.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, cr.prop?.locale)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{cr.payerName ?? "—"}</TableCell>
@@ -379,6 +386,7 @@ export default function Payments() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination page={crPg.page} pageSize={crPg.pageSize} total={crPg.total} totalPages={crPg.totalPages} from={crPg.from} to={crPg.to} onPageChange={crPg.setPage} onPageSizeChange={crPg.setPageSize} />
             </Card>
           )}
         </TabsContent>
@@ -402,7 +410,7 @@ export default function Payments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {enrichedAllocations.map(al => (
+                  {alPg.pageItems.map(al => (
                     <TableRow key={al.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(al.allocationDate)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{al.receipt?.reference ?? al.cashReceiptId}</TableCell>
@@ -434,6 +442,7 @@ export default function Payments() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination page={alPg.page} pageSize={alPg.pageSize} total={alPg.total} totalPages={alPg.totalPages} from={alPg.from} to={alPg.to} onPageChange={alPg.setPage} onPageSizeChange={alPg.setPageSize} />
             </Card>
           )}
         </TabsContent>
