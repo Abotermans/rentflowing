@@ -10,11 +10,14 @@ export function formatCurrency(amount: number, currencyCode: string = "EUR", loc
 }
 
 export function formatDate(dateStr: string, locale: string = "fr-FR"): string {
-  return new Date(dateStr).toLocaleDateString(locale, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  // Europe-first: always render DD/MM/YYYY regardless of locale to keep
+  // month labels unambiguous (avoids e.g. nl-BE rendering "mrt" for March).
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 export function formatArea(value: number, measurementSystem: "metric" | "imperial" = "metric"): string {
