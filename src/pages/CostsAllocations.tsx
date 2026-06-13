@@ -9,6 +9,8 @@ import { PieChart, Building2, DoorOpen } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/common/TablePagination";
 
 export default function CostsAllocations() {
   const {
