@@ -84,6 +84,28 @@ export default function CostsAllocations() {
     return Array.from(map.entries()).map(([unitId, data]) => ({ unitId, ...data }));
   }, [activeEntries, costAllocationResults]);
 
+  const sortedPropertyBreakdown = sortRows(propertyBreakdown, pbSort, (pb, key) => {
+    switch (key) {
+      case "property": return getPropertyById(pb.propertyId)?.name ?? "";
+      case "totalCosts": return pb.totalCosts;
+      case "totalTaxes": return pb.totalTaxes;
+      case "total": return pb.totalCosts + pb.totalTaxes;
+    }
+  });
+  const sortedUnitBurden = sortRows(unitBurden, ubSort, (ub, key) => {
+    switch (key) {
+      case "unit": return getUnitById(ub.unitId)?.unitLabel ?? "";
+      case "property": return getPropertyById(ub.propertyId)?.name ?? "";
+      case "directCosts": return ub.directCosts;
+      case "allocatedCosts": return ub.allocatedCosts;
+      case "ownerBorne": return ub.ownerBorne;
+      case "recoverable": return ub.recoverable;
+      case "total": return ub.directCosts + ub.allocatedCosts;
+    }
+  });
+  const pbPg = usePagination(sortedPropertyBreakdown);
+  const ubPg = usePagination(sortedUnitBurden);
+
   return (
     <div className="space-y-6">
       <div>
@@ -141,14 +163,7 @@ export default function CostsAllocations() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortRows(propertyBreakdown, pbSort, (pb, key) => {
-                  switch (key) {
-                    case "property": return getPropertyById(pb.propertyId)?.name ?? "";
-                    case "totalCosts": return pb.totalCosts;
-                    case "totalTaxes": return pb.totalTaxes;
-                    case "total": return pb.totalCosts + pb.totalTaxes;
-                  }
-                }).map(pb => {
+                {pbPg.pageItems.map(pb => {
                   const prop = getPropertyById(pb.propertyId);
                   return (
                     <TableRow key={pb.propertyId}>
@@ -161,6 +176,9 @@ export default function CostsAllocations() {
                 })}
               </TableBody>
             </Table>
+          )}
+          {propertyBreakdown.length > 0 && (
+            <TablePagination page={pbPg.page} pageSize={pbPg.pageSize} total={pbPg.total} totalPages={pbPg.totalPages} from={pbPg.from} to={pbPg.to} onPageChange={pbPg.setPage} onPageSizeChange={pbPg.setPageSize} />
           )}
         </CardContent>
       </Card>
@@ -190,17 +208,7 @@ export default function CostsAllocations() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortRows(unitBurden, ubSort, (ub, key) => {
-                  switch (key) {
-                    case "unit": return getUnitById(ub.unitId)?.unitLabel ?? "";
-                    case "property": return getPropertyById(ub.propertyId)?.name ?? "";
-                    case "directCosts": return ub.directCosts;
-                    case "allocatedCosts": return ub.allocatedCosts;
-                    case "ownerBorne": return ub.ownerBorne;
-                    case "recoverable": return ub.recoverable;
-                    case "total": return ub.directCosts + ub.allocatedCosts;
-                  }
-                }).map(ub => {
+                {ubPg.pageItems.map(ub => {
                   const unit = getUnitById(ub.unitId);
                   const prop = getPropertyById(ub.propertyId);
                   const total = ub.directCosts + ub.allocatedCosts;
@@ -218,6 +226,9 @@ export default function CostsAllocations() {
                 })}
               </TableBody>
             </Table>
+          )}
+          {unitBurden.length > 0 && (
+            <TablePagination page={ubPg.page} pageSize={ubPg.pageSize} total={ubPg.total} totalPages={ubPg.totalPages} from={ubPg.from} to={ubPg.to} onPageChange={ubPg.setPage} onPageSizeChange={ubPg.setPageSize} />
           )}
         </CardContent>
       </Card>
