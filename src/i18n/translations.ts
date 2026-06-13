@@ -2934,6 +2934,11 @@ const fr: TranslationKeys = {
   "reconciliation.overview.bearer.tenantOnly": "Locataire",
   "reconciliation.overview.bearer.mix": "Mixte",
   "reconciliation.overview.bearer.informational": "Info",
+
+  // Pagination
+  "pagination.rowsPerPage": "Lignes par page :",
+  "pagination.of": "sur",
+  "pagination.page": "Page",
 };
 
 export type TranslationKey = keyof typeof en;
