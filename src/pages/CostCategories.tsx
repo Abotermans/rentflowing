@@ -161,7 +161,7 @@ export default function CostCategories() {
                   <TableRow key={c.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{c.code}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{c.name}</TableCell>
-                    <TableCell><StatusBadge status={c.nature === "tax" ? "high" : "medium"} /></TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{natureLabel(c.nature)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{scopeLabel(c.scope)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{recoveryLabel(c.recoveryTypeDefault)}</TableCell>
                     <TableCell><StatusBadge status={c.isActive ? "active" : "inactive"} /></TableCell>
