@@ -516,11 +516,11 @@ export default function Leases() {
             onChange={setFilterProperty}
             options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
           />
-          <Button variant={filterEndingSoon ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterEndingSoon(!filterEndingSoon)}>
-            {t("filter.endingSoon")}
+          <Button variant={filterEndingSoon ? "default" : "outline"} size="sm" className="h-9 font-normal" onClick={() => setFilterEndingSoon(!filterEndingSoon)}>
+            <Clock className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />{t("filter.endingSoon")}
           </Button>
-          <Button variant={filterUnderNotice ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterUnderNotice(!filterUnderNotice)}>
-            <Bell className="h-3.5 w-3.5 mr-1" />{t("filter.underNotice")}
+          <Button variant={filterUnderNotice ? "default" : "outline"} size="sm" className="h-9 font-normal" onClick={() => setFilterUnderNotice(!filterUnderNotice)}>
+            <Bell className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />{t("filter.underNotice")}
           </Button>
         </div>
         <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
