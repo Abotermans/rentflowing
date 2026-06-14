@@ -273,8 +273,8 @@ export default function Payments() {
                 value: k, label: getItemTypeLabel(t, k), icon: RECEIVABLE_TYPE_ICONS[k],
               }))}
             />
-            <Button variant={overdueOnly ? "default" : "outline"} size="sm" className="h-8 text-xs" onClick={() => setOverdueOnly(!overdueOnly)}>
-              <AlertTriangle className="h-3 w-3 mr-1" />{t("payments.filter.overdueOnly")}
+            <Button variant={overdueOnly ? "default" : "outline"} size="sm" className="h-9 font-normal" onClick={() => setOverdueOnly(!overdueOnly)}>
+              <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />{t("payments.filter.overdueOnly")}
             </Button>
           </div>
           {filteredReceivables.length === 0 ? (
@@ -340,8 +340,8 @@ export default function Payments() {
                 { value: "exception", label: t("payments.filter.exception"), icon: RECEIPT_STATUS_ICONS.exception },
               ]}
             />
-            <Button variant={unmatchedOnly ? "default" : "outline"} size="sm" className="h-8 text-xs" onClick={() => setUnmatchedOnly(!unmatchedOnly)}>
-              <ArrowRightLeft className="h-3 w-3 mr-1" />{t("payments.filter.unmatchedOnly")}
+            <Button variant={unmatchedOnly ? "default" : "outline"} size="sm" className="h-9 font-normal" onClick={() => setUnmatchedOnly(!unmatchedOnly)}>
+              <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />{t("payments.filter.unmatchedOnly")}
             </Button>
           </div>
           {filteredReceipts.length === 0 ? (
