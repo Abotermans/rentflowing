@@ -239,7 +239,7 @@ export default function CostEntries() {
                     <TableRow key={e.id}>
                       <TableCell className="text-sm text-muted-foreground">{e.label}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{cat?.name ?? "—"}</TableCell>
-                      <TableCell><StatusBadge status={e.isTax ? "high" : "medium"} /></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{natureLabel(e.isTax ? "tax" : "charge")}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{unit ? unit.unitLabel : t("costs.propertyLevel")}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{frequencyLabel(e.frequency)}</TableCell>
