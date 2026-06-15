@@ -127,9 +127,9 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">{t("prof.group.return")}</p>
             <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               <KpiCard label={t("prof.kpi.noi")} value={formatCurrency(p.noi, cur, locale)} hint={t("prof.kpi.noiHint")} />
-              <KpiCard label={t("prof.kpi.noiMargin")} value={pct(p.noiMargin)} />
-              <KpiCard label={t("prof.kpi.grossYield")} value="—" hint={t("prof.kpi.yieldUnavailable")} tone="muted" />
-              <KpiCard label={t("prof.kpi.netYield")} value="—" hint={t("prof.kpi.yieldUnavailable")} tone="muted" />
+              <KpiCard label={t("prof.kpi.noiMargin")} value={pct(p.noiMargin)} hint={t("prof.kpi.noiMarginHint")} />
+              <KpiCard label={t("prof.kpi.grossYield")} value="—" hint={`${t("prof.kpi.grossYieldHint")} ${t("prof.kpi.yieldUnavailable")}`} tone="muted" />
+              <KpiCard label={t("prof.kpi.netYield")} value="—" hint={`${t("prof.kpi.netYieldHint")} ${t("prof.kpi.yieldUnavailable")}`} tone="muted" />
             </div>
           </div>
 
