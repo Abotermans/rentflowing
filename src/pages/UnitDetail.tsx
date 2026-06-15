@@ -90,6 +90,10 @@ export default function UnitDetail() {
   type CostRowKey = "source" | "label" | "category" | "nature" | "recovery" | "period" | "method" | "total" | "amount" | "ownerBorne" | "recoverable";
   const { sort: costsSort, toggle: toggleCostsSort } = useTableSort<CostRowKey>();
 
+  // Sort state for the per-unit leases table inside the Occupancy section.
+  type UnitLeaseRowKey = "reference" | "tenant" | "role" | "start" | "end" | "rent" | "status";
+  const { sort: unitLeasesSort, toggle: toggleUnitLeasesSort } = useTableSort<UnitLeaseRowKey>("start", "desc");
+
   const unit = units.find(u => u.id === id);
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
 
