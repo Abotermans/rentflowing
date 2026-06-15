@@ -4,6 +4,7 @@ import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -236,35 +237,40 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
 
   if (mode === "flat-rate") {
     return (
+      <Collapsible open={sectionOpen} onOpenChange={setSectionOpen}>
       <Card>
-        <CardHeader className="pb-3 flex-row items-center space-y-0 gap-2">
-          <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 text-left">
-            {t("reconciliation.title")}
-            <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5">
-              {t("reconciliation.flatBadge")}
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 text-left">
+              {t("reconciliation.title")}
+              <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5">
+                {t("reconciliation.flatBadge")}
+              </span>
+            </CardTitle>
+            <span className="inline-flex items-center justify-center h-7 w-7">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
             </span>
-          </CardTitle>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
-          </Button>
-        </CardHeader>
-        {sectionOpen && (
-        <CardContent className="space-y-4">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>{t("reconciliation.flatExplain")}</AlertDescription>
-          </Alert>
-          {overviewCard}
-        </CardContent>
-        )}
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>{t("reconciliation.flatExplain")}</AlertDescription>
+            </Alert>
+            {overviewCard}
+          </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
     );
   }
 
   return (
+    <Collapsible open={sectionOpen} onOpenChange={setSectionOpen}>
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center">
+      <CollapsibleTrigger asChild>
+        <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
           <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
             {t("reconciliation.title")}
             <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-primary border border-primary/30 rounded px-1.5 py-0.5">
@@ -272,16 +278,16 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
             </span>
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={openDialog}>
+            <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); openDialog(); }}>
               <Calculator className="h-3.5 w-3.5 mr-1" />{t("reconciliation.runButton")}
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
+            <span className="inline-flex items-center justify-center h-7 w-7">
               <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
-            </Button>
+            </span>
           </div>
-        </div>
-      </CardHeader>
-      {sectionOpen && (
+        </CardHeader>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
       <CardContent className="space-y-4">
         {overviewCard}
         {history.length === 0 ? (
