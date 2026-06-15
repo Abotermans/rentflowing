@@ -160,11 +160,23 @@ export default function Payments() {
     const ri = receivableItems.find(r => r.id === al.receivableItemId);
     const tenant = ri?.tenantId ? tenants.find(tn => tn.id === ri.tenantId) : undefined;
     return { ...al, receipt, ri, tenant };
-  }).sort((a, b) => b.allocationDate.localeCompare(a.allocationDate));
+  });
+
+  const sortedAllocations = sortRows(enrichedAllocations, alSort, (al, key) => {
+    switch (key) {
+      case "date": return al.allocationDate;
+      case "receiptRef": return al.receipt?.reference ?? al.cashReceiptId;
+      case "receivable": return al.ri?.label ?? "";
+      case "type": return al.ri?.itemType ?? "";
+      case "tenant": return al.tenant ? getTenantFullName(al.tenant) : "";
+      case "amount": return al.allocatedAmount;
+      case "method": return al.allocationType;
+    }
+  });
 
   const rvPg = usePagination(sortedReceivables);
   const crPg = usePagination(sortedReceipts);
-  const alPg = usePagination(enrichedAllocations);
+  const alPg = usePagination(sortedAllocations);
 
   const selectedLease = formLeaseId ? leases.find(l => l.id === formLeaseId) : undefined;
   const selectedProp = selectedLease ? properties.find(p => p.id === selectedLease.propertyId) : undefined;
