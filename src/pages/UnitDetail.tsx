@@ -85,7 +85,7 @@ export default function UnitDetail() {
   const navigate = useNavigate();
 
   // Sort state for the unified Costs & Taxes table (direct + allocated).
-  type CostRowKey = "source" | "label" | "category" | "nature" | "recovery" | "period" | "method" | "amount" | "ownerBorne" | "recoverable";
+  type CostRowKey = "source" | "label" | "category" | "nature" | "recovery" | "period" | "method" | "total" | "amount" | "ownerBorne" | "recoverable";
   const { sort: costsSort, toggle: toggleCostsSort } = useTableSort<CostRowKey>();
 
   const unit = units.find(u => u.id === id);
