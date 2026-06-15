@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -6,14 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { PROPERTY_ICON, COST_NATURE_ICONS, COST_ENTRY_STATUS_ICONS, RECOVERY_TYPE_ICONS } from "@/lib/filterIcons";
 import { Tag, CircleDot, Shield } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -21,27 +17,18 @@ import { Receipt, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import {
   CostEntry, CostEntryStatus, CostFrequency, CostNature, RecoveryType,
-  COST_ENTRY_STATUS_LABELS, COST_FREQUENCY_LABELS, COST_NATURE_LABELS, RECOVERY_TYPE_LABELS,
+  COST_NATURE_LABELS, COST_ENTRY_STATUS_LABELS, RECOVERY_TYPE_LABELS,
 } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import type { TranslationKey } from "@/i18n/translations";
-
-type FormData = Omit<CostEntry, "id" | "createdAt" | "updatedAt">;
-
-const emptyForm: FormData = {
-  categoryId: "", propertyId: "", unitId: null, label: "", description: "",
-  frequency: "monthly", startDate: "", endDate: null, amount: 0, currencyCode: "EUR",
-  isTax: false, recoveryType: "owner-only", allocationRuleId: null,
-  vendorName: "", invoiceReference: "", status: "draft", notes: "",
-};
+import { CostEntryDialog } from "@/components/costs/CostEntryDialog";
 
 export default function CostEntries() {
   const {
-    costEntries, costCategories, properties, units, allocationRules,
-    addCostEntry, updateCostEntry, deleteCostEntry,
+    costEntries, properties, deleteCostEntry,
     getPropertyById, getUnitById, getCostCategoryById, getAllocationRuleById,
   } = useAppData();
   const { t } = useSettings();
@@ -60,18 +47,12 @@ export default function CostEntries() {
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<CostEntry | null>(null);
-  const [form, setForm] = useState<FormData>({ ...emptyForm });
 
   type ESortKey = "label" | "category" | "nature" | "property" | "unit" | "frequency" | "amount" | "recovery" | "status";
   const { sort, toggle } = useTableSort<ESortKey>();
 
-  const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setSheetOpen(true); };
-  const openEdit = (e: CostEntry) => {
-    setEditing(e);
-    const { id, createdAt, updatedAt, ...rest } = e;
-    setForm(rest);
-    setSheetOpen(true);
-  };
+  const openAdd = () => { setEditing(null); setSheetOpen(true); };
+  const openEdit = (e: CostEntry) => { setEditing(e); setSheetOpen(true); };
 
   useEffect(() => {
     const editId = searchParams.get("edit");
@@ -84,38 +65,10 @@ export default function CostEntries() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSave = () => {
-    if (!form.label.trim() || !form.propertyId || !form.categoryId || form.amount <= 0) {
-      toast({ title: t("common.validationError"), description: t("costs.validation.entryRequired"), variant: "destructive" });
-      return;
-    }
-    const category = getCostCategoryById(form.categoryId);
-    const entry = { ...form, isTax: category?.nature === "tax" };
-    if (editing) {
-      updateCostEntry({ ...editing, ...entry });
-      toast({ title: t("common.updated"), description: form.label });
-    } else {
-      addCostEntry(entry);
-      toast({ title: t("common.added"), description: form.label });
-    }
-    setSheetOpen(false);
-  };
-
   const handleDelete = (id: string) => {
     deleteCostEntry(id);
     toast({ title: t("common.deleted") });
   };
-
-  // Derived property units for the form
-  const propertyUnits = useMemo(() => {
-    if (!form.propertyId) return [];
-    return units.filter(u => u.propertyId === form.propertyId);
-  }, [form.propertyId, units]);
-
-  const propertyRules = useMemo(() => {
-    if (!form.propertyId) return [];
-    return allocationRules.filter(r => r.propertyId === form.propertyId);
-  }, [form.propertyId, allocationRules]);
 
   const filtered = costEntries.filter(e => {
     if (search) {
