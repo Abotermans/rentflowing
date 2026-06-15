@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, FileEdit, Eye, Trash2, AlertTriangle, Undo2, ChevronDown } from "lucide-react";
+import { Plus, FileEdit, Eye, Trash2, AlertTriangle, Undo2, ChevronDown, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -19,7 +19,12 @@ import { AmendmentChangesDialog } from "./AmendmentChangesDialog";
 import type { LeaseAmendment, AmendmentStatus } from "@/types/amendments";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 
-interface Props { leaseId: string; newAmendmentSignal?: number }
+interface Props {
+  leaseId: string;
+  newAmendmentSignal?: number;
+  documentCounts?: Record<string, number>;
+  onOpenDocuments?: (amendmentId: string) => void;
+}
 
 const STATUS_CLS: Record<AmendmentStatus, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -29,7 +34,7 @@ const STATUS_CLS: Record<AmendmentStatus, string> = {
   terminated: "bg-muted text-muted-foreground line-through",
 };
 
-export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
+export function AmendmentsSection({ leaseId, newAmendmentSignal, documentCounts, onOpenDocuments }: Props) {
   const { t, locale } = useSettings();
   const {
     leases, units, tenants,
