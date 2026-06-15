@@ -1,69 +1,91 @@
 ## Goal
-Populate the **Demo** portfolio (`d26a0ef7…`) with realistic, consistent lease data — every lifecycle stage represented, single- and multi-unit leases — and fix the 3 existing leases that have no unit assignments.
+Manage documents on a lease: upload, list, view (new tab), download, delete. Documents can optionally be linked to an amendment, and an amendment row exposes a shortcut to its documents.
 
-## Current state (Demo portfolio)
+## UX
 
-Existing leases:
-| Ref | Stage | Tenant | Units | Status |
-|---|---|---|---|---|
-| BAIL-PAR-001 | ended | Marie Dupont | 1 | OK |
-| BAIL-PAR-002 | ended | Sophie Martin | **0** | broken |
-| BAIL-BRU-001 | ended | Jan De Vries | 1 | OK |
-| BAIL-BRU-002 | pending-signature | Luca Bianchi | 1 | OK |
-| BAIL-BRU-003 | active | Jan De Vries | **0** | broken |
-| BAIL-AMS-001 | active | Fatima El Amrani | 1 | OK |
-| BAIL-LON-001 | active | Emma Williams | **0** | broken |
+### Entry points
+- **Lease header** — new outline button `Documents (n)` next to Edit / status actions in `LeaseDetail.tsx`. Opens the modal in "all lease documents" mode.
+- **Amendments table** — new icon column "Docs" with a paperclip button + small count badge per row. Opens the same modal, filtered to that amendment. The modal preselects the amendment in the upload form too.
 
-Lifecycle stages currently covered: `active`, `ended`, `pending-signature`.
-Missing: `draft`, `signed`, `terminated`.
+### The modal (centered shadcn `Dialog`, project standard for CRUD)
+Header: "Documents" + count. Optional sub-header chip "Filtered by amendment n°X — clear" when launched from an amendment row.
 
-## Changes
+Toolbar (right-aligned): `Upload document` button (`h-8`, primary).
 
-### 1. Fix 3 inconsistent leases (add unit assignments)
-Match each broken lease to a sensible unit in the right property/currency and align it with the unit's `current_status`:
+Body: dense `Table` matching existing lease tables.
 
-- **BAIL-PAR-002** (ended, Sophie Martin, 1600 €, 2023-09-01 → 2025-12-31) → assign **PAR-A02** (Résidence du Parc, 3-bed apartment) as `primary`, assignment end = lease end.
-- **BAIL-BRU-003** (active, Jan De Vries, 2200 €, 2025-07-01 → 2028-06-30) → assign **BRU-C01** (Bruxelles commercial unit, currently occupied) as `primary`, open-ended.
-- **BAIL-LON-001** (active, Emma Williams, GBP 1800, 2024-10-01 → 2027-09-30) → assign **LON-F01** (Camden Mews 1-bed apartment, occupied) as `primary`, open-ended.
+| Title | Amendment | Document date | Uploaded | Size | Actions |
+|---|---|---|---|---|---|
 
-### 2. Add new leases — one per missing stage + multi-unit examples
+- **Title** — clickable, opens the file in a new tab (same as the eye icon).
+- **Amendment** — "—" if none, else `n°{X} – {title}` linking to the amendment row.
+- **Document date** — user-entered.
+- **Uploaded** — `formatDate` + uploader name (from `profiles`).
+- **Size** — human-readable.
+- **Actions** — `Eye` (open new tab, signed URL), `Download` (signed URL with `download` param), `Trash2` (confirm dialog, any member).
 
-All in the Demo portfolio. References follow the existing `BAIL-{CITY}-{NNN}` pattern.
+Empty state: shared `EmptyState` pattern. Sorting via existing `useTableSort`.
 
-| New ref | Stage | Tenant | Property | Units (assignment) | Rent | Period | Why |
-|---|---|---|---|---|---|---|---|
-| BAIL-AMS-002 | **draft** | Luca Bianchi | Keizersgracht Office Hub | AMS-O02 *(primary)* + AMS-P01 *(parking)* | €2 600 | 2026-09-01 → 2029-08-31 | Multi-unit office + parking lease being prepared |
-| BAIL-PAR-003 | **signed** | Sophie Martin | Résidence du Parc | PAR-A01 *(primary)* + PAR-P01 *(parking)* + PAR-S01 *(ancillary studio used as home office)* | €2 320 | 2026-07-01 → 2029-06-30 | Signed but not yet started — multi-unit residential bundle |
-| BAIL-BER-001 | **active** | Fatima El Amrani | Friedrichstraße Wohnhaus | BER-W02 *(primary)* + BER-K01 *(storage)* | €910 | 2025-04-01 → 2028-03-31 | Active multi-unit with ancillary storage |
-| BAIL-LON-002 | **active** | Emma Williams (co-tenant: Marie Dupont) | Camden Mews | LON-F02 *(primary)* | GBP 2 200 | 2025-02-01 → 2028-01-31 | Active single-unit, GBP, joint tenancy |
-| BAIL-AMS-003 | **active** | Jan De Vries | Keizersgracht Office Hub | AMS-O03 *(primary)* | €2 600 | 2024-04-01 → 2027-03-31 | Active single office, matches occupied unit |
-| BAIL-BRU-004 | **terminated** | Luca Bianchi | Les Terrasses de Bruxelles | BRU-A01 *(primary)* | €1 100 | 2024-01-01 → 2025-05-31 | Early termination (job relocation) with termination reason, notice given |
-| BAIL-PAR-004 | **ended** | Marie Dupont | Résidence du Parc | PAR-S01 *(primary)* | €820 | 2022-01-01 → 2023-12-31 | Older naturally-expired studio lease for history |
+### Upload form (inline panel inside the same modal, toggled by the Upload button — keeps the single-modal rule)
+Fields:
+- **File** (required, single file, `<input type="file">` with drag-drop zone; accept any type; client max 20 MB).
+- **Title** (required, defaults to file name minus extension).
+- **Document date** (required, defaults to today, `<input type="date">`).
+- **Amendment** (optional `Select` of the lease's amendments; preselected when opened from a row).
+- **Notes** (optional `Textarea`).
 
-Notes on realism:
-- Rents/charges align with each unit's `base_rent` / `base_charges`.
-- Each lease uses `charges_billing_mode = 'provisions-with-reconciliation'` (residential) or `'flat-rate'` (parking-only / storage) consistent with project conventions.
-- Multi-unit leases store the lease-level rent on the lease and use `rent_share` / `charges_share` on assignments to split between primary unit and ancillaries.
-- `terminated` lease has `notice_given = true`, `notice_date`, `termination_reason = 'Tenant relocation'`, and `end_reason = NULL`.
-- `ended` leases set `end_reason = 'natural-expiry'` (PAR-004) or `'notice-completed'` (PAR-001, PAR-002 keep current values).
-- `signed` and `draft` leases have no `move_in_actual_date`.
-- `pending-signature` already covered by existing BAIL-BRU-002 — no addition needed.
+`Save` / `Cancel`. Save uploads to Storage then inserts the metadata row; toast on success/error.
 
-### 3. Final coverage check
-After the migration:
-- Stages present: `draft` ✓, `pending-signature` ✓, `signed` ✓, `active` ✓ (4 leases), `ended` ✓ (3 leases), `terminated` ✓
-- Single-unit leases: 8 · Multi-unit leases: 3
-- Currencies: EUR + GBP
-- Property types covered: residential, commercial, office, with parking & storage ancillaries
-- Zero leases without unit assignments
+### Amendment row column
+Compact icon button (`h-7 w-7`, `Paperclip`) with a tiny numeric badge of attached docs (omit badge if 0). Opens modal filtered to that amendment. Tooltip: "Documents (n)".
 
-## Implementation
-One `supabase--insert` call that, in a single transaction:
-1. `INSERT` 7 new rows into `public.leases`.
-2. `INSERT` unit assignments into `public.lease_unit_assignments` for the 3 fixed leases and the 7 new leases (10 leases × 1–3 assignments).
+## Data model
 
-No schema changes. No code changes — pure data seeding.
+New private bucket `lease-documents`.
+- Object path: `{portfolio_id}/{lease_id}/{document_id}/{original_filename}` — keeps tenants isolated and avoids collisions.
 
-## Out of scope
-- Receivables, cash receipts, amendments, guarantees, maintenance tickets — not requested.
-- Other portfolios are untouched.
+New table `public.lease_documents`:
+- `id uuid pk`
+- `lease_id uuid not null fk leases(id) on delete cascade`
+- `amendment_id uuid null fk lease_amendments(id) on delete set null`
+- `portfolio_id uuid not null` (denormalized for RLS + path)
+- `title text not null`
+- `document_date date not null`
+- `notes text null`
+- `storage_path text not null` (object path in bucket)
+- `mime_type text null`
+- `size_bytes bigint null`
+- `original_filename text not null`
+- `uploaded_by uuid null fk auth.users(id)`
+- `created_at`, `updated_at`
+
+GRANTs to `authenticated` + `service_role` (no `anon`). RLS: full CRUD for portfolio members via `is_portfolio_member(portfolio_id, auth.uid())`. `touch_updated_at` trigger.
+
+Storage policies on `storage.objects` for bucket `lease-documents`: SELECT/INSERT/DELETE restricted to portfolio members, derived by joining the first path segment (`portfolio_id`) against `portfolio_members`.
+
+## File operations
+- **Upload**: `supabase.storage.from('lease-documents').upload(path, file)` → insert metadata row. Rollback row insert on storage failure and vice versa.
+- **View**: `createSignedUrl(path, 60)` then `window.open(url, '_blank')`.
+- **Download**: `createSignedUrl(path, 60, { download: original_filename })` then trigger an `<a>` click.
+- **Delete**: remove storage object first, then delete row (best-effort; surface partial-failure toast).
+
+## Implementation outline
+1. **Migration** — create bucket via `supabase--storage_create_bucket` (private), then a migration creating `lease_documents`, GRANTs, RLS, trigger, and storage.objects policies.
+2. **Context** — extend `AppContext` with `leaseDocuments` cache + `listLeaseDocuments(leaseId)`, `createLeaseDocument`, `deleteLeaseDocument`. Fetch on lease detail load.
+3. **Component** — `src/components/leases/LeaseDocumentsDialog.tsx` (the centered Dialog described above). Reuses `useTableSort`, `EmptyState`, `formatDate`, signed-URL helpers.
+4. **LeaseDetail** — add `documentsOpen` state, header button with count, render the dialog. Pass `initialAmendmentFilter` prop.
+5. **AmendmentsSection** — add the `Paperclip` column with count badge, wire onClick to open the documents dialog (lift state via a callback prop from `LeaseDetail`, since the dialog lives there).
+6. **i18n** — add `documents.title`, `documents.upload`, `documents.col.*`, `documents.empty`, `documents.confirmDelete`, `documents.filteredBy`, `documents.clearFilter`, `documents.tooltip.view`, `documents.tooltip.download`, `documents.tooltip.delete`, `documents.amendment`, `documents.notes`, `documents.size`, `amendments.tooltip.documents`, in EN + FR.
+7. **Validation** — `zod` schema for the upload form (title non-empty ≤ 200 chars, date required, notes ≤ 1000 chars, file size ≤ 20 MB).
+
+## Gaps in the original prompt (called out for confirmation later)
+- **No versioning / revision history** — uploads are immutable; to "replace" you delete + re-upload. Confirm acceptable.
+- **No bulk upload, multi-select, or zip download** — out of scope.
+- **No preview thumbnails / inline PDF viewer** — "view" opens a new tab. Browser handles rendering.
+- **No virus scanning** — relies on private bucket + portfolio-member ACL. Document this limitation.
+- **No category/type field** (you opted out). Filter is only by amendment.
+- **No audit trail of views/downloads** — only upload metadata is stored.
+- **Deletion is hard-delete** — does NOT go through the domain-integrity layer (matches your "any member can delete anytime" choice). Note: this diverges from the project rule "never hard-delete records with history"; confirm documents are exempt.
+- **Amendment unlink** — deleting an amendment sets `amendment_id` to NULL on its documents; the document stays in the lease list. Confirm vs. cascading delete.
+- **File-size cap = 20 MB** (client-enforced; matches Lovable upload cap). Storage bucket itself has no per-file cap configured.
+- **MIME whitelist** — none; any file type accepted. Confirm whether to restrict to pdf/doc/image.
