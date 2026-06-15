@@ -239,6 +239,23 @@ export default function PropertyDetail() {
         </div>
       </div>
 
+      {/* KPI cards */}
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        {kpis.map(k => (
+          <Card key={k.label}>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{k.label}</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">{k.value}</p>
+                </div>
+                <k.icon className={`h-4 w-4 ${k.color}`} />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {/* Overview & Local Settings */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Collapsible open={overviewOpen} onOpenChange={setOverviewOpen}>
@@ -273,7 +290,7 @@ export default function PropertyDetail() {
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.localSettings")}</CardTitle>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEditProperty(); }} aria-label={t("action.edit") ?? "Edit"}>
+                <Button variant="ghost" size="o="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEditProperty(); }} aria-label={t("action.edit") ?? "Edit"}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <span className="inline-flex items-center justify-center h-7 w-7">
@@ -291,23 +308,6 @@ export default function PropertyDetail() {
           </CollapsibleContent>
         </Card>
         </Collapsible>
-      </div>
-
-      {/* KPI cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-        {kpis.map(k => (
-          <Card key={k.label}>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{k.label}</p>
-                  <p className="text-xl font-bold text-foreground mt-0.5">{k.value}</p>
-                </div>
-                <k.icon className={`h-4 w-4 ${k.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       {/* Description */}
