@@ -1631,7 +1631,7 @@ const fr: TranslationKeys = {
   "units.addTier": "Ajouter une ligne",
   "units.duplicateDurationError": "Chaque ligne doit avoir une durée différente.",
   "units.unappliedCredit": "Crédit non affecté",
-  "units.costsTaxesBurden": "Charge des coûts & taxes",
+  "units.costsTaxesBurden": "Coûts & taxes",
   "units.totalBurden": "Charge totale",
   "units.directCosts": "Coûts directs",
   "units.allocated": "Réparti",
