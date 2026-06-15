@@ -554,6 +554,18 @@ export default function UnitDetail() {
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.occupancySection")}</CardTitle>
+            {unit.currentStatus !== "archived" && (
+              <Button
+                size="sm"
+                asChild
+                className="mr-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Link to={`/leases?new=1&unitId=${unit.id}`}>
+                  <Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}
+                </Link>
+              </Button>
+            )}
             <span className="inline-flex items-center justify-center h-7 w-7">
               <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", occupancyOpen && "rotate-180")} />
             </span>
@@ -561,82 +573,56 @@ export default function UnitDetail() {
         </CollapsibleTrigger>
         <CollapsibleContent>
         <CardContent>
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <StatusBadge status={unit.currentStatus} />
-            {occupancy.occupancyRole === "ancillary" && (
-              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("leases.role.ancillary")}
-              </span>
-            )}
-            {occupancy.occupancyRole === "primary" && occupancy.activeAssignment && (
-              <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("leases.role.primary")}
-              </span>
-            )}
-            {lifecycle && lifecycle !== "active" && lifecycle !== "draft" && lifecycle !== occupancy.derived && <StatusBadge status={lifecycle} />}
-            {activeLease && moveIn === "scheduled" && occupancy.derived !== "move-in-pending" && <StatusBadge status="scheduled" />}
-            {activeLease && activeLease.returnStatus && activeLease.returnStatus !== "completed" && <StatusBadge status={activeLease.returnStatus} />}
-          </div>
-          {activeLease && tenant ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div><p className="text-xs text-muted-foreground">{t("table.tenant")}</p><Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.period")}</p><p className="text-sm font-medium text-foreground">{formatDate(activeLease.startDate, property.locale)} — {formatDate(activeLease.endDate, property.locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyRent, property.currencyCode, property.locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, property.currencyCode, property.locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("detail.totalMonthly")}</p><p className="text-sm font-bold text-primary">{formatCurrency(activeLease.monthlyRent + activeLease.monthlyCharges, property.currencyCode, property.locale)}</p></div>
-
-              {activeLease.moveInActualDate && (
-                <div><p className="text-xs text-muted-foreground">{t("detail.movedIn")}</p><p className="text-sm font-medium text-foreground">{formatDate(activeLease.moveInActualDate, property.locale)}</p></div>
-              )}
-              {activeLease.moveOutScheduledDate && !activeLease.moveOutActualDate && (
-                <div><p className="text-xs text-muted-foreground">{t("detail.moveOutPlanned")}</p><p className="text-sm font-medium text-warning">{formatDate(activeLease.moveOutScheduledDate, property.locale)}</p></div>
-              )}
-
-              {activeLease.noticeGiven && (
-                <div className="col-span-full">
-                  <div className="flex items-center gap-2 p-3 rounded-md bg-warning/10 border border-warning/30">
-                    <Bell className="h-4 w-4 text-warning" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{t("detail.underNoticeLabel")}</p>
-                      {activeLease.intendedMoveOutDate && (
-                        <p className="text-xs text-muted-foreground">{t("detail.intendedMoveOutLabel")}: {formatDate(activeLease.intendedMoveOutDate, property.locale)} — {t("detail.availableFromLabel")} {formatDate(activeLease.intendedMoveOutDate, property.locale)}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!activeLease.noticeGiven && activeLease.moveOutScheduledDate && !activeLease.moveOutActualDate && (
-                <div className="col-span-full">
-                  <div className="flex items-center gap-2 p-3 rounded-md bg-primary/10 border border-primary/30">
-                    <Truck className="h-4 w-4 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{t("detail.moveOutScheduledLabel")}</p>
-                      <p className="text-xs text-muted-foreground">{t("detail.availableFromLabel")} {formatDate(activeLease.moveOutScheduledDate, property.locale)}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Financial balance */}
-              {leaseFinancials && leaseFinancials.outstanding > 0 && (
-                <>
-                  <div><p className="text-xs text-muted-foreground">{t("detail.outstandingBalance")}</p><p className="text-sm font-bold text-foreground">{formatCurrency(leaseFinancials.outstanding, property.currencyCode, property.locale)}</p></div>
-                  {leaseFinancials.overdue > 0 && (
-                    <div><p className="text-xs text-muted-foreground">{t("table.overdue")}</p><p className="text-sm font-bold text-destructive"><AlertTriangle className="h-3.5 w-3.5 inline mr-1" />{formatCurrency(leaseFinancials.overdue, property.currencyCode, property.locale)}</p></div>
-                  )}
-                </>
-              )}
-              {unappliedCredit > 0 && (
-                <div><p className="text-xs text-muted-foreground">{t("units.unappliedCredit")}</p><p className="text-sm font-bold text-primary"><Banknote className="h-3.5 w-3.5 inline mr-1" />{formatCurrency(unappliedCredit, property.currencyCode, property.locale)}</p></div>
-              )}
-              {nextDueItem && (
-                <div><p className="text-xs text-muted-foreground">{t("detail.nextDue")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(nextDueItem.outstandingAmount, property.currencyCode, property.locale)} — {formatDate(nextDueItem.dueDate, property.locale)}</p></div>
-              )}
-            </div>
-          ) : (
+          {sortedUnitLeaseRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("detail.noActiveLeaseDesc")}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <SortableTableHead sortKey="reference" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.reference")}</SortableTableHead>
+                  <SortableTableHead sortKey="tenant" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("table.tenant")}</SortableTableHead>
+                  <SortableTableHead sortKey="role" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.role.primary")}</SortableTableHead>
+                  <SortableTableHead sortKey="start" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.startDate")}</SortableTableHead>
+                  <SortableTableHead sortKey="end" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.endDate")}</SortableTableHead>
+                  <SortableTableHead sortKey="rent" sort={unitLeasesSort} onSort={toggleUnitLeasesSort} align="right">{t("leases.monthlyRent")}</SortableTableHead>
+                  <SortableTableHead sortKey="status" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("table.status")}</SortableTableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedUnitLeaseRows.map(({ assignment, lease, tenant: leaseTenant }) => {
+                  const status = getLeaseStatus(lease);
+                  return (
+                    <TableRow key={assignment.id}>
+                      <TableCell>
+                        <Link to={`/leases/${lease.id}`} className="text-sm font-medium text-primary hover:underline">{lease.leaseReference}</Link>
+                      </TableCell>
+                      <TableCell>
+                        {leaseTenant ? (
+                          <Link to={`/tenants/${leaseTenant.id}`} className="text-sm text-primary hover:underline">{getTenantFullName(leaseTenant)}</Link>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {assignment.assignmentType === "primary" ? t("leases.role.primary") : t("leases.role.ancillary")}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm">{formatDate(lease.startDate, property.locale)}</TableCell>
+                      <TableCell className="text-sm">{formatDate(lease.endDate, property.locale)}</TableCell>
+                      <TableCell className="text-sm text-right">{formatCurrency(lease.monthlyRent + lease.monthlyCharges, property.currencyCode, property.locale)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <StatusBadge status={status} />
+                          {lease.returnStatus && lease.returnStatus !== "completed" && <StatusBadge status={lease.returnStatus} />}
+                          {lease.noticeGiven && status === "active" && (
+                            <Bell className="h-3.5 w-3.5 text-warning" />
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
         </CollapsibleContent>
