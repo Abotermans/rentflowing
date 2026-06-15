@@ -1,66 +1,52 @@
 ## Goal
-Rework the **Costs & Taxes** section on the Unit detail page (`src/pages/UnitDetail.tsx`) so it focuses on the table itself, scales gracefully, and matches the pattern used by the *Costs during lease* table on the Lease detail page.
+Unify every collapsible section on the lease page to the same structure, behavior, and visuals as **Receivables / Cash Receipts / Allocation History**.
 
-## Changes (in `src/pages/UnitDetail.tsx`, section starting around line 618)
-
-### 1. Remove the KPI strip
-Delete the 4-tile grid at the top of the card (Total Burden, Direct Costs, Allocated, Entries — lines 640–645). Keep the two summary tiles below (**Owner Borne** / **Recoverable**), since they reflect the actual financial split for the unit and aren't redundant with the table totals.
-
-### 2. Add a "Total Cost" column next to "Allocated Amount"
-Currently the table has a single amount column labeled `costs.allocatedAmount` that doubles as both the direct cost amount and the allocated share. Split it into two columns matching the lease *Costs during lease* table:
-
-- **Total Cost** — full amount of the parent cost entry
-  - Direct rows: equal to `row.amount`
-  - Allocated rows: `parent.amount` from the matching `costEntries` entry
-- **Allocated** — the share that applies to this unit
-  - Direct rows: equal to `row.amount` (full)
-  - Allocated rows: `r.allocatedAmount`
-
-Underline the **Allocated** value with a dotted underline and wrap it in a `Tooltip` showing a simple breakdown:
-
-```text
-<Cost label>
-Full cost            <total>
-Unit share (<unit>)  <pct>%   (allocated / total)
-─────────────────────────────
-Allocated            <allocated>
-```
-
-For direct rows the breakdown shows 100% share (single bearer). Reuse the same Tooltip styling as `ChargesReconciliationSection.tsx` lines 119–141 (`cursor-help underline decoration-dotted ...`, `TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2"`).
-
-### 3. Sortable column for Total Cost
-Add a new `SortableTableHead` with sort key `total` and extend the `sortRows` switch in the same file to handle it (`case "total": return totalForRow`). Keep existing sort behavior on the other columns intact.
-
-### 4. Inner vertical scroll
-Wrap the `<Table>` in a scroll container so the section scales when many entries exist:
-
+## Reference pattern (don't change these)
 ```tsx
-<div className="rounded border overflow-hidden">
-  <div className="max-h-[420px] overflow-y-auto">
-    <Table>...</Table>
-  </div>
-</div>
+<Collapsible open={X} onOpenChange={setX}>
+  <Card>
+    <CollapsibleTrigger asChild>
+      <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+        <CardTitle className="text-base font-medium flex-1 text-left">…</CardTitle>
+        {/* optional action buttons here, with stopPropagation */}
+        <span className="inline-flex items-center justify-center h-7 w-7">
+          <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", X && "rotate-180")} />
+        </span>
+      </CardHeader>
+    </CollapsibleTrigger>
+    <CollapsibleContent>
+      <CardContent>…</CardContent>
+    </CollapsibleContent>
+  </Card>
+</Collapsible>
 ```
 
-Use a sticky header (`<TableHeader className="sticky top-0 bg-background z-10">`) so column headers remain visible while scrolling, consistent with the receivables list pattern introduced earlier.
+Key behaviors to enforce everywhere:
+- Whole header row is the click target (`cursor-pointer`), not a separate chevron button.
+- Chevron is a non-interactive `<span>` that rotates 180° when open.
+- Header padding is `py-3` (not `pb-3`).
+- Content sits inside `<CollapsibleContent>` (animated), not behind `{open && …}`.
+- Any action button in the header (Edit, Add, etc.) gets `onClick={e => { e.stopPropagation(); … }}` so it doesn't toggle the section.
 
-### 5. Totals row at the end of the table
-Append a final `<TableRow>` (muted background, e.g. `className="bg-muted/30 border-t font-semibold"`) summing the numeric columns:
-- Total Cost: sum of each row's total-cost value
-- Allocated: `directTotal + allocTotal` (already computed above)
-- Owner Borne: `ownerBorne` (already computed)
-- Recoverable: `recoverable` (already computed)
+## Sections to refactor
 
-Non-numeric cells use a single `colSpan` with the label `t("reconciliation.overview.totals")` (already translated to "Totals" / "Totaux"), matching the lease cost overview.
+### In `src/pages/LeaseDetail.tsx`
+1. **Advance Billing** (~L1270) — replace custom chevron `<Button>` + `{advanceBillingOpen && …}` with the Collapsible wrapper. Keep state `advanceBillingOpen`.
+2. **Deposit / Guarantee** (~L1386) — same refactor. Keep the "Edit / Add guarantee" button inside the header, but wrap its `onClick` with `stopPropagation`. Keep state `depositOpen`.
+3. **Occupancy Operations** (~L1437) — currently a bare `<div>` with a chevron button next to an `<h2>`. Convert to the same `Collapsible` + `Card` shell so it matches the rest visually (title "Occupancy Operations" in CardHeader, grid of Move-In / Move-Out / Meters / Keys & Badges inside `CollapsibleContent` → `CardContent`). Keep state `occupancyOpen`.
+4. **Notes** (~L1801) — same refactor. Keep the "Edit" button in the header with `stopPropagation`. Keep state `notesOpen`.
 
-### 6. Translations
-Add two new keys (EN + FR) in `src/i18n/translations.ts`:
-- `costs.totalCost` → "Total Cost" / "Coût total"
-- `costs.unitShare` → "Unit share" / "Part de l'unité"
+### In `src/components/amendments/AmendmentsSection.tsx`
+5. **Amendments / Avenants** (L157–172) — replace the chevron `<Button>` + `{sectionOpen && …}` body with `Collapsible` / `CollapsibleTrigger` / `CollapsibleContent`. Keep the "New amendment" `<Button>` inside the header with `stopPropagation`.
 
-Reuse existing keys where possible (`reconciliation.overview.totals`, `reconciliation.overview.tip.fullCost`, `costs.allocatedAmount`).
+### In `src/components/leases/ChargesReconciliationSection.tsx`
+6. **Charges Reconciliation** — two header variants exist (L240 empty-state and L266 normal). Refactor both to the standard pattern. Action buttons in the header (e.g. "New reconciliation") keep `stopPropagation`.
 
 ## Out of scope
-- No data-model or allocation-logic changes; "Total Cost" is derived from existing `costEntries[*].amount`.
-- The Owner Borne / Recoverable tiles above the table are kept.
-- Other Unit detail sections are untouched.
+- Sections that currently have **no** collapse on the lease page (Lease Summary, Payer Accounts, the inner Meters / Keys & Badges cards). Leaving them as-is unless you want them collapsible too — happy to add if you confirm.
+- No business-logic, data, or translation changes; visual/behavioral refactor only.
+
+## Technical notes
+- All required primitives already imported in each file (`Collapsible`, `CollapsibleTrigger`, `CollapsibleContent`, `ChevronDown`, `cn`). No new dependencies.
+- Initial-open defaults preserved from existing `useState` values, so nothing changes for the user on first render.
+- `CollapsibleTrigger asChild` forwards the click handler to `CardHeader`, so removing the separate chevron `<Button>` does not lose keyboard/ARIA behavior (Radix handles it).

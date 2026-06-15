@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -153,23 +154,26 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
   };
 
   return (
+    <Collapsible open={sectionOpen} onOpenChange={setSectionOpen}>
     <Card>
-      <CardHeader className="pb-3 flex flex-row items-center">
-        <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
-          {t("amendments.title")} <span className="text-muted-foreground">({ams.length})</span>
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          {lease.lifecycleStage !== "draft" && (
-            <Button size="sm" className="h-8" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" />{t("amendments.add")}
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSectionOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
-          </Button>
-        </div>
-      </CardHeader>
-      {sectionOpen && (
+      <CollapsibleTrigger asChild>
+        <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+          <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
+            {t("amendments.title")} <span className="text-muted-foreground">({ams.length})</span>
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {lease.lifecycleStage !== "draft" && (
+              <Button size="sm" className="h-8" onClick={(e) => { e.stopPropagation(); setEditing(null); setDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" />{t("amendments.add")}
+              </Button>
+            )}
+            <span className="inline-flex items-center justify-center h-7 w-7">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
+            </span>
+          </div>
+        </CardHeader>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
       <CardContent>
         <Tabs defaultValue="timeline" className="w-full">
           <TabsList className="h-8">
@@ -321,7 +325,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
           </TabsContent>
         </Tabs>
       </CardContent>
-      )}
+      </CollapsibleContent>
       <AmendmentDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -335,5 +339,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
         changes={changesDialog ? getAmendmentChanges(changesDialog.id) : []}
       />
     </Card>
+    </Collapsible>
   );
 }
