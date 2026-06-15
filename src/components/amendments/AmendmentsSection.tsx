@@ -325,7 +325,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
           </TabsContent>
         </Tabs>
       </CardContent>
-      )}
+      </CollapsibleContent>
       <AmendmentDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -339,5 +339,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
         changes={changesDialog ? getAmendmentChanges(changesDialog.id) : []}
       />
     </Card>
+    </Collapsible>
   );
 }
