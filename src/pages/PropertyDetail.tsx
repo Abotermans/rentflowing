@@ -498,11 +498,6 @@ export default function PropertyDetail() {
                 </>
               )}
               {propEntries.length === 0 && <p className="text-sm text-muted-foreground">{t("propertyDetail.noCostEntries")}</p>}
-              {propEntries.length > 0 && (
-                <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                  <Link to="/costs/entries">{t("propertyDetail.viewAllCostEntries")}</Link>
-                </Button>
-              )}
             </CardContent>
             </CollapsibleContent>
           </Card>
