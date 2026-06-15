@@ -417,7 +417,7 @@ export default function TenantDetail() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditNotesOpen(false)}>{t("action.cancel")}</Button>
-            <Button onClick={() => { updateTenant({ ...tenant, notes: notesDraft, updatedAt: new Date().toISOString() }); setEditNotesOpen(false); toast({ title: t("action.saved") }); }}>{t("action.save")}</Button>
+            <Button onClick={() => { updateTenant({ ...tenant, notes: notesDraft, updatedAt: new Date().toISOString() }); setEditNotesOpen(false); }}>{t("action.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
