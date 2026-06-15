@@ -208,16 +208,16 @@ export default function Maintenance() {
                 const vendor = ticket.assignedVendorId ? vendors.find(v => v.id === ticket.assignedVendorId) : null;
                 return (
                   <TableRow key={ticket.id} className="cursor-pointer" onClick={() => navigate(`/maintenance/${ticket.id}`)}>
-                    <TableCell className="text-sm text-muted-foreground">
-                      <Link to={`/maintenance/${ticket.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{ticket.title}</Link>
+                    <TableCell className="text-xs text-muted-foreground">
+                      <Link to={`/maintenance/${ticket.id}`} className="text-foreground hover:underline" onClick={e => e.stopPropagation()}>{ticket.title}</Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
-                    <TableCell className="text-xs">{t(MAINTENANCE_CATEGORY_KEYS[ticket.category])}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{prop ? <Link to={`/properties/${prop.id}`} className="text-foreground hover:underline" onClick={e => e.stopPropagation()}>{prop.name}</Link> : "—"}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{unit ? <Link to={`/units/${unit.id}`} className="text-foreground hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{t(MAINTENANCE_CATEGORY_KEYS[ticket.category])}</TableCell>
                     <TableCell><PriorityLabel priority={ticket.priority} /></TableCell>
                     <TableCell><StatusBadge status={ticket.status} /></TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{vendor ? <Link to={`/vendors/${vendor.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{vendor.vendorName}</Link> : "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{vendor ? <Link to={`/vendors/${vendor.id}`} className="text-foreground hover:underline" onClick={e => e.stopPropagation()}>{vendor.vendorName}</Link> : "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{formatDate(ticket.createdDate)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{ticket.scheduledDate ? formatDate(ticket.scheduledDate) : "—"}</TableCell>
                     <TableCell className="text-right">
