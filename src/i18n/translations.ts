@@ -2929,7 +2929,7 @@ const fr: TranslationKeys = {
   "reconciliation.overview.col.allocated": "Part récupérable",
   "reconciliation.overview.col.totalAmount": "Montant total",
   "reconciliation.overview.col.bearer": "Support",
-  "reconciliation.overview.totals": "Total récupérable au prorata",
+  "reconciliation.overview.totals": "Total",
   "reconciliation.overview.addedByAmendment": "Ajouté",
   "reconciliation.overview.removedByAmendment": "Retiré",
   "reconciliation.overview.tip.title": "Détail de la part récupérable",
