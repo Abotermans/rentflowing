@@ -563,6 +563,7 @@ const en = {
   "table.total": "Total",
   "table.occupied": "Occupied",
   "table.vacant": "Vacant",
+  "table.action": "Action",
 
   // Detail pages
   "detail.back": "Back",
