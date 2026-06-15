@@ -317,7 +317,7 @@ export default function TenantDetail() {
               <CardTitle className="text-base font-medium flex-1 justify-start">{t("tenantDetail.recentCashReceipts")}</CardTitle>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setRecordReceiptOpen(true); }}>
-                  <Banknote className="h-4 w-4" />{t("payments.recordCashReceipt")}
+                  <Plus className="h-4 w-4" />{t("payments.recordCashReceipt")}
                 </Button>
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receiptsOpen && "rotate-180")} />
