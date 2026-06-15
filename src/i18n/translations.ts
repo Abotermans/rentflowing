@@ -608,7 +608,7 @@ const en = {
 
   // Detail page sections
   "detail.localSettings": "Local Settings",
-  "detail.financialDefaults": "Financial Defaults",
+  "detail.financialDefaults": "Rent & Charges defaults",
   "detail.unitInformation": "Unit Information",
   "detail.occupancySection": "Occupancy",
   "detail.propertyContext": "Property Context",
