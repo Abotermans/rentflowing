@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight } from "lucide-react";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
@@ -84,7 +85,7 @@ export default function UnitDetail() {
   const navigate = useNavigate();
 
   // Sort state for the unified Costs & Taxes table (direct + allocated).
-  type CostRowKey = "source" | "label" | "category" | "nature" | "recovery" | "period" | "method" | "amount" | "ownerBorne" | "recoverable";
+  type CostRowKey = "source" | "label" | "category" | "nature" | "recovery" | "period" | "method" | "total" | "amount" | "ownerBorne" | "recoverable";
   const { sort: costsSort, toggle: toggleCostsSort } = useTableSort<CostRowKey>();
 
   const unit = units.find(u => u.id === id);
@@ -637,12 +638,6 @@ export default function UnitDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div><p className="text-xs text-muted-foreground">{t("units.totalBurden")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalBurden, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("units.directCosts")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(directTotal, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("units.allocated")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(allocTotal, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("units.entries")}</p><p className="text-sm font-medium text-foreground">{t("units.entriesBreakdown").replace("{direct}", String(directEntries.length)).replace("{alloc}", String(allocResults.length))}</p></div>
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-md bg-muted/50 border">
                   <p className="text-xs text-muted-foreground">{t("units.ownerBorne")}</p>
@@ -667,6 +662,7 @@ export default function UnitDetail() {
                   frequency: CostFrequency | null;
                   method: AllocationMethod | null;
                   amount: number;
+                  totalCost: number;
                   ownerBorne: number;
                   recoverable: number;
                 };
@@ -695,6 +691,7 @@ export default function UnitDetail() {
                     frequency: e.frequency,
                     method: null,
                     amount: e.amount,
+                    totalCost: e.amount,
                     ownerBorne: s.owner,
                     recoverable: s.rec,
                   });
@@ -715,6 +712,7 @@ export default function UnitDetail() {
                     frequency: parent?.frequency ?? null,
                     method: rule?.method ?? null,
                     amount: r.allocatedAmount,
+                    totalCost: parent?.amount ?? r.allocatedAmount,
                     ownerBorne: r.ownerBurdenAmount,
                     recoverable: r.recoverableAmount,
                   });
@@ -729,6 +727,7 @@ export default function UnitDetail() {
                     case "recovery": return row.recovery;
                     case "period": return row.periodStart ?? "";
                     case "method": return row.method ?? "";
+                    case "total": return row.totalCost;
                     case "amount": return row.amount;
                     case "ownerBorne": return row.ownerBorne;
                     case "recoverable": return row.recoverable;
@@ -742,8 +741,10 @@ export default function UnitDetail() {
                   return row.frequency ? t(`costs.frequency.${row.frequency}` as TranslationKey) : "—";
                 };
                 return (
+                  <div className="rounded border overflow-hidden">
+                  <div className="max-h-[420px] overflow-y-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
                         <SortableTableHead sortKey="source" sort={costsSort} onSort={toggleCostsSort}>{t("costs.source")}</SortableTableHead>
                         <SortableTableHead sortKey="label" sort={costsSort} onSort={toggleCostsSort}>{t("costs.label")}</SortableTableHead>
@@ -752,6 +753,7 @@ export default function UnitDetail() {
                         <SortableTableHead sortKey="recovery" sort={costsSort} onSort={toggleCostsSort}>{t("units.recovery")}</SortableTableHead>
                         <SortableTableHead sortKey="period" sort={costsSort} onSort={toggleCostsSort}>{t("costs.period")}</SortableTableHead>
                         <SortableTableHead sortKey="method" sort={costsSort} onSort={toggleCostsSort}>{t("costs.allocationMethod")}</SortableTableHead>
+                        <SortableTableHead sortKey="total" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.totalCost")}</SortableTableHead>
                         <SortableTableHead sortKey="amount" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.allocatedAmount")}</SortableTableHead>
                         <SortableTableHead sortKey="ownerBorne" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.ownerBorne")}</SortableTableHead>
                         <SortableTableHead sortKey="recoverable" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.recoverable")}</SortableTableHead>
@@ -780,13 +782,47 @@ export default function UnitDetail() {
                           <TableCell><StatusBadge status={row.recovery} /></TableCell>
                           <TableCell className="text-sm text-muted-foreground">{periodCell(row)}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{row.method ? t(`costs.methodOpt.${row.method}` as TranslationKey) : "—"}</TableCell>
-                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.amount, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.totalCost, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
+                                  {formatCurrency(row.amount, property.currencyCode, property.locale)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
+                                <div className="font-medium text-sm border-b pb-1.5">{t("costs.allocatedAmount")}</div>
+                                <div className="text-muted-foreground">{row.label}</div>
+                                <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                                  <span className="text-muted-foreground">{t("reconciliation.overview.tip.fullCost")}</span>
+                                  <span className="text-right tabular-nums">{formatCurrency(row.totalCost, property.currencyCode, property.locale)}</span>
+                                  <span className="text-muted-foreground">{t("costs.unitShare")} ({unit.unitCode})</span>
+                                  <span className="text-right tabular-nums">
+                                    {row.totalCost > 0 ? `${((row.amount / row.totalCost) * 100).toFixed(1)}%` : "—"}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
+                                  <span className="font-medium">{t("costs.allocatedAmount")}</span>
+                                  <span className="text-right font-semibold tabular-nums">{formatCurrency(row.amount, property.currencyCode, property.locale)}</span>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableCell>
                           <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.ownerBorne, property.currencyCode, property.locale)}</TableCell>
                           <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.recoverable, property.currencyCode, property.locale)}</TableCell>
                         </TableRow>
                       ))}
+                      <TableRow className="bg-muted/30 border-t font-semibold hover:bg-muted/30">
+                        <TableCell className="text-sm" colSpan={7}>{t("reconciliation.overview.totals")}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{formatCurrency(sorted.reduce((s, r) => s + r.totalCost, 0), property.currencyCode, property.locale)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{formatCurrency(directTotal + allocTotal, property.currencyCode, property.locale)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{formatCurrency(recoverable, property.currencyCode, property.locale)}</TableCell>
+                      </TableRow>
                     </TableBody>
                   </Table>
+                  </div>
+                  </div>
                 );
               })()}
             </CardContent>
