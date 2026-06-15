@@ -1412,7 +1412,7 @@ const en = {
   "payments.itemType.chargesAdjustment": "Charges Adjustment",
 
   // Charges reconciliation UI
-  "reconciliation.title": "Charges reconciliation",
+  "reconciliation.title": "Costs & Taxes",
   "reconciliation.flatBadge": "Flat-rate charges",
   "reconciliation.provisionBadge": "Provision + reconciliation",
   "reconciliation.flatExplain": "This lease bills flat-rate charges. Recoverable costs allocated to the unit are shown for owner analysis only and are never rebilled to the tenant.",
