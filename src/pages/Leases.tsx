@@ -40,6 +40,7 @@ import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
+import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
