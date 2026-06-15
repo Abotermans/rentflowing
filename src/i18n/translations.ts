@@ -360,6 +360,8 @@ const en = {
 
   // Payments
   "payments.title": "Payments",
+  "payments.pageTitle": "Payments",
+  "payments.pageSubtitle": "\n",
   "payments.record": "Record Payment",
   "payments.addPayment": "Add Payment",
   "payments.empty": "No payments yet",
@@ -1838,6 +1840,8 @@ const fr: TranslationKeys = {
 
   // Payments
   "payments.title": "Paiements",
+  "payments.pageTitle": "Paiements",
+  "payments.pageSubtitle": "\n",
   "payments.record": "Enregistrer un paiement",
   "payments.addPayment": "Ajouter un paiement",
   "payments.empty": "Aucun paiement",
