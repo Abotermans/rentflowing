@@ -212,7 +212,6 @@ export default function PropertyDetail() {
               <h1 className="text-2xl font-bold text-foreground">{property.name}</h1>
               <StatusBadge status={property.status} />
             </div>
-            <p className="text-sm text-muted-foreground mt-1 font-mono">{property.referenceCode}</p>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -258,6 +257,7 @@ export default function PropertyDetail() {
           </CollapsibleTrigger>
           <CollapsibleContent>
           <CardContent className="space-y-3">
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.reference")}</span><span className="text-sm font-medium text-foreground font-mono">{property.referenceCode}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
