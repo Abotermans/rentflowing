@@ -636,6 +636,7 @@ export default function UnitDetail() {
                 </CardTitle>
                 <Button
                   size="sm"
+                  variant="outline"
                   className="mr-1"
                   onClick={(e) => {
                     e.stopPropagation();
