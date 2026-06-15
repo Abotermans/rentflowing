@@ -612,7 +612,6 @@ export default function UnitDetail() {
                       <TableCell>
                         <div className="flex items-center gap-1 flex-wrap">
                           <StatusBadge status={status} />
-                          {lease.returnStatus && lease.returnStatus !== "completed" && <StatusBadge status={lease.returnStatus} />}
                           {lease.noticeGiven && status === "active" && (
                             <Bell className="h-3.5 w-3.5 text-warning" />
                           )}
