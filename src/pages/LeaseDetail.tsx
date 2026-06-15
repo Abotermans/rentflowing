@@ -1268,16 +1268,19 @@ export default function LeaseDetail() {
 
       {/* Advance Billing — only when rentFormula > 1 */}
       {isAdvanceBilling && (
+        <Collapsible open={advanceBillingOpen} onOpenChange={setAdvanceBillingOpen}>
         <Card>
-          <CardHeader className="pb-3 flex-row items-center space-y-0 gap-2">
-            <CardTitle className="text-base font-medium flex-1 text-left">
-              {t("advanceCycle.title")} <span className="text-muted-foreground">— {t("advanceCycle.everyN").replace("{n}", String(lease.rentFormula))}</span>
-            </CardTitle>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAdvanceBillingOpen(o => !o)} aria-label="Toggle section">
-              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", advanceBillingOpen && "rotate-180")} />
-            </Button>
-          </CardHeader>
-          {advanceBillingOpen && (
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 text-left">
+                {t("advanceCycle.title")} <span className="text-muted-foreground">— {t("advanceCycle.everyN").replace("{n}", String(lease.rentFormula))}</span>
+              </CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", advanceBillingOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
@@ -1379,14 +1382,16 @@ export default function LeaseDetail() {
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
-          )}
+          </CollapsibleContent>
         </Card>
+        </Collapsible>
       )}
 
       {/* Deposit / Guarantee Card */}
+      <Collapsible open={depositOpen} onOpenChange={setDepositOpen}>
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center">
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
               {t("detail.depositGuarantee")}
               {guarantee && (() => {
@@ -1401,16 +1406,16 @@ export default function LeaseDetail() {
               })()}
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
+              <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); openGuaranteeForm(); }}>
                 {guarantee ? <><Pencil className="h-3.5 w-3.5 mr-1" />{t("action.edit")}</> : <><Plus className="h-3.5 w-3.5 mr-1" />{t("detail.addGuarantee")}</>}
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDepositOpen(o => !o)} aria-label="Toggle section">
+              <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", depositOpen && "rotate-180")} />
-              </Button>
+              </span>
             </div>
-          </div>
-        </CardHeader>
-        {depositOpen && (
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <CardContent>
           {guarantee ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1428,20 +1433,25 @@ export default function LeaseDetail() {
             <p className="text-sm text-muted-foreground">{t("detail.noGuaranteeDesc")}</p>
           )}
         </CardContent>
-        )}
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       <ChargesReconciliationSection lease={lease} currency={currency} locale={locale} />
 
       {/* Occupancy Operations */}
-      <div>
-        <div className="flex items-center justify-between mb-4 px-6">
-          <h2 className="text-lg font-semibold text-foreground text-left">{t("detail.occupancyOps")}</h2>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOccupancyOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", occupancyOpen && "rotate-180")} />
-          </Button>
-        </div>
-        {occupancyOpen && (
+      <Collapsible open={occupancyOpen} onOpenChange={setOccupancyOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 text-left">{t("detail.occupancyOps")}</CardTitle>
+            <span className="inline-flex items-center justify-center h-7 w-7">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", occupancyOpen && "rotate-180")} />
+            </span>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+        <CardContent>
         <div className="grid gap-6 lg:grid-cols-2">
           {(() => {
             const miKeys = Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[];
@@ -1608,8 +1618,10 @@ export default function LeaseDetail() {
             </CardContent>
           </Card>
         </div>
-        )}
-      </div>
+        </CardContent>
+        </CollapsibleContent>
+      </Card>
+      </Collapsible>
 
       {/* Receivables */}
       <Collapsible open={receivablesOpen} onOpenChange={setReceivablesOpen}>
