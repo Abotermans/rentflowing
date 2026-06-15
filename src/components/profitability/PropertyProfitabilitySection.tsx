@@ -3,18 +3,23 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, TrendingUp, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { useAppData } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { usePropertyProfitability, useProfitabilityInputs } from "@/hooks/use-profitability";
 import {
   defaultPeriod, ytdPeriod, allTimePeriod,
   getUnitProfitability, type Period,
 } from "@/lib/profitability";
+import { ProfitabilityBar } from "./ProfitabilityBar";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 
 type PresetKey = "ytd" | "12m" | "all";
 
@@ -43,6 +48,7 @@ function KpiCard({ label, value, hint, tone }: { label: string; value: string; h
 }
 
 export function PropertyProfitabilitySection({ propertyId }: { propertyId: string }) {
+  const { t } = useSettings();
   const { properties, units } = useAppData();
   const property = properties.find(p => p.id === propertyId);
   const [preset, setPreset] = useState<PresetKey>("12m");
@@ -65,21 +71,39 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
     return { unit: u, prof: up };
   }), [propUnits, inputs, property, period]);
 
+  type SortKey = "unit" | "billed" | "collected" | "costs" | "taxes" | "recovered" | "noi" | "margin" | "recovery";
+  const { sort, toggle } = useTableSort<SortKey>("noi", "desc");
+  const sortedRows = useMemo(() => sortRows(unitRows, sort, (row, k) => {
+    switch (k) {
+      case "unit": return row.unit.unitLabel || row.unit.unitCode;
+      case "billed": return row.prof.revenue.billedRent;
+      case "collected": return row.prof.revenue.collectedRent;
+      case "costs": return row.prof.costs.directCharges + row.prof.costs.allocatedCharges;
+      case "taxes": return row.prof.costs.directTaxes + row.prof.costs.allocatedTaxes;
+      case "recovered": return row.prof.recovery.actualRecovered;
+      case "noi": return row.prof.noi;
+      case "margin": return row.prof.noiMargin ?? -Infinity;
+      case "recovery": return row.prof.recovery.recoveryRatio ?? -Infinity;
+    }
+  }), [unitRows, sort]);
+
+  const showRegularization = Math.abs(p.recovery.regularizationDelta) > 0.5;
+
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
     <Card>
       <CollapsibleTrigger asChild>
         <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0 gap-2">
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-base font-medium flex-1 justify-start">Operational Return</CardTitle>
+          <CardTitle className="text-base font-medium flex-1 justify-start">{t("prof.title")}</CardTitle>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <Badge variant="secondary" className="text-[10px]">Before financing</Badge>
+            <Badge variant="secondary" className="text-[10px]">{t("prof.beforeFinancing")}</Badge>
             <div className="flex rounded-md border border-border overflow-hidden">
               {(["ytd", "12m", "all"] as PresetKey[]).map(k => (
                 <Button key={k} variant={preset === k ? "default" : "ghost"} size="sm"
                   className="h-7 rounded-none px-2 text-xs"
                   onClick={() => setPreset(k)}>
-                  {k === "ytd" ? "YTD" : k === "12m" ? "12M" : "All"}
+                  {k === "ytd" ? t("prof.period.ytd") : k === "12m" ? t("prof.period.12m") : t("prof.period.all")}
                 </Button>
               ))}
             </div>
@@ -91,88 +115,119 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
       </CollapsibleTrigger>
       <CollapsibleContent>
         <CardContent className="space-y-4">
-          {/* KPI grid */}
-          <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
-            <KpiCard label="EGI" value={formatCurrency(p.revenue.egi, cur, locale)}
-              hint="Effective Gross Income = billed rent − vacancy − unpaid. Other income unavailable." />
-            <KpiCard label="NOI" value={formatCurrency(p.noi, cur, locale)}
-              hint="EGI − owner-borne charges & taxes. Before financing." />
-            <KpiCard label="NOI margin" value={pct(p.noiMargin)} />
-            <KpiCard label="OER" value={pct(p.oer)} hint="Owner-borne / EGI" />
-            <KpiCard label="Recovery ratio" value={pct(p.recovery.recoveryRatio)}
-              hint="Recovered charges / recoverable charges." />
-            <KpiCard label="Gross yield" value="—" hint="Unavailable — add a property valuation to enable." tone="muted" />
-            <KpiCard label="Net yield" value="—" hint="Unavailable — add a property valuation to enable." tone="muted" />
+          <Alert className="py-2">
+            <AlertDescription className="text-xs">{t("prof.beforeFinancingNote")}</AlertDescription>
+          </Alert>
+
+          {/* Revenue vs Costs vs NOI summary bar */}
+          <ProfitabilityBar revenue={p.revenue.egi} ownerBorne={p.recovery.ownerBorne} noi={p.noi}
+            currencyCode={cur} locale={locale} />
+
+          {/* Income KPIs */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">{t("prof.group.income")}</p>
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+              <KpiCard label={t("prof.kpi.theoreticalRent")} value={formatCurrency(p.revenue.theoreticalRent, cur, locale)} />
+              <KpiCard label={t("prof.kpi.billedRent")} value={formatCurrency(p.revenue.billedRent, cur, locale)} />
+              <KpiCard label={t("prof.kpi.collectedRent")} value={formatCurrency(p.revenue.collectedRent, cur, locale)} />
+              <KpiCard label={t("prof.kpi.vacancyLoss")} value={formatCurrency(p.revenue.vacancyLoss, cur, locale)} />
+              <KpiCard label={t("prof.kpi.unpaidLoss")} value={formatCurrency(p.revenue.unpaidLoss, cur, locale)} />
+              <KpiCard label={t("prof.kpi.egi")} value={formatCurrency(p.revenue.egi, cur, locale)} hint={t("prof.kpi.egiHint")} />
+            </div>
+          </div>
+
+          {/* Return KPIs */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">{t("prof.group.return")}</p>
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+              <KpiCard label={t("prof.kpi.noi")} value={formatCurrency(p.noi, cur, locale)} hint={t("prof.kpi.noiHint")} />
+              <KpiCard label={t("prof.kpi.noiMargin")} value={pct(p.noiMargin)} />
+              <KpiCard label={t("prof.kpi.oer")} value={pct(p.oer)} hint={t("prof.kpi.oerHint")} />
+              <KpiCard label={t("prof.kpi.recoveryRatio")} value={pct(p.recovery.recoveryRatio)} hint={t("prof.kpi.recoveryRatioHint")} />
+              <KpiCard label={t("prof.kpi.grossYield")} value="—" hint={t("prof.kpi.yieldUnavailable")} tone="muted" />
+              <KpiCard label={t("prof.kpi.netYield")} value="—" hint={t("prof.kpi.yieldUnavailable")} tone="muted" />
+            </div>
           </div>
 
           {/* Cost & recovery breakdown */}
           <div className="grid gap-3 md:grid-cols-2">
             <Card>
-              <CardHeader className="py-2"><CardTitle className="text-sm">Costs (actual)</CardTitle></CardHeader>
+              <CardHeader className="py-2"><CardTitle className="text-sm">{t("prof.costs.title")}</CardTitle></CardHeader>
               <CardContent className="text-sm space-y-1.5">
-                <Row label="Property charges" value={formatCurrency(p.costs.directCharges, cur, locale)} />
-                <Row label="Property taxes" value={formatCurrency(p.costs.directTaxes, cur, locale)} />
-                <Row label="Unit-direct charges" value={formatCurrency(p.costs.allocatedCharges, cur, locale)} />
-                <Row label="Unit-direct taxes" value={formatCurrency(p.costs.allocatedTaxes, cur, locale)} />
-                <Row strong label="Total actual" value={formatCurrency(p.costs.totalActual, cur, locale)} />
+                <div className="grid grid-cols-3 text-[11px] uppercase tracking-wide text-muted-foreground pb-1 border-b border-border">
+                  <span />
+                  <span className="text-right">{t("prof.costs.charges")}</span>
+                  <span className="text-right">{t("prof.costs.taxes")}</span>
+                </div>
+                <BreakdownRow label={t("prof.costs.directProperty")}
+                  charges={p.costs.directCharges} taxes={p.costs.directTaxes} cur={cur} locale={locale} />
+                <BreakdownRow label={t("prof.costs.directUnit")}
+                  charges={p.costs.allocatedCharges} taxes={p.costs.allocatedTaxes} cur={cur} locale={locale} />
+                <BreakdownRow strong label={t("prof.costs.totalActual")}
+                  charges={p.costs.directCharges + p.costs.allocatedCharges}
+                  taxes={p.costs.directTaxes + p.costs.allocatedTaxes} cur={cur} locale={locale} />
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="py-2"><CardTitle className="text-sm">Recovery & owner burden</CardTitle></CardHeader>
+              <CardHeader className="py-2"><CardTitle className="text-sm">{t("prof.recovery.title")}</CardTitle></CardHeader>
               <CardContent className="text-sm space-y-1.5">
-                <Row label="Provisions billed" value={formatCurrency(p.recovery.provisionsBilled, cur, locale)} />
-                <Row label="Actual recoverable" value={formatCurrency(p.recovery.actualRecoverable, cur, locale)} />
-                <Row label="Actually recovered" value={formatCurrency(p.recovery.actualRecovered, cur, locale)} />
-                <Row label="Regularization delta"
+                <Row label={t("prof.recovery.provisionsBilled")} value={formatCurrency(p.recovery.provisionsBilled, cur, locale)} />
+                <Row label={t("prof.recovery.actualRecoverable")} value={formatCurrency(p.recovery.actualRecoverable, cur, locale)} />
+                <Row label={t("prof.recovery.provisionsCollected")} value={formatCurrency(p.recovery.provisionsCollected, cur, locale)} />
+                <Row label={t("prof.recovery.recovered")} value={formatCurrency(p.recovery.actualRecovered, cur, locale)} />
+                {p.recovery.provisionsSurplus > 0 && (
+                  <Row label={t("prof.recovery.provisionsSurplus")} value={formatCurrency(p.recovery.provisionsSurplus, cur, locale)} tone="success" />
+                )}
+                <Row label={t("prof.recovery.regularizationDelta")}
                   value={formatCurrency(p.recovery.regularizationDelta, cur, locale)}
                   tone={p.recovery.regularizationDelta > 0 ? "warn" : p.recovery.regularizationDelta < 0 ? "success" : undefined} />
-                <Row strong label="Owner-borne" value={formatCurrency(p.recovery.ownerBorne, cur, locale)} />
+                <Row strong label={t("prof.recovery.ownerBorne")} value={formatCurrency(p.recovery.ownerBorne, cur, locale)} />
               </CardContent>
             </Card>
           </div>
 
-          {/* Per-unit table */}
+          {showRegularization && (
+            <p className="text-xs text-muted-foreground">{t("prof.recovery.regularizationNote")}</p>
+          )}
+
+          {/* Per-unit ranked table */}
           <div className="border rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Unit</TableHead>
-                  <TableHead className="text-xs text-right">Billed rent</TableHead>
-                  <TableHead className="text-xs text-right">Collected</TableHead>
-                  <TableHead className="text-xs text-right">Actual costs</TableHead>
-                  <TableHead className="text-xs text-right">Taxes</TableHead>
-                  <TableHead className="text-xs text-right">Recovered</TableHead>
-                  <TableHead className="text-xs text-right">NOI</TableHead>
-                  <TableHead className="text-xs text-right">NOI margin</TableHead>
-                  <TableHead className="text-xs text-right">Recovery</TableHead>
-                  <TableHead className="text-xs">Vacancy</TableHead>
+                  <SortableTableHead<SortKey> sortKey="unit" sort={sort} onSort={toggle} className="text-xs">{t("prof.table.unit")}</SortableTableHead>
+                  <SortableTableHead<SortKey> sortKey="billed" sort={sort} onSort={toggle} align="right" className="text-xs">{t("prof.table.billedRent")}</SortableTableHead>
+                  <SortableTableHead<SortKey> sortKey="collected" sort={sort} onSort={toggle} align="right" className="text-xs">{t("prof.table.collected")}</SortableTableHead>
+                  <SortableTableHead<SortKey> sortKey="costs" sort={sort} onSort={toggle} align="right" className="text-xs">{t("prof.table.actualCosts")}</SortableTableHead>
+                  <SortableTableHead<SortKey> sortKey="taxes" sort={sort} onSort={toggle} align="right" className="text-xs">{t("prof.table.taxes")}</SortableTableHead>
+                  <SortableTableHead<SortKey> sortKey="recovered" sort={sort} onSort={toggle} align="right" className="text-xs">{t("prof.table.recovered")}</SortableTableHead>
+                  <SortableTableHead<SortKey> sortKey="noi" sort={sort} onSort={toggle} align="right" className="text-xs">{t("prof.table.noi")}</SortableTableHead>
+                  <SortableTableHead<SortKey> sortKey="margin" sort={sort} onSort={toggle} align="right" className="text-xs">{t("prof.table.noiMargin")}</SortableTableHead>
+                  <SortableTableHead<SortKey> sortKey="recovery" sort={sort} onSort={toggle} align="right" className="text-xs">{t("prof.table.recovery")}</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {unitRows.length === 0 && (
-                  <TableRow><TableCell colSpan={10} className="text-center text-xs text-muted-foreground py-6">No units</TableCell></TableRow>
+                {sortedRows.length === 0 && (
+                  <TableRow><TableCell colSpan={9} className="text-center text-xs text-muted-foreground py-6">{t("prof.table.noUnits")}</TableCell></TableRow>
                 )}
-                {unitRows.map(({ unit, prof }) => {
+                {sortedRows.map(({ unit, prof }) => {
                   const charges = prof.costs.directCharges + prof.costs.allocatedCharges;
                   const taxes = prof.costs.directTaxes + prof.costs.allocatedTaxes;
+                  const isVacant = prof.revenue.vacancyLoss > 0;
                   return (
                     <TableRow key={unit.id}>
                       <TableCell className="text-sm">
                         <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitLabel || unit.unitCode}</Link>
+                        {isVacant && <Badge variant="outline" className="ml-2 text-[10px] text-warning border-warning/40">{t("prof.table.vacant")}</Badge>}
                       </TableCell>
-                      <TableCell className="text-sm text-right text-muted-foreground">{formatCurrency(prof.revenue.billedRent, cur, locale)}</TableCell>
-                      <TableCell className="text-sm text-right text-muted-foreground">{formatCurrency(prof.revenue.collectedRent, cur, locale)}</TableCell>
-                      <TableCell className="text-sm text-right text-muted-foreground">{formatCurrency(charges, cur, locale)}</TableCell>
-                      <TableCell className="text-sm text-right text-muted-foreground">{formatCurrency(taxes, cur, locale)}</TableCell>
-                      <TableCell className="text-sm text-right text-muted-foreground">{formatCurrency(prof.recovery.actualRecovered, cur, locale)}</TableCell>
-                      <TableCell className="text-sm text-right">{formatCurrency(prof.noi, cur, locale)}</TableCell>
-                      <TableCell className="text-sm text-right text-muted-foreground">{pct(prof.noiMargin)}</TableCell>
-                      <TableCell className="text-sm text-right text-muted-foreground">{pct(prof.recovery.recoveryRatio)}</TableCell>
-                      <TableCell className="text-sm">
-                        {prof.revenue.vacancyLoss > 0
-                          ? <Badge variant="outline" className="text-[10px] text-warning border-warning/40">Vacant</Badge>
-                          : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
+                      <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.revenue.billedRent, cur, locale)}</TableCell>
+                      <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.revenue.collectedRent, cur, locale)}</TableCell>
+                      <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(charges, cur, locale)}</TableCell>
+                      <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(taxes, cur, locale)}</TableCell>
+                      <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.recovery.actualRecovered, cur, locale)}</TableCell>
+                      <TableCell className={cn("text-sm text-right tabular-nums font-medium", prof.noi < 0 && "text-destructive")}>{formatCurrency(prof.noi, cur, locale)}</TableCell>
+                      <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{pct(prof.noiMargin)}</TableCell>
+                      <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{pct(prof.recovery.recoveryRatio)}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -180,9 +235,7 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
             </Table>
           </div>
 
-          <p className="text-[11px] text-muted-foreground">
-            Operational return only — financing (loans, debt service, interest) is not included.
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t("prof.operationalOnlyFooter")}</p>
         </CardContent>
       </CollapsibleContent>
     </Card>
@@ -198,6 +251,17 @@ function Row({ label, value, strong, tone }: { label: string; value: string; str
         tone === "warn" && "text-warning",
         tone === "success" && "text-success",
       )}>{value}</span>
+    </div>
+  );
+}
+
+function BreakdownRow({ label, charges, taxes, cur, locale, strong }:
+  { label: string; charges: number; taxes: number; cur: string; locale: string; strong?: boolean }) {
+  return (
+    <div className={cn("grid grid-cols-3 items-center", strong && "pt-1 mt-1 border-t border-border font-medium")}>
+      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className="text-sm tabular-nums text-right">{formatCurrency(charges, cur, locale)}</span>
+      <span className="text-sm tabular-nums text-right">{formatCurrency(taxes, cur, locale)}</span>
     </div>
   );
 }
