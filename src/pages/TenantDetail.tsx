@@ -1,11 +1,14 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
@@ -19,6 +22,13 @@ export default function TenantDetail() {
   const { t } = useSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [contactOpen, setContactOpen] = useState(true);
+  const [financialOpen, setFinancialOpen] = useState(true);
+  const [receivablesOpen, setReceivablesOpen] = useState(true);
+  const [currentLeaseOpen, setCurrentLeaseOpen] = useState(true);
+  const [receiptsOpen, setReceiptsOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(true);
 
   const tenant = tenants.find(tn => tn.id === id);
   if (!tenant) {
