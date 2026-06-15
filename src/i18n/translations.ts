@@ -692,7 +692,7 @@ const en = {
 
   // Subtitles
   "payments.subtitle": "Manage rent collection and track payment history",
-  "reports.subtitle": "Analyze your portfolio performance",
+  "reports.subtitle": "\n",
   "dashboard.subtitle": "Portfolio overview and key metrics",
 
   // Detail field labels
@@ -2169,7 +2169,7 @@ const fr: TranslationKeys = {
 
   // Subtitles
   "payments.subtitle": "Gérer les encaissements et suivre l'historique des paiements",
-  "reports.subtitle": "Analyser la performance de votre patrimoine",
+  "reports.subtitle": "\n",
   "dashboard.subtitle": "Aperçu du patrimoine et indicateurs clés",
 
   // Detail field labels
