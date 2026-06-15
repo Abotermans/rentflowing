@@ -1414,7 +1414,7 @@ const en = {
   // Charges reconciliation UI
   "reconciliation.title": "Costs & Taxes",
   "reconciliation.flatBadge": "Flat-rate charges",
-  "reconciliation.provisionBadge": "Provision + reconciliation",
+  "reconciliation.provisionBadge": "",
   "reconciliation.flatExplain": "This lease bills flat-rate charges. Recoverable costs allocated to the unit are shown for owner analysis only and are never rebilled to the tenant.",
   "reconciliation.runButton": "Reconcile charges",
   "reconciliation.history": "Reconciliation history",
@@ -1448,7 +1448,7 @@ const en = {
   "reconciliation.toast.created": "Reconciliation saved",
   "reconciliation.toast.deleted": "Reconciliation removed",
   "reconciliation.delete": "Delete",
-  "reconciliation.overview.title": "Costs during lease",
+  "reconciliation.overview.title": "",
   "reconciliation.overview.empty": "No costs allocated to this lease's units during the lease period.",
   "reconciliation.overview.col.unit": "Unit",
   "reconciliation.overview.col.allocated": "Recoverable share",
@@ -2889,7 +2889,7 @@ const fr: TranslationKeys = {
   // Charges reconciliation UI
   "reconciliation.title": "Charges et taxes",
   "reconciliation.flatBadge": "Charges au forfait",
-  "reconciliation.provisionBadge": "Provisions + régularisation",
+  "reconciliation.provisionBadge": "",
   "reconciliation.flatExplain": "Ce bail facture les charges au forfait. Les coûts récupérables alloués au lot s'affichent à titre d'analyse propriétaire et ne sont jamais refacturés au locataire.",
   "reconciliation.runButton": "Régulariser les charges",
   "reconciliation.history": "Historique des régularisations",
