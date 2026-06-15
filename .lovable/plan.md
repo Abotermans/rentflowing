@@ -1,58 +1,69 @@
 ## Goal
-Add explanatory tooltips to every revenue (Income) KPI card in the Operational Return section, and audit existing tooltips so the label ("title") and hint ("description") match in English and French.
+Populate the **Demo** portfolio (`d26a0ef7…`) with realistic, consistent lease data — every lifecycle stage represented, single- and multi-unit leases — and fix the 3 existing leases that have no unit assignments.
 
-## Scope
-Applies to the **Income** group on both:
-- `src/components/profitability/PropertyProfitabilitySection.tsx` (cards: Theoretical rent, Billed rent, Collected rent, Vacancy loss, Unpaid loss, EGI)
-- `src/components/profitability/UnitProfitabilitySection.tsx` (cards: Billed rent, Collected rent, Vacancy loss, Unpaid loss, EGI)
+## Current state (Demo portfolio)
 
-Today only **EGI** has a tooltip in the Income group. The other revenue cards have none.
+Existing leases:
+| Ref | Stage | Tenant | Units | Status |
+|---|---|---|---|---|
+| BAIL-PAR-001 | ended | Marie Dupont | 1 | OK |
+| BAIL-PAR-002 | ended | Sophie Martin | **0** | broken |
+| BAIL-BRU-001 | ended | Jan De Vries | 1 | OK |
+| BAIL-BRU-002 | pending-signature | Luca Bianchi | 1 | OK |
+| BAIL-BRU-003 | active | Jan De Vries | **0** | broken |
+| BAIL-AMS-001 | active | Fatima El Amrani | 1 | OK |
+| BAIL-LON-001 | active | Emma Williams | **0** | broken |
+
+Lifecycle stages currently covered: `active`, `ended`, `pending-signature`.
+Missing: `draft`, `signed`, `terminated`.
 
 ## Changes
 
-### 1. Add `hint` to every Income KPI card
-Wire `hint={t("prof.kpi.<key>Hint")}` to: `theoreticalRent`, `billedRent`, `collectedRent`, `vacancyLoss`, `unpaidLoss`. EGI already has one (kept, but text refined — see below).
+### 1. Fix 3 inconsistent leases (add unit assignments)
+Match each broken lease to a sensible unit in the right property/currency and align it with the unit's `current_status`:
 
-### 2. New translation keys (added to EN and FR blocks in `src/i18n/translations.ts`)
+- **BAIL-PAR-002** (ended, Sophie Martin, 1600 €, 2023-09-01 → 2025-12-31) → assign **PAR-A02** (Résidence du Parc, 3-bed apartment) as `primary`, assignment end = lease end.
+- **BAIL-BRU-003** (active, Jan De Vries, 2200 €, 2025-07-01 → 2028-06-30) → assign **BRU-C01** (Bruxelles commercial unit, currently occupied) as `primary`, open-ended.
+- **BAIL-LON-001** (active, Emma Williams, GBP 1800, 2024-10-01 → 2027-09-30) → assign **LON-F01** (Camden Mews 1-bed apartment, occupied) as `primary`, open-ended.
 
-| Key | EN | FR |
-|---|---|---|
-| `prof.kpi.theoreticalRentHint` | Contractual rent expected over the period, before vacancy and unpaid amounts. | Loyer contractuel attendu sur la période, avant vacance et impayés. |
-| `prof.kpi.billedRentHint` | Rent actually invoiced to tenants over the period (excludes vacant time). | Loyer effectivement facturé aux locataires sur la période (hors vacance). |
-| `prof.kpi.collectedRentHint` | Rent actually received from tenants over the period. | Loyer effectivement encaissé auprès des locataires sur la période. |
-| `prof.kpi.vacancyLossHint` | Rent lost while the unit was unoccupied: theoretical rent − billed rent. | Loyer perdu pendant la vacance du lot : loyer théorique − loyer facturé. |
-| `prof.kpi.unpaidLossHint` | Billed rent that has not been collected: billed rent − collected rent. | Loyer facturé non encaissé : loyer facturé − loyer encaissé. |
+### 2. Add new leases — one per missing stage + multi-unit examples
 
-### 3. Audit & align existing hints (EN ↔ FR parity)
-Rewrite the existing keys so the English and French versions describe the same thing in the same structure:
+All in the Demo portfolio. References follow the existing `BAIL-{CITY}-{NNN}` pattern.
 
-- `prof.kpi.egiHint`
-  - EN: `Effective Gross Income = collected rent − vacancy loss − unpaid loss. Other income is not tracked.`
-  - FR: `Revenu brut effectif = loyer encaissé − perte sur vacance − perte sur impayés. Autres revenus non suivis.`
-  - (Current EN says "billed rent −" while FR says "loyer facturé −"; aligned to the formula actually used by `useProfitability`. Will confirm against `src/lib/profitability.ts` before writing and adjust to match the real formula on both sides.)
+| New ref | Stage | Tenant | Property | Units (assignment) | Rent | Period | Why |
+|---|---|---|---|---|---|---|---|
+| BAIL-AMS-002 | **draft** | Luca Bianchi | Keizersgracht Office Hub | AMS-O02 *(primary)* + AMS-P01 *(parking)* | €2 600 | 2026-09-01 → 2029-08-31 | Multi-unit office + parking lease being prepared |
+| BAIL-PAR-003 | **signed** | Sophie Martin | Résidence du Parc | PAR-A01 *(primary)* + PAR-P01 *(parking)* + PAR-S01 *(ancillary studio used as home office)* | €2 320 | 2026-07-01 → 2029-06-30 | Signed but not yet started — multi-unit residential bundle |
+| BAIL-BER-001 | **active** | Fatima El Amrani | Friedrichstraße Wohnhaus | BER-W02 *(primary)* + BER-K01 *(storage)* | €910 | 2025-04-01 → 2028-03-31 | Active multi-unit with ancillary storage |
+| BAIL-LON-002 | **active** | Emma Williams (co-tenant: Marie Dupont) | Camden Mews | LON-F02 *(primary)* | GBP 2 200 | 2025-02-01 → 2028-01-31 | Active single-unit, GBP, joint tenancy |
+| BAIL-AMS-003 | **active** | Jan De Vries | Keizersgracht Office Hub | AMS-O03 *(primary)* | €2 600 | 2024-04-01 → 2027-03-31 | Active single office, matches occupied unit |
+| BAIL-BRU-004 | **terminated** | Luca Bianchi | Les Terrasses de Bruxelles | BRU-A01 *(primary)* | €1 100 | 2024-01-01 → 2025-05-31 | Early termination (job relocation) with termination reason, notice given |
+| BAIL-PAR-004 | **ended** | Marie Dupont | Résidence du Parc | PAR-S01 *(primary)* | €820 | 2022-01-01 → 2023-12-31 | Older naturally-expired studio lease for history |
 
-- `prof.kpi.noiHint`
-  - EN: `Net Operating Income — operational return. EGI − owner-borne charges and taxes. Excludes loans, interest, and debt service.`
-  - FR: `Résultat d'exploitation net — rendement opérationnel. EGI − charges et taxes à la charge du bailleur. Hors emprunts, intérêts et service de la dette.`
+Notes on realism:
+- Rents/charges align with each unit's `base_rent` / `base_charges`.
+- Each lease uses `charges_billing_mode = 'provisions-with-reconciliation'` (residential) or `'flat-rate'` (parking-only / storage) consistent with project conventions.
+- Multi-unit leases store the lease-level rent on the lease and use `rent_share` / `charges_share` on assignments to split between primary unit and ancillaries.
+- `terminated` lease has `notice_given = true`, `notice_date`, `termination_reason = 'Tenant relocation'`, and `end_reason = NULL`.
+- `ended` leases set `end_reason = 'natural-expiry'` (PAR-004) or `'notice-completed'` (PAR-001, PAR-002 keep current values).
+- `signed` and `draft` leases have no `move_in_actual_date`.
+- `pending-signature` already covered by existing BAIL-BRU-002 — no addition needed.
 
-- `prof.kpi.oerHint`
-  - EN: `Operating Expense Ratio = owner-borne charges and taxes / EGI.`
-  - FR: `Ratio des charges d'exploitation = charges et taxes à la charge du bailleur / EGI.`
+### 3. Final coverage check
+After the migration:
+- Stages present: `draft` ✓, `pending-signature` ✓, `signed` ✓, `active` ✓ (4 leases), `ended` ✓ (3 leases), `terminated` ✓
+- Single-unit leases: 8 · Multi-unit leases: 3
+- Currencies: EUR + GBP
+- Property types covered: residential, commercial, office, with parking & storage ancillaries
+- Zero leases without unit assignments
 
-- `prof.kpi.recoveryRatioHint`
-  - EN: `Provisions collected from tenants / actual recoverable charges. Capped at 100%.`
-  - FR: `Provisions encaissées auprès des locataires / charges récupérables réelles. Plafonné à 100 %.`
+## Implementation
+One `supabase--insert` call that, in a single transaction:
+1. `INSERT` 7 new rows into `public.leases`.
+2. `INSERT` unit assignments into `public.lease_unit_assignments` for the 3 fixed leases and the 7 new leases (10 leases × 1–3 assignments).
 
-- `prof.kpi.yieldUnavailable`
-  - EN: `Add a property valuation to compute yields.`
-  - FR: `Ajoutez une valorisation du bien pour calculer les rendements.`
-
-### 4. Labels (titles) parity check
-Labels are already symmetric (e.g. `NOI` / `NOI`, `Billed rent` / `Loyer facturé`). No label changes required.
+No schema changes. No code changes — pure data seeding.
 
 ## Out of scope
-- Cost cards, Return cards (other than the hint-text alignment above), the breakdown tables, the per-unit table.
-- No business-logic changes; presentation/i18n only.
-
-## Verification
-After edits: visually check Property and Unit pages with language toggled EN/FR — every Income card shows an `Info` icon with a matching tooltip, and existing tooltips read consistently across both languages.
+- Receivables, cash receipts, amendments, guarantees, maintenance tickets — not requested.
+- Other portfolios are untouched.
