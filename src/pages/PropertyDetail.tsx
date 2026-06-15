@@ -239,6 +239,23 @@ export default function PropertyDetail() {
         </div>
       </div>
 
+      {/* KPI cards */}
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        {kpis.map(k => (
+          <Card key={k.label}>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{k.label}</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">{k.value}</p>
+                </div>
+                <k.icon className={`h-4 w-4 ${k.color}`} />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {/* Overview & Local Settings */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Collapsible open={overviewOpen} onOpenChange={setOverviewOpen}>
@@ -291,23 +308,6 @@ export default function PropertyDetail() {
           </CollapsibleContent>
         </Card>
         </Collapsible>
-      </div>
-
-      {/* KPI cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-        {kpis.map(k => (
-          <Card key={k.label}>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{k.label}</p>
-                  <p className="text-xl font-bold text-foreground mt-0.5">{k.value}</p>
-                </div>
-                <k.icon className={`h-4 w-4 ${k.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       {/* Description */}
