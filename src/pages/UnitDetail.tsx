@@ -37,6 +37,7 @@ import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { getAllRentTiers } from "@/lib/rentTiers";
 import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
 import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTicketDialog";
+import { CostEntryDialog } from "@/components/costs/CostEntryDialog";
 
 import type { TranslationKey } from "@/i18n/translations";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -112,6 +113,7 @@ export default function UnitDetail() {
   const [financialsOpen, setFinancialsOpen] = useState(true);
   const [addLeaseOpen, setAddLeaseOpen] = useState(false);
   const [addTicketOpen, setAddTicketOpen] = useState(false);
+  const [addCostOpen, setAddCostOpen] = useState(false);
   const [occupancyOpen, setOccupancyOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [costsOpen, setCostsOpen] = useState(true);
@@ -707,6 +709,17 @@ export default function UnitDetail() {
               <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
                 <CardTitle className="text-base font-medium flex-1 justify-start">{t("units.costsTaxesBurden")}
                 </CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mr-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAddCostOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />{t("costs.addEntry")}
+                </Button>
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", costsOpen && "rotate-180")} />
                 </span>
@@ -1083,6 +1096,13 @@ export default function UnitDetail() {
         prefillPropertyId={unit.propertyId}
         prefillUnitId={unit.id}
         lockUnit
+      />
+      <CostEntryDialog
+        open={addCostOpen}
+        onOpenChange={setAddCostOpen}
+        prefillPropertyId={unit.propertyId}
+        prefillUnitId={unit.id}
+        lockPropertyAndUnit
       />
     </div>
   );
