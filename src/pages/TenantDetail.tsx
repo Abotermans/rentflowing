@@ -4,9 +4,12 @@ import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown, Pencil, Plus } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
@@ -20,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
-  const { tenants, leases, units, properties, deleteTenant, getTenantOutstanding, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
+  const { tenants, leases, units, properties, deleteTenant, updateTenant, getTenantOutstanding, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
   const { t } = useSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -33,6 +36,8 @@ export default function TenantDetail() {
   const [notesOpen, setNotesOpen] = useState(true);
   const [editTenantOpen, setEditTenantOpen] = useState(false);
   const [recordReceiptOpen, setRecordReceiptOpen] = useState(false);
+  const [editNotesOpen, setEditNotesOpen] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
 
   const tenant = tenants.find(tn => tn.id === id);
   if (!tenant) {
@@ -367,23 +372,30 @@ export default function TenantDetail() {
       </Collapsible>
 
       {/* Notes */}
-      {tenant.notes && (
-        <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-              <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
+      <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("common.notes")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setNotesDraft(tenant.notes ?? ""); setEditNotesOpen(true); }}>
+                <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
+              </Button>
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
               </span>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent><p className="text-sm text-muted-foreground">{tenant.notes}</p></CardContent>
-          </CollapsibleContent>
-        </Card>
-        </Collapsible>
-      )}
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            {tenant.notes
+              ? <p className="text-sm text-muted-foreground whitespace-pre-wrap">{tenant.notes}</p>
+              : <p className="text-sm text-muted-foreground italic">—</p>}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+      </Collapsible>
 
       <TenantDialog open={editTenantOpen} onOpenChange={setEditTenantOpen} editingTenant={tenant} />
       <CashReceiptDialog
@@ -393,6 +405,22 @@ export default function TenantDetail() {
         prefillLeaseId={activeLease?.id}
         lockTenant
       />
+
+      <Dialog open={editNotesOpen} onOpenChange={setEditNotesOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("common.notes")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="tenant-notes">{t("common.notes")}</Label>
+            <Textarea id="tenant-notes" rows={6} value={notesDraft} onChange={(e) => setNotesDraft(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditNotesOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={() => { updateTenant({ ...tenant, notes: notesDraft, updatedAt: new Date().toISOString() }); setEditNotesOpen(false); toast({ title: t("action.saved") }); }}>{t("action.save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("tenantDetail.created")}: {formatDate(tenant.createdAt, activeProperty?.locale)}</span>
