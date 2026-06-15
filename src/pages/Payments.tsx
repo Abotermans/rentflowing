@@ -71,6 +71,9 @@ export default function Payments() {
   type CrSortKey = "date" | "payer" | "tenant" | "lease" | "received" | "unmatched" | "source" | "reference" | "status";
   const { sort: crSort, toggle: crToggle } = useTableSort<CrSortKey>("date", "desc");
 
+  type AlSortKey = "date" | "receiptRef" | "receivable" | "type" | "tenant" | "amount" | "method";
+  const { sort: alSort, toggle: alToggle } = useTableSort<AlSortKey>("date", "desc");
+
   // KPIs
 
   // Enriched receivables
