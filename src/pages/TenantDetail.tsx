@@ -128,40 +128,91 @@ export default function TenantDetail() {
       </Card>
       </Collapsible>
 
-      <Collapsible open={financialOpen} onOpenChange={setFinancialOpen}>
+      {/* Current Lease Summary */}
+      {activeLease && activeProperty && activeUnit && (
+        <Collapsible open={currentLeaseOpen} onOpenChange={setCurrentLeaseOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.currentLease")}</CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", currentLeaseOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link></div>
+              <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${activeUnit.id}`} className="text-sm font-medium text-primary hover:underline">{activeUnit.unitCode}</Link></div>
+              <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${activeProperty.id}`} className="text-sm font-medium text-primary hover:underline">{activeProperty.name}</Link></div>
+              <div><p className="text-xs text-muted-foreground">{t("leases.period")}</p><p className="text-sm font-medium text-foreground">{formatDate(activeLease.startDate, activeProperty.locale)} — {formatDate(activeLease.endDate, activeProperty.locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyRent, activeProperty.currencyCode, activeProperty.locale)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, activeProperty.currencyCode, activeProperty.locale)}</p></div>
+              {activeGuarantee && (
+                <>
+                  <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeType")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[activeGuarantee.type]}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeStatus")}</p><StatusBadge status={activeGuarantee.status} /></div>
+                </>
+              )}
+              {activeLease.noticeGiven && (
+                <div><p className="text-xs text-muted-foreground">{t("detail.noticeStatus")}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <StatusBadge status="under-notice" />
+                    {activeLease.intendedMoveOutDate && <span className="text-xs text-muted-foreground">{t("detail.moveOutLabel")}: {formatDate(activeLease.intendedMoveOutDate, activeProperty.locale)}</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+          </CollapsibleContent>
+        </Card>
+        </Collapsible>
+      )}
+
+      {/* Lease History */}
+      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
       <Card>
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.financialOverview")}</CardTitle>
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.leaseHistory")}</CardTitle>
             <span className="inline-flex items-center justify-center h-7 w-7">
-              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", financialOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", historyOpen && "rotate-180")} />
             </span>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">{t("detail.totalOutstanding")}</p>
-              <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, activeProperty?.currencyCode, activeProperty?.locale)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
-              <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
-                {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
-                {formatCurrency(overdue, activeProperty?.currencyCode, activeProperty?.locale)}
-              </p>
-            </div>
-            {unappliedCredit > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground">{t("units.unappliedCredit")}</p>
-                <p className="text-lg font-bold text-primary">
-                  <Banknote className="h-4 w-4 inline mr-1" />
-                  {formatCurrency(unappliedCredit, activeProperty?.currencyCode, activeProperty?.locale)}
-                </p>
-              </div>
-            )}
-          </div>
+          {tenantLeases.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("detail.noLeases")}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
+                  <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.unit")}</TableHead>
+                  <TableHead className="text-xs">{t("tenantDetail.period")}</TableHead>
+                  <TableHead className="text-xs">{t("table.status")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tenantLeases.map(l => {
+                  const prop = properties.find(p => p.id === l.propertyId);
+                  const unit = units.find(u => u.id === l.unitId);
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link></TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{unit?.unitCode ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)} — {formatDate(l.endDate, prop?.locale)}</TableCell>
+                      <TableCell><StatusBadge status={getLeaseStatus(l)} /></TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
         </CollapsibleContent>
       </Card>
@@ -216,47 +267,45 @@ export default function TenantDetail() {
         </Collapsible>
       )}
 
-      {/* Current Lease Summary */}
-      {activeLease && activeProperty && activeUnit && (
-        <Collapsible open={currentLeaseOpen} onOpenChange={setCurrentLeaseOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-              <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.currentLease")}</CardTitle>
-              <span className="inline-flex items-center justify-center h-7 w-7">
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", currentLeaseOpen && "rotate-180")} />
-              </span>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link></div>
-              <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${activeUnit.id}`} className="text-sm font-medium text-primary hover:underline">{activeUnit.unitCode}</Link></div>
-              <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${activeProperty.id}`} className="text-sm font-medium text-primary hover:underline">{activeProperty.name}</Link></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.period")}</p><p className="text-sm font-medium text-foreground">{formatDate(activeLease.startDate, activeProperty.locale)} — {formatDate(activeLease.endDate, activeProperty.locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyRent, activeProperty.currencyCode, activeProperty.locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, activeProperty.currencyCode, activeProperty.locale)}</p></div>
-              {activeGuarantee && (
-                <>
-                  <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeType")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[activeGuarantee.type]}</p></div>
-                  <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeStatus")}</p><StatusBadge status={activeGuarantee.status} /></div>
-                </>
-              )}
-              {activeLease.noticeGiven && (
-                <div><p className="text-xs text-muted-foreground">{t("detail.noticeStatus")}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <StatusBadge status="under-notice" />
-                    {activeLease.intendedMoveOutDate && <span className="text-xs text-muted-foreground">{t("detail.moveOutLabel")}: {formatDate(activeLease.intendedMoveOutDate, activeProperty.locale)}</span>}
-                  </div>
-                </div>
-              )}
+      {/* Financial Overview */}
+      <Collapsible open={financialOpen} onOpenChange={setFinancialOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.financialOverview")}</CardTitle>
+            <span className="inline-flex items-center justify-center h-7 w-7">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", financialOpen && "rotate-180")} />
+            </span>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">{t("detail.totalOutstanding")}</p>
+              <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, activeProperty?.currencyCode, activeProperty?.locale)}</p>
             </div>
-          </CardContent>
-          </CollapsibleContent>
-        </Card>
-        </Collapsible>
-      )}
+            <div>
+              <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
+              <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
+                {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
+                {formatCurrency(overdue, activeProperty?.currencyCode, activeProperty?.locale)}
+              </p>
+            </div>
+            {unappliedCredit > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground">{t("units.unappliedCredit")}</p>
+                <p className="text-lg font-bold text-primary">
+                  <Banknote className="h-4 w-4 inline mr-1" />
+                  {formatCurrency(unappliedCredit, activeProperty?.currencyCode, activeProperty?.locale)}
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+        </CollapsibleContent>
+      </Card>
+      </Collapsible>
 
       {/* Recent Cash Receipts */}
       {recentReceipts.length > 0 && (
@@ -307,54 +356,6 @@ export default function TenantDetail() {
         </Card>
         </Collapsible>
       )}
-
-      {/* Lease History */}
-      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
-      <Card>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.leaseHistory")}</CardTitle>
-            <span className="inline-flex items-center justify-center h-7 w-7">
-              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", historyOpen && "rotate-180")} />
-            </span>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-        <CardContent>
-          {tenantLeases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("detail.noLeases")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">{t("table.reference")}</TableHead>
-                  <TableHead className="text-xs">{t("table.property")}</TableHead>
-                  <TableHead className="text-xs">{t("table.unit")}</TableHead>
-                  <TableHead className="text-xs">{t("tenantDetail.period")}</TableHead>
-                  <TableHead className="text-xs">{t("table.status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tenantLeases.map(l => {
-                  const prop = properties.find(p => p.id === l.propertyId);
-                  const unit = units.find(u => u.id === l.unitId);
-                  return (
-                    <TableRow key={l.id}>
-                      <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link></TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{unit?.unitCode ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)} — {formatDate(l.endDate, prop?.locale)}</TableCell>
-                      <TableCell><StatusBadge status={getLeaseStatus(l)} /></TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-        </CollapsibleContent>
-      </Card>
-      </Collapsible>
 
       {/* Notes */}
       {tenant.notes && (
