@@ -27,7 +27,7 @@ import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatu
 import { ASSIGNMENT_TYPE_LABELS, isAncillaryAssignmentType } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
-import { formatDate, formatCurrency } from "@/lib/formatters";
+import { formatDate, formatCurrency, formatPeriodMonth } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -1676,8 +1676,8 @@ export default function LeaseDetail() {
                         <TableRow key={ri.id}>
                           <TableCell className="text-xs text-muted-foreground">
                             {ri.cycleEndDate && (ri.itemType === "rent" || ri.itemType === "charges") && ri.periodMonth
-                              ? `${ri.periodMonth} → ${ri.cycleEndDate.slice(0, 7)}`
-                              : (ri.periodMonth ?? "—")}
+                              ? `${formatPeriodMonth(ri.periodMonth)} → ${formatPeriodMonth(ri.cycleEndDate.slice(0, 7))}`
+                              : formatPeriodMonth(ri.periodMonth)}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>

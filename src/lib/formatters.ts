@@ -20,6 +20,12 @@ export function formatDate(dateStr: string, locale: string = "fr-FR"): string {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+export function formatPeriodMonth(periodMonth: string | null | undefined): string {
+  if (!periodMonth) return "—";
+  const [year, month] = periodMonth.split("-");
+  return `${month}-${year}`;
+}
+
 export function formatArea(value: number, measurementSystem: "metric" | "imperial" = "metric"): string {
   if (measurementSystem === "imperial") {
     return `${Math.round(value)} sq ft`;
