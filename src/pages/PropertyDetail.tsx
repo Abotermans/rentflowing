@@ -532,6 +532,9 @@ export default function PropertyDetail() {
         );
       })()}
 
+      {/* Operational Return */}
+      <PropertyProfitabilitySection propertyId={property.id} />
+
       {/* Unit Form Sheet */}
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
