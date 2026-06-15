@@ -102,6 +102,12 @@ export default function UnitDetail() {
   const [archiveValidation, setArchiveValidation] = useState<ValidationResult | null>(null);
   const [archiveOverrideOpen, setArchiveOverrideOpen] = useState(false);
   const [vacateEndDialogOpen, setVacateEndDialogOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(true);
+  const [financialsOpen, setFinancialsOpen] = useState(true);
+  const [occupancyOpen, setOccupancyOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [costsOpen, setCostsOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(true);
   const [vacateEndDate, setVacateEndDate] = useState("");
 
   const openEdit = (section: Exclude<EditSection, null>) => {
