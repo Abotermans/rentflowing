@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -114,10 +114,6 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
       </CollapsibleTrigger>
       <CollapsibleContent>
         <CardContent className="space-y-4">
-          <Alert className="py-2">
-            <AlertDescription className="text-xs">{t("prof.beforeFinancingNote")}</AlertDescription>
-          </Alert>
-
           {/* Revenue vs Costs vs NOI summary bar */}
           <ProfitabilityBar revenue={p.revenue.egi} ownerBorne={p.recovery.ownerBorne} noi={p.noi}
             currencyCode={cur} locale={locale} />
