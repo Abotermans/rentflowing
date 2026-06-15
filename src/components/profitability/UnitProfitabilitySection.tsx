@@ -104,10 +104,10 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">{t("prof.group.income")}</p>
             <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-              <KpiCard label={t("prof.kpi.billedRent")} value={formatCurrency(p.revenue.billedRent, cur, locale)} />
-              <KpiCard label={t("prof.kpi.collectedRent")} value={formatCurrency(p.revenue.collectedRent, cur, locale)} />
-              <KpiCard label={t("prof.kpi.vacancyLoss")} value={formatCurrency(p.revenue.vacancyLoss, cur, locale)} />
-              <KpiCard label={t("prof.kpi.unpaidLoss")} value={formatCurrency(p.revenue.unpaidLoss, cur, locale)} />
+              <KpiCard label={t("prof.kpi.billedRent")} value={formatCurrency(p.revenue.billedRent, cur, locale)} hint={t("prof.kpi.billedRentHint")} />
+              <KpiCard label={t("prof.kpi.collectedRent")} value={formatCurrency(p.revenue.collectedRent, cur, locale)} hint={t("prof.kpi.collectedRentHint")} />
+              <KpiCard label={t("prof.kpi.vacancyLoss")} value={formatCurrency(p.revenue.vacancyLoss, cur, locale)} hint={t("prof.kpi.vacancyLossHint")} />
+              <KpiCard label={t("prof.kpi.unpaidLoss")} value={formatCurrency(p.revenue.unpaidLoss, cur, locale)} hint={t("prof.kpi.unpaidLossHint")} />
               <KpiCard label={t("prof.kpi.egi")} value={formatCurrency(p.revenue.egi, cur, locale)} hint={t("prof.kpi.egiHint")} />
             </div>
           </div>
