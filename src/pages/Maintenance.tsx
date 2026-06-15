@@ -18,10 +18,8 @@ import {
 } from "@/lib/filterIcons";
 import { CircleDot, Tag, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTicketDialog";
 import { useToast } from "@/hooks/use-toast";
 import { getTenantFullName } from "@/types";
 import { MaintenanceTicket, MaintenanceCategory, MaintenancePriority, MaintenanceStatus, MAINTENANCE_CATEGORY_KEYS, MAINTENANCE_PRIORITY_KEYS, MAINTENANCE_STATUS_KEYS } from "@/types/maintenance";
@@ -31,10 +29,8 @@ import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 
-type TicketFormData = Omit<MaintenanceTicket, "id">;
-
 export default function Maintenance() {
-  const { tickets, properties, units, tenants, vendors, addTicket, updateTicket, deleteTicket } = useAppData();
+  const { tickets, properties, units, tenants, vendors, deleteTicket } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const navigate = useNavigate();
@@ -47,26 +43,21 @@ export default function Maintenance() {
   const [filterVendor, setFilterVendor] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceTicket | null>(null);
+  const [prefillPropertyId, setPrefillPropertyId] = useState<string | undefined>(undefined);
+  const [prefillUnitId, setPrefillUnitId] = useState<string | undefined>(undefined);
 
   type MSortKey = "title" | "property" | "unit" | "tenant" | "category" | "priority" | "status" | "vendor" | "created" | "scheduled";
   const { sort, toggle } = useTableSort<MSortKey>();
 
-  const emptyForm: TicketFormData = {
-    title: "", description: "", propertyId: properties[0]?.id ?? "", unitId: "",
-    tenantId: null, category: "general", priority: "medium", status: "open",
-    createdDate: new Date().toISOString().split("T")[0], scheduledDate: null,
-    completedDate: null, assignedVendorId: null, internalNotes: "", residentVisibleNotes: "",
-  };
-  const [form, setForm] = useState<TicketFormData>({ ...emptyForm });
-
-  const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setSheetOpen(true); };
+  const openAdd = () => { setEditing(null); setPrefillPropertyId(undefined); setPrefillUnitId(undefined); setSheetOpen(true); };
 
   useEffect(() => {
     if (searchParams.get("create") === "1") {
-      const propertyId = searchParams.get("propertyId") ?? properties[0]?.id ?? "";
-      const unitId = searchParams.get("unitId") ?? "";
+      const propertyId = searchParams.get("propertyId") ?? undefined;
+      const unitId = searchParams.get("unitId") ?? undefined;
       setEditing(null);
-      setForm({ ...emptyForm, propertyId, unitId });
+      setPrefillPropertyId(propertyId);
+      setPrefillUnitId(unitId);
       setSheetOpen(true);
       const next = new URLSearchParams(searchParams);
       next.delete("create");
@@ -78,32 +69,15 @@ export default function Maintenance() {
   }, [searchParams]);
   const openEdit = (ticket: MaintenanceTicket) => {
     setEditing(ticket);
-    const { id, ...rest } = ticket;
-    setForm(rest);
+    setPrefillPropertyId(undefined);
+    setPrefillUnitId(undefined);
     setSheetOpen(true);
-  };
-
-  const handleSave = () => {
-    if (!form.title.trim() || !form.propertyId || !form.unitId) {
-      toast({ title: t("common.validationError"), description: t("maintenance.validationDesc"), variant: "destructive" });
-      return;
-    }
-    if (editing) {
-      updateTicket({ ...editing, ...form });
-      toast({ title: t("maintenance.toastUpdated") });
-    } else {
-      addTicket(form);
-      toast({ title: t("maintenance.toastCreated") });
-    }
-    setSheetOpen(false);
   };
 
   const handleDelete = (id: string) => {
     deleteTicket(id);
     toast({ title: t("maintenance.toastDeleted") });
   };
-
-  const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
   const filtered = tickets.filter(ticket => {
     const prop = properties.find(p => p.id === ticket.propertyId);
