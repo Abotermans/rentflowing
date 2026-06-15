@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, AlertTriangle, MoreVertical, Trash2, ChevronDown, Pencil, Plus } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
-import { formatDate, formatCurrency } from "@/lib/formatters";
+import { formatDate, formatCurrency, formatPeriodMonth } from "@/lib/formatters";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
+import { useTableSort, useSortedRows } from "@/hooks/use-table-sort";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { TenantDialog } from "@/components/tenants/TenantDialog";
@@ -28,7 +30,6 @@ export default function TenantDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [contactOpen, setContactOpen] = useState(true);
-  const [financialOpen, setFinancialOpen] = useState(true);
   const [receivablesOpen, setReceivablesOpen] = useState(true);
   const [currentLeaseOpen, setCurrentLeaseOpen] = useState(true);
   const [receiptsOpen, setReceiptsOpen] = useState(true);
@@ -56,10 +57,44 @@ export default function TenantDetail() {
   const { outstanding, overdue } = getTenantOutstanding(tenant.id);
   const unappliedCredit = getTenantUnappliedCredit(tenant.id);
   const recentReceipts = getCashReceiptsByTenant(tenant.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
-  const openReceivables = getReceivableItemsByTenant(tenant.id).filter(ri => ri.outstandingAmount > 0).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const tenantReceivables = getReceivableItemsByTenant(tenant.id);
   const activeGuarantee = activeLease ? getGuaranteeByLease(activeLease.id) : undefined;
   const activeLifecycle = activeLease ? getLeaseStatus(activeLease) : undefined;
   const today = new Date().toISOString().split("T")[0];
+
+  // Dominant currency/locale for tenant-level aggregations (fallback to active lease's property)
+  const recvCurrency = tenantReceivables[0]?.currencyCode ?? activeProperty?.currencyCode;
+  const recvLocale = activeProperty?.locale;
+
+  const enrichedReceivables = tenantReceivables.map(ri => {
+    let effectiveStatus = ri.status;
+    if (ri.outstandingAmount > 0 && ri.dueDate < today && (ri.status === "open" || ri.status === "partially-paid")) effectiveStatus = "overdue";
+    const lease = ri.leaseId ? leases.find(l => l.id === ri.leaseId) : undefined;
+    const unit = ri.unitId ? units.find(u => u.id === ri.unitId) : undefined;
+    return { ...ri, effectiveStatus, leaseRef: lease?.leaseReference ?? "", unitCode: unit?.unitCode ?? "", lease, unit };
+  });
+
+  const rentCollected = tenantReceivables.filter(ri => ri.itemType === "rent").reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const chargesCollected = tenantReceivables.filter(ri => ri.itemType === "charges" || ri.itemType === "charges-adjustment").reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const totalExpected = tenantReceivables.reduce((s, ri) => s + ri.expectedAmount, 0);
+  const totalAllocated = tenantReceivables.reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const totalOutstanding = tenantReceivables.reduce((s, ri) => s + ri.outstandingAmount, 0);
+
+  type RecvSortKey = "period" | "type" | "dueDate" | "lease" | "unit" | "expected" | "allocated" | "outstanding" | "status";
+  const { sort: recvSort, toggle: toggleRecvSort } = useTableSort<RecvSortKey>("dueDate", "desc");
+  const sortedReceivables = useSortedRows(enrichedReceivables, recvSort, (ri, key) => {
+    switch (key) {
+      case "period": return ri.periodMonth ?? "";
+      case "type": return getItemTypeLabel(t, ri.itemType);
+      case "dueDate": return ri.dueDate;
+      case "lease": return ri.leaseRef;
+      case "unit": return ri.unitCode;
+      case "expected": return ri.expectedAmount;
+      case "allocated": return ri.allocatedAmount;
+      case "outstanding": return ri.outstandingAmount;
+      case "status": return ri.effectiveStatus;
+    }
+  });
 
   const handleDeleteTenant = (tid: string) => {
     deleteTenant(tid);
@@ -225,93 +260,98 @@ export default function TenantDetail() {
       </Card>
       </Collapsible>
 
-      {/* Open Receivables */}
-      {openReceivables.length > 0 && (
-        <Collapsible open={receivablesOpen} onOpenChange={setReceivablesOpen}>
+      {/* Receivables (KPI strip + sortable scrollable table with sticky totals) */}
+      <Collapsible open={receivablesOpen} onOpenChange={setReceivablesOpen}>
         <Card>
           <CollapsibleTrigger asChild>
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-              <CardTitle className="text-base font-medium flex-1 justify-start">{t("tenantDetail.openReceivables")}</CardTitle>
+              <CardTitle className="text-base font-medium flex-1 text-left">{t("leaseDetail.receivables")}</CardTitle>
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
               </span>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">{t("tenantDetail.dueDate")}</TableHead>
-                  <TableHead className="text-xs">{t("table.type")}</TableHead>
-                  <TableHead className="text-xs">{t("tenantDetail.label")}</TableHead>
-                  <TableHead className="text-xs">{t("tenantDetail.lease")}</TableHead>
-                  <TableHead className="text-xs text-right">{t("table.outstanding")}</TableHead>
-                  <TableHead className="text-xs">{t("table.status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {openReceivables.map(ri => {
-                  const lease = ri.leaseId ? leases.find(l => l.id === ri.leaseId) : undefined;
-                  let effectiveStatus = ri.status;
-                  if (ri.outstandingAmount > 0 && ri.dueDate < today && (ri.status === "open" || ri.status === "partially-paid")) effectiveStatus = "overdue";
-                  return (
-                    <TableRow key={ri.id}>
-                      <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, activeProperty?.locale)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{ri.label}</TableCell>
-                      <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className="hover:underline text-foreground">{lease.leaseReference}</Link> : "—"}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.outstandingAmount, ri.currencyCode, activeProperty?.locale)}</TableCell>
-                      <TableCell><StatusBadge status={effectiveStatus} /></TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-b pb-4 mb-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("leaseDetail.rentCollected")}</p>
+                  <p className="text-lg font-bold text-success">{formatCurrency(rentCollected, recvCurrency, recvLocale)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("leaseDetail.chargesCollected")}</p>
+                  <p className="text-lg font-bold text-success">{formatCurrency(chargesCollected, recvCurrency, recvLocale)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("table.outstanding")}</p>
+                  <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, recvCurrency, recvLocale)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
+                  <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
+                    {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
+                    {formatCurrency(overdue, recvCurrency, recvLocale)}
+                  </p>
+                </div>
+                {unappliedCredit > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("leaseDetail.unappliedCredit")}</p>
+                    <p className="text-lg font-bold text-primary">{formatCurrency(unappliedCredit, recvCurrency, recvLocale)}</p>
+                  </div>
+                )}
+              </div>
+              {enrichedReceivables.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("leaseDetail.noReceivables")}</p>
+              ) : (
+                <div className="max-h-[480px] overflow-y-auto rounded-md border">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <SortableTableHead sortKey="period" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("leaseDetail.period")}</SortableTableHead>
+                        <SortableTableHead sortKey="type" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("table.type")}</SortableTableHead>
+                        <SortableTableHead sortKey="dueDate" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("payments.table.dueDate")}</SortableTableHead>
+                        <SortableTableHead sortKey="lease" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("tenantDetail.lease")}</SortableTableHead>
+                        <SortableTableHead sortKey="unit" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("table.unit")}</SortableTableHead>
+                        <SortableTableHead sortKey="expected" sort={recvSort} onSort={toggleRecvSort} align="right" className="text-xs">{t("payments.table.expected")}</SortableTableHead>
+                        <SortableTableHead sortKey="allocated" sort={recvSort} onSort={toggleRecvSort} align="right" className="text-xs">{t("payments.table.allocated")}</SortableTableHead>
+                        <SortableTableHead sortKey="outstanding" sort={recvSort} onSort={toggleRecvSort} align="right" className="text-xs">{t("payments.table.outstanding")}</SortableTableHead>
+                        <SortableTableHead sortKey="status" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("payments.table.status")}</SortableTableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedReceivables.map(ri => (
+                        <TableRow key={ri.id}>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {ri.cycleEndDate && (ri.itemType === "rent" || ri.itemType === "charges") && ri.periodMonth
+                              ? `${formatPeriodMonth(ri.periodMonth)} → ${formatPeriodMonth(ri.cycleEndDate.slice(0, 7))}`
+                              : formatPeriodMonth(ri.periodMonth)}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, recvLocale)}</TableCell>
+                          <TableCell className="font-mono text-xs">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className="hover:underline text-foreground">{ri.lease.leaseReference}</Link> : "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{ri.unit ? <Link to={`/units/${ri.unit.id}`} className="hover:underline text-foreground">{ri.unit.unitCode}</Link> : "—"}</TableCell>
+                          <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, ri.currencyCode, recvLocale)}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, ri.currencyCode, recvLocale)}</TableCell>
+                          <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, ri.currencyCode, recvLocale) : "—"}</TableCell>
+                          <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    <TableFooter className="sticky bottom-0">
+                      <TableRow>
+                        <TableCell className="text-xs font-medium" colSpan={5}>{t("leaseDetail.total")}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalExpected, recvCurrency, recvLocale)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalAllocated, recvCurrency, recvLocale)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalOutstanding, recvCurrency, recvLocale)}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableFooter>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
           </CollapsibleContent>
         </Card>
-        </Collapsible>
-      )}
-
-      {/* Financial Overview */}
-      <Collapsible open={financialOpen} onOpenChange={setFinancialOpen}>
-      <Card>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.financialOverview")}</CardTitle>
-            <span className="inline-flex items-center justify-center h-7 w-7">
-              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", financialOpen && "rotate-180")} />
-            </span>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">{t("detail.totalOutstanding")}</p>
-              <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, activeProperty?.currencyCode, activeProperty?.locale)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
-              <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
-                {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
-                {formatCurrency(overdue, activeProperty?.currencyCode, activeProperty?.locale)}
-              </p>
-            </div>
-            {unappliedCredit > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground">{t("units.unappliedCredit")}</p>
-                <p className="text-lg font-bold text-primary">
-                  <Banknote className="h-4 w-4 inline mr-1" />
-                  {formatCurrency(unappliedCredit, activeProperty?.currencyCode, activeProperty?.locale)}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-        </CollapsibleContent>
-      </Card>
       </Collapsible>
 
       {/* Recent Cash Receipts */}
