@@ -662,6 +662,7 @@ export default function UnitDetail() {
                   frequency: CostFrequency | null;
                   method: AllocationMethod | null;
                   amount: number;
+                  totalCost: number;
                   ownerBorne: number;
                   recoverable: number;
                 };
@@ -690,6 +691,7 @@ export default function UnitDetail() {
                     frequency: e.frequency,
                     method: null,
                     amount: e.amount,
+                    totalCost: e.amount,
                     ownerBorne: s.owner,
                     recoverable: s.rec,
                   });
@@ -710,6 +712,7 @@ export default function UnitDetail() {
                     frequency: parent?.frequency ?? null,
                     method: rule?.method ?? null,
                     amount: r.allocatedAmount,
+                    totalCost: parent?.amount ?? r.allocatedAmount,
                     ownerBorne: r.ownerBurdenAmount,
                     recoverable: r.recoverableAmount,
                   });
@@ -724,6 +727,7 @@ export default function UnitDetail() {
                     case "recovery": return row.recovery;
                     case "period": return row.periodStart ?? "";
                     case "method": return row.method ?? "";
+                    case "total": return row.totalCost;
                     case "amount": return row.amount;
                     case "ownerBorne": return row.ownerBorne;
                     case "recoverable": return row.recoverable;
