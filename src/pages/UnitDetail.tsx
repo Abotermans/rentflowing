@@ -1069,6 +1069,12 @@ export default function UnitDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <LeaseAddDialog
+        open={addLeaseOpen}
+        onOpenChange={setAddLeaseOpen}
+        prefillPropertyId={unit.propertyId}
+        prefillUnitId={unit.id}
+      />
     </div>
   );
 }
