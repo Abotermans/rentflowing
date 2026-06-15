@@ -371,7 +371,7 @@ export default function Payments() {
                       <TableCell className="text-xs text-muted-foreground">{cr.tenant ? <Link to={`/tenants/${cr.tenant.id}`} className="hover:underline">{getTenantFullName(cr.tenant)}</Link> : "—"}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{cr.lease ? <Link to={`/leases/${cr.lease.id}`} className="hover:underline">{cr.lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(cr.amountReceived, cr.currencyCode, cr.prop?.locale)}</TableCell>
-                      <TableCellClick to edit cell className="text-right text-xs text-muted-foreground">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, cr.prop?.locale) : "—"}</TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, cr.prop?.locale) : "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference ?? "—"}</TableCell>
                       <TableCell><StatusBadge status={cr.status} /></TableCell>
@@ -381,7 +381,7 @@ export default function Payments() {
                             <ArrowRightLeft className="h-3 w-3" />{t("payments.action.allocate")}
                           </Button>
                         ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
                     </TableRow>
