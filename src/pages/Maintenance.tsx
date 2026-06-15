@@ -217,7 +217,9 @@ export default function Maintenance() {
                     <TableCell className="text-muted-foreground">{t(MAINTENANCE_CATEGORY_KEYS[ticket.category])}</TableCell>
                     <TableCell><PriorityLabel priority={ticket.priority} /></TableCell>
                     <TableCell><StatusBadge status={ticket.status} /></TableCell>
-                    <TableCell className="text-muted-foreground">{vendor ? <Link to={`
+                    <TableCell className="text-muted-foreground">{vendor ? <Link to={`/vendors/${vendor.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{vendor.vendorName}</Link> : "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(ticket.createdDate)}</TableCell>
+                    <TableCell className="text-muted-foreground">{ticket.scheduledDate ? formatDate(ticket.scheduledDate) : "—"}</TableCell>
                       <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(ticket)}><Pencil className="h-3.5 w-3.5" /></Button>
                         <AlertDialog>
