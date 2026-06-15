@@ -88,6 +88,7 @@ export default function PropertyDetail() {
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [localSettingsOpen, setLocalSettingsOpen] = useState(true);
   const [descriptionOpen, setDescriptionOpen] = useState(true);
+  const [unitsOpen, setUnitsOpen] = useState(true);
   const [costsOpen, setCostsOpen] = useState(true);
   const openEditProperty = () => {
     if (!property) return;
@@ -334,97 +335,108 @@ export default function PropertyDetail() {
       </Collapsible>
 
       {/* Units */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-foreground">{t("nav.units")}</h2>
-          <Button size="sm" onClick={openAddUnit}><Plus className="h-4 w-4 mr-1.5" />{t("units.add")}</Button>
-        </div>
-        {propertyUnits.length === 0 ? (
-          <Card>
+      <Collapsible open={unitsOpen} onOpenChange={setUnitsOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("nav.units")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={(e) => { e.stopPropagation(); openAddUnit(); }}>
+                <Plus className="h-4 w-4 mr-1.5" />{t("units.add")}
+              </Button>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", unitsOpen && "rotate-180")} />
+              </span>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          {propertyUnits.length === 0 ? (
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">{t("detail.noUnitsInProperty")}</p>
               <Button variant="link" className="mt-2" onClick={openAddUnit}>{t("detail.addFirstUnit")}</Button>
             </CardContent>
-          </Card>
-        ) : (
-          <TooltipProvider>
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("units.code")}</TableHead>
-                    <TableHead>{t("units.label")}</TableHead>
-                    <TableHead>{t("units.type")}</TableHead>
-                    <TableHead className="text-center">{t("units.floor")}</TableHead>
-                    <TableHead className="text-right">{t("units.surface")}</TableHead>
-                    <TableHead className="text-right">{t("units.rent")}</TableHead>
-                    <TableHead className="text-right">{t("units.charges")}</TableHead>
-                    <TableHead>{t("occupancy.derivedLabel")}</TableHead>
-                    <TableHead>{t("propertyDetail.tenant")}</TableHead>
-                    <TableHead>{t("propertyDetail.lease")}</TableHead>
-                    <TableHead className="text-right">{t("units.actions")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {propertyUnits.map(u => {
-                    const activeLease = getActiveLease(u.id);
-                    const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
-                    const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments);
-                    return (
-                      <TableRow key={u.id}>
-                        <TableCell className="font-mono text-xs font-medium text-foreground">
-                          <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
-                        <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
-                        <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <StatusBadge status={u.currentStatus} />
-                            {occupancy.occupancyRole === "ancillary" && (
-                              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                                {t("leases.role.ancillary")}
-                              </span>
-                            )}
-                            {occupancy.inconsistent && (
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-[250px]">
-                                  <p className="text-xs">{occupancy.inconsistencyKey ? t(occupancy.inconsistencyKey) : ""}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline">{activeLease.leaseReference}</Link> : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                              <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
-                            <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDeleteUnit} />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </Card>
-          </TooltipProvider>
-        )}
-      </div>
+          ) : (
+            <TooltipProvider>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("units.code")}</TableHead>
+                      <TableHead>{t("units.label")}</TableHead>
+                      <TableHead>{t("units.type")}</TableHead>
+                      <TableHead className="text-center">{t("units.floor")}</TableHead>
+                      <TableHead className="text-right">{t("units.surface")}</TableHead>
+                      <TableHead className="text-right">{t("units.rent")}</TableHead>
+                      <TableHead className="text-right">{t("units.charges")}</TableHead>
+                      <TableHead>{t("occupancy.derivedLabel")}</TableHead>
+                      <TableHead>{t("propertyDetail.tenant")}</TableHead>
+                      <TableHead>{t("propertyDetail.lease")}</TableHead>
+                      <TableHead className="text-right">{t("units.actions")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {propertyUnits.map(u => {
+                      const activeLease = getActiveLease(u.id);
+                      const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
+                      const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments);
+                      return (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-mono text-xs font-medium text-foreground">
+                            <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
+                          <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
+                          <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null ? formatArea(u.surfaceArea, property.measurementSystem) : "—"}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">{u.baseRent != null ? formatCurrency(u.baseRent, property.currencyCode, property.locale) : "—"}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <StatusBadge status={u.currentStatus} />
+                              {occupancy.occupancyRole === "ancillary" && (
+                                <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  {t("leases.role.ancillary")}
+                                </span>
+                              )}
+                              {occupancy.inconsistent && (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-[250px]">
+                                    <p className="text-xs">{occupancy.inconsistencyKey ? t(occupancy.inconsistencyKey) : ""}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline">{activeLease.leaseReference}</Link> : "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
+                              <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDeleteUnit} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </TooltipProvider>
+          )}
+        </CollapsibleContent>
+      </Card>
+      </Collapsible>
 
       {/* Costs & Taxes */}
       {(() => {
