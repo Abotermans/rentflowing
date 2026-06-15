@@ -15,6 +15,7 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { TenantDialog } from "@/components/tenants/TenantDialog";
+import { CashReceiptDialog } from "@/components/payments/CashReceiptDialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TenantDetail() {
@@ -31,6 +32,7 @@ export default function TenantDetail() {
   const [historyOpen, setHistoryOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
   const [editTenantOpen, setEditTenantOpen] = useState(false);
+  const [recordReceiptOpen, setRecordReceiptOpen] = useState(false);
 
   const tenant = tenants.find(tn => tn.id === id);
   if (!tenant) {
@@ -308,19 +310,26 @@ export default function TenantDetail() {
       </Collapsible>
 
       {/* Recent Cash Receipts */}
-      {recentReceipts.length > 0 && (
-        <Collapsible open={receiptsOpen} onOpenChange={setReceiptsOpen}>
+      <Collapsible open={receiptsOpen} onOpenChange={setReceiptsOpen}>
         <Card>
           <CollapsibleTrigger asChild>
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 justify-start">{t("tenantDetail.recentCashReceipts")}</CardTitle>
-              <span className="inline-flex items-center justify-center h-7 w-7">
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receiptsOpen && "rotate-180")} />
-              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setRecordReceiptOpen(true); }}>
+                  <Banknote className="h-4 w-4" />{t("payments.recordCashReceipt")}
+                </Button>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receiptsOpen && "rotate-180")} />
+                </span>
+              </div>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
           <CardContent>
+            {recentReceipts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("leaseDetail.noCashReceipts")}</p>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -351,11 +360,11 @@ export default function TenantDetail() {
                 })}
               </TableBody>
             </Table>
+            )}
           </CardContent>
           </CollapsibleContent>
         </Card>
-        </Collapsible>
-      )}
+      </Collapsible>
 
       {/* Notes */}
       {tenant.notes && (
@@ -377,6 +386,13 @@ export default function TenantDetail() {
       )}
 
       <TenantDialog open={editTenantOpen} onOpenChange={setEditTenantOpen} editingTenant={tenant} />
+      <CashReceiptDialog
+        open={recordReceiptOpen}
+        onOpenChange={setRecordReceiptOpen}
+        prefillTenantId={tenant.id}
+        prefillLeaseId={activeLease?.id}
+        lockTenant
+      />
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("tenantDetail.created")}: {formatDate(tenant.createdAt, activeProperty?.locale)}</span>
