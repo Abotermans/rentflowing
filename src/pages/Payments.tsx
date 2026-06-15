@@ -416,7 +416,7 @@ export default function Payments() {
                     <TableRow key={al.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(al.allocationDate)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{al.receipt?.reference ?? al.cashReceiptId}</TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs text-muted-foreground">
                         {al.ri ? (
                           (() => {
                             const href = al.ri.leaseId
@@ -437,8 +437,7 @@ export default function Payments() {
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{al.ri ? getItemTypeLabel(t, al.ri.itemType) : "—"}</TableCell>
-                      <TableCell className="text-sm">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{formatCurrency(al.allocatedAmount)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`,
                       <TableCell className="text-xs text-muted-foreground">{getAllocationTypeLabel(t, al.allocationType)}</TableCell>
                     </TableRow>
                   ))}
