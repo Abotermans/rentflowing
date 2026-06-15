@@ -22,6 +22,7 @@ const en = {
   // Common actions
   "action.add": "Add",
   "action.edit": "Edit",
+ "lease.editOnlyDraft": "Only draft leases can be edited. Use an amendment for other changes.",
   "action.delete": "Delete",
   "action.save": "Save",
   "action.saveChanges": "Save Changes",
