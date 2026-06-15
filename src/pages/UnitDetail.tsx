@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight, Tag, ChevronDown } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight, Tag, ChevronDown, FileText } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
