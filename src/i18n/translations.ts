@@ -157,7 +157,7 @@ const en = {
   "units.addTier": "Add tier",
   "units.duplicateDurationError": "Each tier must use a different duration.",
   "units.unappliedCredit": "Unapplied Credit",
-  "units.costsTaxesBurden": "Costs & Taxes Burden",
+  "units.costsTaxesBurden": "Costs & Taxes",
   "units.totalBurden": "Total Burden",
   "units.directCosts": "Direct Costs",
   "units.allocated": "Allocated",
