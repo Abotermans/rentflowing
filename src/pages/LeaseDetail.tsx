@@ -1810,26 +1810,30 @@ export default function LeaseDetail() {
           </Collapsible>
         );
       })()}
+      <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
       <Card>
-        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base font-medium text-left">{t("common.notes")}</CardTitle>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => { setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
-              <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNotesOpen(o => !o)} aria-label="Toggle section">
-              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
-            </Button>
-          </div>
-        </CardHeader>
-        {notesOpen && (
-        <CardContent>
-          {lease.notes
-            ? <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lease.notes}</p>
-            : <p className="text-sm text-muted-foreground italic">—</p>}
-        </CardContent>
-        )}
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 text-left">{t("common.notes")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8 gap-2" onClick={(e) => { e.stopPropagation(); setNotesInput(lease.notes || ""); setNotesDialogOpen(true); }}>
+                <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
+              </Button>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
+              </span>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            {lease.notes
+              ? <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lease.notes}</p>
+              : <p className="text-sm text-muted-foreground italic">—</p>}
+          </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.created")}: {formatDate(lease.createdAt, locale)}</span>
