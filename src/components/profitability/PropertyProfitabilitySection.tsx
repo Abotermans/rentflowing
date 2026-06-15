@@ -212,7 +212,7 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
                 {sortedRows.map(({ unit, prof }) => {
                   const charges = prof.costs.directCharges + prof.costs.allocatedCharges;
                   const taxes = prof.costs.directTaxes + prof.costs.allocatedTaxes;
-                  const isVacant = prof.revenue.vacancyLoss > 0;
+                  
                   return (
                 <TableRow key={unit.id}>
                       <TableCell className="text-sm">
