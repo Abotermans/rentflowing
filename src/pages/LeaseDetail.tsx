@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, Banknote, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -1662,7 +1662,6 @@ export default function LeaseDetail() {
                 <div>
                   <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
                   <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
-                    {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
                     {formatCurrency(overdue, currency, locale)}
                   </p>
                 </div>
@@ -1670,7 +1669,6 @@ export default function LeaseDetail() {
                   <div>
                     <p className="text-xs text-muted-foreground">{t("leaseDetail.unappliedCredit")}</p>
                     <p className="text-lg font-bold text-primary">
-                      <Banknote className="h-4 w-4 inline mr-1" />
                       {formatCurrency(unappliedCredit, currency, locale)}
                     </p>
                   </div>
