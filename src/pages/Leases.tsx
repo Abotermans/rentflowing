@@ -571,7 +571,7 @@ export default function Leases() {
                     <TableCell className="text-muted-foreground">
                       {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{prop.name}</Link> : "—"}
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
+                    <TableCell className="text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
                         {ancillaryCount > 0 && (
