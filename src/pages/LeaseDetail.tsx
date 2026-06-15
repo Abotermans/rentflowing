@@ -1240,40 +1240,6 @@ export default function LeaseDetail() {
       {/* Amendments / Avenants */}
       <AmendmentsSection leaseId={lease.id} newAmendmentSignal={newAmendmentSignal} />
 
-      {/* Financial Summary */}
-      <Card>
-        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2">
-          <CardTitle className="text-base font-medium text-left">{t("detail.financialSummary")}</CardTitle>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFinSumOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", finSumOpen && "rotate-180")} />
-          </Button>
-        </CardHeader>
-        {finSumOpen && (
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("table.outstanding")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p></div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
-              <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
-                {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
-                {formatCurrency(overdue, currency, locale)}
-              </p>
-            </div>
-            {unappliedCredit > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground">{t("leaseDetail.unappliedCredit")}</p>
-                <p className="text-lg font-bold text-primary">
-                  <Banknote className="h-4 w-4 inline mr-1" />
-                  {formatCurrency(unappliedCredit, currency, locale)}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-        )}
-      </Card>
-
 
       {/* Advance Billing — only when rentFormula > 1 */}
       {isAdvanceBilling && (
