@@ -75,7 +75,7 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
   const { sort, toggle } = useTableSort<SortKey>("noi", "desc");
   const sortedRows = useMemo(() => sortRows(unitRows, sort, (row, k) => {
     switch (k) {
-      case "unit": return row.unit.unitLabel || row.unit.unitCode;
+      case "unit": return row.unit.unitCode;
       case "billed": return row.prof.revenue.billedRent;
       case "collected": return row.prof.revenue.collectedRent;
       case "costs": return row.prof.costs.directCharges + row.prof.costs.allocatedCharges;
@@ -213,12 +213,11 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
                 {sortedRows.map(({ unit, prof }) => {
                   const charges = prof.costs.directCharges + prof.costs.allocatedCharges;
                   const taxes = prof.costs.directTaxes + prof.costs.allocatedTaxes;
-                  const isVacant = prof.revenue.vacancyLoss > 0;
+                  
                   return (
-                    <TableRow key={unit.id}>
+                <TableRow key={unit.id}>
                       <TableCell className="text-sm">
-                        <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitLabel || unit.unitCode}</Link>
-                        {isVacant && <Badge variant="outline" className="ml-2 text-[10px] text-warning border-warning/40">{t("prof.table.vacant")}</Badge>}
+                        <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link>
                       </TableCell>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.revenue.billedRent, cur, locale)}</TableCell>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.revenue.collectedRent, cur, locale)}</TableCell>
