@@ -360,8 +360,6 @@ const en = {
 
   // Payments
   "payments.title": "Payments",
-  "payments.pageTitle": "Payments",
-  "payments.pageSubtitle": "\n",
   "payments.record": "Record Payment",
   "payments.addPayment": "Add Payment",
   "payments.empty": "No payments yet",
@@ -1004,7 +1002,7 @@ const en = {
 
   // Payments — Receivables & Reconciliation page
   "payments.pageTitle": "Receivables & Reconciliation",
-  "payments.pageSubtitle": "Manage receivables, cash receipts, and allocations",
+  "payments.pageSubtitle": "\n",
   "payments.recordCashReceipt": "Record Cash Receipt",
   "payments.kpi.openReceivables": "Open Receivables",
   "payments.kpi.totalOverdue": "Total Overdue",
@@ -1840,8 +1838,6 @@ const fr: TranslationKeys = {
 
   // Payments
   "payments.title": "Paiements",
-  "payments.pageTitle": "Paiements",
-  "payments.pageSubtitle": "\n",
   "payments.record": "Enregistrer un paiement",
   "payments.addPayment": "Ajouter un paiement",
   "payments.empty": "Aucun paiement",
@@ -2483,7 +2479,7 @@ const fr: TranslationKeys = {
 
   // Payments — Créances & Réconciliation
   "payments.pageTitle": "Créances & Réconciliation",
-  "payments.pageSubtitle": "Gérez les créances, encaissements et affectations",
+  "payments.pageSubtitle": "\n",
   "payments.recordCashReceipt": "Enregistrer un encaissement",
   "payments.kpi.openReceivables": "Créances ouvertes",
   "payments.kpi.totalOverdue": "Total en retard",
