@@ -34,6 +34,10 @@ export interface RecoverySummary {
   ownerBorne: number;
   regularizationDelta: number;
   recoveryRatio: number | null;
+  /** Provisions actually collected from tenants (may exceed actualRecoverable). */
+  provisionsCollected: number;
+  /** Excess of provisions collected over actual recoverable (≥ 0). */
+  provisionsSurplus: number;
 }
 
 export interface YieldMetrics {
@@ -81,6 +85,19 @@ export function defaultPeriod(todayISO?: string): Period {
 export function ytdPeriod(todayISO?: string): Period {
   const today = todayISO ?? new Date().toISOString().slice(0, 10);
   return { start: `${today.slice(0, 4)}-01-01`, end: today };
+}
+
+/** Current calendar month: 1st → today. */
+export function currentMonthPeriod(todayISO?: string): Period {
+  const today = todayISO ?? new Date().toISOString().slice(0, 10);
+  return { start: `${today.slice(0, 7)}-01`, end: today };
+}
+
+/** Current calendar year: Jan 1 → Dec 31. */
+export function currentYearPeriod(todayISO?: string): Period {
+  const today = todayISO ?? new Date().toISOString().slice(0, 10);
+  const y = today.slice(0, 4);
+  return { start: `${y}-01-01`, end: `${y}-12-31` };
 }
 
 /** All time: very wide window. */
@@ -211,7 +228,10 @@ export function getUnitCostSummary(unitId: string, inputs: ProfitabilityInputs, 
     if (a.unitId !== unitId) continue;
     const ce = inputs.costEntries.find(c => c.id === a.costEntryId);
     if (!ce) continue;
-    const amt = proRate(a.allocatedAmount, a.periodStart ?? ce.startDate, a.periodEnd ?? ce.endDate, win);
+    // Prefer allocation period as the source-of-truth window; fall back to entry dates.
+    const startISO = a.periodStart ?? ce.startDate;
+    const endISO = a.periodEnd ?? ce.endDate ?? a.periodStart ?? ce.startDate;
+    const amt = proRate(a.allocatedAmount, startISO, endISO, win);
     if (ce.isTax) allocatedTaxes += amt; else allocatedCharges += amt;
   }
   return {
@@ -225,7 +245,7 @@ export function getUnitRecoverySummary(unitId: string, inputs: ProfitabilityInpu
   const win = period ?? defaultPeriod();
   const charges = chargeReceivablesFor(r => r.unitId === unitId, inputs, win);
   const provisionsBilled = round2(charges.reduce((s, r) => s + r.expectedAmount, 0));
-  const actualRecovered = collectedOn(new Set(charges.map(r => r.id)), inputs);
+  const provisionsCollected = collectedOn(new Set(charges.map(r => r.id)), inputs);
 
   let recoverable = 0;
   for (const a of inputs.costAllocations) {
@@ -241,10 +261,14 @@ export function getUnitRecoverySummary(unitId: string, inputs: ProfitabilityInpu
   }
   const actualRecoverable = round2(recoverable);
   const costs = getUnitCostSummary(unitId, inputs, win);
+  // Cap recovered to what's actually recoverable so a surplus doesn't shrink owner burden.
+  const actualRecovered = round2(Math.min(provisionsCollected, actualRecoverable));
+  const provisionsSurplus = round2(Math.max(0, provisionsCollected - actualRecoverable));
   const ownerBorne = round2(costs.totalActual - actualRecovered);
   const regularizationDelta = round2(actualRecoverable - provisionsBilled);
-  const recoveryRatio = actualRecoverable > 0 ? round2(actualRecovered / actualRecoverable * 100) / 100 : null;
-  return { provisionsBilled, actualRecoverable, actualRecovered, ownerBorne, regularizationDelta, recoveryRatio };
+  const ratio = actualRecoverable > 0 ? provisionsCollected / actualRecoverable : null;
+  const recoveryRatio = ratio === null ? null : Math.max(0, Math.min(1, round2(ratio * 100) / 100));
+  return { provisionsBilled, actualRecoverable, actualRecovered, ownerBorne, regularizationDelta, recoveryRatio, provisionsCollected, provisionsSurplus };
 }
 
 export function getUnitYieldMetrics(unitId: string, inputs: ProfitabilityInputs, period?: Period): YieldMetrics {
@@ -324,7 +348,7 @@ export function getPropertyRecoverySummary(propertyId: string, inputs: Profitabi
   const propUnitIds = new Set(inputs.units.filter(u => u.propertyId === propertyId).map(u => u.id));
   const charges = chargeReceivablesFor(r => r.propertyId === propertyId || (r.unitId !== null && propUnitIds.has(r.unitId)), inputs, win);
   const provisionsBilled = round2(charges.reduce((s, r) => s + r.expectedAmount, 0));
-  const actualRecovered = collectedOn(new Set(charges.map(r => r.id)), inputs);
+  const provisionsCollected = collectedOn(new Set(charges.map(r => r.id)), inputs);
 
   let recoverable = 0;
   for (const a of inputs.costAllocations) {
@@ -342,10 +366,13 @@ export function getPropertyRecoverySummary(propertyId: string, inputs: Profitabi
   }
   const actualRecoverable = round2(recoverable);
   const costs = getPropertyCostSummary(propertyId, inputs, win);
+  const actualRecovered = round2(Math.min(provisionsCollected, actualRecoverable));
+  const provisionsSurplus = round2(Math.max(0, provisionsCollected - actualRecoverable));
   const ownerBorne = round2(costs.totalActual - actualRecovered);
   const regularizationDelta = round2(actualRecoverable - provisionsBilled);
-  const recoveryRatio = actualRecoverable > 0 ? round2(actualRecovered / actualRecoverable * 100) / 100 : null;
-  return { provisionsBilled, actualRecoverable, actualRecovered, ownerBorne, regularizationDelta, recoveryRatio };
+  const ratio = actualRecoverable > 0 ? provisionsCollected / actualRecoverable : null;
+  const recoveryRatio = ratio === null ? null : Math.max(0, Math.min(1, round2(ratio * 100) / 100));
+  return { provisionsBilled, actualRecoverable, actualRecovered, ownerBorne, regularizationDelta, recoveryRatio, provisionsCollected, provisionsSurplus };
 }
 
 export function getPropertyYieldMetrics(_propertyId: string, _inputs: ProfitabilityInputs, _period?: Period): YieldMetrics {
