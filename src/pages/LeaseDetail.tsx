@@ -1674,7 +1674,11 @@ export default function LeaseDetail() {
                     <TableBody>
                       {sortedReceivables.map(ri => (
                         <TableRow key={ri.id}>
-                          <TableCell className="text-xs text-muted-foreground">{ri.periodMonth ?? "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {ri.cycleEndDate && (ri.itemType === "rent" || ri.itemType === "charges") && ri.periodMonth
+                              ? `${ri.periodMonth} → ${ri.cycleEndDate.slice(0, 7)}`
+                              : (ri.periodMonth ?? "—")}
+                          </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>
                           <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, currency, locale)}</TableCell>
