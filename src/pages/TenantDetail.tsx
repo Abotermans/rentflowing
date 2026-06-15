@@ -30,7 +30,6 @@ export default function TenantDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [contactOpen, setContactOpen] = useState(true);
-  const [financialOpen, setFinancialOpen] = useState(true);
   const [receivablesOpen, setReceivablesOpen] = useState(true);
   const [currentLeaseOpen, setCurrentLeaseOpen] = useState(true);
   const [receiptsOpen, setReceiptsOpen] = useState(true);
@@ -58,10 +57,44 @@ export default function TenantDetail() {
   const { outstanding, overdue } = getTenantOutstanding(tenant.id);
   const unappliedCredit = getTenantUnappliedCredit(tenant.id);
   const recentReceipts = getCashReceiptsByTenant(tenant.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
-  const openReceivables = getReceivableItemsByTenant(tenant.id).filter(ri => ri.outstandingAmount > 0).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const tenantReceivables = getReceivableItemsByTenant(tenant.id);
   const activeGuarantee = activeLease ? getGuaranteeByLease(activeLease.id) : undefined;
   const activeLifecycle = activeLease ? getLeaseStatus(activeLease) : undefined;
   const today = new Date().toISOString().split("T")[0];
+
+  // Dominant currency/locale for tenant-level aggregations (fallback to active lease's property)
+  const recvCurrency = tenantReceivables[0]?.currencyCode ?? activeProperty?.currencyCode;
+  const recvLocale = activeProperty?.locale;
+
+  const enrichedReceivables = tenantReceivables.map(ri => {
+    let effectiveStatus = ri.status;
+    if (ri.outstandingAmount > 0 && ri.dueDate < today && (ri.status === "open" || ri.status === "partially-paid")) effectiveStatus = "overdue";
+    const lease = ri.leaseId ? leases.find(l => l.id === ri.leaseId) : undefined;
+    const unit = ri.unitId ? units.find(u => u.id === ri.unitId) : undefined;
+    return { ...ri, effectiveStatus, leaseRef: lease?.leaseReference ?? "", unitCode: unit?.unitCode ?? "", lease, unit };
+  });
+
+  const rentCollected = tenantReceivables.filter(ri => ri.itemType === "rent").reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const chargesCollected = tenantReceivables.filter(ri => ri.itemType === "charges" || ri.itemType === "charges-adjustment").reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const totalExpected = tenantReceivables.reduce((s, ri) => s + ri.expectedAmount, 0);
+  const totalAllocated = tenantReceivables.reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const totalOutstanding = tenantReceivables.reduce((s, ri) => s + ri.outstandingAmount, 0);
+
+  type RecvSortKey = "period" | "type" | "dueDate" | "lease" | "unit" | "expected" | "allocated" | "outstanding" | "status";
+  const { sort: recvSort, toggle: toggleRecvSort } = useTableSort<RecvSortKey>("dueDate", "desc");
+  const sortedReceivables = useSortedRows(enrichedReceivables, recvSort, (ri, key) => {
+    switch (key) {
+      case "period": return ri.periodMonth ?? "";
+      case "type": return getItemTypeLabel(t, ri.itemType);
+      case "dueDate": return ri.dueDate;
+      case "lease": return ri.leaseRef;
+      case "unit": return ri.unitCode;
+      case "expected": return ri.expectedAmount;
+      case "allocated": return ri.allocatedAmount;
+      case "outstanding": return ri.outstandingAmount;
+      case "status": return ri.effectiveStatus;
+    }
+  });
 
   const handleDeleteTenant = (tid: string) => {
     deleteTenant(tid);
