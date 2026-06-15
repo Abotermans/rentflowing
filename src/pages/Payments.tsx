@@ -300,9 +300,9 @@ export default function Payments() {
                   {rvPg.pageItems.map(ri => (
                     <TableRow key={ri.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, ri.prop?.locale)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{ri.tenant ? <Link to={`/tenants/${ri.tenant.id}`} className="hover:underline">{getTenantFullName(ri.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{ri.tenant ? <Link to={`/tenants/${ri.tenant.id}`} className="hover:underline">{getTenantFullName(ri.tenant)}</Link> : "—"}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className="hover:underline">{ri.lease.leaseReference}</Link> : "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{ri.prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{ri.prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{ri.label}</TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.expectedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
