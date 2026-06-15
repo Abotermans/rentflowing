@@ -2887,7 +2887,7 @@ const fr: TranslationKeys = {
   "payments.itemType.chargesAdjustment": "Régularisation de charges",
 
   // Charges reconciliation UI
-  "reconciliation.title": "Régularisation des charges",
+  "reconciliation.title": "Charges et taxes",
   "reconciliation.flatBadge": "Charges au forfait",
   "reconciliation.provisionBadge": "Provisions + régularisation",
   "reconciliation.flatExplain": "Ce bail facture les charges au forfait. Les coûts récupérables alloués au lot s'affichent à titre d'analyse propriétaire et ne sont jamais refacturés au locataire.",
