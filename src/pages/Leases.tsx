@@ -651,21 +651,11 @@ export default function Leases() {
       )}
 
       {!editingLease && (
-      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="w-[760px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("leases.add")}</DialogTitle>
-            <div className="mt-3 space-y-2">
-              <div className="flex items-center gap-2">
-                {[1, 2, 3].map(n => (
-                  <div key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? "bg-primary" : "bg-muted"}`} />
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t("leases.wizard.step")} {step} {t("leases.wizard.of")} 3 — {step === 1 ? t("leases.wizard.leaseDetails") : step === 2 ? t("leases.wizard.tenantDetails") : t("leases.wizard.terms")}
-              </p>
-            </div>
-          </DialogHeader>
+      <LeaseAddDialog open={sheetOpen} onOpenChange={setSheetOpen} />
+      )}
+      {false && (
+      <Dialog open={false} onOpenChange={() => {}}>
+        <DialogContent />
           <div className="space-y-4 mt-6">
             {step === 1 && (<>
             <div className="grid grid-cols-2 gap-4">
