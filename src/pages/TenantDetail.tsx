@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown, Pencil } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown, Pencil, Plus } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
@@ -317,7 +317,7 @@ export default function TenantDetail() {
               <CardTitle className="text-base font-medium flex-1 justify-start">{t("tenantDetail.recentCashReceipts")}</CardTitle>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setRecordReceiptOpen(true); }}>
-                  <Banknote className="h-4 w-4" />{t("payments.recordCashReceipt")}
+                  <Plus className="h-4 w-4" />{t("payments.recordCashReceipt")}
                 </Button>
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receiptsOpen && "rotate-180")} />
