@@ -1208,18 +1208,18 @@ export default function LeaseDetail() {
           <CollapsibleTrigger asChild>
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 text-left">{t("lease.payerAccounts")}</CardTitle>
-              <span className="inline-flex items-center justify-center h-7 w-7">
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", payerAccountsOpen && "rotate-180")} />
-              </span>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="h-8" onClick={(e) => { e.stopPropagation(); openPayerForm(null); }}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> {t("lease.addPayer")}
+                </Button>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", payerAccountsOpen && "rotate-180")} />
+                </span>
+              </div>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
-              <div className="flex justify-end mb-3">
-                <Button size="sm" variant="outline" className="h-8" onClick={() => openPayerForm(null)}>
-                  <Plus className="h-3.5 w-3.5 mr-1" /> {t("lease.addPayer")}
-                </Button>
-              </div>
               {(lease.payerAccounts ?? []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("lease.payerEmpty")}</p>
               ) : (
