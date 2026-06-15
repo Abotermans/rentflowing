@@ -768,6 +768,79 @@ export type Database = {
           },
         ]
       }
+      lease_documents: {
+        Row: {
+          amendment_id: string | null
+          created_at: string
+          document_date: string
+          id: string
+          lease_id: string
+          mime_type: string | null
+          notes: string | null
+          original_filename: string
+          portfolio_id: string
+          size_bytes: number | null
+          storage_path: string
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          amendment_id?: string | null
+          created_at?: string
+          document_date: string
+          id?: string
+          lease_id: string
+          mime_type?: string | null
+          notes?: string | null
+          original_filename: string
+          portfolio_id: string
+          size_bytes?: number | null
+          storage_path: string
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          amendment_id?: string | null
+          created_at?: string
+          document_date?: string
+          id?: string
+          lease_id?: string
+          mime_type?: string | null
+          notes?: string | null
+          original_filename?: string
+          portfolio_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lease_documents_amendment_id_fkey"
+            columns: ["amendment_id"]
+            isOneToOne: false
+            referencedRelation: "lease_amendments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lease_documents_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lease_documents_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lease_unit_assignments: {
         Row: {
           assignment_type: string
