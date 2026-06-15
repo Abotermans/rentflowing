@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight, Tag, ChevronDown } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight, Tag, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
@@ -625,8 +625,7 @@ export default function UnitDetail() {
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-                <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
-                  <Wrench className="h-4 w-4" />{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
+                <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
                 </CardTitle>
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", maintenanceOpen && "rotate-180")} />
@@ -687,8 +686,7 @@ export default function UnitDetail() {
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-                <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
-                  <Banknote className="h-4 w-4" />{t("units.costsTaxesBurden")}
+                <CardTitle className="text-base font-medium flex-1 justify-start">{t("units.costsTaxesBurden")}
                 </CardTitle>
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", costsOpen && "rotate-180")} />
@@ -895,7 +893,7 @@ export default function UnitDetail() {
       <Card>
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-            <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("common.notes")}</CardTitle>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit("notes"); }}><Pencil className="h-3.5 w-3.5" /></Button>
               <span className="inline-flex items-center justify-center h-7 w-7">
