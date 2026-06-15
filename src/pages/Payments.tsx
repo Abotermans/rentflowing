@@ -368,7 +368,7 @@ export default function Payments() {
                     <TableRow key={cr.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, cr.prop?.locale)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{cr.payerName ?? "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{cr.tenant ? <Link to={`/tenants/${cr.tenant.id}`} className="hover:underline">{getTenantFullName(cr.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{cr.tenant ? <Link to={`/tenants/${cr.tenant.id}`} className="hover:underline">{getTenantFullName(cr.tenant)}</Link> : "—"}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{cr.lease ? <Link to={`/leases/${cr.lease.id}`} className="hover:underline">{cr.lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, cr.currencyCode, cr.prop?.locale)}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, cr.prop?.locale) : "—"}</TableCell>
