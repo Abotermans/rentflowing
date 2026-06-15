@@ -437,7 +437,8 @@ export default function Payments() {
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{al.ri ? getItemTypeLabel(t, al.ri.itemType) : "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`,
+                      <TableCell className="text-xs text-muted-foreground">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(al.allocatedAmount)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{getAllocationTypeLabel(t, al.allocationType)}</TableCell>
                     </TableRow>
                   ))}
