@@ -773,6 +773,10 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-9" onClick={openDocumentsForLease}>
+              <FileText className="h-4 w-4 mr-1" />{t("documents.title")}
+              {documentsCount > 0 && <span className="ml-1 text-muted-foreground">({documentsCount})</span>}
+            </Button>
             {lease.lifecycleStage === "draft" && (
               <Button variant="outline" size="sm" className="h-9" onClick={() => setEditDialogOpen(true)}>
                 <Pencil className="h-4 w-4 mr-1" />{t("action.edit")}
