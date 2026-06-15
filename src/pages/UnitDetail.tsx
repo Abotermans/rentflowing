@@ -634,6 +634,18 @@ export default function UnitDetail() {
               <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
                 <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
                 </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 mr-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/maintenance?create=1&propertyId=${unit.propertyId}&unitId=${unit.id}`);
+                  }}
+                  aria-label={t("maintenance.newTicket")}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", maintenanceOpen && "rotate-180")} />
                 </span>

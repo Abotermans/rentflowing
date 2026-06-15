@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppData } from "@/context/AppContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -38,6 +38,7 @@ export default function Maintenance() {
   const { toast } = useToast();
   const { t } = useSettings();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [filterCategory, setFilterCategory] = useState<string[]>([]);
@@ -59,6 +60,22 @@ export default function Maintenance() {
   const [form, setForm] = useState<TicketFormData>({ ...emptyForm });
 
   const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setSheetOpen(true); };
+
+  useEffect(() => {
+    if (searchParams.get("create") === "1") {
+      const propertyId = searchParams.get("propertyId") ?? properties[0]?.id ?? "";
+      const unitId = searchParams.get("unitId") ?? "";
+      setEditing(null);
+      setForm({ ...emptyForm, propertyId, unitId });
+      setSheetOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("create");
+      next.delete("propertyId");
+      next.delete("unitId");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const openEdit = (ticket: MaintenanceTicket) => {
     setEditing(ticket);
     const { id, ...rest } = ticket;
