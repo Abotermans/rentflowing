@@ -619,12 +619,19 @@ export default function UnitDetail() {
       {(() => {
         const unitTickets = getTicketsByUnit(unit.id);
         return (
+          <Collapsible open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Wrench className="h-4 w-4" />{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
-              </CardTitle>
-            </CardHeader>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+                <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
+                  <Wrench className="h-4 w-4" />{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
+                </CardTitle>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", maintenanceOpen && "rotate-180")} />
+                </span>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             <CardContent>
               {unitTickets.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("detail.noMaintenanceTickets")}</p>
@@ -653,7 +660,9 @@ export default function UnitDetail() {
                 </Table>
               )}
             </CardContent>
+            </CollapsibleContent>
           </Card>
+          </Collapsible>
         );
       })()}
 
