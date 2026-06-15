@@ -464,7 +464,7 @@ export default function UnitDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.unitInformation")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("info"); }}><Pencil className="h-3.5 w-3.5" />{t("common.edit")}</Button>
+              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("info"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", infoOpen && "rotate-180")} />
               </span>
@@ -505,7 +505,7 @@ export default function UnitDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.financialDefaults")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("financials"); }}><Pencil className="h-3.5 w-3.5" />{t("common.edit")}</Button>
+              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("financials"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", financialsOpen && "rotate-180")} />
               </span>
@@ -927,7 +927,7 @@ export default function UnitDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("common.notes")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("notes"); }}><Pencil className="h-3.5 w-3.5" />{t("common.edit")}</Button>
+              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("notes"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
               </span>
