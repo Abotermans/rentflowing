@@ -1676,8 +1676,8 @@ export default function LeaseDetail() {
                         <TableRow key={ri.id}>
                           <TableCell className="text-xs text-muted-foreground">
                             {ri.cycleEndDate && (ri.itemType === "rent" || ri.itemType === "charges") && ri.periodMonth
-                              ? `${ri.periodMonth} → ${ri.cycleEndDate.slice(0, 7)}`
-                              : (ri.periodMonth ?? "—")}
+                              ? `${formatPeriodMonth(ri.periodMonth)} → ${formatPeriodMonth(ri.cycleEndDate.slice(0, 7))}`
+                              : formatPeriodMonth(ri.periodMonth)}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>
