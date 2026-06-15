@@ -281,6 +281,7 @@ export default function PropertyDetail() {
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("common.description")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{property.description || "—"}</span></div>
           </CardContent>
           </CollapsibleContent>
         </Card>
