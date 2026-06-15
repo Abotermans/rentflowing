@@ -638,12 +638,6 @@ export default function UnitDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div><p className="text-xs text-muted-foreground">{t("units.totalBurden")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalBurden, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("units.directCosts")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(directTotal, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("units.allocated")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(allocTotal, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("units.entries")}</p><p className="text-sm font-medium text-foreground">{t("units.entriesBreakdown").replace("{direct}", String(directEntries.length)).replace("{alloc}", String(allocResults.length))}</p></div>
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-md bg-muted/50 border">
                   <p className="text-xs text-muted-foreground">{t("units.ownerBorne")}</p>
