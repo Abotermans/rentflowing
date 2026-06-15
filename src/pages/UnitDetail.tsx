@@ -625,8 +625,7 @@ export default function UnitDetail() {
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-                <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
-                  <Wrench className="h-4 w-4" />{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
+                <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
                 </CardTitle>
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", maintenanceOpen && "rotate-180")} />
