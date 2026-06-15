@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown, Pencil } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
