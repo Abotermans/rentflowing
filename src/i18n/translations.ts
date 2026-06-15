@@ -1412,7 +1412,7 @@ const en = {
   "payments.itemType.chargesAdjustment": "Charges Adjustment",
 
   // Charges reconciliation UI
-  "reconciliation.title": "Charges reconciliation",
+  "reconciliation.title": "Costs & Taxes",
   "reconciliation.flatBadge": "Flat-rate charges",
   "reconciliation.provisionBadge": "Provision + reconciliation",
   "reconciliation.flatExplain": "This lease bills flat-rate charges. Recoverable costs allocated to the unit are shown for owner analysis only and are never rebilled to the tenant.",
@@ -2887,7 +2887,7 @@ const fr: TranslationKeys = {
   "payments.itemType.chargesAdjustment": "Régularisation de charges",
 
   // Charges reconciliation UI
-  "reconciliation.title": "Régularisation des charges",
+  "reconciliation.title": "Charges et taxes",
   "reconciliation.flatBadge": "Charges au forfait",
   "reconciliation.provisionBadge": "Provisions + régularisation",
   "reconciliation.flatExplain": "Ce bail facture les charges au forfait. Les coûts récupérables alloués au lot s'affichent à titre d'analyse propriétaire et ne sont jamais refacturés au locataire.",

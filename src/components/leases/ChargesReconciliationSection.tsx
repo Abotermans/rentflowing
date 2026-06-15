@@ -271,9 +271,9 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
     <Card>
       <CollapsibleTrigger asChild>
         <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-          <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
-            {t("reconciliation.title")}
-            <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-primary border border-primary/30 rounded px-1.5 py-0.5">
+          <CardTitle className="text-base font-medium flex flex-col items-start gap-0.5 flex-1 justify-start">
+            <span className="leading-tight">{t("reconciliation.title")}</span>
+            <span className="text-[10px] text-muted-foreground font-normal">
               {t("reconciliation.provisionBadge")}
             </span>
           </CardTitle>
