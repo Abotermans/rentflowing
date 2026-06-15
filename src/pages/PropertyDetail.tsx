@@ -88,6 +88,7 @@ export default function PropertyDetail() {
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [localSettingsOpen, setLocalSettingsOpen] = useState(true);
   const [descriptionOpen, setDescriptionOpen] = useState(true);
+  const [unitsOpen, setUnitsOpen] = useState(true);
   const [costsOpen, setCostsOpen] = useState(true);
   const openEditProperty = () => {
     if (!property) return;
