@@ -893,6 +893,8 @@ const en = {
   "costs.period": "Period",
   "costs.allocationMethod": "Allocation Method",
   "costs.allocatedAmount": "Allocated Amount",
+  "costs.totalCost": "Total Cost",
+  "costs.unitShare": "Unit share",
   "costs.noAllocations": "No allocations",
   "costs.noAllocationsDesc": "Cost allocations will appear here once entries are allocated.",
   "costs.propertyLevel": "Property-Level",
