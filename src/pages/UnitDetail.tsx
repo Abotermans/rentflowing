@@ -363,8 +363,8 @@ export default function UnitDetail() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (unit.currentStatus === "vacant" || unit.currentStatus === "reserved") && (
-              <Button size="sm" asChild>
-                <Link to={`/leases?new=1&unitId=${unit.id}`}><Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}</Link>
+              <Button size="sm" onClick={() => setAddLeaseOpen(true)}>
+                <Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}
               </Button>
             )}
             {unit.currentStatus !== "vacant" && unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (
@@ -443,8 +443,8 @@ export default function UnitDetail() {
                   {t(occupancy.suggestedFix.labelKey)}
                 </Button>
                 {occupancy.suggestedFix.secondaryAction === "create-lease" && (
-                  <Button size="sm" variant="default" asChild>
-                    <Link to={`/leases?new=1&unitId=${unit.id}`}>{t("occupancy.createLeaseAction")}</Link>
+                  <Button size="sm" variant="default" onClick={() => setAddLeaseOpen(true)}>
+                    {t("occupancy.createLeaseAction")}
                   </Button>
                 )}
               </div>
