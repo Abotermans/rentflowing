@@ -2368,6 +2368,8 @@ const fr: TranslationKeys = {
   "costs.period": "Période",
   "costs.allocationMethod": "Méthode de répartition",
   "costs.allocatedAmount": "Montant réparti",
+  "costs.totalCost": "Coût total",
+  "costs.unitShare": "Part de l'unité",
   "costs.noAllocations": "Aucune répartition",
   "costs.noAllocationsDesc": "Les répartitions apparaîtront ici une fois les écritures allouées.",
   "costs.propertyLevel": "Niveau bien",
