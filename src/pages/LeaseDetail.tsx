@@ -1304,7 +1304,22 @@ export default function LeaseDetail() {
       </Collapsible>
 
       {/* Amendments / Avenants */}
-      <AmendmentsSection leaseId={lease.id} newAmendmentSignal={newAmendmentSignal} />
+      <AmendmentsSection
+        leaseId={lease.id}
+        newAmendmentSignal={newAmendmentSignal}
+        documentCounts={amendmentDocCounts}
+        onOpenDocuments={openDocumentsForAmendment}
+      />
+
+      {portfolioId && (
+        <LeaseDocumentsDialog
+          open={documentsOpen}
+          onOpenChange={(o) => { setDocumentsOpen(o); if (!o) void refreshDocCounts(); }}
+          leaseId={lease.id}
+          portfolioId={portfolioId}
+          initialAmendmentFilter={documentsAmendmentFilter}
+        />
+      )}
 
 
       {/* Advance Billing — only when rentFormula > 1 */}
