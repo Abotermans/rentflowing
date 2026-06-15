@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ChevronDown, TrendingUp, Info } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { useAppData } from "@/context/AppContext";
@@ -74,7 +74,6 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
     <Card>
       <CollapsibleTrigger asChild>
         <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0 gap-2">
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
           <CardTitle className="text-base font-medium flex-1 justify-start">{t("prof.title")}</CardTitle>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Badge variant="secondary" className="text-[10px]">{t("prof.beforeFinancing")}</Badge>
