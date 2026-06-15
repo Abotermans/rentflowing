@@ -1,56 +1,53 @@
 ## Goal
 
-On `src/pages/UnitDetail.tsx`, replace the current single-active-lease summary in the **Occupancy** section with a sortable table listing every lease that has ever been (or is currently) assigned to this unit, and add a header action button to create a new lease prefilled with this unit.
+On the Tenant Detail page, replace the current "Open Receivables" + "Financial Overview" cards with a single **Receivables** section that mirrors the Lease Detail design (KPI strip, inner-scroll sortable table, sticky totals footer), plus two extra columns — Lease reference and Unit code — since a tenant can span multiple leases/units.
 
 ## Changes
 
-### 1. Header action on the Occupancy section
-- Add a `Plus` icon button "Create lease" inside the `CardHeader` of the Occupancy `Collapsible`, next to the chevron, with `e.stopPropagation()` on click so it doesn't toggle the collapse.
-- The button is a `<Link to={`/leases?new=1&unitId=${unit.id}`}>` — this URL pattern is already used elsewhere in the file and opens the Add Lease modal with the unit preselected. No business-logic changes needed.
+### 1. `src/pages/TenantDetail.tsx`
 
-### 2. Remove the "occupied" pill
-- Drop the `<StatusBadge status={unit.currentStatus} />` line at the top of the occupancy card body (line 538). Per the request, unit status is already shown in the page header.
-- Keep the ancillary/primary role chips and the lifecycle/scheduled/return-status badges (those describe the lease, not unit occupancy), OR move them into the table's status column. Plan: drop the whole status-row wrapper and surface those signals per-lease inside the new table's Status cell.
+- **Remove** the standalone "Financial Overview" card (currently a 2–4 column KPI grid with Outstanding / Overdue / Unapplied Credit).
+- **Remove** the existing "Open Receivables" card (6 columns, no sort, no totals, hidden when empty).
+- **Add** a new single collapsible "Receivables" card modeled exactly on `LeaseDetail.tsx:1635–1725`:
+  - Title: `t("leaseDetail.receivables")` (reuse existing key).
+  - **KPI strip** (`grid grid-cols-2 md:grid-cols-4 gap-4 border-b pb-4 mb-4`):
+    1. Rent collected — `text-success`
+    2. Charges collected — `text-success`
+    3. Outstanding — `text-foreground` (from `getTenantOutstanding(tenant.id)`)
+    4. Overdue — `text-destructive` when > 0 (with `AlertTriangle`)
+    5. Conditional: Unapplied credit — `text-primary` (from `getTenantUnappliedCredit`)
+  - Rent/charges collected derived from `getReceivableItemsByTenant(tenant.id)` by summing `allocatedAmount` where `itemType === "rent"` and `itemType === "charges"` respectively (same approach the Lease page uses, scoped to tenant).
+  - **Table wrapper** with inner vertical scroll: `max-h-[480px] overflow-y-auto rounded-md border`.
+  - **Sortable sticky header** using `SortableTableHead` + `useTableSort`/`useSortedRows`. Columns:
+    1. Period (`periodMonth`, supports `cycleEndDate` range rendering like LeaseDetail)
+    2. Type (`itemType`)
+    3. Due date
+    4. **Lease** — linked `lease.leaseReference` (new vs LeaseDetail)
+    5. **Unit** — `units.find(u => u.id === ri.unitId)?.unitCode` (new vs LeaseDetail)
+    6. Expected (right)
+    7. Allocated (right)
+    8. Outstanding (right, `"—"` when 0)
+    9. Status (`StatusBadge`, with overdue override when outstanding > 0 and dueDate < today)
+  - Default sort: `dueDate` desc.
+  - **Sticky totals footer** (`TableFooter sticky bottom-0`): label "Total" spanning the first 5 cells (Period → Unit), then Expected / Allocated / Outstanding totals, then empty status cell.
+  - **All receivables listed** (no `outstandingAmount > 0` filter), still sorted by the current sort state. Empty state row when none exist.
 
-### 3. New leases-for-this-unit table
-Build the row set from existing context data already in scope:
+- Data source: keep using `getReceivableItemsByTenant(tenant.id)` from `useAppData()`; pull `leases` and `units` from the same hook to resolve references.
 
-```ts
-const unitLeaseRows = leaseUnitAssignments
-  .filter(a => a.unitId === unit.id)
-  .map(a => {
-    const lease = leases.find(l => l.id === a.leaseId);
-    const tenant = lease ? tenants.find(t => t.id === lease.tenantId) : undefined;
-    return { assignment: a, lease, tenant };
-  })
-  .filter(r => r.lease);
-```
+### 2. i18n (`src/i18n/translations.ts`)
 
-Columns (all sortable via the existing `useTableSort` + `SortableTableHead` + `sortRows` utilities used on list pages):
+Reuse existing keys where possible (`leaseDetail.receivables`, `leaseDetail.rentCollected`, `leaseDetail.chargesCollected`, `leaseDetail.unappliedCredit`, `leaseDetail.period`, `leaseDetail.total`, `payments.table.*`, `table.outstanding`, `table.overdue`, `tenantDetail.lease`). Add only if missing:
+- `tenantDetail.unit` → "Unit" / "Lot" (only if not already present in `units.*`/`payments.unit`; otherwise reuse `payments.unit`).
 
-| Key | Header | Cell |
-|---|---|---|
-| `reference` | Lease | `lease.leaseReference` linking to `/leases/{id}` |
-| `tenant` | Tenant | tenant full name linking to `/tenants/{id}` |
-| `role` | Role | primary / ancillary chip from `assignment.role` |
-| `start` | Start | `formatDate(lease.startDate, property.locale)` |
-| `end` | End | `formatDate(lease.endDate, property.locale)` |
-| `rent` | Monthly rent | `formatCurrency(lease.monthlyRent + lease.monthlyCharges, …)` |
-| `status` | Status | `<StatusBadge status={lease.lifecycleStatus}/>` plus, when relevant, secondary badges for `lease.signatureStatus`, `moveIn/moveOut` scheduling, `noticeGiven`, `returnStatus` |
+### 3. Out of scope
 
-Default sort: `start` desc so the most recent lease is first. Sort comparators rely on the generic `compareValues` in `use-table-sort.ts` (handles ISO date strings, numbers, strings).
+- No extraction of a shared `ReceivablesSection` component (kept inline to match the existing LeaseDetail pattern).
+- No changes to `LeaseDetail.tsx`, `AppContext`, or receivables data model.
+- No changes to other tenant detail sections (Notes, Contact, Active Leases, etc.).
 
-Empty state: when `unitLeaseRows.length === 0`, render the existing `t("detail.noActiveLeaseDesc")` message.
+## Technical notes
 
-### 4. Things explicitly NOT changed
-- The "Make vacant" / move-in / move-out workflows in the page header stay as-is.
-- The integrity inconsistency banner (`occupancy.inconsistent` block, lines 385–420) stays as-is.
-- No new translation keys other than reusing existing ones (`leases.reference`, `table.tenant`, `leases.role.primary/ancillary`, `leases.period`, `table.status`, `leases.monthlyRent`). If a "Create lease" label is needed, reuse `occupancy.createLeaseAction` which already exists.
-- No changes to data model, context, or other pages.
-
-## Files touched
-- `src/pages/UnitDetail.tsx` (only)
-
-## Verification
-- `tsc --noEmit` clean.
-- Manually: open a unit with multiple historical leases, confirm rows render, click each column header to verify sort toggling, click "Create lease" and confirm Add Lease modal opens with unit prefilled.
+- Imports to add in `TenantDetail.tsx`: `SortableTableHead`, `useTableSort`, `useSortedRows`, `TableFooter`, `formatPeriodMonth`, plus `leases`/`units` from `useAppData()`. Remove now-unused imports tied to the old Financial Overview block (e.g. `Banknote` if no longer referenced).
+- Overdue derivation: `effectiveStatus = outstandingAmount > 0 && dueDate < today ? "overdue" : status` — same rule as LeaseDetail.
+- Sort key type: `"period" | "type" | "dueDate" | "lease" | "unit" | "expected" | "allocated" | "outstanding" | "status"`.
+- Totals computed from the full receivables list (not the sorted/filtered view).
