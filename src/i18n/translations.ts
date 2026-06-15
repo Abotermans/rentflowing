@@ -1454,7 +1454,7 @@ const en = {
   "reconciliation.overview.col.allocated": "Recoverable share",
   "reconciliation.overview.col.totalAmount": "Total amount",
   "reconciliation.overview.col.bearer": "Bearer",
-  "reconciliation.overview.totals": "Total pro-rated recoverable",
+  "reconciliation.overview.totals": "Total",
   "reconciliation.overview.addedByAmendment": "Added",
   "reconciliation.overview.removedByAmendment": "Removed",
   "reconciliation.overview.tip.title": "Recoverable share breakdown",
