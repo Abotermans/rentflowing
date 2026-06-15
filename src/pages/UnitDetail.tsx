@@ -311,6 +311,29 @@ export default function UnitDetail() {
   const today = new Date().toISOString().split("T")[0];
   const nextDueItem = receivables.filter(ri => ri.outstandingAmount > 0 && ri.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
+  // Every lease ever assigned to this unit (active + historical), one row per assignment.
+  const unitLeaseRows = leaseUnitAssignments
+    .filter(a => a.unitId === unit.id)
+    .map(a => {
+      const lease = leases.find(l => l.id === a.leaseId);
+      const leaseTenant = lease ? tenants.find(tn => tn.id === lease.primaryTenantId) : undefined;
+      return { assignment: a, lease, tenant: leaseTenant };
+    })
+    .filter((r): r is { assignment: typeof r.assignment; lease: NonNullable<typeof r.lease>; tenant: typeof r.tenant } => !!r.lease);
+
+  const sortedUnitLeaseRows = sortRows(unitLeaseRows, unitLeasesSort, (row, key) => {
+    switch (key) {
+      case "reference": return row.lease.leaseReference;
+      case "tenant": return row.tenant ? getTenantFullName(row.tenant) : "";
+      case "role": return row.assignment.assignmentType === "primary" ? 0 : 1;
+      case "start": return row.lease.startDate;
+      case "end": return row.lease.endDate;
+      case "rent": return row.lease.monthlyRent + row.lease.monthlyCharges;
+      case "status": return getLeaseStatus(row.lease);
+      default: return "";
+    }
+  });
+
   const infoItems = [
     { label: t("units.label"), value: unit.unitLabel, icon: Tag },
     { label: t("units.type"), value: t(UNIT_TYPE_KEYS[unit.unitType]), icon: Home },
