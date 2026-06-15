@@ -274,7 +274,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           <CardTitle className="text-base font-medium flex flex-col items-start gap-0.5 flex-1 justify-start">
             <span className="leading-tight">{t("reconciliation.title")}</span>
             <span className="text-[10px] text-muted-foreground font-normal">
-              {t("reconciliation.provisionBadge")}
+              {"\n"}
             </span>
           </CardTitle>
           <div className="flex items-center gap-2">
