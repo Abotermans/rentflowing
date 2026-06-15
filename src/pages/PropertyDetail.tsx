@@ -290,7 +290,7 @@ export default function PropertyDetail() {
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.localSettings")}</CardTitle>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="o="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEditProperty(); }} aria-label={t("action.edit") ?? "Edit"}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEditProperty(); }} aria-label={t("action.edit") ?? "Edit"}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <span className="inline-flex items-center justify-center h-7 w-7">
