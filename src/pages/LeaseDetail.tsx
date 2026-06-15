@@ -258,6 +258,28 @@ export default function LeaseDetail() {
   const totalAllocated = receivables.reduce((s, ri) => s + ri.allocatedAmount, 0);
   const unappliedCredit = tenant ? getTenantUnappliedCredit(tenant.id) : 0;
 
+  const portfolioId = property?.portfolioId ?? null;
+
+  const refreshDocCounts = useCallback(async () => {
+    if (!lease?.id) return;
+    const { data, error } = await supabase
+      .from("lease_documents")
+      .select("id, amendment_id")
+      .eq("lease_id", lease.id);
+    if (error || !data) return;
+    setDocumentsCount(data.length);
+    const map: Record<string, number> = {};
+    for (const row of data) {
+      if (row.amendment_id) map[row.amendment_id] = (map[row.amendment_id] ?? 0) + 1;
+    }
+    setAmendmentDocCounts(map);
+  }, [lease?.id]);
+
+  useEffect(() => { void refreshDocCounts(); }, [refreshDocCounts, documentsOpen]);
+
+  const openDocumentsForLease = () => { setDocumentsAmendmentFilter(null); setDocumentsOpen(true); };
+  const openDocumentsForAmendment = (amendmentId: string) => { setDocumentsAmendmentFilter(amendmentId); setDocumentsOpen(true); };
+
   const today = new Date().toISOString().split("T")[0];
 
   const handleAddReceipt = () => {
