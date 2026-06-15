@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
 import { cn } from "@/lib/utils";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn, FileText } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -40,6 +40,8 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
+import { LeaseDocumentsDialog } from "@/components/leases/LeaseDocumentsDialog";
+import { supabase } from "@/integrations/supabase/client";
 import { ChargesReconciliationSection } from "@/components/leases/ChargesReconciliationSection";
 import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
 import { newId } from "@/lib/repo";
@@ -175,6 +177,10 @@ export default function LeaseDetail() {
   const [moveOutMode, setMoveOutMode] = useState<"schedule" | "complete">("schedule");
   const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [documentsAmendmentFilter, setDocumentsAmendmentFilter] = useState<string | null>(null);
+  const [documentsCount, setDocumentsCount] = useState<number>(0);
+  const [amendmentDocCounts, setAmendmentDocCounts] = useState<Record<string, number>>({});
 
   // Return form
   const [returnSheetOpen, setReturnSheetOpen] = useState(false);
@@ -251,6 +257,28 @@ export default function LeaseDetail() {
   const { outstanding, overdue } = getLeaseOutstanding(lease.id);
   const totalAllocated = receivables.reduce((s, ri) => s + ri.allocatedAmount, 0);
   const unappliedCredit = tenant ? getTenantUnappliedCredit(tenant.id) : 0;
+
+  const portfolioId = property?.portfolioId ?? null;
+
+  const refreshDocCounts = useCallback(async () => {
+    if (!lease?.id) return;
+    const { data, error } = await supabase
+      .from("lease_documents")
+      .select("id, amendment_id")
+      .eq("lease_id", lease.id);
+    if (error || !data) return;
+    setDocumentsCount(data.length);
+    const map: Record<string, number> = {};
+    for (const row of data) {
+      if (row.amendment_id) map[row.amendment_id] = (map[row.amendment_id] ?? 0) + 1;
+    }
+    setAmendmentDocCounts(map);
+  }, [lease?.id]);
+
+  useEffect(() => { void refreshDocCounts(); }, [refreshDocCounts, documentsOpen]);
+
+  const openDocumentsForLease = () => { setDocumentsAmendmentFilter(null); setDocumentsOpen(true); };
+  const openDocumentsForAmendment = (amendmentId: string) => { setDocumentsAmendmentFilter(amendmentId); setDocumentsOpen(true); };
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -745,6 +773,10 @@ export default function LeaseDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-9" onClick={openDocumentsForLease}>
+              <FileText className="h-4 w-4 mr-1" />{t("documents.title")}
+              {documentsCount > 0 && <span className="ml-1 text-muted-foreground">({documentsCount})</span>}
+            </Button>
             {lease.lifecycleStage === "draft" && (
               <Button variant="outline" size="sm" className="h-9" onClick={() => setEditDialogOpen(true)}>
                 <Pencil className="h-4 w-4 mr-1" />{t("action.edit")}
@@ -1272,7 +1304,22 @@ export default function LeaseDetail() {
       </Collapsible>
 
       {/* Amendments / Avenants */}
-      <AmendmentsSection leaseId={lease.id} newAmendmentSignal={newAmendmentSignal} />
+      <AmendmentsSection
+        leaseId={lease.id}
+        newAmendmentSignal={newAmendmentSignal}
+        documentCounts={amendmentDocCounts}
+        onOpenDocuments={openDocumentsForAmendment}
+      />
+
+      {portfolioId && (
+        <LeaseDocumentsDialog
+          open={documentsOpen}
+          onOpenChange={(o) => { setDocumentsOpen(o); if (!o) void refreshDocCounts(); }}
+          leaseId={lease.id}
+          portfolioId={portfolioId}
+          initialAmendmentFilter={documentsAmendmentFilter}
+        />
+      )}
 
 
       {/* Advance Billing — only when rentFormula > 1 */}
