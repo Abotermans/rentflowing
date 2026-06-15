@@ -893,7 +893,7 @@ export default function UnitDetail() {
       <Card>
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-            <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("common.notes")}</CardTitle>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit("notes"); }}><Pencil className="h-3.5 w-3.5" /></Button>
               <span className="inline-flex items-center justify-center h-7 w-7">
