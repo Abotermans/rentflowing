@@ -882,18 +882,31 @@ export default function UnitDetail() {
                 );
               })()}
             </CardContent>
+            </CollapsibleContent>
           </Card>
+          </Collapsible>
         );
       })()}
 
       {/* Notes */}
+      <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
       <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("notes")}><Pencil className="h-3.5 w-3.5" /></Button>
-        </CardHeader>
-        <CardContent><p className="text-sm text-muted-foreground whitespace-pre-wrap">{unit.notes || "—"}</p></CardContent>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit("notes"); }}><Pencil className="h-3.5 w-3.5" /></Button>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
+              </span>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent><p className="text-sm text-muted-foreground whitespace-pre-wrap">{unit.notes || "—"}</p></CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.created")}: {formatDate(unit.createdAt, property.locale)}</span>
