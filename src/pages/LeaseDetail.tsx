@@ -702,6 +702,31 @@ export default function LeaseDetail() {
     return { ...ri, effectiveStatus };
   });
 
+  // KPI sums for the receivables section header
+  const rentCollected = receivables
+    .filter(ri => ri.itemType === "rent")
+    .reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const chargesCollected = receivables
+    .filter(ri => ri.itemType === "charges" || ri.itemType === "charges-adjustment")
+    .reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const totalExpected = receivables.reduce((s, ri) => s + ri.expectedAmount, 0);
+  const totalOutstanding = receivables.reduce((s, ri) => s + ri.outstandingAmount, 0);
+
+  // Sortable receivables table
+  type RecvSortKey = "period" | "type" | "dueDate" | "expected" | "allocated" | "outstanding" | "status";
+  const { sort: recvSort, toggle: toggleRecvSort } = useTableSort<RecvSortKey>("dueDate", "desc");
+  const sortedReceivables = useSortedRows(enrichedReceivables, recvSort, (ri, key) => {
+    switch (key) {
+      case "period": return ri.periodMonth ?? "";
+      case "type": return getItemTypeLabel(t, ri.itemType);
+      case "dueDate": return ri.dueDate;
+      case "expected": return ri.expectedAmount;
+      case "allocated": return ri.allocatedAmount;
+      case "outstanding": return ri.outstandingAmount;
+      case "status": return ri.effectiveStatus;
+    }
+  });
+
   const moveInComplete = Object.values(lease.moveInChecklist).every(Boolean);
   const moveOutComplete = Object.values(lease.moveOutChecklist).every(Boolean);
 
