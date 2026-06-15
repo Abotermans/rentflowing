@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, AlertTriangle, MoreVertical, Trash2, ChevronDown, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, MoreVertical, Trash2, ChevronDown, Pencil, Plus } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
@@ -289,7 +289,7 @@ export default function TenantDetail() {
                 <div>
                   <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
                   <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
-                    {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
+                    
                     {formatCurrency(overdue, recvCurrency, recvLocale)}
                   </p>
                 </div>
