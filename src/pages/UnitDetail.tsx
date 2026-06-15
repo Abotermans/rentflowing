@@ -741,8 +741,10 @@ export default function UnitDetail() {
                   return row.frequency ? t(`costs.frequency.${row.frequency}` as TranslationKey) : "—";
                 };
                 return (
+                  <div className="rounded border overflow-hidden">
+                  <div className="max-h-[420px] overflow-y-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
                         <SortableTableHead sortKey="source" sort={costsSort} onSort={toggleCostsSort}>{t("costs.source")}</SortableTableHead>
                         <SortableTableHead sortKey="label" sort={costsSort} onSort={toggleCostsSort}>{t("costs.label")}</SortableTableHead>
@@ -751,6 +753,7 @@ export default function UnitDetail() {
                         <SortableTableHead sortKey="recovery" sort={costsSort} onSort={toggleCostsSort}>{t("units.recovery")}</SortableTableHead>
                         <SortableTableHead sortKey="period" sort={costsSort} onSort={toggleCostsSort}>{t("costs.period")}</SortableTableHead>
                         <SortableTableHead sortKey="method" sort={costsSort} onSort={toggleCostsSort}>{t("costs.allocationMethod")}</SortableTableHead>
+                        <SortableTableHead sortKey="total" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.totalCost")}</SortableTableHead>
                         <SortableTableHead sortKey="amount" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.allocatedAmount")}</SortableTableHead>
                         <SortableTableHead sortKey="ownerBorne" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.ownerBorne")}</SortableTableHead>
                         <SortableTableHead sortKey="recoverable" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.recoverable")}</SortableTableHead>
@@ -779,13 +782,47 @@ export default function UnitDetail() {
                           <TableCell><StatusBadge status={row.recovery} /></TableCell>
                           <TableCell className="text-sm text-muted-foreground">{periodCell(row)}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{row.method ? t(`costs.methodOpt.${row.method}` as TranslationKey) : "—"}</TableCell>
-                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.amount, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.totalCost, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
+                                  {formatCurrency(row.amount, property.currencyCode, property.locale)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
+                                <div className="font-medium text-sm border-b pb-1.5">{t("costs.allocatedAmount")}</div>
+                                <div className="text-muted-foreground">{row.label}</div>
+                                <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                                  <span className="text-muted-foreground">{t("reconciliation.overview.tip.fullCost")}</span>
+                                  <span className="text-right tabular-nums">{formatCurrency(row.totalCost, property.currencyCode, property.locale)}</span>
+                                  <span className="text-muted-foreground">{t("costs.unitShare")} ({unit.unitCode})</span>
+                                  <span className="text-right tabular-nums">
+                                    {row.totalCost > 0 ? `${((row.amount / row.totalCost) * 100).toFixed(1)}%` : "—"}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
+                                  <span className="font-medium">{t("costs.allocatedAmount")}</span>
+                                  <span className="text-right font-semibold tabular-nums">{formatCurrency(row.amount, property.currencyCode, property.locale)}</span>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableCell>
                           <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.ownerBorne, property.currencyCode, property.locale)}</TableCell>
                           <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.recoverable, property.currencyCode, property.locale)}</TableCell>
                         </TableRow>
                       ))}
+                      <TableRow className="bg-muted/30 border-t font-semibold hover:bg-muted/30">
+                        <TableCell className="text-sm" colSpan={7}>{t("reconciliation.overview.totals")}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{formatCurrency(sorted.reduce((s, r) => s + r.totalCost, 0), property.currencyCode, property.locale)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{formatCurrency(directTotal + allocTotal, property.currencyCode, property.locale)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{formatCurrency(recoverable, property.currencyCode, property.locale)}</TableCell>
+                      </TableRow>
                     </TableBody>
                   </Table>
+                  </div>
+                  </div>
                 );
               })()}
             </CardContent>
