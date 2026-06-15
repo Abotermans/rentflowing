@@ -360,7 +360,7 @@ export default function Payments() {
                     <SortableTableHead sortKey="source" sort={crSort} onSort={crToggle} className="text-xs">{t("payments.table.source")}</SortableTableHead>
                     <SortableTableHead sortKey="reference" sort={crSort} onSort={crToggle} className="text-xs">{t("payments.table.reference")}</SortableTableHead>
                     <SortableTableHead sortKey="status" sort={crSort} onSort={crToggle} className="text-xs">{t("payments.table.status")}</SortableTableHead>
-                    <TableHead className="text-xs"></TableHead>
+                    <TableHead className="text-xs">{t("payments.table.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
