@@ -2923,7 +2923,7 @@ const fr: TranslationKeys = {
   "reconciliation.toast.created": "Régularisation enregistrée",
   "reconciliation.toast.deleted": "Régularisation supprimée",
   "reconciliation.delete": "Supprimer",
-  "reconciliation.overview.title": "Coûts pendant le bail",
+  "reconciliation.overview.title": "",
   "reconciliation.overview.empty": "Aucun coût alloué aux lots de ce bail pendant la période du bail.",
   "reconciliation.overview.col.unit": "Lot",
   "reconciliation.overview.col.allocated": "Part récupérable",
