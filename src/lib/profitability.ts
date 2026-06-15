@@ -34,6 +34,10 @@ export interface RecoverySummary {
   ownerBorne: number;
   regularizationDelta: number;
   recoveryRatio: number | null;
+  /** Provisions actually collected from tenants (may exceed actualRecoverable). */
+  provisionsCollected: number;
+  /** Excess of provisions collected over actual recoverable (≥ 0). */
+  provisionsSurplus: number;
 }
 
 export interface YieldMetrics {
@@ -81,6 +85,19 @@ export function defaultPeriod(todayISO?: string): Period {
 export function ytdPeriod(todayISO?: string): Period {
   const today = todayISO ?? new Date().toISOString().slice(0, 10);
   return { start: `${today.slice(0, 4)}-01-01`, end: today };
+}
+
+/** Current calendar month: 1st → today. */
+export function currentMonthPeriod(todayISO?: string): Period {
+  const today = todayISO ?? new Date().toISOString().slice(0, 10);
+  return { start: `${today.slice(0, 7)}-01`, end: today };
+}
+
+/** Current calendar year: Jan 1 → Dec 31. */
+export function currentYearPeriod(todayISO?: string): Period {
+  const today = todayISO ?? new Date().toISOString().slice(0, 10);
+  const y = today.slice(0, 4);
+  return { start: `${y}-01-01`, end: `${y}-12-31` };
 }
 
 /** All time: very wide window. */
