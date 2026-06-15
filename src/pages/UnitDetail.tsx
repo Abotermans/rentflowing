@@ -35,6 +35,7 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { getAllRentTiers } from "@/lib/rentTiers";
+import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
 
 import type { TranslationKey } from "@/i18n/translations";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -108,6 +109,7 @@ export default function UnitDetail() {
   const [vacateEndDialogOpen, setVacateEndDialogOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
   const [financialsOpen, setFinancialsOpen] = useState(true);
+  const [addLeaseOpen, setAddLeaseOpen] = useState(false);
   const [occupancyOpen, setOccupancyOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [costsOpen, setCostsOpen] = useState(true);
