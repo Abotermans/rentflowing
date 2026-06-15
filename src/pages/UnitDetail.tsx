@@ -449,6 +449,12 @@ export default function UnitDetail() {
           </div>
           <div className="pt-3 border-t">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              {t("common.description")}
+            </p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{unit.description || "—"}</p>
+          </div>
+          <div className="pt-3 border-t">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5" />{t("detail.propertyContext")}
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -458,10 +464,6 @@ export default function UnitDetail() {
               <div><p className="text-xs text-muted-foreground">{t("properties.locale")}</p><p className="text-sm font-medium text-foreground font-mono">{property.locale}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("properties.measurement")}</p><p className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</p></div>
             </div>
-          </div>
-          <div className="pt-3 border-t">
-            <p className="text-xs text-muted-foreground mb-1">{t("common.description")}</p>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{unit.description || "—"}</p>
           </div>
         </CardContent>
         </CollapsibleContent>
