@@ -9,7 +9,9 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight, Tag } from "lucide-react";
+import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, StickyNote, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Wrench, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight, Tag, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
@@ -100,6 +102,12 @@ export default function UnitDetail() {
   const [archiveValidation, setArchiveValidation] = useState<ValidationResult | null>(null);
   const [archiveOverrideOpen, setArchiveOverrideOpen] = useState(false);
   const [vacateEndDialogOpen, setVacateEndDialogOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(true);
+  const [financialsOpen, setFinancialsOpen] = useState(true);
+  const [occupancyOpen, setOccupancyOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [costsOpen, setCostsOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(true);
   const [vacateEndDate, setVacateEndDate] = useState("");
 
   const openEdit = (section: Exclude<EditSection, null>) => {
@@ -416,11 +424,20 @@ export default function UnitDetail() {
       )}
 
       {/* Main Info */}
+      <Collapsible open={infoOpen} onOpenChange={setInfoOpen}>
       <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium">{t("detail.unitInformation")}</CardTitle>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("info")}><Pencil className="h-3.5 w-3.5" /></Button>
-        </CardHeader>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.unitInformation")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit("info"); }}><Pencil className="h-3.5 w-3.5" /></Button>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", infoOpen && "rotate-180")} />
+              </span>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {infoItems.map(item => (
@@ -447,14 +464,25 @@ export default function UnitDetail() {
             <p className="text-sm text-foreground whitespace-pre-wrap">{unit.description || "—"}</p>
           </div>
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       {/* Financial Defaults */}
+      <Collapsible open={financialsOpen} onOpenChange={setFinancialsOpen}>
       <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium">{t("detail.financialDefaults")}</CardTitle>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("financials")}><Pencil className="h-3.5 w-3.5" /></Button>
-        </CardHeader>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.financialDefaults")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit("financials"); }}><Pencil className="h-3.5 w-3.5" /></Button>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", financialsOpen && "rotate-180")} />
+              </span>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <CardContent className="space-y-4">
           {(() => {
             const rows = getAllRentTiers(unit);
@@ -487,11 +515,22 @@ export default function UnitDetail() {
             <div><p className="text-xs text-muted-foreground">{t("properties.currency")}</p><p className="text-sm font-semibold text-foreground">{property.currencyCode}</p></div>
           </div>
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       {/* Occupancy */}
+      <Collapsible open={occupancyOpen} onOpenChange={setOccupancyOpen}>
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.occupancySection")}</CardTitle></CardHeader>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.occupancySection")}</CardTitle>
+            <span className="inline-flex items-center justify-center h-7 w-7">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", occupancyOpen && "rotate-180")} />
+            </span>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <CardContent>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusBadge status={unit.currentStatus} />
@@ -571,19 +610,28 @@ export default function UnitDetail() {
             <p className="text-sm text-muted-foreground">{t("detail.noActiveLeaseDesc")}</p>
           )}
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       {/* Property Context */}
       {/* Maintenance */}
       {(() => {
         const unitTickets = getTicketsByUnit(unit.id);
         return (
+          <Collapsible open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Wrench className="h-4 w-4" />{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
-              </CardTitle>
-            </CardHeader>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+                <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
+                  <Wrench className="h-4 w-4" />{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
+                </CardTitle>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", maintenanceOpen && "rotate-180")} />
+                </span>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             <CardContent>
               {unitTickets.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("detail.noMaintenanceTickets")}</p>
@@ -612,7 +660,9 @@ export default function UnitDetail() {
                 </Table>
               )}
             </CardContent>
+            </CollapsibleContent>
           </Card>
+          </Collapsible>
         );
       })()}
 
@@ -631,12 +681,19 @@ export default function UnitDetail() {
         if (totalBurden === 0) return null;
 
         return (
+          <Collapsible open={costsOpen} onOpenChange={setCostsOpen}>
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Banknote className="h-4 w-4" />{t("units.costsTaxesBurden")}
-              </CardTitle>
-            </CardHeader>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+                <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
+                  <Banknote className="h-4 w-4" />{t("units.costsTaxesBurden")}
+                </CardTitle>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", costsOpen && "rotate-180")} />
+                </span>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-md bg-muted/50 border">
@@ -825,18 +882,31 @@ export default function UnitDetail() {
                 );
               })()}
             </CardContent>
+            </CollapsibleContent>
           </Card>
+          </Collapsible>
         );
       })()}
 
       {/* Notes */}
+      <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
       <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit("notes")}><Pencil className="h-3.5 w-3.5" /></Button>
-        </CardHeader>
-        <CardContent><p className="text-sm text-muted-foreground whitespace-pre-wrap">{unit.notes || "—"}</p></CardContent>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit("notes"); }}><Pencil className="h-3.5 w-3.5" /></Button>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
+              </span>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent><p className="text-sm text-muted-foreground whitespace-pre-wrap">{unit.notes || "—"}</p></CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.created")}: {formatDate(unit.createdAt, property.locale)}</span>

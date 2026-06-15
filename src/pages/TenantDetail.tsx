@@ -1,11 +1,14 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
@@ -19,6 +22,13 @@ export default function TenantDetail() {
   const { t } = useSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [contactOpen, setContactOpen] = useState(true);
+  const [financialOpen, setFinancialOpen] = useState(true);
+  const [receivablesOpen, setReceivablesOpen] = useState(true);
+  const [currentLeaseOpen, setCurrentLeaseOpen] = useState(true);
+  const [receiptsOpen, setReceiptsOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(true);
 
   const tenant = tenants.find(tn => tn.id === id);
   if (!tenant) {
@@ -83,8 +93,17 @@ export default function TenantDetail() {
       </div>
 
       {/* Contact Info */}
+      <Collapsible open={contactOpen} onOpenChange={setContactOpen}>
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.contactInfo")}</CardTitle></CardHeader>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.contactInfo")}</CardTitle>
+            <span className="inline-flex items-center justify-center h-7 w-7">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", contactOpen && "rotate-180")} />
+            </span>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex items-start gap-2"><Mail className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.email")}</p><p className="text-sm font-medium text-foreground">{tenant.email}</p></div></div>
@@ -98,10 +117,21 @@ export default function TenantDetail() {
             )}
           </div>
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
+      <Collapsible open={financialOpen} onOpenChange={setFinancialOpen}>
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.financialOverview")}</CardTitle></CardHeader>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.financialOverview")}</CardTitle>
+            <span className="inline-flex items-center justify-center h-7 w-7">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", financialOpen && "rotate-180")} />
+            </span>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
@@ -126,12 +156,23 @@ export default function TenantDetail() {
             )}
           </div>
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       {/* Open Receivables */}
       {openReceivables.length > 0 && (
+        <Collapsible open={receivablesOpen} onOpenChange={setReceivablesOpen}>
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("tenantDetail.openReceivables")}</CardTitle></CardHeader>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 justify-start">{t("tenantDetail.openReceivables")}</CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           <CardContent>
             <Table>
               <TableHeader>
@@ -163,13 +204,24 @@ export default function TenantDetail() {
               </TableBody>
             </Table>
           </CardContent>
+          </CollapsibleContent>
         </Card>
+        </Collapsible>
       )}
 
       {/* Current Lease Summary */}
       {activeLease && activeProperty && activeUnit && (
+        <Collapsible open={currentLeaseOpen} onOpenChange={setCurrentLeaseOpen}>
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.currentLease")}</CardTitle></CardHeader>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.currentLease")}</CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", currentLeaseOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link></div>
@@ -194,13 +246,24 @@ export default function TenantDetail() {
               )}
             </div>
           </CardContent>
+          </CollapsibleContent>
         </Card>
+        </Collapsible>
       )}
 
       {/* Recent Cash Receipts */}
       {recentReceipts.length > 0 && (
+        <Collapsible open={receiptsOpen} onOpenChange={setReceiptsOpen}>
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("tenantDetail.recentCashReceipts")}</CardTitle></CardHeader>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 justify-start">{t("tenantDetail.recentCashReceipts")}</CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receiptsOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           <CardContent>
             <Table>
               <TableHeader>
@@ -233,12 +296,23 @@ export default function TenantDetail() {
               </TableBody>
             </Table>
           </CardContent>
+          </CollapsibleContent>
         </Card>
+        </Collapsible>
       )}
 
       {/* Lease History */}
+      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.leaseHistory")}</CardTitle></CardHeader>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.leaseHistory")}</CardTitle>
+            <span className="inline-flex items-center justify-center h-7 w-7">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", historyOpen && "rotate-180")} />
+            </span>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <CardContent>
           {tenantLeases.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("detail.noLeases")}</p>
@@ -271,14 +345,27 @@ export default function TenantDetail() {
             </Table>
           )}
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       {/* Notes */}
       {tenant.notes && (
+        <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium flex items-center gap-1.5"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle></CardHeader>
-          <CardContent><p className="text-sm text-muted-foreground">{tenant.notes}</p></CardContent>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start"><StickyNote className="h-4 w-4" />{t("common.notes")}</CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent><p className="text-sm text-muted-foreground">{tenant.notes}</p></CardContent>
+          </CollapsibleContent>
         </Card>
+        </Collapsible>
       )}
 
       <div className="flex gap-4 text-xs text-muted-foreground">

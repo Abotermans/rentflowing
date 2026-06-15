@@ -13,6 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, Banknote, AlertTriangle, MoreVertical } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { formatCurrency, formatArea, formatDate, getCountryName, UNIT_TYPE_KEYS } from "@/lib/formatters";
 import { Unit, UnitType, UnitStatus, Property, getTenantFullName } from "@/types";
@@ -82,6 +85,10 @@ export default function PropertyDetail() {
 
   const [propertyEditOpen, setPropertyEditOpen] = useState(false);
   const [propertyForm, setPropertyForm] = useState<PropertyEditData | null>(null);
+  const [overviewOpen, setOverviewOpen] = useState(true);
+  const [localSettingsOpen, setLocalSettingsOpen] = useState(true);
+  const [descriptionOpen, setDescriptionOpen] = useState(true);
+  const [costsOpen, setCostsOpen] = useState(true);
   const openEditProperty = () => {
     if (!property) return;
     const { id: _id, createdAt, updatedAt, ...rest } = property;
@@ -234,33 +241,55 @@ export default function PropertyDetail() {
 
       {/* Overview & Local Settings */}
       <div className="grid gap-6 lg:grid-cols-2">
+        <Collapsible open={overviewOpen} onOpenChange={setOverviewOpen}>
         <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">{t("detail.overview")}</CardTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditProperty} aria-label={t("action.edit") ?? "Edit"}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-          </CardHeader>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.overview")}</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEditProperty(); }} aria-label={t("action.edit") ?? "Edit"}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", overviewOpen && "rotate-180")} />
+                </span>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span></div>
           </CardContent>
+          </CollapsibleContent>
         </Card>
+        </Collapsible>
+        <Collapsible open={localSettingsOpen} onOpenChange={setLocalSettingsOpen}>
         <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">{t("detail.localSettings")}</CardTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditProperty} aria-label={t("action.edit") ?? "Edit"}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-          </CardHeader>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.localSettings")}</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEditProperty(); }} aria-label={t("action.edit") ?? "Edit"}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", localSettingsOpen && "rotate-180")} />
+                </span>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.locale")}</span><span className="text-sm font-medium text-foreground font-mono">{property.locale}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.currency")}</span><span className="text-sm font-medium text-foreground">{property.currencyCode}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.measurement")}</span><span className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</span></div>
           </CardContent>
+          </CollapsibleContent>
         </Card>
+        </Collapsible>
       </div>
 
       {/* KPI cards */}
@@ -281,17 +310,28 @@ export default function PropertyDetail() {
       </div>
 
       {/* Description */}
+      <Collapsible open={descriptionOpen} onOpenChange={setDescriptionOpen}>
       <Card>
-        <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium">{t("common.description")}</CardTitle>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditProperty} aria-label={t("action.edit") ?? "Edit"}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{property.description || "—"}</p>
-        </CardContent>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+            <CardTitle className="text-base font-medium flex-1 justify-start">{t("common.description")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEditProperty(); }} aria-label={t("action.edit") ?? "Edit"}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", descriptionOpen && "rotate-180")} />
+              </span>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{property.description || "—"}</p>
+          </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
 
       {/* Units */}
       <div>
@@ -412,12 +452,19 @@ export default function PropertyDetail() {
         }).filter(x => x.total > 0);
 
         return (
+          <Collapsible open={costsOpen} onOpenChange={setCostsOpen}>
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Banknote className="h-4 w-4" />{t("costs.costsTaxes")}
-              </CardTitle>
-            </CardHeader>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+                <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
+                  <Banknote className="h-4 w-4" />{t("costs.costsTaxes")}
+                </CardTitle>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", costsOpen && "rotate-180")} />
+                </span>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div><p className="text-xs text-muted-foreground">{t("propertyDetail.totalCosts")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCosts, property.currencyCode, property.locale)}</p></div>
@@ -467,7 +514,9 @@ export default function PropertyDetail() {
                 </Button>
               )}
             </CardContent>
+            </CollapsibleContent>
           </Card>
+          </Collapsible>
         );
       })()}
 
