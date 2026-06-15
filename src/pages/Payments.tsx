@@ -417,13 +417,13 @@ export default function Payments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.receiptRef")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.receivable")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.type")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.tenant")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("payments.table.amount")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.method")}</TableHead>
+                    <SortableTableHead sortKey="date" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.date")}</SortableTableHead>
+                    <SortableTableHead sortKey="receiptRef" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.receiptRef")}</SortableTableHead>
+                    <SortableTableHead sortKey="receivable" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.receivable")}</SortableTableHead>
+                    <SortableTableHead sortKey="type" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.type")}</SortableTableHead>
+                    <SortableTableHead sortKey="tenant" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.tenant")}</SortableTableHead>
+                    <SortableTableHead sortKey="amount" sort={alSort} onSort={alToggle} align="right" className="text-xs">{t("payments.table.amount")}</SortableTableHead>
+                    <SortableTableHead sortKey="method" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.method")}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
