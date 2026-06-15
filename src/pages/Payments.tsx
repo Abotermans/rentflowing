@@ -360,7 +360,7 @@ export default function Payments() {
                     <SortableTableHead sortKey="source" sort={crSort} onSort={crToggle} className="text-xs">{t("payments.table.source")}</SortableTableHead>
                     <SortableTableHead sortKey="reference" sort={crSort} onSort={crToggle} className="text-xs">{t("payments.table.reference")}</SortableTableHead>
                     <SortableTableHead sortKey="status" sort={crSort} onSort={crToggle} className="text-xs">{t("payments.table.status")}</SortableTableHead>
-                    <TableHead className="text-xs"></TableHead>
+                    <TableHead className="text-xs">{t("table.action")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -376,10 +376,12 @@ export default function Payments() {
                       <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference ?? "—"}</TableCell>
                       <TableCell><StatusBadge status={cr.status} /></TableCell>
                       <TableCell>
-                        {cr.unmatchedAmount > 0 && (
-                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setAllocateReceiptId(cr.id); setAllocAmounts({}); }}>
-                            {t("payments.action.allocate")}
+                        {cr.unmatchedAmount > 0 ? (
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => { setAllocateReceiptId(cr.id); setAllocAmounts({}); }}>
+                            <ArrowRightLeft className="h-3 w-3" />{t("payments.action.allocate")}
                           </Button>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
                         )}
                       </TableCell>
                     </TableRow>
