@@ -5,7 +5,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,6 +31,8 @@ import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { useTableSort, useSortedRows } from "@/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { canChangeLeaseStatus, canActivateLease, canRenewLease, canSendForSignature, canMarkSigned } from "@/lib/integrity/leaseIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
@@ -98,10 +100,9 @@ export default function LeaseDetail() {
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [pendingOverrideAction, setPendingOverrideAction] = useState<string>("");
-  const [receivablesOpen, setReceivablesOpen] = useState(false);
+  const [receivablesOpen, setReceivablesOpen] = useState(true);
   const [cashReceiptsOpen, setCashReceiptsOpen] = useState(false);
   const [allocationsOpen, setAllocationsOpen] = useState(false);
-  const [finSumOpen, setFinSumOpen] = useState(true);
   const [advanceBillingOpen, setAdvanceBillingOpen] = useState(true);
   const [depositOpen, setDepositOpen] = useState(true);
   const [occupancyOpen, setOccupancyOpen] = useState(true);
@@ -701,6 +702,31 @@ export default function LeaseDetail() {
     return { ...ri, effectiveStatus };
   });
 
+  // KPI sums for the receivables section header
+  const rentCollected = receivables
+    .filter(ri => ri.itemType === "rent")
+    .reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const chargesCollected = receivables
+    .filter(ri => ri.itemType === "charges" || ri.itemType === "charges-adjustment")
+    .reduce((s, ri) => s + ri.allocatedAmount, 0);
+  const totalExpected = receivables.reduce((s, ri) => s + ri.expectedAmount, 0);
+  const totalOutstanding = receivables.reduce((s, ri) => s + ri.outstandingAmount, 0);
+
+  // Sortable receivables table
+  type RecvSortKey = "period" | "type" | "dueDate" | "expected" | "allocated" | "outstanding" | "status";
+  const { sort: recvSort, toggle: toggleRecvSort } = useTableSort<RecvSortKey>("dueDate", "desc");
+  const sortedReceivables = useSortedRows(enrichedReceivables, recvSort, (ri, key) => {
+    switch (key) {
+      case "period": return ri.periodMonth ?? "";
+      case "type": return getItemTypeLabel(t, ri.itemType);
+      case "dueDate": return ri.dueDate;
+      case "expected": return ri.expectedAmount;
+      case "allocated": return ri.allocatedAmount;
+      case "outstanding": return ri.outstandingAmount;
+      case "status": return ri.effectiveStatus;
+    }
+  });
+
   const moveInComplete = Object.values(lease.moveInChecklist).every(Boolean);
   const moveOutComplete = Object.values(lease.moveOutChecklist).every(Boolean);
 
@@ -1239,40 +1265,6 @@ export default function LeaseDetail() {
       {/* Amendments / Avenants */}
       <AmendmentsSection leaseId={lease.id} newAmendmentSignal={newAmendmentSignal} />
 
-      {/* Financial Summary */}
-      <Card>
-        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2">
-          <CardTitle className="text-base font-medium text-left">{t("detail.financialSummary")}</CardTitle>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFinSumOpen(o => !o)} aria-label="Toggle section">
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", finSumOpen && "rotate-180")} />
-          </Button>
-        </CardHeader>
-        {finSumOpen && (
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div><p className="text-xs text-muted-foreground">{t("leaseDetail.totalAllocated")}</p><p className="text-lg font-bold text-success">{formatCurrency(totalAllocated, currency, locale)}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("table.outstanding")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p></div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
-              <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
-                {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
-                {formatCurrency(overdue, currency, locale)}
-              </p>
-            </div>
-            {unappliedCredit > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground">{t("leaseDetail.unappliedCredit")}</p>
-                <p className="text-lg font-bold text-primary">
-                  <Banknote className="h-4 w-4 inline mr-1" />
-                  {formatCurrency(unappliedCredit, currency, locale)}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-        )}
-      </Card>
-
 
       {/* Advance Billing — only when rentFormula > 1 */}
       {isAdvanceBilling && (
@@ -1624,7 +1616,7 @@ export default function LeaseDetail() {
         <Card>
           <CollapsibleTrigger asChild>
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-              <CardTitle className="text-base font-medium flex-1 text-left">{t("leaseDetail.openReceivables")}</CardTitle>
+              <CardTitle className="text-base font-medium flex-1 text-left">{t("leaseDetail.receivables")}</CardTitle>
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receivablesOpen && "rotate-180")} />
               </span>
@@ -1632,35 +1624,77 @@ export default function LeaseDetail() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
+              {/* KPI strip (embeds the former Financial Summary) */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-b pb-4 mb-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("leaseDetail.rentCollected")}</p>
+                  <p className="text-lg font-bold text-success">{formatCurrency(rentCollected, currency, locale)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("leaseDetail.chargesCollected")}</p>
+                  <p className="text-lg font-bold text-success">{formatCurrency(chargesCollected, currency, locale)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("table.outstanding")}</p>
+                  <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, currency, locale)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
+                  <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
+                    {overdue > 0 && <AlertTriangle className="h-4 w-4 inline mr-1" />}
+                    {formatCurrency(overdue, currency, locale)}
+                  </p>
+                </div>
+                {unappliedCredit > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("leaseDetail.unappliedCredit")}</p>
+                    <p className="text-lg font-bold text-primary">
+                      <Banknote className="h-4 w-4 inline mr-1" />
+                      {formatCurrency(unappliedCredit, currency, locale)}
+                    </p>
+                  </div>
+                )}
+              </div>
               {enrichedReceivables.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("leaseDetail.noReceivables")}</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">{t("leaseDetail.period")}</TableHead>
-                      <TableHead className="text-xs">{t("table.type")}</TableHead>
-                      <TableHead className="text-xs">{t("payments.table.dueDate")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("payments.table.expected")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("payments.table.allocated")}</TableHead>
-                      <TableHead className="text-xs text-right">{t("payments.table.outstanding")}</TableHead>
-                      <TableHead className="text-xs">{t("payments.table.status")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {enrichedReceivables.map(ri => (
-                      <TableRow key={ri.id}>
-                        <TableCell className="text-xs text-muted-foreground">{ri.periodMonth ?? "—"}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>
-                        <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, currency, locale)}</TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, currency, locale)}</TableCell>
-                        <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, currency, locale) : "—"}</TableCell>
-                        <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
+                <div className="max-h-[480px] overflow-y-auto rounded-md border">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <SortableTableHead sortKey="period" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("leaseDetail.period")}</SortableTableHead>
+                        <SortableTableHead sortKey="type" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("table.type")}</SortableTableHead>
+                        <SortableTableHead sortKey="dueDate" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("payments.table.dueDate")}</SortableTableHead>
+                        <SortableTableHead sortKey="expected" sort={recvSort} onSort={toggleRecvSort} align="right" className="text-xs">{t("payments.table.expected")}</SortableTableHead>
+                        <SortableTableHead sortKey="allocated" sort={recvSort} onSort={toggleRecvSort} align="right" className="text-xs">{t("payments.table.allocated")}</SortableTableHead>
+                        <SortableTableHead sortKey="outstanding" sort={recvSort} onSort={toggleRecvSort} align="right" className="text-xs">{t("payments.table.outstanding")}</SortableTableHead>
+                        <SortableTableHead sortKey="status" sort={recvSort} onSort={toggleRecvSort} className="text-xs">{t("payments.table.status")}</SortableTableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedReceivables.map(ri => (
+                        <TableRow key={ri.id}>
+                          <TableCell className="text-xs text-muted-foreground">{ri.periodMonth ?? "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, locale)}</TableCell>
+                          <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, currency, locale)}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, currency, locale)}</TableCell>
+                          <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, currency, locale) : "—"}</TableCell>
+                          <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    <TableFooter className="sticky bottom-0">
+                      <TableRow>
+                        <TableCell className="text-xs font-medium" colSpan={3}>{t("leaseDetail.total")}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalExpected, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalAllocated, currency, locale)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalOutstanding, currency, locale)}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableFooter>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </CollapsibleContent>

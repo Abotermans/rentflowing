@@ -1,65 +1,67 @@
 ## Goal
-Add pagination controls to every list/table page so users can navigate through long lists and choose how many rows to display per page.
 
-## Scope — pages to update
-All main list pages:
-- Leases
-- Properties
-- Units
-- Tenants
-- Vendors
-- Payments
-- Maintenance
-- CostEntries
-- CostCategories
-- CostsAllocations
-- AllocationRules
+On the lease detail page, drop the standalone **Financial Summary** card and embed a richer KPI strip directly inside the **Receivables** section (renamed from "Open Receivables"). Make the receivables table sortable, scrollable, and self-totaling so it scales as the ledger grows.
 
-(Detail-page sub-tables — e.g. units inside a property, payments inside a lease — are out of scope for this pass.)
+## Scope
 
-## UX
+Single file: `src/pages/LeaseDetail.tsx` (+ a few new i18n keys in `src/i18n/translations.ts`). Pure UI/derived-data change — no business-logic, repo, or schema edits.
 
-Footer bar shown below each table:
+## Changes
 
-```
-Rows per page: [25 v]      1–25 of 312      [<<] [<]  Page 1 / 13  [>] [>>]
-```
+### 1. Remove the Financial Summary card
+- Delete the `{/* Financial Summary */}` block (lines ~1242–1274) and the unused `finSumOpen` state (line 104).
+- Keep `totalAllocated`, `outstanding`, `overdue`, `unappliedCredit` — they move into the receivables KPI strip.
 
-- **Rows-per-page selector**: 10 / 25 / 50 / 100. Default = 25.
-- **Range label**: `from–to of total` (localized via `t()`).
-- **Page navigation**: first / previous / next / last buttons + current page indicator.
-- Compact, `h-8` controls to match the existing B2B operational density.
-- Hidden automatically when the filtered result fits in one page (≤ smallest page size) — only the rows-per-page selector is shown, no navigation needed.
+### 2. Rename and enrich the Receivables section
+- Rename heading: `leaseDetail.openReceivables` → new key `leaseDetail.receivables` ("Receivables" / "Quittancement").
+- Default `receivablesOpen` to `true` (was `false`) since it's now the primary financial section.
+- Inside `CardContent`, add a KPI strip ABOVE the table (same `grid-cols-2 md:grid-cols-4 gap-4` styling as the old Financial Summary so the visual language carries over):
 
-## Behavior
+  | KPI | Source |
+  |---|---|
+  | Rent collected | sum of `allocatedAmount` where `itemType === "rent"` |
+  | Charges collected | sum of `allocatedAmount` where `itemType === "charges"` (incl. `"charges-adjustment"`) |
+  | Outstanding (rent + charges) | sum of `outstandingAmount` across all receivables = existing `outstanding` |
+  | Overdue | existing `overdue`, red + warning icon when > 0 |
+  | Unapplied credit | only rendered when `unappliedCredit > 0`, same styling as today |
 
-- Pagination is applied **after** filters/search/sort, so the user always sees the filtered subset paginated.
-- Changing any filter, search term, or page size **resets to page 1**.
-- Page state is component-local (React `useState`). Not persisted in URL or localStorage in this pass.
-- Page size preference is kept per-page in local state for the session (no global setting yet).
+  Use a thin `border-b pb-4 mb-4` separator between the KPI strip and the table.
 
-## Implementation
+### 3. Sortable table
+- Use existing `useTableSort` + `SortableTableHead` + `sortRows` (see `src/hooks/use-table-sort.ts`, `src/components/shared/SortableTableHead.tsx` — same pattern already used on list pages).
+- Sort keys: `period`, `type`, `dueDate`, `expected`, `allocated`, `outstanding`, `status`. Default sort: `dueDate` desc (preserves the current ordering).
+- Wrap each `TableHead` of the receivables table in `SortableTableHead`. Numeric columns use `align="right"`.
 
-1. **New hook** `src/hooks/usePagination.ts`
-   - Input: `items: T[]`, optional `defaultPageSize`.
-   - Returns `{ page, pageSize, setPage, setPageSize, pageItems, total, totalPages, from, to }`.
-   - Auto-resets `page` to 1 when `items.length` or `pageSize` changes in a way that puts the cursor out of range.
+### 4. Inner scroll
+- Wrap the `<Table>` in `<div className="max-h-[480px] overflow-y-auto rounded-md border">…</div>` so the list scrolls independently of the page as it grows.
+- Keep the header sticky: add `className="sticky top-0 bg-background z-10"` on `<TableHeader>` so columns stay visible while scrolling.
 
-2. **New component** `src/components/common/TablePagination.tsx`
-   - Props: `{ page, pageSize, total, totalPages, from, to, onPageChange, onPageSizeChange, pageSizeOptions? }`.
-   - Uses existing shadcn `Select` for rows-per-page and shadcn `Button` (icon) for nav.
-   - Fully i18n via `t()` keys: `pagination.rowsPerPage`, `pagination.rangeLabel` (`"{from}–{to} of {total}"`), `pagination.page`.
+### 5. Column totals (sticky footer row)
+- Add a `<TableFooter>` (already exported from `src/components/ui/table.tsx`) with a single row summing the numeric columns:
+  - Expected total: Σ `expectedAmount`
+  - Allocated total: Σ `allocatedAmount`
+  - Outstanding total: Σ `outstandingAmount` (matches the KPI "Outstanding")
+- Footer row label cell: "Total" (new key `leaseDetail.total` / "Total"). Status cell left empty.
+- Style: `font-medium`, `bg-muted/40`, and `className="sticky bottom-0"` so totals stay visible while scrolling.
 
-3. **i18n** — add the three keys above to `src/i18n/` (English + French).
+## i18n keys to add (EN / FR)
 
-4. **Wire into each list page**
-   - In each page: feed the already-filtered/sorted array into `usePagination`.
-   - Render rows from `pageItems` instead of the full array.
-   - Place `<TablePagination />` directly under the table/card-list.
-   - Ensure totals/summary lines that say "Showing N results" remain accurate (display `total`, not `pageItems.length`).
+- `leaseDetail.receivables` — "Receivables" / "Quittancement"
+- `leaseDetail.rentCollected` — "Rent collected" / "Loyers encaissés"
+- `leaseDetail.chargesCollected` — "Charges collected" / "Charges encaissées"
+- `leaseDetail.total` — "Total" / "Total"
+
+Reuse existing keys for the other labels: `table.outstanding`, `table.overdue`, `leaseDetail.unappliedCredit`, `leaseDetail.period`, `table.type`, `payments.table.dueDate`, `payments.table.expected`, `payments.table.allocated`, `payments.table.outstanding`, `payments.table.status`, `leaseDetail.noReceivables`.
 
 ## Technical notes
 
-- No backend or schema changes — pagination is purely client-side over already-fetched data, consistent with how these lists currently work.
-- No changes to existing filters, columns, sorting, or row actions.
-- Detail-page embedded tables can be migrated later by reusing the same hook + component.
+- Derive the new KPIs from `receivables` (already available at line 242), no new context calls needed.
+- Sorting is purely client-side via `useSortedRows(enrichedReceivables, sort, getValue)`.
+- Status column sort uses `effectiveStatus` so overdue rows group correctly.
+- No changes to `Cash Receipts`, `Allocation History`, or any other section. The same column-totals / sortable / inner-scroll treatment is NOT applied to those tables in this iteration to keep the change focused on the user's request.
+
+## Out of scope
+
+- No changes to receivable generation (`src/lib/leaseReceivables.ts`) or status computation.
+- No changes to filters/search inside the receivables list (none exist today).
+- Cash receipts and allocation history tables stay as-is.
