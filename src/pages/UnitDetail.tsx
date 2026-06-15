@@ -38,6 +38,7 @@ import { getAllRentTiers } from "@/lib/rentTiers";
 import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
 import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTicketDialog";
 import { CostEntryDialog } from "@/components/costs/CostEntryDialog";
+import { UnitProfitabilitySection } from "@/components/profitability/UnitProfitabilitySection";
 
 import type { TranslationKey } from "@/i18n/translations";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -939,6 +940,9 @@ export default function UnitDetail() {
         </CollapsibleContent>
       </Card>
       </Collapsible>
+
+      {/* Operational Return */}
+      <UnitProfitabilitySection unitId={unit.id} />
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("table.created")}: {formatDate(unit.createdAt, property.locale)}</span>
