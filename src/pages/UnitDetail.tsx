@@ -554,13 +554,10 @@ export default function UnitDetail() {
             {unit.currentStatus !== "archived" && (
               <Button
                 size="sm"
-                asChild
                 className="mr-2"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); setAddLeaseOpen(true); }}
               >
-                <Link to={`/leases?new=1&unitId=${unit.id}`}>
-                  <Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}
-                </Link>
+                <Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}
               </Button>
             )}
             <span className="inline-flex items-center justify-center h-7 w-7">
