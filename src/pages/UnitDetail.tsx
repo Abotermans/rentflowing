@@ -35,6 +35,7 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { getAllRentTiers } from "@/lib/rentTiers";
+import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
 
 import type { TranslationKey } from "@/i18n/translations";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -108,6 +109,7 @@ export default function UnitDetail() {
   const [vacateEndDialogOpen, setVacateEndDialogOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
   const [financialsOpen, setFinancialsOpen] = useState(true);
+  const [addLeaseOpen, setAddLeaseOpen] = useState(false);
   const [occupancyOpen, setOccupancyOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [costsOpen, setCostsOpen] = useState(true);
@@ -361,8 +363,8 @@ export default function UnitDetail() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (unit.currentStatus === "vacant" || unit.currentStatus === "reserved") && (
-              <Button size="sm" asChild>
-                <Link to={`/leases?new=1&unitId=${unit.id}`}><Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}</Link>
+              <Button size="sm" onClick={() => setAddLeaseOpen(true)}>
+                <Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}
               </Button>
             )}
             {unit.currentStatus !== "vacant" && unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (
@@ -441,8 +443,8 @@ export default function UnitDetail() {
                   {t(occupancy.suggestedFix.labelKey)}
                 </Button>
                 {occupancy.suggestedFix.secondaryAction === "create-lease" && (
-                  <Button size="sm" variant="default" asChild>
-                    <Link to={`/leases?new=1&unitId=${unit.id}`}>{t("occupancy.createLeaseAction")}</Link>
+                  <Button size="sm" variant="default" onClick={() => setAddLeaseOpen(true)}>
+                    {t("occupancy.createLeaseAction")}
                   </Button>
                 )}
               </div>
@@ -552,13 +554,10 @@ export default function UnitDetail() {
             {unit.currentStatus !== "archived" && (
               <Button
                 size="sm"
-                asChild
                 className="mr-2"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); setAddLeaseOpen(true); }}
               >
-                <Link to={`/leases?new=1&unitId=${unit.id}`}>
-                  <Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}
-                </Link>
+                <Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}
               </Button>
             )}
             <span className="inline-flex items-center justify-center h-7 w-7">
@@ -1070,6 +1069,12 @@ export default function UnitDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <LeaseAddDialog
+        open={addLeaseOpen}
+        onOpenChange={setAddLeaseOpen}
+        prefillPropertyId={unit.propertyId}
+        prefillUnitId={unit.id}
+      />
     </div>
   );
 }
