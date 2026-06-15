@@ -813,7 +813,7 @@ export default function UnitDetail() {
                         </TableRow>
                       ))}
                       <TableRow className="bg-muted/30 border-t font-semibold hover:bg-muted/30">
-                        <TableCell className="text-sm" colSpan={7}>{t("reconciliation.overview.totals")}</TableCell>
+                        <TableCell className="text-sm" colSpan={7}>{t("common.total")}</TableCell>
                         <TableCell className="text-right font-mono text-sm">{formatCurrency(sorted.reduce((s, r) => s + r.totalCost, 0), property.currencyCode, property.locale)}</TableCell>
                         <TableCell className="text-right font-mono text-sm">{formatCurrency(directTotal + allocTotal, property.currencyCode, property.locale)}</TableCell>
                         <TableCell className="text-right font-mono text-sm">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</TableCell>
