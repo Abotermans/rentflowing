@@ -120,7 +120,7 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
               <CardHeader className="py-2"><CardTitle className="text-sm">Charge accounting</CardTitle></CardHeader>
               <CardContent className="text-sm space-y-1.5">
                 <Row label="Provisions billed" value={formatCurrency(p.recovery.provisionsBilled, cur, locale)} />
-                <Row label="Actual charges allocated" value={formatCurrency(p.recovery.actualRecoverable + (p.costs.totalActual - p.recovery.actualRecoverable - p.recovery.ownerBorne + p.recovery.actualRecovered), cur, locale)} />
+                <Row label="Actual recoverable charges" value={formatCurrency(p.recovery.actualRecoverable, cur, locale)} />
                 <Row label="Regularization delta"
                   value={formatCurrency(p.recovery.regularizationDelta, cur, locale)}
                   tone={p.recovery.regularizationDelta > 0 ? "warn" : p.recovery.regularizationDelta < 0 ? "success" : undefined} />
