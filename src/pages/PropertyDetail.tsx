@@ -312,29 +312,6 @@ export default function PropertyDetail() {
         </Collapsible>
       </div>
 
-      {/* Description */}
-      <Collapsible open={descriptionOpen} onOpenChange={setDescriptionOpen}>
-      <Card>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-            <CardTitle className="text-base font-medium flex-1 justify-start">{t("common.description")}</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEditProperty(); }}>
-                <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
-              </Button>
-              <span className="inline-flex items-center justify-center h-7 w-7">
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", descriptionOpen && "rotate-180")} />
-              </span>
-            </div>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">{property.description || "—"}</p>
-          </CardContent>
-        </CollapsibleContent>
-      </Card>
-      </Collapsible>
 
       {/* Units */}
       <Collapsible open={unitsOpen} onOpenChange={setUnitsOpen}>
