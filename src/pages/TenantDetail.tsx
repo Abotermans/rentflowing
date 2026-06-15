@@ -30,6 +30,7 @@ export default function TenantDetail() {
   const [receiptsOpen, setReceiptsOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
+  const [editTenantOpen, setEditTenantOpen] = useState(false);
 
   const tenant = tenants.find(tn => tn.id === id);
   if (!tenant) {
