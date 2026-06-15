@@ -1203,65 +1203,73 @@ export default function LeaseDetail() {
       </Card>
 
       {/* Payer Accounts */}
-      <Card>
-        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2">
-          <div className="min-w-0">
-            <CardTitle className="text-base font-medium text-left">{t("lease.payerAccounts")}</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">{t("lease.payerAccounts.desc")}</p>
-          </div>
-          <Button size="sm" variant="outline" className="h-8" onClick={() => openPayerForm(null)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> {t("lease.addPayer")}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {(lease.payerAccounts ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("lease.payerEmpty")}</p>
-          ) : (
-            <div className="rounded border overflow-hidden">
-              <Table className="[&_th]:px-2 [&_td]:px-2">
-                <TableHeader>
-                  <TableRow className="h-8">
-                    <TableHead className="h-8 text-sm">{t("lease.payerName")}</TableHead>
-                    <TableHead className="h-8 text-sm">{t("lease.payerIban")}</TableHead>
-                    <TableHead className="h-8 text-sm">{t("lease.payerBic")}</TableHead>
-                    <TableHead className="h-8 text-sm">{t("lease.payerNotes")}</TableHead>
-                    <TableHead className="h-8 text-sm w-[1%]" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(lease.payerAccounts ?? []).map(pa => (
-                    <TableRow key={pa.id} className="h-9">
-                      <TableCell className="text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">{pa.payerName || "—"}</span>
-                          {pa.isDefault && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                              {t("lease.payerDefault")}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm font-mono text-foreground">{pa.payerIban || "—"}</TableCell>
-                      <TableCell className="text-sm font-mono text-foreground">{pa.payerBic || "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{pa.notes || "—"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openPayerForm(pa.id)} aria-label={t("lease.editPayer")}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removePayerAccount(pa.id)} aria-label={t("lease.removePayer")}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Collapsible open={payerAccountsOpen} onOpenChange={setPayerAccountsOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 text-left">{t("lease.payerAccounts")}</CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", payerAccountsOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="flex justify-end mb-3">
+                <Button size="sm" variant="outline" className="h-8" onClick={() => openPayerForm(null)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> {t("lease.addPayer")}
+                </Button>
+              </div>
+              {(lease.payerAccounts ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("lease.payerEmpty")}</p>
+              ) : (
+                <div className="rounded border overflow-hidden">
+                  <Table className="[&_th]:px-2 [&_td]:px-2">
+                    <TableHeader>
+                      <TableRow className="h-8">
+                        <TableHead className="h-8 text-sm">{t("lease.payerName")}</TableHead>
+                        <TableHead className="h-8 text-sm">{t("lease.payerIban")}</TableHead>
+                        <TableHead className="h-8 text-sm">{t("lease.payerBic")}</TableHead>
+                        <TableHead className="h-8 text-sm">{t("lease.payerNotes")}</TableHead>
+                        <TableHead className="h-8 text-sm w-[1%]" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(lease.payerAccounts ?? []).map(pa => (
+                        <TableRow key={pa.id} className="h-9">
+                          <TableCell className="text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-foreground">{pa.payerName || "—"}</span>
+                              {pa.isDefault && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                  {t("lease.payerDefault")}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm font-mono text-foreground">{pa.payerIban || "—"}</TableCell>
+                          <TableCell className="text-sm font-mono text-foreground">{pa.payerBic || "—"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{pa.notes || "—"}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-1 justify-end">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openPayerForm(pa.id)} aria-label={t("lease.editPayer")}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removePayerAccount(pa.id)} aria-label={t("lease.removePayer")}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Amendments / Avenants */}
       <AmendmentsSection leaseId={lease.id} newAmendmentSignal={newAmendmentSignal} />
