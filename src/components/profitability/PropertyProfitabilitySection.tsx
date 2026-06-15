@@ -94,7 +94,6 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
     <Card>
       <CollapsibleTrigger asChild>
         <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0 gap-2">
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
           <CardTitle className="text-base font-medium flex-1 justify-start">{t("prof.title")}</CardTitle>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Badge variant="secondary" className="text-[10px]">{t("prof.beforeFinancing")}</Badge>
