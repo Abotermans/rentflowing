@@ -2084,7 +2084,7 @@ const fr: TranslationKeys = {
 
   // Detail page sections
   "detail.localSettings": "Paramètres locaux",
-  "detail.financialDefaults": "Données financières",
+  "detail.financialDefaults": "Valeurs par défaut du loyer et des charges",
   "detail.unitInformation": "Informations du lot",
   "detail.occupancySection": "Occupation",
   "detail.propertyContext": "Contexte du bien",
