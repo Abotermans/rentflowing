@@ -71,6 +71,9 @@ export default function Payments() {
   type CrSortKey = "date" | "payer" | "tenant" | "lease" | "received" | "unmatched" | "source" | "reference" | "status";
   const { sort: crSort, toggle: crToggle } = useTableSort<CrSortKey>("date", "desc");
 
+  type AlSortKey = "date" | "receiptRef" | "receivable" | "type" | "tenant" | "amount" | "method";
+  const { sort: alSort, toggle: alToggle } = useTableSort<AlSortKey>("date", "desc");
+
   // KPIs
 
   // Enriched receivables
@@ -157,11 +160,23 @@ export default function Payments() {
     const ri = receivableItems.find(r => r.id === al.receivableItemId);
     const tenant = ri?.tenantId ? tenants.find(tn => tn.id === ri.tenantId) : undefined;
     return { ...al, receipt, ri, tenant };
-  }).sort((a, b) => b.allocationDate.localeCompare(a.allocationDate));
+  });
+
+  const sortedAllocations = sortRows(enrichedAllocations, alSort, (al, key) => {
+    switch (key) {
+      case "date": return al.allocationDate;
+      case "receiptRef": return al.receipt?.reference ?? al.cashReceiptId;
+      case "receivable": return al.ri?.label ?? "";
+      case "type": return al.ri?.itemType ?? "";
+      case "tenant": return al.tenant ? getTenantFullName(al.tenant) : "";
+      case "amount": return al.allocatedAmount;
+      case "method": return al.allocationType;
+    }
+  });
 
   const rvPg = usePagination(sortedReceivables);
   const crPg = usePagination(sortedReceipts);
-  const alPg = usePagination(enrichedAllocations);
+  const alPg = usePagination(sortedAllocations);
 
   const selectedLease = formLeaseId ? leases.find(l => l.id === formLeaseId) : undefined;
   const selectedProp = selectedLease ? properties.find(p => p.id === selectedLease.propertyId) : undefined;
@@ -402,13 +417,13 @@ export default function Payments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">{t("payments.table.date")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.receiptRef")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.receivable")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.type")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.tenant")}</TableHead>
-                    <TableHead className="text-xs text-right">{t("payments.table.amount")}</TableHead>
-                    <TableHead className="text-xs">{t("payments.table.method")}</TableHead>
+                    <SortableTableHead sortKey="date" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.date")}</SortableTableHead>
+                    <SortableTableHead sortKey="receiptRef" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.receiptRef")}</SortableTableHead>
+                    <SortableTableHead sortKey="receivable" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.receivable")}</SortableTableHead>
+                    <SortableTableHead sortKey="type" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.type")}</SortableTableHead>
+                    <SortableTableHead sortKey="tenant" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.tenant")}</SortableTableHead>
+                    <SortableTableHead sortKey="amount" sort={alSort} onSort={alToggle} align="right" className="text-xs">{t("payments.table.amount")}</SortableTableHead>
+                    <SortableTableHead sortKey="method" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.method")}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
