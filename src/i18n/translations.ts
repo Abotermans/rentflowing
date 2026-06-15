@@ -22,6 +22,7 @@ const en = {
   // Common actions
   "action.add": "Add",
   "action.edit": "Edit",
+ "lease.editOnlyDraft": "Only draft leases can be edited. Use an amendment for other changes.",
   "action.delete": "Delete",
   "action.save": "Save",
   "action.saveChanges": "Save Changes",
@@ -1499,6 +1500,7 @@ const fr: TranslationKeys = {
   // Common actions
   "action.add": "Ajouter",
   "action.edit": "Modifier",
+  "lease.editOnlyDraft": "Seuls les baux en brouillon peuvent être modifiés. Utilisez un avenant pour les autres changements.",
   "action.delete": "Supprimer",
   "action.save": "Enregistrer",
   "action.saveChanges": "Enregistrer les modifications",
