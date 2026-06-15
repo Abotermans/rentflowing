@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, StickyNote, Clock, AlertTriangle, Banknote, MoreVertical, Trash2, ChevronDown, Pencil } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
@@ -14,6 +14,7 @@ import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { TenantDialog } from "@/components/tenants/TenantDialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TenantDetail() {
@@ -29,6 +30,7 @@ export default function TenantDetail() {
   const [receiptsOpen, setReceiptsOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
+  const [editTenantOpen, setEditTenantOpen] = useState(false);
 
   const tenant = tenants.find(tn => tn.id === id);
   if (!tenant) {
@@ -98,9 +100,14 @@ export default function TenantDetail() {
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.contactInfo")}</CardTitle>
-            <span className="inline-flex items-center justify-center h-7 w-7">
-              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", contactOpen && "rotate-180")} />
-            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setEditTenantOpen(true); }}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", contactOpen && "rotate-180")} />
+              </span>
+            </div>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -367,6 +374,8 @@ export default function TenantDetail() {
         </Card>
         </Collapsible>
       )}
+
+      <TenantDialog open={editTenantOpen} onOpenChange={setEditTenantOpen} editingTenant={tenant} />
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t("tenantDetail.created")}: {formatDate(tenant.createdAt, activeProperty?.locale)}</span>
