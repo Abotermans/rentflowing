@@ -329,7 +329,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           </div>
         )}
       </CardContent>
-      )}
+      </CollapsibleContent>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -442,5 +442,6 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
         </DialogContent>
       </Dialog>
     </Card>
+    </Collapsible>
   );
 }
