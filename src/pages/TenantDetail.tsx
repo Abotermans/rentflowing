@@ -14,6 +14,7 @@ import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
+import { TenantDialog } from "@/components/tenants/TenantDialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TenantDetail() {
