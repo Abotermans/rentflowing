@@ -635,16 +635,14 @@ export default function UnitDetail() {
                 <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
                 </CardTitle>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 mr-1"
+                  size="sm"
+                  className="mr-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/maintenance?create=1&propertyId=${unit.propertyId}&unitId=${unit.id}`);
                   }}
-                  aria-label={t("maintenance.newTicket")}
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 mr-2" />{t("maintenance.add")}
                 </Button>
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", maintenanceOpen && "rotate-180")} />
