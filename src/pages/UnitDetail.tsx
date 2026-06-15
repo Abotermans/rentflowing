@@ -681,12 +681,19 @@ export default function UnitDetail() {
         if (totalBurden === 0) return null;
 
         return (
+          <Collapsible open={costsOpen} onOpenChange={setCostsOpen}>
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                <Banknote className="h-4 w-4" />{t("units.costsTaxesBurden")}
-              </CardTitle>
-            </CardHeader>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+                <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 justify-start">
+                  <Banknote className="h-4 w-4" />{t("units.costsTaxesBurden")}
+                </CardTitle>
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", costsOpen && "rotate-180")} />
+                </span>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-md bg-muted/50 border">
