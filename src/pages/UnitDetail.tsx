@@ -38,6 +38,7 @@ import { getAllRentTiers } from "@/lib/rentTiers";
 import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
 import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTicketDialog";
 import { CostEntryDialog } from "@/components/costs/CostEntryDialog";
+import { UnitProfitabilitySection } from "@/components/profitability/UnitProfitabilitySection";
 
 import type { TranslationKey } from "@/i18n/translations";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
