@@ -177,6 +177,10 @@ export default function LeaseDetail() {
   const [moveOutMode, setMoveOutMode] = useState<"schedule" | "complete">("schedule");
   const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [documentsAmendmentFilter, setDocumentsAmendmentFilter] = useState<string | null>(null);
+  const [documentsCount, setDocumentsCount] = useState<number>(0);
+  const [amendmentDocCounts, setAmendmentDocCounts] = useState<Record<string, number>>({});
 
   // Return form
   const [returnSheetOpen, setReturnSheetOpen] = useState(false);
