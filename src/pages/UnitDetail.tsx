@@ -36,6 +36,7 @@ import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { getAllRentTiers } from "@/lib/rentTiers";
 import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
+import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTicketDialog";
 
 import type { TranslationKey } from "@/i18n/translations";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -110,6 +111,7 @@ export default function UnitDetail() {
   const [infoOpen, setInfoOpen] = useState(true);
   const [financialsOpen, setFinancialsOpen] = useState(true);
   const [addLeaseOpen, setAddLeaseOpen] = useState(false);
+  const [addTicketOpen, setAddTicketOpen] = useState(false);
   const [occupancyOpen, setOccupancyOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [costsOpen, setCostsOpen] = useState(true);
@@ -639,7 +641,7 @@ export default function UnitDetail() {
                   className="mr-1"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/maintenance?create=1&propertyId=${unit.propertyId}&unitId=${unit.id}`);
+                    setAddTicketOpen(true);
                   }}
                 >
                   <Plus className="h-4 w-4 mr-2" />{t("maintenance.add")}
@@ -1074,6 +1076,13 @@ export default function UnitDetail() {
         onOpenChange={setAddLeaseOpen}
         prefillPropertyId={unit.propertyId}
         prefillUnitId={unit.id}
+      />
+      <MaintenanceTicketDialog
+        open={addTicketOpen}
+        onOpenChange={setAddTicketOpen}
+        prefillPropertyId={unit.propertyId}
+        prefillUnitId={unit.id}
+        lockUnit
       />
     </div>
   );

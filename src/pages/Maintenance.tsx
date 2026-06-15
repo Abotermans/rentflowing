@@ -18,10 +18,8 @@ import {
 } from "@/lib/filterIcons";
 import { CircleDot, Tag, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTicketDialog";
 import { useToast } from "@/hooks/use-toast";
 import { getTenantFullName } from "@/types";
 import { MaintenanceTicket, MaintenanceCategory, MaintenancePriority, MaintenanceStatus, MAINTENANCE_CATEGORY_KEYS, MAINTENANCE_PRIORITY_KEYS, MAINTENANCE_STATUS_KEYS } from "@/types/maintenance";
@@ -31,10 +29,8 @@ import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 
-type TicketFormData = Omit<MaintenanceTicket, "id">;
-
 export default function Maintenance() {
-  const { tickets, properties, units, tenants, vendors, addTicket, updateTicket, deleteTicket } = useAppData();
+  const { tickets, properties, units, tenants, vendors, deleteTicket } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const navigate = useNavigate();
@@ -47,26 +43,21 @@ export default function Maintenance() {
   const [filterVendor, setFilterVendor] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceTicket | null>(null);
+  const [prefillPropertyId, setPrefillPropertyId] = useState<string | undefined>(undefined);
+  const [prefillUnitId, setPrefillUnitId] = useState<string | undefined>(undefined);
 
   type MSortKey = "title" | "property" | "unit" | "tenant" | "category" | "priority" | "status" | "vendor" | "created" | "scheduled";
   const { sort, toggle } = useTableSort<MSortKey>();
 
-  const emptyForm: TicketFormData = {
-    title: "", description: "", propertyId: properties[0]?.id ?? "", unitId: "",
-    tenantId: null, category: "general", priority: "medium", status: "open",
-    createdDate: new Date().toISOString().split("T")[0], scheduledDate: null,
-    completedDate: null, assignedVendorId: null, internalNotes: "", residentVisibleNotes: "",
-  };
-  const [form, setForm] = useState<TicketFormData>({ ...emptyForm });
-
-  const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setSheetOpen(true); };
+  const openAdd = () => { setEditing(null); setPrefillPropertyId(undefined); setPrefillUnitId(undefined); setSheetOpen(true); };
 
   useEffect(() => {
     if (searchParams.get("create") === "1") {
-      const propertyId = searchParams.get("propertyId") ?? properties[0]?.id ?? "";
-      const unitId = searchParams.get("unitId") ?? "";
+      const propertyId = searchParams.get("propertyId") ?? undefined;
+      const unitId = searchParams.get("unitId") ?? undefined;
       setEditing(null);
-      setForm({ ...emptyForm, propertyId, unitId });
+      setPrefillPropertyId(propertyId);
+      setPrefillUnitId(unitId);
       setSheetOpen(true);
       const next = new URLSearchParams(searchParams);
       next.delete("create");
@@ -78,32 +69,15 @@ export default function Maintenance() {
   }, [searchParams]);
   const openEdit = (ticket: MaintenanceTicket) => {
     setEditing(ticket);
-    const { id, ...rest } = ticket;
-    setForm(rest);
+    setPrefillPropertyId(undefined);
+    setPrefillUnitId(undefined);
     setSheetOpen(true);
-  };
-
-  const handleSave = () => {
-    if (!form.title.trim() || !form.propertyId || !form.unitId) {
-      toast({ title: t("common.validationError"), description: t("maintenance.validationDesc"), variant: "destructive" });
-      return;
-    }
-    if (editing) {
-      updateTicket({ ...editing, ...form });
-      toast({ title: t("maintenance.toastUpdated") });
-    } else {
-      addTicket(form);
-      toast({ title: t("maintenance.toastCreated") });
-    }
-    setSheetOpen(false);
   };
 
   const handleDelete = (id: string) => {
     deleteTicket(id);
     toast({ title: t("maintenance.toastDeleted") });
   };
-
-  const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
   const filtered = tickets.filter(ticket => {
     const prop = properties.find(p => p.id === ticket.propertyId);
@@ -267,79 +241,13 @@ export default function Maintenance() {
         </Card>
       )}
 
-      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? t("maintenance.edit") : t("maintenance.newTicket")}</DialogTitle></DialogHeader>
-          <div className="space-y-4 mt-6">
-            <div><Label>{t("maintenance.titleField")} *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder={t("maintenance.briefPlaceholder")} /></div>
-            <div><Label>{t("common.description")}</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("maintenance.property")} *</Label>
-                <Select value={form.propertyId} onValueChange={v => setForm(f => ({ ...f, propertyId: v, unitId: "" }))}>
-                  <SelectTrigger><SelectValue placeholder={t("maintenance.selectProperty")} /></SelectTrigger>
-                  <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>{t("maintenance.unit")} *</Label>
-                <Select value={form.unitId} onValueChange={v => setForm(f => ({ ...f, unitId: v }))}>
-                  <SelectTrigger><SelectValue placeholder={t("maintenance.selectUnit")} /></SelectTrigger>
-                  <SelectContent>{formUnits.map(u => <SelectItem key={u.id} value={u.id}>{u.unitCode} — {u.unitLabel}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div><Label>{t("maintenance.tenantOptional")}</Label>
-              <Select value={form.tenantId ?? "none"} onValueChange={v => setForm(f => ({ ...f, tenantId: v === "none" ? null : v }))}>
-                <SelectTrigger><SelectValue placeholder={t("maintenance.selectTenant")} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t("common.none")}</SelectItem>
-                  {tenants.map(tn => <SelectItem key={tn.id} value={tn.id}>{getTenantFullName(tn)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("maintenance.category")}</Label>
-                <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v as MaintenanceCategory }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{(Object.keys(MAINTENANCE_CATEGORY_KEYS) as MaintenanceCategory[]).map(c => <SelectItem key={c} value={c}>{t(MAINTENANCE_CATEGORY_KEYS[c])}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>{t("maintenance.priority")}</Label>
-                <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v as MaintenancePriority }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{(Object.keys(MAINTENANCE_PRIORITY_KEYS) as MaintenancePriority[]).map(p => <SelectItem key={p} value={p}>{t(MAINTENANCE_PRIORITY_KEYS[p])}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("maintenance.status")}</Label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as MaintenanceStatus }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{(Object.keys(MAINTENANCE_STATUS_KEYS) as MaintenanceStatus[]).map(s => <SelectItem key={s} value={s}>{t(MAINTENANCE_STATUS_KEYS[s])}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>{t("maintenance.assignedVendor")}</Label>
-                <Select value={form.assignedVendorId ?? "none"} onValueChange={v => setForm(f => ({ ...f, assignedVendorId: v === "none" ? null : v }))}>
-                  <SelectTrigger><SelectValue placeholder={t("maintenance.selectVendor")} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("maintenance.unassigned")}</SelectItem>
-                    {vendors.filter(v => v.status === "active").map(v => <SelectItem key={v.id} value={v.id}>{v.vendorName}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("maintenance.scheduledDate")}</Label><Input type="date" value={form.scheduledDate ?? ""} onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value || null }))} /></div>
-              <div><Label>{t("maintenance.completedDate")}</Label><Input type="date" value={form.completedDate ?? ""} onChange={e => setForm(f => ({ ...f, completedDate: e.target.value || null }))} /></div>
-            </div>
-            <div><Label>{t("maintenance.internalNotes")}</Label><Textarea value={form.internalNotes} onChange={e => setForm(f => ({ ...f, internalNotes: e.target.value }))} rows={3} /></div>
-            <div><Label>{t("maintenance.residentNotes")}</Label><Textarea value={form.residentVisibleNotes} onChange={e => setForm(f => ({ ...f, residentVisibleNotes: e.target.value }))} rows={2} /></div>
-          </div>
-          <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
-            <Button onClick={handleSave}>{editing ? t("action.save") : t("maintenance.createTicket")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MaintenanceTicketDialog
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        editing={editing}
+        prefillPropertyId={prefillPropertyId}
+        prefillUnitId={prefillUnitId}
+      />
     </div>
   );
 }
