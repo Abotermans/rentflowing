@@ -343,6 +343,7 @@ export default function UnitDetail() {
     { label: t("units.bathrooms"), value: String(unit.bathrooms), icon: Bath },
     { label: t("units.furnished"), value: unit.furnished ? t("common.yes") : t("common.no"), icon: Sofa },
     { label: t("units.availableFrom"), value: unit.availableFrom ? formatDate(unit.availableFrom, property.locale) : "—", icon: CalendarClock },
+    { label: t("common.description"), value: unit.description || "—", icon: FileText },
   ];
 
   return (
