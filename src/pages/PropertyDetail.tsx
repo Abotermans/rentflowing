@@ -85,6 +85,10 @@ export default function PropertyDetail() {
 
   const [propertyEditOpen, setPropertyEditOpen] = useState(false);
   const [propertyForm, setPropertyForm] = useState<PropertyEditData | null>(null);
+  const [overviewOpen, setOverviewOpen] = useState(true);
+  const [localSettingsOpen, setLocalSettingsOpen] = useState(true);
+  const [descriptionOpen, setDescriptionOpen] = useState(true);
+  const [costsOpen, setCostsOpen] = useState(true);
   const openEditProperty = () => {
     if (!property) return;
     const { id: _id, createdAt, updatedAt, ...rest } = property;
