@@ -1500,6 +1500,7 @@ const fr: TranslationKeys = {
   // Common actions
   "action.add": "Ajouter",
   "action.edit": "Modifier",
+  "lease.editOnlyDraft": "Seuls les baux en brouillon peuvent être modifiés. Utilisez un avenant pour les autres changements.",
   "action.delete": "Supprimer",
   "action.save": "Enregistrer",
   "action.saveChanges": "Enregistrer les modifications",
