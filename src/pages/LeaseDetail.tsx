@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
 import { cn } from "@/lib/utils";
 import { useParams, Link, useNavigate } from "react-router-dom";
