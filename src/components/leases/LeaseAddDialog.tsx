@@ -73,7 +73,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     unitId: prefillUnitId ?? "",
     primaryTenantId: "",
     coTenantIds: [], lifecycleStage: "draft", startDate: "", endDate: "",
-    monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
+    // dueDayOfMonth: 0 = unset. User must enter a value (1–28) before saving.
+    monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 0,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
     signedDate: null, notes: "", rentFormula: 1,
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
@@ -234,6 +235,10 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     }
     if (!form.primaryTenantId) {
       toast({ title: "Validation Error", description: "Please attach at least one tenant to the lease.", variant: "destructive" });
+      return;
+    }
+    if (!Number.isInteger(form.dueDayOfMonth) || form.dueDayOfMonth < 1 || form.dueDayOfMonth > 28) {
+      toast({ title: "Validation Error", description: t("leases.dueDayRequired"), variant: "destructive" });
       return;
     }
     for (const row of unitRows) {
