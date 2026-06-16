@@ -327,8 +327,8 @@ export default function Properties() {
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as "active" | "inactive" }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">{t("properties.active")}</SelectItem>
-                    <SelectItem value="inactive">{t("properties.inactive")}</SelectItem>
+                    <SelectItem value="active"><StatusBadge status="active" /></SelectItem>
+                    <SelectItem value="inactive"><StatusBadge status="inactive" /></SelectItem>
                   </SelectContent>
                 </Select>
                 <StatusTransitionAlert validation={propertyStatusValidation} />
