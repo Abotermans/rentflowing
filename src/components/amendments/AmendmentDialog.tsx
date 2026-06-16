@@ -499,7 +499,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
           <div className="col-span-2 border rounded p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <div className="text-xs font-medium">{t("amendments.unitChanges")}</div>
+                <div className="text-sm font-medium">{t("amendments.unitChanges")}</div>
                 <Popover open={addUnitOpen} onOpenChange={setAddUnitOpen}>
                   <PopoverTrigger asChild>
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
@@ -531,7 +531,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="rounded border overflow-hidden">
+              <div className="rounded overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="h-8">
@@ -654,7 +654,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
           <div className="col-span-2 border rounded p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-medium">{t("amendments.coTenants")}</div>
+              <div className="text-sm font-medium">{t("amendments.coTenants")}</div>
               <Popover open={addTenantOpen} onOpenChange={setAddTenantOpen}>
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
@@ -693,7 +693,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="rounded border overflow-hidden">
+            <div className="rounded overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="h-8">
