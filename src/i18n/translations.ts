@@ -310,7 +310,7 @@ const en = {
   "leases.end": "End",
   "leases.total": "Total",
   "leases.actions": "Actions",
-  "leases.formula": "Formula",
+  "leases.formula": "Rent Formula",
   "leases.formula.monthly": "Monthly",
   "leases.formula.sixMonths": "6-Month",
   "leases.formula.yearly": "1-Year",
