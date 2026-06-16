@@ -694,7 +694,20 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                 {t("leases.units.total")}: <span className="font-medium">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
               </div>
             </div>
-            <div><Label>{t("leases.dueDay")}</Label><Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} /></div>
+            <div>
+              <Label>{t("leases.dueDay")} *</Label>
+              <Input
+                type="number"
+                min={1}
+                max={28}
+                placeholder="1–28"
+                value={form.dueDayOfMonth > 0 ? form.dueDayOfMonth : ""}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  dueDayOfMonth: e.target.value === "" ? 0 : Number(e.target.value),
+                }))}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><Label>{t("leases.deposit")}</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
