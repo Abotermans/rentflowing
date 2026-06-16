@@ -298,7 +298,7 @@ const en = {
   "leases.emptyDesc": "Create your first lease to get started.",
   "leases.reference": "Reference",
   "leases.tenant": "Tenant",
-  "leases.primaryTenant": "Primary Tenant",
+  "leases.primaryTenant": "Tenant",
   "leases.unit": "Unit",
   "leases.property": "Property",
   "leases.period": "Period",
