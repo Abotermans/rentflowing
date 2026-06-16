@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
