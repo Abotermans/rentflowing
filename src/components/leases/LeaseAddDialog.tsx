@@ -519,7 +519,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                       <Label className="text-sm">{t("leases.wizard.tenantDetails")}</Label>
                       {attachedIds.length === 0 ? (
                         <p className="text-xs text-muted-foreground mt-2">
-                          {t("leases.wizard.selectTenantPlaceholder")}
+                          {"\n"}
                         </p>
                       ) : (
                         <div className="mt-2 rounded-md border">
