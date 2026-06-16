@@ -770,13 +770,13 @@ export default function LeaseDetail() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{lease.leaseReference}</h1>
               <StatusBadge status={lifecycle} />
+              <button className="text-sm text-primary hover:underline flex items-center" onClick={openDocumentsForLease}>
+                <FileText className="h-4 w-4 mr-1.5" />{t("documents.title")}
+                {documentsCount > 0 && <span className="ml-1 text-muted-foreground">({documentsCount})</span>}
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="text-sm text-primary hover:underline flex items-center" onClick={openDocumentsForLease}>
-              <FileText className="h-4 w-4 mr-1.5" />{t("documents.title")}
-              {documentsCount > 0 && <span className="ml-1 text-muted-foreground">({documentsCount})</span>}
-            </button>
             {lease.lifecycleStage === "draft" && (
               <Button variant="outline" size="sm" className="h-9" onClick={() => setEditDialogOpen(true)}>
                 <Pencil className="h-4 w-4 mr-1" />{t("action.edit")}
