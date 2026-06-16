@@ -614,7 +614,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                           <div><Label className="text-xs">{t("filter.status")} *</Label>
                             <Select value={tenantForm.status} onValueChange={v => setTenantForm(f => ({ ...f, status: v as TenantStatus }))}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                              <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}><StatusBadge status={s.value} /></SelectItem>)}</SelectContent>
                             </Select>
                           </div>
                         </div>
