@@ -474,54 +474,56 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
               )}
             </div>
 
-            <div>
-              <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-4">
-                <div>
-                  <Label className="mb-2 flex h-5 items-center">{t("leases.formula")} *</Label>
-                  <Select
-                    value={String(form.rentFormula)}
-                    disabled={commonTiers.length === 0}
-                    onValueChange={(raw) => {
-                      const months = Number(raw) as RentFormula;
-                      setUnitRows(prev => prev.map(r => {
-                        const u = units.find(uu => uu.id === r.unitId);
-                        if (!u) return r;
-                        const tier = getMonthlyRentForMonths(u, months);
-                        return tier == null ? r : { ...r, rentShare: tier };
-                      }));
-                      setForm(f => ({
-                        ...f,
-                        rentFormula: months,
-                        hasAdvancePayment: false,
-                        advancePaymentAmount: null,
-                        advancePaymentDate: null,
-                        advanceAllocationMethod: null,
-                        advanceAppliedTo: null,
-                        advanceAllocationStartDate: null,
-                        advanceAllocationDurationMonths: null,
-                        fixedMonthlyReductionAmount: null,
-                      }));
-                    }}
-                  >
-                    <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {commonTiers.length === 0 && (
-                        <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
-                      )}
-                      {commonTiers.map(tier => (
-                        <SelectItem key={tier.durationMonths} value={String(tier.durationMonths)}>
-                          {tier.durationMonths === 1
-                            ? t("leases.formula.monthly")
-                            : `${tier.durationMonths} months`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="mb-2 flex h-5 items-center">{t("leases.formula")} *</Label>
+                <Select
+                  value={String(form.rentFormula)}
+                  disabled={commonTiers.length === 0}
+                  onValueChange={(raw) => {
+                    const months = Number(raw) as RentFormula;
+                    setUnitRows(prev => prev.map(r => {
+                      const u = units.find(uu => uu.id === r.unitId);
+                      if (!u) return r;
+                      const tier = getMonthlyRentForMonths(u, months);
+                      return tier == null ? r : { ...r, rentShare: tier };
+                    }));
+                    setForm(f => ({
+                      ...f,
+                      rentFormula: months,
+                      hasAdvancePayment: false,
+                      advancePaymentAmount: null,
+                      advancePaymentDate: null,
+                      advanceAllocationMethod: null,
+                      advanceAppliedTo: null,
+                      advanceAllocationStartDate: null,
+                      advanceAllocationDurationMonths: null,
+                      fixedMonthlyReductionAmount: null,
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {commonTiers.length === 0 && (
+                      <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
+                    )}
+                    {commonTiers.map(tier => (
+                      <SelectItem key={tier.durationMonths} value={String(tier.durationMonths)}>
+                        {tier.durationMonths === 1
+                          ? t("leases.formula.monthly")
+                          : `${tier.durationMonths} months`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {commonTiers.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
+                )}
               </div>
-              {commonTiers.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
-              )}
+              <div>
+                <Label>{t("leases.dueDay")} *</Label>
+                <Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -547,9 +549,10 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                 <StatusTransitionAlert validation={statusValidation} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
               <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+              <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             </div>
             <div>
               <Label>{t("leases.dueDay")} *</Label>
@@ -618,7 +621,6 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                   : t("leases.chargesMode.provisionHelp")}
               </p>
             </div>
-            <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
           <DialogFooter className="mt-6">
