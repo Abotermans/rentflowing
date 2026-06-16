@@ -1281,7 +1281,6 @@ export default function LeaseDetail() {
                       ))}
                     </TableBody>
                   </Table>
-                </div>
               )}
             </CardContent>
           </CollapsibleContent>
