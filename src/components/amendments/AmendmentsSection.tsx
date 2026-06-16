@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, FileEdit, Eye, Trash2, AlertTriangle, Undo2, ChevronDown, Paperclip } from "lucide-react";
+import { Plus, FileEdit, Eye, Trash2, AlertTriangle, Undo2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -22,8 +22,6 @@ import { useIntegrityState } from "@/hooks/use-integrity-state";
 interface Props {
   leaseId: string;
   newAmendmentSignal?: number;
-  documentCounts?: Record<string, number>;
-  onOpenDocuments?: (amendmentId: string) => void;
 }
 
 const STATUS_CLS: Record<AmendmentStatus, string> = {
@@ -34,7 +32,7 @@ const STATUS_CLS: Record<AmendmentStatus, string> = {
   terminated: "bg-muted text-muted-foreground line-through",
 };
 
-export function AmendmentsSection({ leaseId, newAmendmentSignal, documentCounts, onOpenDocuments }: Props) {
+export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
   const { t, locale } = useSettings();
   const {
     leases, units, tenants,
@@ -283,31 +281,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal, documentCounts,
                         </TableCell>
                         <TableCell className="py-1.5">
                           <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                            {onOpenDocuments && (() => {
-                              const n = documentCounts?.[a.id] ?? 0;
-                              const label = t("amendments.tooltip.documents").replace("{n}", String(n));
-                              return (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7 relative"
-                                      onClick={() => onOpenDocuments(a.id)}
-                                      aria-label={label}
-                                    >
-                                      <Paperclip className="h-3.5 w-3.5" />
-                                      {n > 0 && (
-                                        <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-medium leading-[14px] text-center">
-                                          {n}
-                                        </span>
-                                      )}
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>{label}</TooltipContent>
-                                </Tooltip>
-                              );
-                            })()}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label={t("amendments.tooltip.edit")}>

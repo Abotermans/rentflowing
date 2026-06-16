@@ -1,0 +1,1 @@
+ALTER TABLE public.lease_documents DROP COLUMN IF EXISTS amendment_id;
