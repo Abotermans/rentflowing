@@ -704,26 +704,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
           </>)}
         </div>
         <DialogFooter className="mt-6">
-          {step === 2 && tenantSubView === "search" ? (
-            <>
-              <Button variant="outline" onClick={() => { setPendingExistingTenantId(""); setTenantSubView("workspace"); }}>{t("action.cancel")}</Button>
-              <Button
-                disabled={!pendingExistingTenantId}
-                onClick={() => {
-                  if (!pendingExistingTenantId) return;
-                  setForm(f => {
-                    if (!f.primaryTenantId) return { ...f, primaryTenantId: pendingExistingTenantId };
-                    if (f.primaryTenantId === pendingExistingTenantId || f.coTenantIds.includes(pendingExistingTenantId)) return f;
-                    return { ...f, coTenantIds: [...f.coTenantIds, pendingExistingTenantId] };
-                  });
-                  setPendingExistingTenantId("");
-                  setTenantSubView("workspace");
-                }}
-              >
-                {t("action.addSelected")}
-              </Button>
-            </>
-          ) : step === 2 && tenantSubView === "create" ? (
+          {step === 2 && tenantSubView === "create" ? (
             <>
               <Button variant="outline" onClick={() => { setTenantForm({ ...emptyTenantForm }); setTenantSubView("workspace"); }}>{t("action.cancel")}</Button>
               <Button
