@@ -45,6 +45,12 @@ const en = {
   "leases.wizard.createNewTenant": "Create new tenant",
   "leases.wizard.selectTenantPlaceholder": "Chois",
   "leases.wizard.makePrimary": "Make primary",
+ "leases.wizard.tenantsEmptyTitle": "No tenants added to this lease yet",
+ "leases.wizard.tenantsEmptySubtitle": "Search for an existing tenant or create a new profile.",
+ "leases.wizard.selectTenantMenu": "Select tenant",
+ "leases.wizard.searchExistingTenant": "Search existing tenant",
+ "action.addSelected": "Add selected",
+ "action.saveTenant": "Save tenant",
 
   // Filters
   "filter.all": "All",
@@ -1647,6 +1653,12 @@ const fr: TranslationKeys = {
   "leases.wizard.createNewTenant": "Créer un nouveau locataire",
   "leases.wizard.selectTenantPlaceholder": "Choisir un locataire…",
   "leases.wizard.makePrimary": "Définir comme principal",
+ "leases.wizard.tenantsEmptyTitle": "Aucun locataire ajouté à ce bail",
+ "leases.wizard.tenantsEmptySubtitle": "Recherchez un locataire existant ou créez un nouveau profil.",
+ "leases.wizard.selectTenantMenu": "Sélectionner un locataire",
+ "leases.wizard.searchExistingTenant": "Rechercher un locataire existant",
+ "action.addSelected": "Ajouter la sélection",
+ "action.saveTenant": "Enregistrer le locataire",
 
   // Filters
   "filter.all": "Tous",
