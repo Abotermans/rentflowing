@@ -110,6 +110,7 @@ export default function LeaseDetail() {
   const [occupancyOpen, setOccupancyOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
   const [payerAccountsOpen, setPayerAccountsOpen] = useState(true);
+  const [leaseSummaryOpen, setLeaseSummaryOpen] = useState(true);
 
   // Cash receipt form
   const [receiptSheetOpen, setReceiptSheetOpen] = useState(false);
@@ -1068,9 +1069,18 @@ export default function LeaseDetail() {
       )}
 
       {/* Lease Summary */}
-      <Card>
-        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-base font-medium text-left">{t("detail.leaseSummary")}</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+      <Collapsible open={leaseSummaryOpen} onOpenChange={setLeaseSummaryOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 text-left">{t("detail.leaseSummary")}</CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", leaseSummaryOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
           {(() => {
             const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
             const sortedAssignments = assignments.length > 0
@@ -1213,8 +1223,10 @@ export default function LeaseDetail() {
             {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
             {lease.terminationReason && <div><p className="text-xs text-muted-foreground">{t("detail.reason")}</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
           </div>
-        </CardContent>
+          </CardContent>
+        </CollapsibleContent>
       </Card>
+    </Collapsible>
 
       {/* Payer Accounts */}
       <Collapsible open={payerAccountsOpen} onOpenChange={setPayerAccountsOpen}>
