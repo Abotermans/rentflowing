@@ -16,7 +16,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, X as XIcon } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Plus, X as XIcon, Search, Users, ChevronDown } from "lucide-react";
 import { Lease, LifecycleStage, RentFormula, Tenant, TenantStatus, getTenantFullName } from "@/types";
 import type { LeaseUnitAssignmentType } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
