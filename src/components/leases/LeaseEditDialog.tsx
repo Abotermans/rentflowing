@@ -621,7 +621,6 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                   : t("leases.chargesMode.provisionHelp")}
               </p>
             </div>
-            <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
           <DialogFooter className="mt-6">
