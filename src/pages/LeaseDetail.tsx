@@ -1220,6 +1220,12 @@ export default function LeaseDetail() {
       </Card>
     </Collapsible>
 
+      {/* Amendments / Avenants */}
+      <AmendmentsSection
+        leaseId={lease.id}
+        newAmendmentSignal={newAmendmentSignal}
+      />
+
       {/* Payer Accounts */}
       <Collapsible open={payerAccountsOpen} onOpenChange={setPayerAccountsOpen}>
         <Card>
@@ -1286,12 +1292,6 @@ export default function LeaseDetail() {
           </CollapsibleContent>
         </Card>
       </Collapsible>
-
-      {/* Amendments / Avenants */}
-      <AmendmentsSection
-        leaseId={lease.id}
-        newAmendmentSignal={newAmendmentSignal}
-      />
 
       {portfolioId && (
         <LeaseDocumentsDialog
