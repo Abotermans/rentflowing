@@ -1,26 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSettings } from "@/context/SettingsContext";
-import { useAppData } from "@/context/AppContext";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Download, Trash2, X, FileText } from "lucide-react";
+import { Plus, Eye, Download, Trash2, FileText } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
-import { getLeaseAmendments } from "@/lib/amendments";
-import { useIntegrityState } from "@/hooks/use-integrity-state";
 
 interface LeaseDocumentRow {
   id: string;
   lease_id: string;
-  amendment_id: string | null;
   portfolio_id: string;
   title: string;
   document_date: string;
@@ -38,7 +32,6 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   leaseId: string;
   portfolioId: string;
-  initialAmendmentFilter?: string | null;
 }
 
 const BUCKET = "lease-documents";
@@ -51,27 +44,18 @@ function formatBytes(n: number | null): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId, initialAmendmentFilter }: Props) {
+export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId }: Props) {
   const { t, locale } = useSettings();
   const { toast } = useToast();
-  const s = useIntegrityState();
-  const { leases } = useAppData();
-  const lease = leases.find(l => l.id === leaseId);
-  const amendments = useMemo(
-    () => (lease ? getLeaseAmendments(leaseId, s.amendments) : []),
-    [lease, leaseId, s.amendments],
-  );
 
   const [docs, setDocs] = useState<LeaseDocumentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [filterAmendmentId, setFilterAmendmentId] = useState<string | null>(initialAmendmentFilter ?? null);
 
   // Upload form
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [docDate, setDocDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [amendmentId, setAmendmentId] = useState<string>("none");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -93,39 +77,25 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId,
 
   useEffect(() => {
     if (open) {
-      setFilterAmendmentId(initialAmendmentFilter ?? null);
       void refresh();
     } else {
       setUploadOpen(false);
       resetForm();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialAmendmentFilter]);
+  }, [open]);
 
   const resetForm = () => {
     setFile(null); setTitle(""); setDocDate(new Date().toISOString().slice(0, 10));
-    setAmendmentId(initialAmendmentFilter ?? "none"); setNotes("");
+    setNotes("");
   };
 
   const openUpload = () => {
     resetForm();
-    if (initialAmendmentFilter || filterAmendmentId) {
-      setAmendmentId(initialAmendmentFilter ?? filterAmendmentId ?? "none");
-    }
     setUploadOpen(true);
   };
 
-  const visibleDocs = useMemo(() => {
-    if (!filterAmendmentId) return docs;
-    return docs.filter(d => d.amendment_id === filterAmendmentId);
-  }, [docs, filterAmendmentId]);
-
-  const amendmentLabel = (id: string | null) => {
-    if (!id) return null;
-    const a = amendments.find(x => x.id === id);
-    if (!a) return `n°?`;
-    return `n°${a.amendmentNumber} – ${a.title}`;
-  };
+  const visibleDocs = docs;
 
   const openInTab = async (d: LeaseDocumentRow) => {
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(d.storage_path, 60);
@@ -203,7 +173,6 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId,
       const { error: dbErr } = await supabase.from("lease_documents").insert({
         id: docId,
         lease_id: leaseId,
-        amendment_id: amendmentId === "none" ? null : amendmentId,
         portfolio_id: portfolioId,
         title: trimmed.slice(0, 200),
         document_date: docDate,
@@ -242,20 +211,6 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId,
           </DialogTitle>
         </DialogHeader>
 
-        {filterAmendmentId && (
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1">
-              {t("documents.filteredBy").replace(
-                "{n}",
-                String(amendments.find(a => a.id === filterAmendmentId)?.amendmentNumber ?? "?"),
-              )}
-              <button onClick={() => setFilterAmendmentId(null)} className="ml-1" aria-label={t("documents.clearFilter")}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          </div>
-        )}
-
         <div className="flex items-center justify-end">
           {!uploadOpen && (
             <Button size="sm" className="h-8" onClick={openUpload}>
@@ -288,18 +243,6 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId,
                 <Label htmlFor="doc-date" className="text-xs">{t("documents.documentDate")}</Label>
                 <Input id="doc-date" type="date" className="h-9" value={docDate} onChange={(e) => setDocDate(e.target.value)} />
               </div>
-              <div>
-                <Label className="text-xs">{t("documents.amendment")}</Label>
-                <Select value={amendmentId} onValueChange={setAmendmentId}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("documents.amendmentNone")}</SelectItem>
-                    {amendments.map(a => (
-                      <SelectItem key={a.id} value={a.id}>n°{a.amendmentNumber} – {a.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="col-span-2">
                 <Label htmlFor="doc-notes" className="text-xs">{t("documents.notes")}</Label>
                 <Textarea id="doc-notes" value={notes} maxLength={1000} rows={2} onChange={(e) => setNotes(e.target.value)} />
@@ -321,7 +264,6 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId,
             <TableHeader>
               <TableRow className="h-8">
                 <TableHead className="h-8">{t("documents.col.title")}</TableHead>
-                <TableHead className="h-8">{t("documents.col.amendment")}</TableHead>
                 <TableHead className="h-8">{t("documents.col.date")}</TableHead>
                 <TableHead className="h-8">{t("documents.col.uploaded")}</TableHead>
                 <TableHead className="h-8 text-right">{t("documents.col.size")}</TableHead>
@@ -330,9 +272,9 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId,
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="py-6 text-center text-xs text-muted-foreground">…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="py-6 text-center text-xs text-muted-foreground">…</TableCell></TableRow>
               ) : visibleDocs.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">{t("documents.empty")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">{t("documents.empty")}</TableCell></TableRow>
               ) : (
                 visibleDocs.map(d => (
                   <TableRow key={d.id} className="h-9">
@@ -344,9 +286,6 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId,
                         {d.title}
                       </button>
                       {d.notes && <div className="text-xs text-muted-foreground truncate max-w-[260px]">{d.notes}</div>}
-                    </TableCell>
-                    <TableCell className="py-1 text-sm text-muted-foreground">
-                      {d.amendment_id ? amendmentLabel(d.amendment_id) : "—"}
                     </TableCell>
                     <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(d.document_date, locale)}</TableCell>
                     <TableCell className="py-1 text-xs text-muted-foreground">{formatDate(d.created_at.slice(0, 10), locale)}</TableCell>
