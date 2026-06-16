@@ -805,7 +805,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           );
         })()}
 
-        <DialogFooter className="gap-2 sm:gap-2 justify-between">
+        <DialogFooter className="gap-2 sm:gap-2 sm:justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {editable ? t("action.cancel") : t("action.close")}
           </Button>
