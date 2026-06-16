@@ -501,7 +501,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const property = properties.find(p => p.id === created.propertyId);
     const currencyCode = property?.currencyCode ?? "EUR";
     const { receivables } = generateLeaseReceivables(created, {
-      currencyCode, genId, today: ts,
+      currencyCode, genId, today: ts, leadDays: receivableLeadDays,
     });
     if (receivables.length > 0) {
       setReceivableItems(prev => [...prev, ...receivables]);
@@ -924,7 +924,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const property = properties.find(p => p.id === patched.propertyId);
       const currencyCode = property?.currencyCode ?? "EUR";
       const { receivables: regen } = generateLeaseReceivables(patched, {
-        currencyCode, genId, today: ts,
+        currencyCode, genId, today: ts, leadDays: receivableLeadDays,
       });
       setReceivableItems(prevRi => {
         const kept = prevRi.filter(ri =>
