@@ -143,7 +143,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal, documentCounts,
                   )}
                   {sortedUnits.length > 0 && (
                     <TableRow className="border-t border-border bg-muted/30 h-9">
-                      <TableCell colSpan={5} className="py-1 text-sm font-medium text-muted-foreground">Σ</TableCell>
+                      <TableCell colSpan={5} className="py-1 text-sm font-medium text-muted-foreground">Total</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
