@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { DeleteDialog } from "@/components/shared/DeleteDialog";
+
 import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, TenantStatus, Tenant, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS, ASSIGNMENT_TYPE_LABELS } from "@/types";
 import type { LeaseUnitAssignmentType } from "@/types";
 import { X as XIcon } from "lucide-react";
