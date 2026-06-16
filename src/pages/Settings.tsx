@@ -2,17 +2,25 @@ import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, Globe } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Settings as SettingsIcon, Globe, CalendarClock } from "lucide-react";
 import { LOCALE_LABELS, type Locale } from "@/i18n/translations";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
-  const { locale, setLocale, t } = useSettings();
+  const { locale, setLocale, t, receivableLeadDays, setReceivableLeadDays } = useSettings();
   const { toast } = useToast();
 
   const handleLocaleChange = (value: string) => {
     setLocale(value as Locale);
     toast({ title: t("settings.saved") });
+  };
+
+  const handleLeadDaysChange = (value: string) => {
+    if (value === "") return;
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0 || n > 120) return;
+    setReceivableLeadDays(n);
   };
 
   return (
@@ -55,7 +63,33 @@ export default function Settings() {
           </Card>
         </div>
 
-        {/* Placeholder for future settings sections */}
+        {/* Receivables Section */}
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("settings.receivables")}</h2>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">{t("settings.receivableLeadDays")}</CardTitle>
+              </div>
+              <CardDescription>{t("settings.receivableLeadDaysDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  max={120}
+                  className="w-32"
+                  value={receivableLeadDays}
+                  onChange={(e) => handleLeadDaysChange(e.target.value)}
+                  onBlur={() => toast({ title: t("settings.saved") })}
+                />
+                <span className="text-sm text-muted-foreground">{t("settings.daysBeforeDue")}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
