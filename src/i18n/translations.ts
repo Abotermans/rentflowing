@@ -1483,7 +1483,7 @@ const en = {
   // Profitability
   "prof.title": "Operational Return",
   "prof.beforeFinancing": "Before financing",
-  "prof.beforeFinancingNote": "NOI shown here excludes loan interest, principal, and debt service.",
+  "prof.beforeFinancingNote": "Net Operational Income (NOI) shown here excludes loan interest, principal, and debt service.",
   "prof.operationalOnlyFooter": "Operational return only — financing (loans, debt service, interest) is not included.",
   "prof.period.ytd": "YTD",
   "prof.period.12m": "12M",
