@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
@@ -129,7 +130,7 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
               <div><Label>{t("filter.status")} *</Label>
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as TenantStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}><StatusBadge status={s.value} /></SelectItem>)}</SelectContent>
                 </Select>
                 <StatusTransitionAlert validation={tenantStatusValidation} />
               </div>
