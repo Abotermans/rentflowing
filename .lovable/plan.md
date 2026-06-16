@@ -1,68 +1,63 @@
-# Receivables: due-day-driven status & global lead time
 
-Three coordinated changes so the lease's `dueDayOfMonth` truly drives when a receivable opens and when it goes overdue, and so the user can no longer create a lease without setting it.
+# Step 2 — Tenant Workspace Redesign
 
-## 1. Receivable due date = lease due day
+Scope: `src/components/leases/LeaseAddDialog.tsx` (Step 2 block only). Stepper, footer wiring, and steps 1 & 3 stay untouched. Same for `LeaseEditDialog` (not in scope unless you ask).
 
-Today every receivable is due on the cycle's `startDate` (always day 1 of the period). We'll instead use `lease.dueDayOfMonth` as the day-of-month for the due date.
+## State machine
 
-In `src/lib/leaseReceivables.ts`:
-- Replace `const dueDate = cycle.startDate;` with a computed date built from `cycle.startDate`'s year/month + `lease.dueDayOfMonth` (clamped to the month's last day so February stays valid).
-- Keep `periodMonth` = cycle start month.
-- `computeReceivableStatus` already flips to `overdue` when `dueDate < today`, so once the due date reflects the configured day, overdue is automatically driven by it. No change needed to the status helper.
+Add local state inside Step 2:
+- `subView: "workspace" | "search" | "create"` — default `"workspace"`
+- `pendingExistingTenantId` (already exists) reused by the search sub-view
+- `tenantForm` (already exists) reused by the create sub-view
+- Remove the existing `tenantMode` toggle (replaced by `subView`)
 
-## 2. Opening lead time moves to global Settings
+`attachedIds = [primaryTenantId, ...coTenantIds].filter(Boolean)` continues to drive the populated/empty branch. Helpers `attachAsPrimary` and `removeAttached` are kept as-is.
 
-Today lead time is `lease.advanceCycleLeadDays` (per-lease, advance billing only, default 15). We'll make it a single user-level setting that applies to ALL leases (monthly + advance).
+## View A — Selection Workspace
 
-- **SettingsContext** (`src/context/SettingsContext.tsx`): add `receivableLeadDays: number` + `setReceivableLeadDays`, persisted in `localStorage` under `app-receivable-lead-days` (default 15).
-- **Settings page** (`src/pages/Settings.tsx`): add a numeric input "Open receivables N days before due date" bound to the new setting, with helper text.
-- **i18n** (`src/i18n/translations.ts`): add EN/FR keys for the label + helper.
-- **leaseReceivables.ts**:
-  - Accept `leadDays: number` in `GenerateOptions` (required).
-  - Drop the `isAdvance`-only gating; apply the horizon `today + leadDays` to BOTH monthly and advance leases (cycle 1 is still always emitted so future-dated leases keep a visible schedule).
-  - Remove the read of `lease.advanceCycleLeadDays`.
-- **AppContext** (`src/context/AppContext.tsx`): pull `receivableLeadDays` from `useSettings()` and pass it into every `generateLeaseReceivables` call (replaces the current per-lease `leadDays` calculation around line 326).
-- **LeaseAddDialog / LeaseEditDialog**: remove the per-lease "Advance cycle lead days" input. Keep the field on the Lease type as deprecated/optional so legacy data doesn't break, but stop writing it from the UI.
+Header row inside the Step 2 panel:
+- Left: `Label` "Tenants" (use existing `leases.wizard.tenantDetails`)
+- Right: `DropdownMenu` button "Select Tenant ▾" (primary style, `Plus` icon), with two items:
+  - "Search Existing Tenant" → `Search` icon → `setSubView("search")` (disabled when no available existing tenants)
+  - "Create New Tenant" → `Plus` icon → `setSubView("create")`
 
-## 3. Due day mandatory on lease creation
+Body:
+- If `attachedIds.length === 0`: render `EmptyState` (existing component) with an `Users` icon, title `"No tenants added to this lease yet"`, description `"Search for an existing tenant or create a new profile."` Both strings added as new i18n keys.
+- Else: render the existing attached-tenants `Table` plus an additional left-most checkbox column (always checked, toggling it unattaches the row via `removeAttached`). Keep the existing row "X" remove button as a secondary control.
 
-In `src/components/leases/LeaseAddDialog.tsx`:
-- Initialize `dueDayOfMonth` as empty/undefined (instead of silently defaulting to 1) so the user must enter a value.
-- Mark the field required in the form (asterisk on the Label).
-- Add validation in the submit handler: if `dueDayOfMonth` is missing or not an integer between 1 and 28, block submit, focus the field, and show a toast/error message (reuse existing toast pattern). 1–28 keeps every month valid.
-- Add the corresponding i18n error key.
+## View B1 — Search Existing Tenant
 
-`LeaseEditDialog` already requires the value implicitly (existing leases have one); we'll just add the same 1–28 validation for consistency.
+Replaces the workspace body (the header dropdown is hidden while in this sub-view). Uses the existing `Select` over `availableExisting` (or, optional polish, swap to `Command`/`Popover` autocomplete — only if trivial). Footer in this sub-view is local, overriding the global footer area:
+- `Cancel` → `setSubView("workspace")`, clears `pendingExistingTenantId`
+- `Add Selected` (primary, disabled until a tenant is picked) → `attachAsPrimary(pendingExistingTenantId)`, clear it, `setSubView("workspace")`
 
-## Technical notes
+Implementation note: keep the global `DialogFooter` rendering but, when `step === 2 && subView !== "workspace"`, render the local action buttons instead of the global Back/Next pair (no markup duplication — branch inside the existing footer).
 
-- Due-date computation helper (inline in `leaseReceivables.ts`):
-  ```ts
-  function cycleDueDate(cycleStart: string, dueDay: number): string {
-    const [y, m] = cycleStart.split("-").map(Number);
-    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate(); // m is 1-based -> day 0 of next month
-    const day = Math.min(Math.max(dueDay, 1), lastDay);
-    return `${y}-${String(m).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-  }
-  ```
-- Horizon comparison stays on `cycle.startDate` (the period start), NOT the new due date — opening N days before due would otherwise open the cycle AFTER the period already started for due days late in the month. Lead time is "open N days before the cycle starts" which, combined with the new due-date logic, gives a predictable "open early, overdue after configured day" behavior.
-- Setting lives in `SettingsContext` (per-user, localStorage) to match how `locale` is stored today; no DB migration required.
-- `advanceCycleLeadDays` on the Lease type is kept as optional/legacy for now (no migration), but no longer read or written.
+## View B2 — Create New Tenant
 
-## Files to change
+Replaces the workspace body with the existing tenant form fields (firstName, lastName, email, phone, dateOfBirth, status, identificationNumber, currentAddress, notes). Local footer:
+- `Cancel` → discard `tenantForm`, `setSubView("workspace")`
+- `Save Tenant` (primary) → run existing validation (first/last/email required) → `addTenant(tenantForm)` → `attachAsPrimary(created.id)` → reset form → `setSubView("workspace")` → toast.
 
-- `src/lib/leaseReceivables.ts` — due date from `dueDayOfMonth`, lead days from options, drop per-lease lead.
-- `src/context/SettingsContext.tsx` — add `receivableLeadDays`.
-- `src/pages/Settings.tsx` — UI for the new setting.
-- `src/i18n/translations.ts` — new EN/FR keys (setting label + validation error).
-- `src/context/AppContext.tsx` — pass `receivableLeadDays` into generator.
-- `src/components/leases/LeaseAddDialog.tsx` — mandatory due day + validation; remove per-lease lead days input.
-- `src/components/leases/LeaseEditDialog.tsx` — remove per-lease lead days input; add 1–28 validation.
-- `src/pages/Leases.tsx` — drop the `advanceCycleLeadDays: 15` seed if no longer needed.
+## Global footer behaviour (unchanged contract)
+
+- Step 2 with `subView === "workspace"`:
+  - Left: `Back`
+  - Right: `Next` — `disabled` iff `attachedIds.length === 0` (replaces current ad-hoc validation toast). The existing on-click guard is removed since the button is now disabled instead.
+- Step 2 with `subView !== "workspace"`: footer shows the local `Cancel` / `Add Selected` or `Save Tenant` buttons described above.
+
+## i18n keys to add (en + fr) in `src/i18n/translations.ts`
+
+- `leases.wizard.tenantsEmptyTitle` — "No tenants added to this lease yet"
+- `leases.wizard.tenantsEmptySubtitle` — "Search for an existing tenant or create a new profile."
+- `leases.wizard.selectTenantMenu` — "Select tenant"
+- `leases.wizard.searchExistingTenant` — "Search existing tenant"
+- `leases.wizard.createNewTenant` already exists — reuse.
+- `action.addSelected` — "Add selected"
+- `action.saveTenant` — "Save tenant"
 
 ## Out of scope
 
-- No backend/DB migration (settings are local; receivables are recomputed client-side).
-- No change to `computeReceivableStatus` itself — it already uses `dueDate < today`.
-- Existing leases without an explicit due day keep their stored value; nothing to backfill.
+- No changes to data model, AppContext, Step 1, Step 3, or `LeaseEditDialog`.
+- No nested Dialog/Sheet — all sub-views render inline inside the existing wizard `DialogContent`, satisfying the "no nested modals" constraint.
+- Stale leftover code on line 521-523 (the `"\n"` placeholder paragraph) is removed as part of the empty-state replacement.
