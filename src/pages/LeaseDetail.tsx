@@ -813,9 +813,6 @@ export default function LeaseDetail() {
               <DropdownMenuContent align="end" className="w-56">
                 {lease.lifecycleStage === "pending-signature" && (
                   <>
-                    <DropdownMenuItem onSelect={() => openMarkSignedDialog()}>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />{t("lease.markSigned")}
-                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleCancelSignature()}>
                       <Undo2 className="h-4 w-4 mr-2" />{t("lease.cancelSignature")}
                     </DropdownMenuItem>
@@ -841,24 +838,9 @@ export default function LeaseDetail() {
                   const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
                   return (
                     <>
-                      <DropdownMenuItem onSelect={() => openRenewDialog()}>
-                        <RefreshCw className="h-4 w-4 mr-2" />{t("lease.renew")}
-                      </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleMarkEnded()} disabled={endDisabled}>
                         <CheckCircle2 className="h-4 w-4 mr-2" />{t("detail.markEnded")}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
-                        <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  );
-                })()}
-                {lease.lifecycleStage === "ended" && (() => {
-                  const termCheck = canChangeLeaseStatus(lease.id, "terminated", integrityState);
-                  const termDisabled = !termCheck.allowed && !termCheck.overrideAllowed;
-                  return (
-                    <>
                       <DropdownMenuItem onSelect={() => handleMarkTerminated()} disabled={termDisabled} className="text-destructive focus:text-destructive">
                         <XCircle className="h-4 w-4 mr-2" />{t("detail.terminate")}
                       </DropdownMenuItem>
