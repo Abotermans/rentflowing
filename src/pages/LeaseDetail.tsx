@@ -1241,8 +1241,7 @@ export default function LeaseDetail() {
               {(lease.payerAccounts ?? []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("lease.payerEmpty")}</p>
               ) : (
-                <div className="rounded border overflow-hidden">
-                  <Table className="[&_th]:px-2 [&_td]:px-2">
+                <Table>
                     <TableHeader>
                       <TableRow className="h-8">
                         <TableHead className="h-8 text-sm">{t("lease.payerName")}</TableHead>
@@ -1282,7 +1281,6 @@ export default function LeaseDetail() {
                       ))}
                     </TableBody>
                   </Table>
-                </div>
               )}
             </CardContent>
           </CollapsibleContent>
