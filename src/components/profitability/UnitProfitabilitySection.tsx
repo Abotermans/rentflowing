@@ -94,9 +94,6 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <CardContent className="space-y-4">
-          <Alert className="py-2">
-            <AlertDescription className="text-xs">{t("prof.beforeFinancingNote")}</AlertDescription>
-          </Alert>
 
           <ProfitabilityBar revenue={p.revenue.egi} ownerBorne={p.recovery.ownerBorne} noi={p.noi}
             currencyCode={cur} locale={locale} />
