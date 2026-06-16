@@ -1069,9 +1069,18 @@ export default function LeaseDetail() {
       )}
 
       {/* Lease Summary */}
-      <Card>
-        <CardHeader className="pb-3 flex-row items-center space-y-0"><CardTitle className="text-base font-medium text-left">{t("detail.leaseSummary")}</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+      <Collapsible open={leaseSummaryOpen} onOpenChange={setLeaseSummaryOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex-1 text-left">{t("detail.leaseSummary")}</CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", leaseSummaryOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
           {(() => {
             const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
             const sortedAssignments = assignments.length > 0
