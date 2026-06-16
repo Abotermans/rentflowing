@@ -29,6 +29,7 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
+import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 
@@ -555,8 +556,49 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
               <Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("leases.deposit")}</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>{t("leases.noticePeriod")}</Label><Input value={form.noticePeriodText} onChange={e => setForm(f => ({ ...f, noticePeriodText: e.target.value }))} /></div>
+              <div>
+                <Label>{t("leases.deposit")}</Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.depositOrGuaranteeAmount ?? ""}
+                    onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <Label>{t("leases.noticePeriod")}</Label>
+                {(() => {
+                  const parsed = parseNoticeText(form.noticePeriodText);
+                  const setNotice = (value: string, unit: NoticeUnit) => {
+                    setForm(f => ({ ...f, noticePeriodText: serializeNotice(value, unit) }));
+                  };
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-24"
+                        value={parsed.value}
+                        onChange={e => setNotice(e.target.value, parsed.unit)}
+                      />
+                      <Select value={parsed.unit} onValueChange={v => setNotice(parsed.value, v as NoticeUnit)}>
+                        <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="days">{t("amendments.noticeUnit.days")}</SelectItem>
+                          <SelectItem value="weeks">{t("amendments.noticeUnit.weeks")}</SelectItem>
+                          <SelectItem value="months">{t("amendments.noticeUnit.months")}</SelectItem>
+                          <SelectItem value="years">{t("amendments.noticeUnit.years")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
             <div>
               <Label>{t("leases.chargesBillingMode")}</Label>

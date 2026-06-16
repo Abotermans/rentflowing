@@ -29,31 +29,11 @@ import { Badge } from "@/components/ui/badge";
 import type { Lease, LeaseUnitAssignmentType } from "@/types";
 import { ASSIGNMENT_TYPE_LABELS } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
+import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
 
 type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">;
 
 const ANC_ROLES: LeaseUnitAssignmentType[] = ["parking", "cellar", "storage", "office-secondary", "commercial-addon", "ancillary", "other"];
-
-type NoticeUnit = "days" | "weeks" | "months" | "years";
-
-function parseNoticeText(text: string): { value: string; unit: NoticeUnit } {
-  if (!text) return { value: "", unit: "months" };
-  const m = text.match(/(\d+)\s*(day|week|month|year|jour|semaine|mois|année|annee|an)s?\b/i);
-  if (!m) return { value: "", unit: "months" };
-  const n = m[1];
-  const u = m[2].toLowerCase();
-  let unit: NoticeUnit = "months";
-  if (u.startsWith("day") || u.startsWith("jour")) unit = "days";
-  else if (u.startsWith("week") || u.startsWith("semaine")) unit = "weeks";
-  else if (u.startsWith("year") || u.startsWith("an")) unit = "years";
-  else unit = "months";
-  return { value: n, unit };
-}
-
-function serializeNotice(value: string, unit: NoticeUnit): string {
-  if (!value) return "";
-  return `${value} ${unit}`;
-}
 
 function deriveAmendmentType(changes: ChangeDraft[], lease: Lease): AmendmentType {
   const cats = new Set<AmendmentType>();
