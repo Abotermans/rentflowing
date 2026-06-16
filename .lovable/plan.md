@@ -1,91 +1,68 @@
-## Goal
-Manage documents on a lease: upload, list, view (new tab), download, delete. Documents can optionally be linked to an amendment, and an amendment row exposes a shortcut to its documents.
+# Receivables: due-day-driven status & global lead time
 
-## UX
+Three coordinated changes so the lease's `dueDayOfMonth` truly drives when a receivable opens and when it goes overdue, and so the user can no longer create a lease without setting it.
 
-### Entry points
-- **Lease header** — new outline button `Documents (n)` next to Edit / status actions in `LeaseDetail.tsx`. Opens the modal in "all lease documents" mode.
-- **Amendments table** — new icon column "Docs" with a paperclip button + small count badge per row. Opens the same modal, filtered to that amendment. The modal preselects the amendment in the upload form too.
+## 1. Receivable due date = lease due day
 
-### The modal (centered shadcn `Dialog`, project standard for CRUD)
-Header: "Documents" + count. Optional sub-header chip "Filtered by amendment n°X — clear" when launched from an amendment row.
+Today every receivable is due on the cycle's `startDate` (always day 1 of the period). We'll instead use `lease.dueDayOfMonth` as the day-of-month for the due date.
 
-Toolbar (right-aligned): `Upload document` button (`h-8`, primary).
+In `src/lib/leaseReceivables.ts`:
+- Replace `const dueDate = cycle.startDate;` with a computed date built from `cycle.startDate`'s year/month + `lease.dueDayOfMonth` (clamped to the month's last day so February stays valid).
+- Keep `periodMonth` = cycle start month.
+- `computeReceivableStatus` already flips to `overdue` when `dueDate < today`, so once the due date reflects the configured day, overdue is automatically driven by it. No change needed to the status helper.
 
-Body: dense `Table` matching existing lease tables.
+## 2. Opening lead time moves to global Settings
 
-| Title | Amendment | Document date | Uploaded | Size | Actions |
-|---|---|---|---|---|---|
+Today lead time is `lease.advanceCycleLeadDays` (per-lease, advance billing only, default 15). We'll make it a single user-level setting that applies to ALL leases (monthly + advance).
 
-- **Title** — clickable, opens the file in a new tab (same as the eye icon).
-- **Amendment** — "—" if none, else `n°{X} – {title}` linking to the amendment row.
-- **Document date** — user-entered.
-- **Uploaded** — `formatDate` + uploader name (from `profiles`).
-- **Size** — human-readable.
-- **Actions** — `Eye` (open new tab, signed URL), `Download` (signed URL with `download` param), `Trash2` (confirm dialog, any member).
+- **SettingsContext** (`src/context/SettingsContext.tsx`): add `receivableLeadDays: number` + `setReceivableLeadDays`, persisted in `localStorage` under `app-receivable-lead-days` (default 15).
+- **Settings page** (`src/pages/Settings.tsx`): add a numeric input "Open receivables N days before due date" bound to the new setting, with helper text.
+- **i18n** (`src/i18n/translations.ts`): add EN/FR keys for the label + helper.
+- **leaseReceivables.ts**:
+  - Accept `leadDays: number` in `GenerateOptions` (required).
+  - Drop the `isAdvance`-only gating; apply the horizon `today + leadDays` to BOTH monthly and advance leases (cycle 1 is still always emitted so future-dated leases keep a visible schedule).
+  - Remove the read of `lease.advanceCycleLeadDays`.
+- **AppContext** (`src/context/AppContext.tsx`): pull `receivableLeadDays` from `useSettings()` and pass it into every `generateLeaseReceivables` call (replaces the current per-lease `leadDays` calculation around line 326).
+- **LeaseAddDialog / LeaseEditDialog**: remove the per-lease "Advance cycle lead days" input. Keep the field on the Lease type as deprecated/optional so legacy data doesn't break, but stop writing it from the UI.
 
-Empty state: shared `EmptyState` pattern. Sorting via existing `useTableSort`.
+## 3. Due day mandatory on lease creation
 
-### Upload form (inline panel inside the same modal, toggled by the Upload button — keeps the single-modal rule)
-Fields:
-- **File** (required, single file, `<input type="file">` with drag-drop zone; accept any type; client max 20 MB).
-- **Title** (required, defaults to file name minus extension).
-- **Document date** (required, defaults to today, `<input type="date">`).
-- **Amendment** (optional `Select` of the lease's amendments; preselected when opened from a row).
-- **Notes** (optional `Textarea`).
+In `src/components/leases/LeaseAddDialog.tsx`:
+- Initialize `dueDayOfMonth` as empty/undefined (instead of silently defaulting to 1) so the user must enter a value.
+- Mark the field required in the form (asterisk on the Label).
+- Add validation in the submit handler: if `dueDayOfMonth` is missing or not an integer between 1 and 28, block submit, focus the field, and show a toast/error message (reuse existing toast pattern). 1–28 keeps every month valid.
+- Add the corresponding i18n error key.
 
-`Save` / `Cancel`. Save uploads to Storage then inserts the metadata row; toast on success/error.
+`LeaseEditDialog` already requires the value implicitly (existing leases have one); we'll just add the same 1–28 validation for consistency.
 
-### Amendment row column
-Compact icon button (`h-7 w-7`, `Paperclip`) with a tiny numeric badge of attached docs (omit badge if 0). Opens modal filtered to that amendment. Tooltip: "Documents (n)".
+## Technical notes
 
-## Data model
+- Due-date computation helper (inline in `leaseReceivables.ts`):
+  ```ts
+  function cycleDueDate(cycleStart: string, dueDay: number): string {
+    const [y, m] = cycleStart.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate(); // m is 1-based -> day 0 of next month
+    const day = Math.min(Math.max(dueDay, 1), lastDay);
+    return `${y}-${String(m).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+  }
+  ```
+- Horizon comparison stays on `cycle.startDate` (the period start), NOT the new due date — opening N days before due would otherwise open the cycle AFTER the period already started for due days late in the month. Lead time is "open N days before the cycle starts" which, combined with the new due-date logic, gives a predictable "open early, overdue after configured day" behavior.
+- Setting lives in `SettingsContext` (per-user, localStorage) to match how `locale` is stored today; no DB migration required.
+- `advanceCycleLeadDays` on the Lease type is kept as optional/legacy for now (no migration), but no longer read or written.
 
-New private bucket `lease-documents`.
-- Object path: `{portfolio_id}/{lease_id}/{document_id}/{original_filename}` — keeps tenants isolated and avoids collisions.
+## Files to change
 
-New table `public.lease_documents`:
-- `id uuid pk`
-- `lease_id uuid not null fk leases(id) on delete cascade`
-- `amendment_id uuid null fk lease_amendments(id) on delete set null`
-- `portfolio_id uuid not null` (denormalized for RLS + path)
-- `title text not null`
-- `document_date date not null`
-- `notes text null`
-- `storage_path text not null` (object path in bucket)
-- `mime_type text null`
-- `size_bytes bigint null`
-- `original_filename text not null`
-- `uploaded_by uuid null fk auth.users(id)`
-- `created_at`, `updated_at`
+- `src/lib/leaseReceivables.ts` — due date from `dueDayOfMonth`, lead days from options, drop per-lease lead.
+- `src/context/SettingsContext.tsx` — add `receivableLeadDays`.
+- `src/pages/Settings.tsx` — UI for the new setting.
+- `src/i18n/translations.ts` — new EN/FR keys (setting label + validation error).
+- `src/context/AppContext.tsx` — pass `receivableLeadDays` into generator.
+- `src/components/leases/LeaseAddDialog.tsx` — mandatory due day + validation; remove per-lease lead days input.
+- `src/components/leases/LeaseEditDialog.tsx` — remove per-lease lead days input; add 1–28 validation.
+- `src/pages/Leases.tsx` — drop the `advanceCycleLeadDays: 15` seed if no longer needed.
 
-GRANTs to `authenticated` + `service_role` (no `anon`). RLS: full CRUD for portfolio members via `is_portfolio_member(portfolio_id, auth.uid())`. `touch_updated_at` trigger.
+## Out of scope
 
-Storage policies on `storage.objects` for bucket `lease-documents`: SELECT/INSERT/DELETE restricted to portfolio members, derived by joining the first path segment (`portfolio_id`) against `portfolio_members`.
-
-## File operations
-- **Upload**: `supabase.storage.from('lease-documents').upload(path, file)` → insert metadata row. Rollback row insert on storage failure and vice versa.
-- **View**: `createSignedUrl(path, 60)` then `window.open(url, '_blank')`.
-- **Download**: `createSignedUrl(path, 60, { download: original_filename })` then trigger an `<a>` click.
-- **Delete**: remove storage object first, then delete row (best-effort; surface partial-failure toast).
-
-## Implementation outline
-1. **Migration** — create bucket via `supabase--storage_create_bucket` (private), then a migration creating `lease_documents`, GRANTs, RLS, trigger, and storage.objects policies.
-2. **Context** — extend `AppContext` with `leaseDocuments` cache + `listLeaseDocuments(leaseId)`, `createLeaseDocument`, `deleteLeaseDocument`. Fetch on lease detail load.
-3. **Component** — `src/components/leases/LeaseDocumentsDialog.tsx` (the centered Dialog described above). Reuses `useTableSort`, `EmptyState`, `formatDate`, signed-URL helpers.
-4. **LeaseDetail** — add `documentsOpen` state, header button with count, render the dialog. Pass `initialAmendmentFilter` prop.
-5. **AmendmentsSection** — add the `Paperclip` column with count badge, wire onClick to open the documents dialog (lift state via a callback prop from `LeaseDetail`, since the dialog lives there).
-6. **i18n** — add `documents.title`, `documents.upload`, `documents.col.*`, `documents.empty`, `documents.confirmDelete`, `documents.filteredBy`, `documents.clearFilter`, `documents.tooltip.view`, `documents.tooltip.download`, `documents.tooltip.delete`, `documents.amendment`, `documents.notes`, `documents.size`, `amendments.tooltip.documents`, in EN + FR.
-7. **Validation** — `zod` schema for the upload form (title non-empty ≤ 200 chars, date required, notes ≤ 1000 chars, file size ≤ 20 MB).
-
-## Gaps in the original prompt (called out for confirmation later)
-- **No versioning / revision history** — uploads are immutable; to "replace" you delete + re-upload. Confirm acceptable.
-- **No bulk upload, multi-select, or zip download** — out of scope.
-- **No preview thumbnails / inline PDF viewer** — "view" opens a new tab. Browser handles rendering.
-- **No virus scanning** — relies on private bucket + portfolio-member ACL. Document this limitation.
-- **No category/type field** (you opted out). Filter is only by amendment.
-- **No audit trail of views/downloads** — only upload metadata is stored.
-- **Deletion is hard-delete** — does NOT go through the domain-integrity layer (matches your "any member can delete anytime" choice). Note: this diverges from the project rule "never hard-delete records with history"; confirm documents are exempt.
-- **Amendment unlink** — deleting an amendment sets `amendment_id` to NULL on its documents; the document stays in the lease list. Confirm vs. cascading delete.
-- **File-size cap = 20 MB** (client-enforced; matches Lovable upload cap). Storage bucket itself has no per-file cap configured.
-- **MIME whitelist** — none; any file type accepted. Confirm whether to restrict to pdf/doc/image.
+- No backend/DB migration (settings are local; receivables are recomputed client-side).
+- No change to `computeReceivableStatus` itself — it already uses `dueDate < today`.
+- Existing leases without an explicit due day keep their stored value; nothing to backfill.

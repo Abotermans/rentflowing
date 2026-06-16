@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Plus, X as XIcon, Info } from "lucide-react";
+import { Plus, X as XIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -262,6 +261,10 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
       return;
     }
+    if (!Number.isInteger(form.dueDayOfMonth) || form.dueDayOfMonth < 1 || form.dueDayOfMonth > 28) {
+      toast({ title: "Validation Error", description: t("leases.dueDayRequired"), variant: "destructive" });
+      return;
+    }
     if (form.lifecycleStage !== lease.lifecycleStage) {
       const validation = canChangeLeaseStatus(lease.id, form.lifecycleStage, integrityState);
       if (!validation.allowed) {
@@ -514,32 +517,6 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                     </SelectContent>
                   </Select>
                 </div>
-                {form.rentFormula !== 1 && (
-                  <div>
-                    <Label className="mb-2 flex h-5 items-center gap-1 whitespace-nowrap">
-                      Generate next cycle
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-[260px]">
-                          <p className="text-xs">Number of days before the next payment is due that open receivables are created. Default is 15 days.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </Label>
-                    <div className="flex h-9 items-center gap-1">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={120}
-                        value={form.advanceCycleLeadDays ?? 15}
-                        onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
-                        className="h-9 w-[80px]"
-                      />
-                      <span className="text-sm text-muted-foreground">days before next payment is due</span>
-                    </div>
-                  </div>
-                )}
               </div>
               {commonTiers.length === 0 && (
                 <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
@@ -574,7 +551,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
               <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
             </div>
             <div>
-              <Label>{t("leases.dueDay")}</Label>
+              <Label>{t("leases.dueDay")} *</Label>
               <Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">

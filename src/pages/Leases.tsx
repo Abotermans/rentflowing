@@ -111,7 +111,7 @@ export default function Leases() {
   const emptyForm: LeaseFormData = {
     leaseReference: "", propertyId: properties[0]?.id ?? "", unitId: "", primaryTenantId: "",
     coTenantIds: [], lifecycleStage: "draft", startDate: "", endDate: "",
-    monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
+    monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 0,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
     signedDate: null, notes: "", rentFormula: 1,
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,

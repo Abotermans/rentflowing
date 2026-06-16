@@ -497,6 +497,11 @@ const en = {
   "settings.languageDesc": "Choose the display language for the application.",
   "settings.general": "General",
   "settings.saved": "Settings saved",
+  "settings.receivables": "Receivables",
+  "settings.receivableLeadDays": "Receivable opening lead time",
+  "settings.receivableLeadDaysDesc": "Number of days before a receivable's due date that the receivable is automatically opened. Applies to all leases.",
+  "settings.daysBeforeDue": "days before due date",
+  "leases.dueDayRequired": "Due day is required (1–28).",
 
   // Dashboard
   "dashboard.title": "Dashboard",
@@ -2094,6 +2099,11 @@ const fr: TranslationKeys = {
   "settings.languageDesc": "Choisissez la langue d'affichage de l'application.",
   "settings.general": "Général",
   "settings.saved": "Paramètres enregistrés",
+  "settings.receivables": "Quittances",
+  "settings.receivableLeadDays": "Délai d'ouverture des quittances",
+  "settings.receivableLeadDaysDesc": "Nombre de jours avant la date d'échéance d'une quittance à partir desquels elle est ouverte automatiquement. S'applique à tous les baux.",
+  "settings.daysBeforeDue": "jours avant l'échéance",
+  "leases.dueDayRequired": "Le jour d'échéance est obligatoire (1 à 28).",
 
   // Dashboard
   "dashboard.title": "Tableau de bord",

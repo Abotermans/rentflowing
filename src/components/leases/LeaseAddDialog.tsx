@@ -16,8 +16,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Plus, X as XIcon, Info } from "lucide-react";
+import { Plus, X as XIcon } from "lucide-react";
 import { Lease, LifecycleStage, RentFormula, Tenant, TenantStatus, getTenantFullName } from "@/types";
 import type { LeaseUnitAssignmentType } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
@@ -73,7 +72,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     unitId: prefillUnitId ?? "",
     primaryTenantId: "",
     coTenantIds: [], lifecycleStage: "draft", startDate: "", endDate: "",
-    monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 1,
+    // dueDayOfMonth: 0 = unset. User must enter a value (1–28) before saving.
+    monthlyRent: 0, monthlyCharges: 0, dueDayOfMonth: 0,
     depositOrGuaranteeAmount: null, noticePeriodText: "3 months",
     signedDate: null, notes: "", rentFormula: 1,
     noticeGiven: false, noticeDate: null, intendedMoveOutDate: null, terminationReason: null,
@@ -234,6 +234,10 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     }
     if (!form.primaryTenantId) {
       toast({ title: "Validation Error", description: "Please attach at least one tenant to the lease.", variant: "destructive" });
+      return;
+    }
+    if (!Number.isInteger(form.dueDayOfMonth) || form.dueDayOfMonth < 1 || form.dueDayOfMonth > 28) {
+      toast({ title: "Validation Error", description: t("leases.dueDayRequired"), variant: "destructive" });
       return;
     }
     for (const row of unitRows) {
@@ -481,32 +485,6 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                   </SelectContent>
                 </Select>
               </div>
-              {form.rentFormula !== 1 && (
-                <div>
-                  <Label className="mb-2 flex h-5 items-center gap-1 whitespace-nowrap">
-                    Generate next cycle
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[260px]">
-                        <p className="text-xs">Number of days before the next payment is due that open receivables are created. Default is 15 days.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </Label>
-                  <div className="flex h-9 items-center gap-1">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={120}
-                      value={form.advanceCycleLeadDays ?? 15}
-                      onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
-                      className="h-9 w-[80px]"
-                    />
-                    <span className="text-sm text-muted-foreground">days before next payment is due</span>
-                  </div>
-                </div>
-              )}
             </div>
             {commonTiers.length === 0 && (
               <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
@@ -715,7 +693,20 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                 {t("leases.units.total")}: <span className="font-medium">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
               </div>
             </div>
-            <div><Label>{t("leases.dueDay")}</Label><Input type="number" min={1} max={28} value={form.dueDayOfMonth} onChange={e => setForm(f => ({ ...f, dueDayOfMonth: Number(e.target.value) || 1 }))} /></div>
+            <div>
+              <Label>{t("leases.dueDay")} *</Label>
+              <Input
+                type="number"
+                min={1}
+                max={28}
+                placeholder="1–28"
+                value={form.dueDayOfMonth > 0 ? form.dueDayOfMonth : ""}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  dueDayOfMonth: e.target.value === "" ? 0 : Number(e.target.value),
+                }))}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><Label>{t("leases.deposit")}</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
