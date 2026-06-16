@@ -313,28 +313,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, [currentPortfolioId, portfolioLoading]);
 
-  // ===== Advance billing: auto-generate cycle receivables when their lead
-  // window opens. Idempotent — keyed on (leaseId, cycleIndex). Runs whenever
-  // leases change (or on mount).
+  // ===== Auto-generate cycle receivables when their global lead window
+  // opens. Idempotent — keyed on (leaseId, cycleIndex). Runs whenever
+  // leases, properties, or the global lead-days setting change. Applies to
+  // both monthly and advance leases; due dates derive from the lease's
+  // `dueDayOfMonth`.
   useEffect(() => {
     const today = now();
     const toAdd: ReceivableItem[] = [];
+    const leadDays = Math.max(0, receivableLeadDays ?? 0);
+    const horizon = new Date(Date.UTC(
+      Number(today.slice(0, 4)),
+      Number(today.slice(5, 7)) - 1,
+      Number(today.slice(8, 10)) + leadDays,
+    )).toISOString().slice(0, 10);
+    const cycleDueDate = (cycleStart: string, dueDay: number): string => {
+      const [y, m] = cycleStart.split("-").map(Number);
+      const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      const day = Math.min(Math.max(Math.floor(dueDay || 1), 1), lastDay);
+      return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    };
     for (const lease of leases) {
-      if ((lease.rentFormula || 1) <= 1) continue;
       if (lease.lifecycleStage === "ended" || lease.lifecycleStage === "terminated") continue;
       const property = properties.find(p => p.id === lease.propertyId);
       const currencyCode = property?.currencyCode ?? "EUR";
       const cycles = computeCycles(lease);
-      const leadDays = lease.advanceCycleLeadDays ?? 15;
-      const horizon = new Date(Date.UTC(
-        Number(today.slice(0, 4)),
-        Number(today.slice(5, 7)) - 1,
-        Number(today.slice(8, 10)) + leadDays,
-      )).toISOString().slice(0, 10);
+      const isAdvance = (lease.rentFormula || 1) > 1;
+      const dueDay = lease.dueDayOfMonth || 1;
       for (const cycle of cycles) {
         if (cycle.index > 1 && cycle.startDate > horizon) continue;
+        const periodMonth = cycle.startDate.slice(0, 7);
+        const dueDate = cycleDueDate(cycle.startDate, dueDay);
         const already = receivableItems.some(
-          r => r.leaseId === lease.id && r.cycleIndex === cycle.index,
+          r => r.leaseId === lease.id
+            && (
+              (r.cycleIndex != null && r.cycleIndex === cycle.index)
+              || (r.cycleIndex == null && r.periodMonth === periodMonth && r.dueDate === dueDate)
+            ),
         );
         if (already) continue;
         const ts = today;
@@ -344,8 +359,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             leaseId: lease.id, tenantId: lease.primaryTenantId,
             propertyId: lease.propertyId, unitId: lease.unitId,
             itemType: "rent",
-            label: `Rent — ${cycle.months}-month advance (cycle ${cycle.index}, ${cycle.months} mo)`,
-            periodMonth: cycle.startDate.slice(0, 7), dueDate: cycle.startDate,
+            label: isAdvance
+              ? `Rent — ${cycle.months}-month advance (cycle ${cycle.index}, ${cycle.months} mo)`
+              : "Monthly Rent",
+            periodMonth, dueDate,
             currencyCode,
             expectedAmount: cycle.rentTotal, allocatedAmount: 0, outstandingAmount: cycle.rentTotal,
             status: "open", priority: 10, origin: "lease-schedule", notes: "",
@@ -361,8 +378,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             leaseId: lease.id, tenantId: lease.primaryTenantId,
             propertyId: lease.propertyId, unitId: lease.unitId,
             itemType: "charges",
-            label: `Charges — ${cycle.months}-month advance (cycle ${cycle.index}, ${cycle.months} mo)`,
-            periodMonth: cycle.startDate.slice(0, 7), dueDate: cycle.startDate,
+            label: isAdvance
+              ? `Charges — ${cycle.months}-month advance (cycle ${cycle.index}, ${cycle.months} mo)`
+              : "Monthly Charges",
+            periodMonth, dueDate,
             currencyCode,
             expectedAmount: cycle.chargesTotal, allocatedAmount: 0, outstandingAmount: cycle.chargesTotal,
             status: "open", priority: 20, origin: "lease-schedule", notes: "",
@@ -378,7 +397,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setReceivableItems(prev => [...prev, ...toAdd]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leases, properties]);
+  }, [leases, properties, receivableLeadDays]);
 
   // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
@@ -508,7 +527,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (currentPortfolioId) mirror.insertMany(TABLES.receivableItems, receivables, currentPortfolioId);
     }
     return created;
-  }, [properties, currentPortfolioId]);
+  }, [properties, currentPortfolioId, receivableLeadDays]);
   const updateLease = useCallback((l: Lease) => {
     const ts = now();
     const patched = { ...l, updatedAt: ts };
