@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { FileText, Plus, Search, Pencil, Trash2, Bell, Clock, CheckCircle2, Undo2, AlertTriangle, Info } from "lucide-react";
+import { FileText, Plus, Search, Pencil, Bell, Clock, CheckCircle2, Undo2, AlertTriangle, Info } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { DeleteDialog } from "@/components/shared/DeleteDialog";
+
 import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, TenantStatus, Tenant, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS, ASSIGNMENT_TYPE_LABELS } from "@/types";
 import type { LeaseUnitAssignmentType } from "@/types";
 import { X as XIcon } from "lucide-react";
@@ -90,7 +90,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 
 export default function Leases() {
   const navigate = useNavigate();
-  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, deleteLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits } = useAppData();
+  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -353,10 +353,6 @@ export default function Leases() {
     setPendingOverrideValidation(null);
   };
 
-  const handleDelete = (lid: string) => {
-    deleteLease(lid);
-    toast({ title: "Lease deleted" });
-  };
 
   const now = new Date();
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
@@ -624,25 +620,11 @@ export default function Leases() {
                     <TableCell className="text-right font-medium text-foreground">{prop ? formatCurrency(l.monthlyRent + l.monthlyCharges, prop.currencyCode, prop.locale) : l.monthlyRent + l.monthlyCharges}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        {l.lifecycleStage === "draft" ? (
+                        {l.lifecycleStage === "draft" && (
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit(l); }}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        ) : (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{t("lease.editOnlyDraft")}</TooltipContent>
-                          </Tooltip>
                         )}
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <DeleteDialog entityType="lease" entityId={l.id} entityLabel="lease" onDelete={handleDelete} />
-                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
