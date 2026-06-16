@@ -770,7 +770,6 @@ export type Database = {
       }
       lease_documents: {
         Row: {
-          amendment_id: string | null
           created_at: string
           document_date: string
           id: string
@@ -786,7 +785,6 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
-          amendment_id?: string | null
           created_at?: string
           document_date: string
           id?: string
@@ -802,7 +800,6 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
-          amendment_id?: string | null
           created_at?: string
           document_date?: string
           id?: string
@@ -818,13 +815,6 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "lease_documents_amendment_id_fkey"
-            columns: ["amendment_id"]
-            isOneToOne: false
-            referencedRelation: "lease_amendments"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "lease_documents_lease_id_fkey"
             columns: ["lease_id"]
