@@ -1223,8 +1223,10 @@ export default function LeaseDetail() {
             {lease.noticeDate && <div><p className="text-xs text-muted-foreground">{t("detail.noticeDate")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.noticeDate, locale)}</p></div>}
             {lease.terminationReason && <div><p className="text-xs text-muted-foreground">{t("detail.reason")}</p><p className="text-sm text-foreground">{lease.terminationReason}</p></div>}
           </div>
-        </CardContent>
+          </CardContent>
+        </CollapsibleContent>
       </Card>
+    </Collapsible>
 
       {/* Payer Accounts */}
       <Collapsible open={payerAccountsOpen} onOpenChange={setPayerAccountsOpen}>
