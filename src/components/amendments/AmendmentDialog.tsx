@@ -805,16 +805,16 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           );
         })()}
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="gap-2 sm:gap-2 justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {editable ? t("action.cancel") : t("action.close")}
           </Button>
           {editable && !isActive && (
-            <>
+            <div className="flex gap-2">
               <Button variant="outline" disabled={!canSubmit} onClick={() => save("draft")}>{t("amendments.saveDraft")}</Button>
               <Button variant="outline" disabled={!scheduleGate.ok} onClick={requestSchedule}>{t("amendments.schedule")}</Button>
               <Button disabled={!activateGate.ok} onClick={requestActivate}>{t("amendments.activate")}</Button>
-            </>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>
