@@ -127,7 +127,12 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
         chargesShare: u?.baseCharges ?? 0,
       }]);
     } else {
-      setUnitRows([]);
+      setUnitRows([{
+        unitId: "",
+        assignmentType: "primary",
+        rentShare: 0,
+        chargesShare: 0,
+      }]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
