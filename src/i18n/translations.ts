@@ -3078,7 +3078,7 @@ const fr: TranslationKeys = {
   // Profitability
   "prof.title": "Rendement opérationnel",
   "prof.beforeFinancing": "Avant financement",
-  "prof.beforeFinancingNote": "Le NOI affiché ici exclut les intérêts d'emprunt, le capital et le service de la dette.",
+  "prof.beforeFinancingNote": "Le Revenu Net d'Exploitation (NOI) affiché ici exclut les intérêts d'emprunt, le capital et le service de la dette.",
   "prof.operationalOnlyFooter": "Rendement opérationnel uniquement — le financement (emprunts, service de la dette, intérêts) n'est pas inclus.",
   "prof.period.ytd": "Année en cours",
   "prof.period.12m": "12 mois",
