@@ -16,8 +16,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Plus, X as XIcon, Info } from "lucide-react";
+import { Plus, X as XIcon } from "lucide-react";
 import { Lease, LifecycleStage, RentFormula, Tenant, TenantStatus, getTenantFullName } from "@/types";
 import type { LeaseUnitAssignmentType } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
