@@ -30,6 +30,7 @@ import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
@@ -331,7 +332,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
             </p>
           </div>
         </DialogHeader>
-        <div className="space-y-4 mt-6">
+        <div className="space-y-4 mt-3">
           {step === 1 && (<>
           <div className="grid grid-cols-2 gap-4">
             <div><Label>{t("leases.leaseReference")} *</Label><Input value={form.leaseReference} onChange={e => setForm(f => ({ ...f, leaseReference: e.target.value }))} placeholder="e.g. BAIL-PAR-003" /></div>
