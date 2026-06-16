@@ -529,97 +529,72 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                       <>
                         <div className="flex items-center justify-between">
                           <Label className="text-sm">{t("leases.tenant")}</Label>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button type="button" size="sm">
-                                {t("leases.wizard.selectTenantMenu")}
-                                <ChevronDown className="h-4 w-4 ml-1" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                disabled={availableExisting.length === 0}
-                                onSelect={() => setTenantSubView("search")}
-                              >
-                                <Search className="h-4 w-4 mr-2" />
-                                {t("leases.wizard.searchExistingTenant")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setTenantSubView("create")}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                {t("leases.wizard.createNewTenant")}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button type="button" size="sm" onClick={() => setTenantSubView("create")}>
+                            <Plus className="h-4 w-4 mr-1" />
+                            {t("leases.wizard.createNewTenant")}
+                          </Button>
                         </div>
-                        {attachedIds.length === 0 ? (
-                          <EmptyState
-                            icon={Users}
-                            title={t("leases.wizard.tenantsEmptyTitle")}
-                            description={t("leases.wizard.tenantsEmptySubtitle")}
-                          />
-                        ) : (
-                          <div className="rounded-md border">
-                            <Table className="w-full">
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="w-[40px]" />
-                                  <TableHead>{t("leases.tenant")}</TableHead>
-                                  <TableHead className="w-[140px]">{t("filter.status")}</TableHead>
-                                  <TableHead className="w-[60px]" />
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {attachedIds.map(id => {
-                                  const tt = tenants.find(x => x.id === id);
-                                  return (
-                                    <TableRow key={id}>
-                                      <TableCell>
-                                        <Checkbox
-                                          checked
-                                          onCheckedChange={(v) => { if (!v) removeAttached(id); }}
-                                        />
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="font-medium text-sm">{tt ? getTenantFullName(tt) : "—"}</div>
-                                        <div className="text-xs text-muted-foreground">{tt?.email}</div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <span className="text-xs text-muted-foreground">—</span>
-                                      </TableCell>
-                                      <TableCell>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => removeAttached(id)}
-                                        >
-                                          <XIcon className="h-4 w-4" />
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        )}
+                        <div className="rounded-md border">
+                          <Table className="w-full">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>{t("leases.tenant")}</TableHead>
+                                <TableHead>{t("tenants.email")}</TableHead>
+                                <TableHead className="w-[60px]" />
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {attachedIds.map(id => {
+                                const tt = tenants.find(x => x.id === id);
+                                return (
+                                  <TableRow key={id}>
+                                    <TableCell>
+                                      <div className="font-medium text-sm">{tt ? getTenantFullName(tt) : "—"}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm text-muted-foreground">{tt?.email ?? "—"}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => removeAttached(id)}
+                                      >
+                                        <XIcon className="h-4 w-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                              <TableRow>
+                                <TableCell>
+                                  <Select
+                                    value=""
+                                    onValueChange={(v) => { if (v) attachAsPrimary(v); }}
+                                    disabled={availableExisting.length === 0}
+                                  >
+                                    <SelectTrigger className="h-8">
+                                      <SelectValue placeholder={t("leases.selectTenant")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {availableExisting.map(tt => (
+                                        <SelectItem key={tt.id} value={tt.id}>
+                                          {getTenantFullName(tt)}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                </TableCell>
+                                <TableCell />
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
                       </>
-                    )}
-
-                    {tenantSubView === "search" && (
-                      <div className="space-y-3">
-                        <Label className="text-sm">{t("leases.wizard.searchExistingTenant")}</Label>
-                        <Select value={pendingExistingTenantId} onValueChange={setPendingExistingTenantId}>
-                          <SelectTrigger><SelectValue placeholder={t("leases.selectTenant")} /></SelectTrigger>
-                          <SelectContent>
-                            {availableExisting.map(tt => (
-                              <SelectItem key={tt.id} value={tt.id}>
-                                {getTenantFullName(tt)} — {tt.email}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
                     )}
 
                     {tenantSubView === "create" && (
@@ -729,26 +704,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
           </>)}
         </div>
         <DialogFooter className="mt-6">
-          {step === 2 && tenantSubView === "search" ? (
-            <>
-              <Button variant="outline" onClick={() => { setPendingExistingTenantId(""); setTenantSubView("workspace"); }}>{t("action.cancel")}</Button>
-              <Button
-                disabled={!pendingExistingTenantId}
-                onClick={() => {
-                  if (!pendingExistingTenantId) return;
-                  setForm(f => {
-                    if (!f.primaryTenantId) return { ...f, primaryTenantId: pendingExistingTenantId };
-                    if (f.primaryTenantId === pendingExistingTenantId || f.coTenantIds.includes(pendingExistingTenantId)) return f;
-                    return { ...f, coTenantIds: [...f.coTenantIds, pendingExistingTenantId] };
-                  });
-                  setPendingExistingTenantId("");
-                  setTenantSubView("workspace");
-                }}
-              >
-                {t("action.addSelected")}
-              </Button>
-            </>
-          ) : step === 2 && tenantSubView === "create" ? (
+          {step === 2 && tenantSubView === "create" ? (
             <>
               <Button variant="outline" onClick={() => { setTenantForm({ ...emptyTenantForm }); setTenantSubView("workspace"); }}>{t("action.cancel")}</Button>
               <Button
