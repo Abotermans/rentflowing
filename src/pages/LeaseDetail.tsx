@@ -1287,12 +1287,6 @@ export default function LeaseDetail() {
         </Card>
       </Collapsible>
 
-      {/* Amendments / Avenants */}
-      <AmendmentsSection
-        leaseId={lease.id}
-        newAmendmentSignal={newAmendmentSignal}
-      />
-
       {portfolioId && (
         <LeaseDocumentsDialog
           open={documentsOpen}
