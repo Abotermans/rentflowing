@@ -490,6 +490,7 @@ export default function UnitDetail() {
               <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link></div>
               <div><p className="text-xs text-muted-foreground">{t("properties.city")}</p><p className="text-sm font-medium text-foreground">{property.city}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("properties.country")}</p><p className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("properties.currency")}</p><p className="text-sm font-medium text-foreground font-mono">{property.currencyCode}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("properties.locale")}</p><p className="text-sm font-medium text-foreground font-mono">{property.locale}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("properties.measurement")}</p><p className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</p></div>
             </div>
@@ -543,7 +544,6 @@ export default function UnitDetail() {
           })()}
           <div className="grid grid-cols-2 gap-6 pt-2 border-t">
             <div><p className="text-xs text-muted-foreground">{t("detail.baseCharges")}</p><p className="text-sm font-semibold text-foreground">{unit.baseCharges != null ? formatCurrency(unit.baseCharges, property.currencyCode, property.locale) : "—"}</p></div>
-            <div><p className="text-xs text-muted-foreground">{t("properties.currency")}</p><p className="text-sm font-semibold text-foreground">{property.currencyCode}</p></div>
           </div>
         </CardContent>
         </CollapsibleContent>
