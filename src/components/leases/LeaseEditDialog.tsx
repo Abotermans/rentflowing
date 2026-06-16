@@ -262,6 +262,10 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
       return;
     }
+    if (!Number.isInteger(form.dueDayOfMonth) || form.dueDayOfMonth < 1 || form.dueDayOfMonth > 28) {
+      toast({ title: "Validation Error", description: t("leases.dueDayRequired"), variant: "destructive" });
+      return;
+    }
     if (form.lifecycleStage !== lease.lifecycleStage) {
       const validation = canChangeLeaseStatus(lease.id, form.lifecycleStage, integrityState);
       if (!validation.allowed) {
