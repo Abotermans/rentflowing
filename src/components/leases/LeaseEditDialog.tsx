@@ -486,7 +486,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                       const u = units.find(uu => uu.id === r.unitId);
                       if (!u) return r;
                       const tier = getMonthlyRentForMonths(u, months);
-                      return tier == null ? r : { ...r: r, rentShare: tier };
+                      return tier == null ? r : { ...r, rentShare: tier };
                     }));
                     setForm(f => ({
                       ...f,
