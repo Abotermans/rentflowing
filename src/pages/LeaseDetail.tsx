@@ -179,9 +179,7 @@ export default function LeaseDetail() {
   const [newAmendmentSignal, setNewAmendmentSignal] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [documentsAmendmentFilter, setDocumentsAmendmentFilter] = useState<string | null>(null);
   const [documentsCount, setDocumentsCount] = useState<number>(0);
-  const [amendmentDocCounts, setAmendmentDocCounts] = useState<Record<string, number>>({});
 
   // Return form
   const [returnSheetOpen, setReturnSheetOpen] = useState(false);
@@ -265,21 +263,15 @@ export default function LeaseDetail() {
     if (!lease?.id) return;
     const { data, error } = await supabase
       .from("lease_documents")
-      .select("id, amendment_id")
+      .select("id")
       .eq("lease_id", lease.id);
     if (error || !data) return;
     setDocumentsCount(data.length);
-    const map: Record<string, number> = {};
-    for (const row of data) {
-      if (row.amendment_id) map[row.amendment_id] = (map[row.amendment_id] ?? 0) + 1;
-    }
-    setAmendmentDocCounts(map);
   }, [lease?.id]);
 
   useEffect(() => { void refreshDocCounts(); }, [refreshDocCounts, documentsOpen]);
 
-  const openDocumentsForLease = () => { setDocumentsAmendmentFilter(null); setDocumentsOpen(true); };
-  const openDocumentsForAmendment = (amendmentId: string) => { setDocumentsAmendmentFilter(amendmentId); setDocumentsOpen(true); };
+  const openDocumentsForLease = () => { setDocumentsOpen(true); };
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -1301,8 +1293,6 @@ export default function LeaseDetail() {
       <AmendmentsSection
         leaseId={lease.id}
         newAmendmentSignal={newAmendmentSignal}
-        documentCounts={amendmentDocCounts}
-        onOpenDocuments={openDocumentsForAmendment}
       />
 
       {portfolioId && (
@@ -1311,7 +1301,6 @@ export default function LeaseDetail() {
           onOpenChange={(o) => { setDocumentsOpen(o); if (!o) void refreshDocCounts(); }}
           leaseId={lease.id}
           portfolioId={portfolioId}
-          initialAmendmentFilter={documentsAmendmentFilter}
         />
       )}
 
