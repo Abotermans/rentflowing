@@ -514,32 +514,6 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                     </SelectContent>
                   </Select>
                 </div>
-                {form.rentFormula !== 1 && (
-                  <div>
-                    <Label className="mb-2 flex h-5 items-center gap-1 whitespace-nowrap">
-                      Generate next cycle
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-[260px]">
-                          <p className="text-xs">Number of days before the next payment is due that open receivables are created. Default is 15 days.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </Label>
-                    <div className="flex h-9 items-center gap-1">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={120}
-                        value={form.advanceCycleLeadDays ?? 15}
-                        onChange={e => setForm(f => ({ ...f, advanceCycleLeadDays: e.target.value === "" ? null : Number(e.target.value) }))}
-                        className="h-9 w-[80px]"
-                      />
-                      <span className="text-sm text-muted-foreground">days before next payment is due</span>
-                    </div>
-                  </div>
-                )}
               </div>
               {commonTiers.length === 0 && (
                 <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
