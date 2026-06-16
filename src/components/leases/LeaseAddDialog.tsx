@@ -643,8 +643,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
             </div>
             <div><Label>{t("leases.status")} *</Label>
               <Select value={form.lifecycleStage} onValueChange={v => setForm(f => ({ ...f, lifecycleStage: v as LifecycleStage }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{LEASE_STAGES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                <SelectTrigger><StatusBadge status={form.lifecycleStage} /></SelectTrigger>
+                <SelectContent>{LEASE_STAGES.map(s => <SelectItem key={s.value} value={s.value} textValue={s.label}><StatusBadge status={s.value} /></SelectItem>)}</SelectContent>
               </Select>
               <StatusTransitionAlert validation={null} />
             </div>
@@ -653,35 +653,64 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
             <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
             <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-4 items-end">
-            <div className="rounded-md border border-border px-3 py-2 text-xs">
-              <div className="text-muted-foreground uppercase tracking-wide text-[10px]">{t("leases.units.grandTotal")}</div>
-              <div className="mt-1 text-foreground">
-                {t("leases.monthlyRent")}: <span className="font-medium">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
-                {" · "}
-                {t("leases.monthlyCharges")}: <span className="font-medium">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
-                {" · "}
-                {t("leases.units.total")}: <span className="font-medium">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</span>
+          <div>
+            <Label>{t("leases.dueDay")} *</Label>
+            <Input
+              type="number"
+              min={1}
+              max={28}
+              placeholder="1–28"
+              value={form.dueDayOfMonth > 0 ? form.dueDayOfMonth : ""}
+              onChange={e => setForm(f => ({
+                ...f,
+                dueDayOfMonth: e.target.value === "" ? 0 : Number(e.target.value),
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>{t("leases.deposit")}</Label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.depositOrGuaranteeAmount ?? ""}
+                  onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}
+                </span>
               </div>
             </div>
             <div>
-              <Label>{t("leases.dueDay")} *</Label>
-              <Input
-                type="number"
-                min={1}
-                max={28}
-                placeholder="1–28"
-                value={form.dueDayOfMonth > 0 ? form.dueDayOfMonth : ""}
-                onChange={e => setForm(f => ({
-                  ...f,
-                  dueDayOfMonth: e.target.value === "" ? 0 : Number(e.target.value),
-                }))}
-              />
+              <Label>{t("leases.noticePeriod")}</Label>
+              {(() => {
+                const parsed = parseNoticeText(form.noticePeriodText);
+                const setNotice = (value: string, unit: NoticeUnit) => {
+                  setForm(f => ({ ...f, noticePeriodText: serializeNotice(value, unit) }));
+                };
+                return (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="w-24"
+                      value={parsed.value}
+                      onChange={e => setNotice(e.target.value, parsed.unit)}
+                    />
+                    <Select value={parsed.unit} onValueChange={v => setNotice(parsed.value, v as NoticeUnit)}>
+                      <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="days">{t("amendments.noticeUnit.days")}</SelectItem>
+                        <SelectItem value="weeks">{t("amendments.noticeUnit.weeks")}</SelectItem>
+                        <SelectItem value="months">{t("amendments.noticeUnit.months")}</SelectItem>
+                        <SelectItem value="years">{t("amendments.noticeUnit.years")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })()}
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><Label>{t("leases.deposit")}</Label><Input type="number" min={0} value={form.depositOrGuaranteeAmount ?? ""} onChange={e => setForm(f => ({ ...f, depositOrGuaranteeAmount: e.target.value ? Number(e.target.value) : null }))} /></div>
-            <div><Label>{t("leases.noticePeriod")}</Label><Input value={form.noticePeriodText} onChange={e => setForm(f => ({ ...f, noticePeriodText: e.target.value }))} /></div>
           </div>
           <div>
             <Label>{t("leases.chargesBillingMode")}</Label>
