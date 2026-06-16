@@ -124,8 +124,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
-                      <div className="font-medium text-sm border-b pb-1.5">{t("reconciliation.overview.col.totalAmount")}</div>
-                      <div className="text-muted-foreground">{l.costLabel}</div>
+                      <div className="font-medium text-sm border-b pb-1.5">{l.costLabel}</div>
                       <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
                         <span className="text-muted-foreground">{t("reconciliation.overview.tip.fullCost")}</span>
                         <span className="text-right tabular-nums">{formatCurrency(l.costFullAmount, currency, locale)}</span>
