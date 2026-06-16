@@ -29,6 +29,7 @@ import { validateLeaseUnits, type DraftAssignment } from "@/lib/integrity/leaseU
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
