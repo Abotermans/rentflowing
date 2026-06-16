@@ -624,25 +624,11 @@ export default function Leases() {
                     <TableCell className="text-right font-medium text-foreground">{prop ? formatCurrency(l.monthlyRent + l.monthlyCharges, prop.currencyCode, prop.locale) : l.monthlyRent + l.monthlyCharges}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        {l.lifecycleStage === "draft" ? (
+                        {l.lifecycleStage === "draft" && (
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit(l); }}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        ) : (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{t("lease.editOnlyDraft")}</TooltipContent>
-                          </Tooltip>
                         )}
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <DeleteDialog entityType="lease" entityId={l.id} entityLabel="lease" onDelete={handleDelete} />
-                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
