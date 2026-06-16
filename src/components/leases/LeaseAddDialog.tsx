@@ -104,7 +104,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
   const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
   const [tenantForm, setTenantForm] = useState<TenantFormData>({ ...emptyTenantForm });
   const [step, setStep] = useState(1);
-  const [tenantMode, setTenantMode] = useState<"existing" | "new">("existing");
+  const [tenantSubView, setTenantSubView] = useState<"workspace" | "search" | "create">("workspace");
   const [pendingExistingTenantId, setPendingExistingTenantId] = useState<string>("");
 
   // Reset internal state every time the dialog opens.
@@ -114,7 +114,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     setForm(initialForm);
     setTenantForm({ ...emptyTenantForm });
     setStep(1);
-    setTenantMode(tenants.length > 0 ? "existing" : "new");
+    setTenantSubView("workspace");
     setPendingExistingTenantId("");
 
     // Pre-add a primary unit row when a unit is prefilled.
