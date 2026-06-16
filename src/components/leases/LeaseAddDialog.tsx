@@ -724,32 +724,76 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
           </>)}
         </div>
         <DialogFooter className="mt-6">
-          <>
-            {step > 1 ? (
-              <Button variant="outline" onClick={() => setStep(s => s - 1)}>{t("action.back")}</Button>
-            ) : (
-              <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
-            )}
-            {step < 3 ? (
-              <Button onClick={() => {
-                if (step === 1) {
-                  const primaryRow = unitRows.find(r => r.assignmentType === "primary");
-                  if (!form.leaseReference.trim() || !form.propertyId || unitRows.length === 0 || !primaryRow?.unitId || unitRows.some(r => !r.unitId)) {
-                    toast({ title: "Validation Error", description: "Reference, property, and at least one unit (with a Primary role) are required.", variant: "destructive" });
+          {step === 2 && tenantSubView === "search" ? (
+            <>
+              <Button variant="outline" onClick={() => { setPendingExistingTenantId(""); setTenantSubView("workspace"); }}>{t("action.cancel")}</Button>
+              <Button
+                disabled={!pendingExistingTenantId}
+                onClick={() => {
+                  if (!pendingExistingTenantId) return;
+                  setForm(f => {
+                    if (!f.primaryTenantId) return { ...f, primaryTenantId: pendingExistingTenantId };
+                    if (f.primaryTenantId === pendingExistingTenantId || f.coTenantIds.includes(pendingExistingTenantId)) return f;
+                    return { ...f, coTenantIds: [...f.coTenantIds, pendingExistingTenantId] };
+                  });
+                  setPendingExistingTenantId("");
+                  setTenantSubView("workspace");
+                }}
+              >
+                {t("action.addSelected")}
+              </Button>
+            </>
+          ) : step === 2 && tenantSubView === "create" ? (
+            <>
+              <Button variant="outline" onClick={() => { setTenantForm({ ...emptyTenantForm }); setTenantSubView("workspace"); }}>{t("action.cancel")}</Button>
+              <Button
+                onClick={() => {
+                  if (!tenantForm.firstName.trim() || !tenantForm.lastName.trim() || !tenantForm.email.trim()) {
+                    toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
                     return;
                   }
-                } else if (step === 2) {
-                  if (!form.primaryTenantId) {
-                    toast({ title: "Validation Error", description: "Please attach at least one tenant to the lease.", variant: "destructive" });
-                    return;
-                  }
-                }
-                setStep(s => s + 1);
-              }}>{t("action.next")}</Button>
-            ) : (
-              <Button onClick={handleSave}>{t("leases.add")}</Button>
-            )}
-          </>
+                  const created = addTenant(tenantForm);
+                  setForm(f => {
+                    if (!f.primaryTenantId) return { ...f, primaryTenantId: created.id };
+                    if (f.primaryTenantId === created.id || f.coTenantIds.includes(created.id)) return f;
+                    return { ...f, coTenantIds: [...f.coTenantIds, created.id] };
+                  });
+                  setTenantForm({ ...emptyTenantForm });
+                  toast({ title: "Tenant created", description: getTenantFullName(created) });
+                  setTenantSubView("workspace");
+                }}
+              >
+                {t("action.saveTenant")}
+              </Button>
+            </>
+          ) : (
+            <>
+              {step > 1 ? (
+                <Button variant="outline" onClick={() => setStep(s => s - 1)}>{t("action.back")}</Button>
+              ) : (
+                <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
+              )}
+              {step < 3 ? (
+                <Button
+                  disabled={step === 2 && !form.primaryTenantId}
+                  onClick={() => {
+                    if (step === 1) {
+                      const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+                      if (!form.leaseReference.trim() || !form.propertyId || unitRows.length === 0 || !primaryRow?.unitId || unitRows.some(r => !r.unitId)) {
+                        toast({ title: "Validation Error", description: "Reference, property, and at least one unit (with a Primary role) are required.", variant: "destructive" });
+                        return;
+                      }
+                    }
+                    setStep(s => s + 1);
+                  }}
+                >
+                  {t("action.next")}
+                </Button>
+              ) : (
+                <Button onClick={handleSave}>{t("leases.add")}</Button>
+              )}
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
