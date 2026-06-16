@@ -39,11 +39,11 @@ const en = {
   "leases.wizard.step": "Step",
   "leases.wizard.of": "of",
   "leases.wizard.leaseDetails": "Lease details",
-  "leases.wizard.tenantDetails": "Tenant details",
+  "leases.wizard.tenantDetails": "",
   "leases.wizard.terms": "Terms & financials",
   "leases.wizard.useExistingTenant": "Select existing tenant",
   "leases.wizard.createNewTenant": "Create new tenant",
-  "leases.wizard.selectTenantPlaceholder": "Choose a tenant…",
+  "leases.wizard.selectTenantPlaceholder": "Chois",
   "leases.wizard.makePrimary": "Make primary",
 
   // Filters

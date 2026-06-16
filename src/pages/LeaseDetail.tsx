@@ -1097,7 +1097,7 @@ export default function LeaseDetail() {
                       <div className="flex items-center gap-2 text-sm">
                         <HoverCard openDelay={150}>
                           <HoverCardTrigger asChild>
-                            <Link to={`/tenants/${tenant.id}`} className="font-medium hover:text-primary hover:underline">{getTenantFullName(tenant)}</Link>
+                            <Link to={`/tenants/${tenant.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{getTenantFullName(tenant)}</Link>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-auto p-3 space-y-1.5">
                             <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{tenant.email}</span></div>
@@ -1110,7 +1110,7 @@ export default function LeaseDetail() {
                       <div key={ct.id} className="flex items-center gap-2 text-sm">
                         <HoverCard openDelay={150}>
                           <HoverCardTrigger asChild>
-                            <Link to={`/tenants/${ct.id}`} className="font-medium hover:text-primary hover:underline">{getTenantFullName(ct)}</Link>
+                            <Link to={`/tenants/${ct.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{getTenantFullName(ct)}</Link>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-auto p-3 space-y-1.5">
                             <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{ct.email}</span></div>
