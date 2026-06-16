@@ -15,6 +15,7 @@ import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
 import { getEffectiveLeaseTerms as libGetEffectiveLeaseTerms } from "@/lib/amendments";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { useSettings } from "@/context/SettingsContext";
 import { loadPortfolio, mirror, newId, TABLES } from "@/lib/repo";
 import {
   migrateLegacyLeaseAssignments,
@@ -236,6 +237,7 @@ const now = () => new Date().toISOString().split("T")[0];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { currentPortfolioId, loading: portfolioLoading } = usePortfolio();
+  const { receivableLeadDays } = useSettings();
   const [loading, setLoading] = useState<boolean>(true);
 
   const [properties, setProperties] = useState<Property[]>([]);
