@@ -17,6 +17,12 @@ export interface GenerateOptions {
   genId: (prefix: string) => string;
   /** Today, for status computation. */
   today?: string;
+  /**
+   * Global lead time (in days) before a cycle's start date that the cycle
+   * receivables are materialized. Applies to BOTH monthly and advance leases.
+   * Cycle 1 is always emitted so future-dated leases keep a visible schedule.
+   */
+  leadDays: number;
 }
 
 /**
@@ -37,8 +43,21 @@ export interface GenerateOptions {
  * a cycle, the operator records a normal cash receipt that allocates against
  * the bundled rent + charges receivables of that cycle.
  */
+/**
+ * Compute the due date for a cycle from the cycle start month and the
+ * lease's `dueDayOfMonth`. Clamps the day to the month's last day so
+ * February (and other short months) remain valid.
+ */
+function cycleDueDate(cycleStart: string, dueDay: number): string {
+  const [y, m] = cycleStart.split("-").map(Number);
+  // day 0 of next month = last day of current month
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const day = Math.min(Math.max(Math.floor(dueDay || 1), 1), lastDay);
+  return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): GenerateResult {
-  const { currencyCode, genId } = opts;
+  const { currencyCode, genId, leadDays } = opts;
   const today = opts.today ?? new Date().toISOString().slice(0, 10);
 
   const receivables: ReceivableItem[] = [];
@@ -48,26 +67,21 @@ export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): G
 
   const cycles = computeCycles(lease);
   const isAdvance = (lease.rentFormula || 1) > 1;
+  const dueDay = lease.dueDayOfMonth || 1;
 
-  // Advance billing: only materialize receivables for cycles that are due
-  // soon. Each lease controls its own lead time via `advanceCycleLeadDays`
-  // (defaults to 15 days). Cycle 1 is always emitted so leases starting in
-  // the future still have receivables on the schedule.
-  const leadDays = isAdvance
-    ? (lease.advanceCycleLeadDays ?? 15)
-    : 0;
-  const horizonDate = isAdvance
-    ? new Date(Date.UTC(
-        Number(today.slice(0, 4)),
-        Number(today.slice(5, 7)) - 1,
-        Number(today.slice(8, 10)) + leadDays,
-      )).toISOString().slice(0, 10)
-    : today;
+  // Global lead-time horizon: open cycles whose start date is within
+  // `leadDays` of today. Applies to both monthly and advance leases.
+  // Cycle 1 is always emitted.
+  const horizonDate = new Date(Date.UTC(
+    Number(today.slice(0, 4)),
+    Number(today.slice(5, 7)) - 1,
+    Number(today.slice(8, 10)) + Math.max(0, leadDays ?? 0),
+  )).toISOString().slice(0, 10);
 
   for (const cycle of cycles) {
-    if (isAdvance && cycle.index > 1 && cycle.startDate > horizonDate) continue;
+    if (cycle.index > 1 && cycle.startDate > horizonDate) continue;
     const periodMonth = cycle.startDate.slice(0, 7);
-    const dueDate = cycle.startDate;
+    const dueDate = cycleDueDate(cycle.startDate, dueDay);
     const cycleSuffix = isAdvance
       ? ` (cycle ${cycle.index}, ${cycle.months} mo)`
       : "";
