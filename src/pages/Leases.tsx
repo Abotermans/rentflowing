@@ -353,10 +353,6 @@ export default function Leases() {
     setPendingOverrideValidation(null);
   };
 
-  const handleDelete = (lid: string) => {
-    deleteLease(lid);
-    toast({ title: "Lease deleted" });
-  };
 
   const now = new Date();
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
