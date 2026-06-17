@@ -417,21 +417,21 @@ export default function Payments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHead sortKey="date" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.date")}</SortableTableHead>
-                    <SortableTableHead sortKey="receiptRef" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.receiptRef")}</SortableTableHead>
-                    <SortableTableHead sortKey="receivable" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.receivable")}</SortableTableHead>
-                    <SortableTableHead sortKey="type" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.type")}</SortableTableHead>
-                    <SortableTableHead sortKey="tenant" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.tenant")}</SortableTableHead>
-                    <SortableTableHead sortKey="amount" sort={alSort} onSort={alToggle} align="right" className="text-xs">{t("payments.table.amount")}</SortableTableHead>
-                    <SortableTableHead sortKey="method" sort={alSort} onSort={alToggle} className="text-xs">{t("payments.table.method")}</SortableTableHead>
+                    <SortableTableHead sortKey="date" sort={alSort} onSort={alToggle}>{t("payments.table.date")}</SortableTableHead>
+                    <SortableTableHead sortKey="receiptRef" sort={alSort} onSort={alToggle}>{t("payments.table.receiptRef")}</SortableTableHead>
+                    <SortableTableHead sortKey="receivable" sort={alSort} onSort={alToggle}>{t("payments.table.receivable")}</SortableTableHead>
+                    <SortableTableHead sortKey="type" sort={alSort} onSort={alToggle}>{t("payments.table.type")}</SortableTableHead>
+                    <SortableTableHead sortKey="tenant" sort={alSort} onSort={alToggle}>{t("payments.table.tenant")}</SortableTableHead>
+                    <SortableTableHead sortKey="amount" sort={alSort} onSort={alToggle} align="right">{t("payments.table.amount")}</SortableTableHead>
+                    <SortableTableHead sortKey="method" sort={alSort} onSort={alToggle}>{t("payments.table.method")}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {alPg.pageItems.map(al => (
                     <TableRow key={al.id}>
-                      <TableCell className="text-xs text-muted-foreground">{formatDate(al.allocationDate)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(al.allocationDate)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{al.receipt?.reference ?? al.cashReceiptId}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-muted-foreground">
                         {al.ri ? (
                           (() => {
                             const href = al.ri.leaseId
@@ -451,10 +451,10 @@ export default function Payments() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{al.ri ? getItemTypeLabel(t, al.ri.itemType) : "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(al.allocatedAmount)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{getAllocationTypeLabel(t, al.allocationType)}</TableCell>
+                      <TableCell className="text-muted-foreground">{al.ri ? getItemTypeLabel(t, al.ri.itemType) : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</Link> : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{formatCurrency(al.allocatedAmount)}</TableCell>
+                      <TableCell className="text-muted-foreground">{getAllocationTypeLabel(t, al.allocationType)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
