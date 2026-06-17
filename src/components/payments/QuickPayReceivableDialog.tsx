@@ -7,9 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getTenantFullName } from "@/types";
-import { getSourceTypeLabel, getItemTypeLabel } from "@/types/receivables";
+import { getSourceTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
-import { formatCurrency, formatDate } from "@/lib/formatters";
 import { toast as sonnerToast } from "sonner";
 
 interface QuickPayReceivableDialogProps {
@@ -103,43 +102,6 @@ export function QuickPayReceivableDialog({ receivableItemId, onOpenChange }: Qui
         <DialogHeader><DialogTitle>{t("payments.quickPay.title")}</DialogTitle></DialogHeader>
 
         <div className="mt-4 space-y-4">
-          {/* Read-only context */}
-          <div className="rounded-md border bg-muted/40 p-3 text-xs space-y-1">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("payments.quickPay.contextLabel")}</span>
-              <span className="font-medium text-foreground">{ri.label}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("payments.table.type")}</span>
-              <span>{getItemTypeLabel(t, ri.itemType)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("payments.table.dueDate")}</span>
-              <span>{formatDate(ri.dueDate, locale)}</span>
-            </div>
-            {tenant && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("payments.table.tenant")}</span>
-                <span>{getTenantFullName(tenant)}</span>
-              </div>
-            )}
-            {lease && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("payments.table.lease")}</span>
-                <span className="font-mono">{lease.leaseReference}</span>
-              </div>
-            )}
-            {(prop || unit) && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("payments.table.property")}</span>
-                <span>{prop?.name}{unit ? ` · ${unit.unitLabel || unit.unitCode}` : ""}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-1 border-t mt-1">
-              <span className="text-muted-foreground">{t("payments.quickPay.outstanding")}</span>
-              <span className="font-semibold text-foreground">{formatCurrency(outstanding, currency, locale)}</span>
-            </div>
-          </div>
 
           {isOrphan && (
             <>
