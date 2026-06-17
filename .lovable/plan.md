@@ -1,63 +1,68 @@
 
-# Step 2 — Tenant Workspace Redesign
+## Goal
 
-Scope: `src/components/leases/LeaseAddDialog.tsx` (Step 2 block only). Stepper, footer wiring, and steps 1 & 3 stay untouched. Same for `LeaseEditDialog` (not in scope unless you ask).
+Standardize every list table in the app (Properties, Units, Tenants, Leases, Payments, Maintenance, Vendors, Cost Entries, Cost Categories, Allocation Rules) so they all match the Properties table's formatting, typography, and column patterns.
 
-## State machine
+## Reference: Properties table standard
 
-Add local state inside Step 2:
-- `subView: "workspace" | "search" | "create"` — default `"workspace"`
-- `pendingExistingTenantId` (already exists) reused by the search sub-view
-- `tenantForm` (already exists) reused by the create sub-view
-- Remove the existing `tenantMode` toggle (replaced by `subView`)
+Locked in `src/pages/Properties.tsx`:
 
-`attachedIds = [primaryTenantId, ...coTenantIds].filter(Boolean)` continues to drive the populated/empty branch. Helpers `attachAsPrimary` and `removeAttached` are kept as-is.
+- Container: `<Card>` wrapping `<Table>` and `<TablePagination>`.
+- Header: `SortableTableHead` for sortable columns; trailing action column is a plain `<TableHead className="text-right">{t("...actions")}</TableHead>` with a translated label.
+- Row: `<TableRow className="cursor-pointer" onClick={navigate to detail}>` when the entity has a detail page.
+- Cell defaults: `className="text-muted-foreground"` — no extra `text-xs`/`text-sm` overrides. Inherits the Table component's base size.
+- Reference / code / ID cells: `className="font-mono text-xs text-muted-foreground"`.
+- Numeric cells (currency, surface, counts): `className="text-right text-muted-foreground"` (no `font-mono`, no `text-sm` override). Centered counts use `text-center text-muted-foreground`.
+- Status cell: bare `<TableCell>` containing `<StatusBadge />`.
+- Action cell: `<TableCell className="text-right" onClick={e => e.stopPropagation()}>` with `<div className="flex justify-end gap-1">` and `h-8 w-8` ghost icon buttons whose icons are `h-3.5 w-3.5`.
+- Date cells: `text-muted-foreground` only (no `text-xs`).
 
-## View A — Selection Workspace
+## Per-page changes
 
-Header row inside the Step 2 panel:
-- Left: `Label` "Tenants" (use existing `leases.wizard.tenantDetails`)
-- Right: `DropdownMenu` button "Select Tenant ▾" (primary style, `Plus` icon), with two items:
-  - "Search Existing Tenant" → `Search` icon → `setSubView("search")` (disabled when no available existing tenants)
-  - "Create New Tenant" → `Plus` icon → `setSubView("create")`
+### `src/pages/Vendors.tsx`
+- Replace hardcoded English column titles ("Vendor Name", "Trade", "Contact", "Email", "Phone", "Status", "Actions") with `t(...)` keys (add missing keys to `src/i18n/translations.ts` if absent).
+- Drop the redundant `text-sm` on `TableCell` (keep `text-muted-foreground`).
 
-Body:
-- If `attachedIds.length === 0`: render `EmptyState` (existing component) with an `Users` icon, title `"No tenants added to this lease yet"`, description `"Search for an existing tenant or create a new profile."` Both strings added as new i18n keys.
-- Else: render the existing attached-tenants `Table` plus an additional left-most checkbox column (always checked, toggling it unattaches the row via `removeAttached`). Keep the existing row "X" remove button as a secondary control.
+### `src/pages/Tenants.tsx`
+- Keep `font-mono text-xs` for lease reference, but the "Unit" cell currently uses `font-mono text-xs` — change to plain `text-muted-foreground` unless it actually displays a unit code (verify and align with Units page where unit codes are `font-mono text-xs`).
+- No other structural changes.
 
-## View B1 — Search Existing Tenant
+### `src/pages/Leases.tsx`
+- Drop `text-xs` from the start/end date cells (`text-muted-foreground` only) to match Properties.
+- Drop the `text-sm` override on the guarantee cell.
+- Keep `font-mono text-xs` for the lease reference cell.
+- Keep `font-medium text-foreground` on the total cell (Properties uses similar emphasis for the occupancy figure).
 
-Replaces the workspace body (the header dropdown is hidden while in this sub-view). Uses the existing `Select` over `availableExisting` (or, optional polish, swap to `Command`/`Popover` autocomplete — only if trivial). Footer in this sub-view is local, overriding the global footer area:
-- `Cancel` → `setSubView("workspace")`, clears `pendingExistingTenantId`
-- `Add Selected` (primary, disabled until a tenant is picked) → `attachAsPrimary(pendingExistingTenantId)`, clear it, `setSubView("workspace")`
+### `src/pages/Payments.tsx` (Receivables and Cash Receipts tables)
+- Remove every `className="text-xs"` on `SortableTableHead` — headers must inherit default size like Properties.
+- Remove `text-xs` from cells; keep `font-mono text-xs` only for lease reference / receipt reference codes.
+- Numeric columns: change `text-right text-sm text-muted-foreground` to `text-right text-muted-foreground`.
+- Date cells: `text-muted-foreground` only.
 
-Implementation note: keep the global `DialogFooter` rendering but, when `step === 2 && subView !== "workspace"`, render the local action buttons instead of the global Back/Next pair (no markup duplication — branch inside the existing footer).
+### `src/pages/Maintenance.tsx`
+- Already mostly aligned. Verify all cells use `text-muted-foreground` without extra `text-sm`; keep `font-mono text-xs` on the unit code cell.
+- "Actions" header label already translated — leave as-is.
 
-## View B2 — Create New Tenant
+### `src/pages/CostEntries.tsx`
+- Drop `text-sm` overrides on text cells.
+- Amount cell: change `text-right font-mono text-sm text-muted-foreground` to `text-right text-muted-foreground` (remove `font-mono` and `text-sm`) to match Properties' numeric style.
 
-Replaces the workspace body with the existing tenant form fields (firstName, lastName, email, phone, dateOfBirth, status, identificationNumber, currentAddress, notes). Local footer:
-- `Cancel` → discard `tenantForm`, `setSubView("workspace")`
-- `Save Tenant` (primary) → run existing validation (first/last/email required) → `addTenant(tenantForm)` → `attachAsPrimary(created.id)` → reset form → `setSubView("workspace")` → toast.
+### `src/pages/CostCategories.tsx`
+- Drop `text-sm` overrides on text cells (keep `font-mono text-xs` for the code column).
 
-## Global footer behaviour (unchanged contract)
+### `src/pages/AllocationRules.tsx`
+- Drop `text-sm` overrides on text cells.
 
-- Step 2 with `subView === "workspace"`:
-  - Left: `Back`
-  - Right: `Next` — `disabled` iff `attachedIds.length === 0` (replaces current ad-hoc validation toast). The existing on-click guard is removed since the button is now disabled instead.
-- Step 2 with `subView !== "workspace"`: footer shows the local `Cancel` / `Add Selected` or `Save Tenant` buttons described above.
-
-## i18n keys to add (en + fr) in `src/i18n/translations.ts`
-
-- `leases.wizard.tenantsEmptyTitle` — "No tenants added to this lease yet"
-- `leases.wizard.tenantsEmptySubtitle` — "Search for an existing tenant or create a new profile."
-- `leases.wizard.selectTenantMenu` — "Select tenant"
-- `leases.wizard.searchExistingTenant` — "Search existing tenant"
-- `leases.wizard.createNewTenant` already exists — reuse.
-- `action.addSelected` — "Add selected"
-- `action.saveTenant` — "Save tenant"
+### `src/pages/Units.tsx`
+- Already close to Properties. Drop the `text-xs` on the "Available from" date cell so it matches Properties' date formatting.
 
 ## Out of scope
 
-- No changes to data model, AppContext, Step 1, Step 3, or `LeaseEditDialog`.
-- No nested Dialog/Sheet — all sub-views render inline inside the existing wizard `DialogContent`, satisfying the "no nested modals" constraint.
-- Stale leftover code on line 521-523 (the `"\n"` placeholder paragraph) is removed as part of the empty-state replacement.
+- No changes to filters, KPI cards, dialogs, business logic, column sets, sorting, pagination, or row click destinations.
+- No changes to `src/components/ui/table.tsx`, `SortableTableHead`, or `StatusBadge`.
+- No new columns added or existing columns removed; only typography/alignment normalization plus the Vendors translation cleanup.
+
+## Verification
+
+- Visit each list page in the preview, confirm header row, body text, numeric alignment, action column, and status badges look identical to Properties.
+- `bunx tsc --noEmit` clean after edits.

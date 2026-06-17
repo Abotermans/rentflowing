@@ -591,7 +591,7 @@ export default function Leases() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="text-muted-foreground">
                       {l.rentFormula === 1
                         ? t("leases.formula.monthly")
                         : `${l.rentFormula} ${t("units.advancePeriodMonths").toLowerCase().replace(/\s*\(.*\)/, "")}`}
@@ -615,8 +615,8 @@ export default function Leases() {
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{formatDate(l.endDate, prop?.locale)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(l.startDate, prop?.locale)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(l.endDate, prop?.locale)}</TableCell>
                     <TableCell className="text-right font-medium text-foreground">{prop ? formatCurrency(l.monthlyRent + l.monthlyCharges, prop.currencyCode, prop.locale) : l.monthlyRent + l.monthlyCharges}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

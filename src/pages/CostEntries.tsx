@@ -190,14 +190,14 @@ export default function CostEntries() {
                   const unit = e.unitId ? getUnitById(e.unitId) : null;
                   return (
                     <TableRow key={e.id}>
-                      <TableCell className="text-sm text-muted-foreground">{e.label}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{cat?.name ?? "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{natureLabel(e.isTax ? "tax" : "charge")}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{unit ? unit.unitLabel : t("costs.propertyLevel")}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{frequencyLabel(e.frequency)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(e.amount, e.currencyCode)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{recoveryLabel(e.recoveryType)}</TableCell>
+                      <TableCell className="text-muted-foreground">{e.label}</TableCell>
+                      <TableCell className="text-muted-foreground">{cat?.name ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{natureLabel(e.isTax ? "tax" : "charge")}</TableCell>
+                      <TableCell className="text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{unit ? unit.unitLabel : t("costs.propertyLevel")}</TableCell>
+                      <TableCell className="text-muted-foreground">{frequencyLabel(e.frequency)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{formatCurrency(e.amount, e.currencyCode)}</TableCell>
+                      <TableCell className="text-muted-foreground">{recoveryLabel(e.recoveryType)}</TableCell>
                       <TableCell><StatusBadge status={statusMap[e.status] as any} /></TableCell>
                       <TableCell>
                         <div className="flex gap-1">

@@ -160,10 +160,10 @@ export default function CostCategories() {
                 {pageItems.map(c => (
                   <TableRow key={c.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{c.code}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{c.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{natureLabel(c.nature)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{scopeLabel(c.scope)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{recoveryLabel(c.recoveryTypeDefault)}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{natureLabel(c.nature)}</TableCell>
+                    <TableCell className="text-muted-foreground">{scopeLabel(c.scope)}</TableCell>
+                    <TableCell className="text-muted-foreground">{recoveryLabel(c.recoveryTypeDefault)}</TableCell>
                     <TableCell><StatusBadge status={c.isActive ? "active" : "inactive"} /></TableCell>
                     <TableCell>
                       <div className="flex gap-1">

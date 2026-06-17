@@ -127,23 +127,23 @@ export default function Vendors() {
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>Vendor Name</SortableTableHead>
-                <SortableTableHead sortKey="trade" sort={sort} onSort={toggle}>Trade</SortableTableHead>
-                <SortableTableHead sortKey="contact" sort={sort} onSort={toggle}>Contact</SortableTableHead>
-                <SortableTableHead sortKey="email" sort={sort} onSort={toggle}>Email</SortableTableHead>
-                <SortableTableHead sortKey="phone" sort={sort} onSort={toggle}>Phone</SortableTableHead>
-                <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>Status</SortableTableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>{t("vendors.vendorName")}</SortableTableHead>
+                <SortableTableHead sortKey="trade" sort={sort} onSort={toggle}>{t("vendors.trade")}</SortableTableHead>
+                <SortableTableHead sortKey="contact" sort={sort} onSort={toggle}>{t("vendors.contact")}</SortableTableHead>
+                <SortableTableHead sortKey="email" sort={sort} onSort={toggle}>{t("vendors.email")}</SortableTableHead>
+                <SortableTableHead sortKey="phone" sort={sort} onSort={toggle}>{t("vendors.phone")}</SortableTableHead>
+                <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("vendors.status")}</SortableTableHead>
+                <TableHead className="text-right">{t("vendors.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pageItems.map(v => (
                 <TableRow key={v.id} className="cursor-pointer" onClick={() => navigate(`/vendors/${v.id}`)}>
-                  <TableCell className="text-sm text-muted-foreground"><Link to={`/vendors/${v.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{v.vendorName}</Link></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{v.tradeCategory}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{v.contactName}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{v.email}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{v.phone}</TableCell>
+                  <TableCell className="text-muted-foreground"><Link to={`/vendors/${v.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{v.vendorName}</Link></TableCell>
+                  <TableCell className="text-muted-foreground">{v.tradeCategory}</TableCell>
+                  <TableCell className="text-muted-foreground">{v.contactName}</TableCell>
+                  <TableCell className="text-muted-foreground">{v.email}</TableCell>
+                  <TableCell className="text-muted-foreground">{v.phone}</TableCell>
                   <TableCell><StatusBadge status={v.status} /></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

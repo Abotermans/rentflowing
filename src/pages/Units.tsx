@@ -318,7 +318,7 @@ export default function Units() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
+                      <TableCell className="text-muted-foreground">
                         {occupancy.availableFromDate
                           ? formatDate(occupancy.availableFromDate, prop?.locale)
                           : u.availableFrom
