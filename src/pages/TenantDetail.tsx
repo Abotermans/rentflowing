@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, MoreVertical, Trash2, ChevronDown, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, MoreVertical, Trash2, ChevronDown, Pencil, Plus, Building2, User, Briefcase, Hash, Receipt } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
@@ -111,6 +112,11 @@ export default function TenantDetail() {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">{getTenantFullName(tenant)}</h1>
+            <Badge variant="outline" className="gap-1 font-normal">
+              {tenant.kind === "corporation"
+                ? <><Building2 className="h-3 w-3" />{t("tenants.kind.corporation")}</>
+                : <><User className="h-3 w-3" />{t("tenants.kind.individual")}</>}
+            </Badge>
             <StatusBadge status={tenant.status} />
           </div>
           <DropdownMenu>
