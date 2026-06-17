@@ -57,8 +57,17 @@ export interface Unit {
 
 export type TenantStatus = "active" | "former" | "applicant";
 
+export type TenantKind = "individual" | "corporation";
+
+export const TENANT_KIND_LABELS: Record<TenantKind, string> = {
+  individual: "Individual",
+  corporation: "Corporation",
+};
+
 export interface Tenant {
   id: string;
+  /** Whether this tenant is a natural person or a legal entity. */
+  kind: TenantKind;
   firstName: string;
   lastName: string;
   email: string;
@@ -68,6 +77,14 @@ export interface Tenant {
   currentAddress: string | null;
   status: TenantStatus;
   notes: string;
+  // Corporation-only fields (null for individuals).
+  companyName: string | null;
+  legalForm: string | null;
+  registrationNumber: string | null;
+  vatNumber: string | null;
+  contactFirstName: string | null;
+  contactLastName: string | null;
+  contactRole: string | null;
   createdAt: string;
   updatedAt: string;
   /** Workspace this tenant belongs to. Stamped at create-time. */
@@ -75,6 +92,12 @@ export interface Tenant {
 }
 
 export function getTenantFullName(t: Tenant): string {
+  if (t.kind === "corporation") {
+    const company = (t.companyName ?? "").trim();
+    if (company) return company;
+    const contact = `${t.contactFirstName ?? ""} ${t.contactLastName ?? ""}`.trim();
+    if (contact) return contact;
+  }
   return `${t.firstName} ${t.lastName}`;
 }
 
