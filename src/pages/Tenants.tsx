@@ -4,14 +4,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Users, Plus, Search, Pencil } from "lucide-react";
+import { Users, Plus, Search, Pencil, User, Building2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link } from "react-router-dom";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { TENANT_STATUS_ICONS } from "@/lib/filterIcons";
 import { UserCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tenant, TenantStatus, getTenantFullName } from "@/types";
+import { Tenant, TenantStatus, TenantKind, getTenantFullName } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { TenantDialog } from "@/components/tenants/TenantDialog";
@@ -30,21 +31,27 @@ export default function Tenants() {
   const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
+  const [filterKind, setFilterKind] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
 
-  type TSortKey = "name" | "email" | "phone" | "status" | "unit" | "lease";
+  type TSortKey = "name" | "kind" | "email" | "phone" | "status" | "unit" | "lease";
   const { sort, toggle } = useTableSort<TSortKey>();
 
   const openAdd = () => { setEditingTenant(null); setSheetOpen(true); };
   const openEdit = (tenant: Tenant) => { setEditingTenant(tenant); setSheetOpen(true); };
 
-  const filtered = tenants.filter(t => {
-    const name = getTenantFullName(t).toLowerCase();
+  const filtered = tenants.filter(tn => {
+    const name = getTenantFullName(tn).toLowerCase();
     const q = search.toLowerCase();
-    const matchSearch = !q || name.includes(q) || t.email.toLowerCase().includes(q);
-    const matchStatus = filterStatus.length === 0 || filterStatus.includes(t.status);
-    return matchSearch && matchStatus;
+    const matchSearch =
+      !q ||
+      name.includes(q) ||
+      tn.email.toLowerCase().includes(q) ||
+      (tn.companyName ?? "").toLowerCase().includes(q);
+    const matchStatus = filterStatus.length === 0 || filterStatus.includes(tn.status);
+    const matchKind = filterKind.length === 0 || filterKind.includes(tn.kind);
+    return matchSearch && matchStatus && matchKind;
   });
 
   const getActiveLease = (tenantId: string) => leases.find(l => l.primaryTenantId === tenantId && l.lifecycleStage === "active");
@@ -54,6 +61,7 @@ export default function Tenants() {
     const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
     switch (key) {
       case "name": return getTenantFullName(tenant);
+      case "kind": return tenant.kind;
       case "email": return tenant.email;
       case "phone": return tenant.phone;
       case "status": return tenant.status;
@@ -88,6 +96,16 @@ export default function Tenants() {
             onChange={setFilterStatus}
             options={TENANT_STATUSES.map(s => ({ value: s.value, label: s.label, icon: TENANT_STATUS_ICONS[s.value] }))}
           />
+          <MultiSelectFilter
+            label={t("filter.type")}
+            icon={User}
+            values={filterKind}
+            onChange={setFilterKind}
+            options={[
+              { value: "individual", label: t("tenants.kind.individual"), icon: User },
+              { value: "corporation", label: t("tenants.kind.corporation"), icon: Building2 },
+            ]}
+          />
         </div>
         <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
           {filtered.length} {t("tenants.title").toLowerCase()}
@@ -104,6 +122,7 @@ export default function Tenants() {
             <TableHeader>
               <TableRow>
                 <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>{t("tenants.name")}</SortableTableHead>
+                <SortableTableHead sortKey="kind" sort={sort} onSort={toggle}>{t("tenants.type")}</SortableTableHead>
                 <SortableTableHead sortKey="email" sort={sort} onSort={toggle}>{t("tenants.email")}</SortableTableHead>
                 <SortableTableHead sortKey="phone" sort={sort} onSort={toggle}>{t("tenants.phone")}</SortableTableHead>
                 <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
@@ -119,6 +138,13 @@ export default function Tenants() {
                 return (
                   <TableRow key={tenant.id} className="cursor-pointer" onClick={() => window.location.href = `/tenants/${tenant.id}`}>
                     <TableCell className="text-muted-foreground">{getTenantFullName(tenant)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="gap-1 font-normal">
+                        {tenant.kind === "corporation"
+                          ? <><Building2 className="h-3 w-3" />{t("tenants.kind.corporation")}</>
+                          : <><User className="h-3 w-3" />{t("tenants.kind.individual")}</>}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{tenant.email}</TableCell>
                     <TableCell className="text-muted-foreground">{tenant.phone}</TableCell>
                     <TableCell><StatusBadge status={tenant.status} /></TableCell>
