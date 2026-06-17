@@ -161,6 +161,8 @@ export default function UnitDetail() {
         floor: form.floor, surfaceArea: form.surfaceArea, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
         furnished: form.furnished, availableFrom: form.availableFrom, currentStatus: form.currentStatus,
         description: form.description ?? "",
+        milliemeShares: form.milliemeShares ?? {},
+        milliemeBase: form.milliemeBase,
       });
     } else if (editSection === "financials") {
       persist({
