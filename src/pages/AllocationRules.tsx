@@ -15,6 +15,7 @@ import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Scale, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { AllocationRule, AllocationMethod, ALLOCATION_METHOD_LABELS, AllocationRuleUnitShare } from "@/types/costs";
+import { DEFAULT_MILLIEME_KEY, getUnitMillieme } from "@/types";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
@@ -26,6 +27,7 @@ type FormData = Omit<AllocationRule, "id" | "createdAt" | "updatedAt">;
 const emptyForm: FormData = {
   propertyId: "", name: "", method: "equal",
   applyOnlyToOccupiedUnits: false, includeUnavailableUnits: false, notes: "",
+  shareKey: null,
 };
 
 export default function AllocationRules() {
@@ -68,6 +70,29 @@ export default function AllocationRules() {
     return units.filter(u => u.propertyId === form.propertyId);
   }, [form.propertyId, units]);
 
+  const selectedProperty = useMemo(
+    () => properties.find(p => p.id === form.propertyId),
+    [properties, form.propertyId],
+  );
+  const propertyKeys = selectedProperty?.milliemeKeys?.length
+    ? selectedProperty.milliemeKeys
+    : [DEFAULT_MILLIEME_KEY];
+  const milliemeBase = selectedProperty?.milliemeBase ?? 1000;
+
+  const milliemePreview = useMemo(() => {
+    if (form.method !== "millieme" || !form.propertyId) return null;
+    const key = form.shareKey || DEFAULT_MILLIEME_KEY;
+    let pool = propertyUnits;
+    if (form.applyOnlyToOccupiedUnits) pool = pool.filter(u => u.currentStatus === "occupied");
+    if (!form.includeUnavailableUnits) pool = pool.filter(u => u.currentStatus !== "unavailable");
+    const rows = pool.map(u => ({ unit: u, share: getUnitMillieme(u, key) }));
+    const includedSum = rows.filter(r => r.share > 0).reduce((s, r) => s + r.share, 0);
+    const allUnitsSum = propertyUnits.reduce((s, u) => s + getUnitMillieme(u, key), 0);
+    const zeroCount = rows.filter(r => r.share === 0).length;
+    const excludedShares = allUnitsSum - includedSum;
+    return { key, rows, includedSum, allUnitsSum, zeroCount, excludedShares };
+  }, [form.method, form.propertyId, form.shareKey, form.applyOnlyToOccupiedUnits, form.includeUnavailableUnits, propertyUnits]);
+
   const totalPct = useMemo(() => {
     return Object.values(unitShares).reduce((sum, v) => sum + (v || 0), 0);
   }, [unitShares]);
@@ -80,6 +105,17 @@ export default function AllocationRules() {
     if (form.method === "manual-percentage" && Math.abs(totalPct - 100) > 0.01) {
       toast({ title: t("common.validationError"), description: t("costs.totalMustBe100"), variant: "destructive" });
       return;
+    }
+    if (form.method === "millieme") {
+      const key = form.shareKey || DEFAULT_MILLIEME_KEY;
+      if (!propertyKeys.includes(key)) {
+        toast({ title: t("common.validationError"), description: t("costs.milliemeKeyMissing"), variant: "destructive" });
+        return;
+      }
+      if (!milliemePreview || milliemePreview.includedSum <= 0) {
+        toast({ title: t("common.validationError"), description: t("costs.milliemeNoShares"), variant: "destructive" });
+        return;
+      }
     }
 
     if (editing) {
