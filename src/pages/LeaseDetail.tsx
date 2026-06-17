@@ -46,6 +46,7 @@ import { ChargesReconciliationSection } from "@/components/leases/ChargesReconci
 import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
 import { newId } from "@/lib/repo";
 import type { LeasePayerAccount } from "@/types";
+import { validateDateOrder } from "@/lib/dateValidation";
 
 const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
   "cash-deposit": "guarantee.type.cashDeposit",
@@ -317,6 +318,13 @@ export default function LeaseDetail() {
     const expected = parseFloat(gExpected) || 0;
     const received = parseFloat(gReceived) || 0;
     const retention = gRetention ? parseFloat(gRetention) : null;
+    const dateErrors = validateDateOrder([
+      { earlier: gReceivedDate, later: gReleaseDate, message: t("validation.dates.releasedBeforeReceived") },
+    ]);
+    if (dateErrors.length > 0) {
+      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
+      return;
+    }
     const status = computeGuaranteeStatus({ expectedAmount: expected, receivedAmount: received, releaseDate: gReleaseDate || null, retentionAmount: retention });
     if (guarantee) {
       updateGuarantee({ ...guarantee, type: gType, expectedAmount: expected, receivedAmount: received, status, receivedDate: gReceivedDate || null, releaseDate: gReleaseDate || null, retentionAmount: retention, notes: gNotes });
@@ -378,6 +386,13 @@ export default function LeaseDetail() {
   };
 
   const handleSaveNotice = () => {
+    const dateErrors = validateDateOrder([
+      { earlier: nDate, later: nMoveOut, message: t("validation.dates.intendedMoveOutBeforeNotice") },
+    ]);
+    if (dateErrors.length > 0) {
+      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
+      return;
+    }
     updateLease({
       ...lease,
       noticeGiven: true,
@@ -425,6 +440,10 @@ export default function LeaseDetail() {
   const handleMarkSigned = () => {
     if (!signDateInput) {
       toast({ title: t("common.validationError"), description: t("lease.signedDateRequired"), variant: "destructive" });
+      return;
+    }
+    if (lease.startDate && signDateInput > lease.startDate) {
+      toast({ title: t("validation.dates.title"), description: t("validation.dates.signedAfterStart"), variant: "destructive" });
       return;
     }
     const stage: typeof lease.lifecycleStage =
@@ -625,6 +644,13 @@ export default function LeaseDetail() {
   };
   const handleConfirmMoveIn = () => {
     if (!miActualDate) return;
+    const dateErrors = validateDateOrder([
+      { earlier: miScheduled || lease.moveInScheduledDate, later: miActualDate, message: t("validation.dates.moveInActualBeforeScheduled") },
+    ]);
+    if (dateErrors.length > 0) {
+      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
+      return;
+    }
     updateLease({
       ...lease,
       moveInActualDate: miActualDate,
@@ -661,6 +687,14 @@ export default function LeaseDetail() {
   const handleCompleteMoveOut = () => {
     if (!moActualDate) return;
     const scheduled = lease.moveOutScheduledDate || moScheduled || moActualDate;
+    const dateErrors = validateDateOrder([
+      { earlier: moScheduled || lease.moveOutScheduledDate, later: moActualDate, message: t("validation.dates.moveOutActualBeforeScheduled") },
+      { earlier: lease.moveInActualDate, later: moActualDate, message: t("validation.dates.moveOutBeforeMoveIn") },
+    ]);
+    if (dateErrors.length > 0) {
+      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
+      return;
+    }
     updateLease({
       ...lease,
       moveOutActualDate: moActualDate,
