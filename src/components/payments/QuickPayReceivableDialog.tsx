@@ -132,7 +132,7 @@ export function QuickPayReceivableDialog({ receivableItemId, onOpenChange }: Qui
             {(prop || unit) && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("payments.table.property")}</span>
-                <span>{prop?.name}{unit ? ` · ${unit.unitNumber}` : ""}</span>
+                <span>{prop?.name}{unit ? ` · ${unit.unitLabel || unit.unitCode}` : ""}</span>
               </div>
             )}
             <div className="flex justify-between pt-1 border-t mt-1">
