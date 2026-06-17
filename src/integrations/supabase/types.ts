@@ -1592,6 +1592,10 @@ export type Database = {
       }
       tenants: {
         Row: {
+          company_name: string | null
+          contact_first_name: string | null
+          contact_last_name: string | null
+          contact_role: string | null
           created_at: string
           current_address: string | null
           date_of_birth: string | null
@@ -1599,15 +1603,23 @@ export type Database = {
           first_name: string
           id: string
           identification_number: string | null
+          kind: string
           last_name: string
           legacy_id: string | null
+          legal_form: string | null
           notes: string
           phone: string
           portfolio_id: string
+          registration_number: string | null
           status: string
           updated_at: string
+          vat_number: string | null
         }
         Insert: {
+          company_name?: string | null
+          contact_first_name?: string | null
+          contact_last_name?: string | null
+          contact_role?: string | null
           created_at?: string
           current_address?: string | null
           date_of_birth?: string | null
@@ -1615,15 +1627,23 @@ export type Database = {
           first_name?: string
           id?: string
           identification_number?: string | null
+          kind?: string
           last_name?: string
           legacy_id?: string | null
+          legal_form?: string | null
           notes?: string
           phone?: string
           portfolio_id: string
+          registration_number?: string | null
           status?: string
           updated_at?: string
+          vat_number?: string | null
         }
         Update: {
+          company_name?: string | null
+          contact_first_name?: string | null
+          contact_last_name?: string | null
+          contact_role?: string | null
           created_at?: string
           current_address?: string | null
           date_of_birth?: string | null
@@ -1631,13 +1651,17 @@ export type Database = {
           first_name?: string
           id?: string
           identification_number?: string | null
+          kind?: string
           last_name?: string
           legacy_id?: string | null
+          legal_form?: string | null
           notes?: string
           phone?: string
           portfolio_id?: string
+          registration_number?: string | null
           status?: string
           updated_at?: string
+          vat_number?: string | null
         }
         Relationships: [
           {

@@ -13,7 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tenant, TenantStatus } from "@/types";
+import { Tenant, TenantStatus, TenantKind } from "@/types";
 import { canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
@@ -28,9 +28,12 @@ const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
 ];
 
 const emptyForm: TenantFormData = {
+  kind: "individual",
   firstName: "", lastName: "", email: "", phone: "",
   dateOfBirth: null, identificationNumber: null, currentAddress: null,
   status: "active", notes: "",
+  companyName: null, legalForm: null, registrationNumber: null, vatNumber: null,
+  contactFirstName: null, contactLastName: null, contactRole: null,
 };
 
 interface TenantDialogProps {
@@ -77,9 +80,24 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
   };
 
   const handleSave = () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
-      toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+    if (!form.email.trim()) {
+      toast({ title: "Validation Error", description: "Email is required.", variant: "destructive" });
       return;
+    }
+    if (form.kind === "individual") {
+      if (!form.firstName.trim() || !form.lastName.trim()) {
+        toast({ title: "Validation Error", description: "First name and last name are required.", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!(form.companyName ?? "").trim()) {
+        toast({ title: "Validation Error", description: "Company name is required.", variant: "destructive" });
+        return;
+      }
+      if (!(form.contactFirstName ?? "").trim() || !(form.contactLastName ?? "").trim()) {
+        toast({ title: "Validation Error", description: "Main contact first and last name are required.", variant: "destructive" });
+        return;
+      }
     }
     if (editingTenant && form.status !== editingTenant.status) {
       const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
@@ -119,14 +137,48 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
             <DialogTitle>{editingTenant ? t("tenants.edit") : t("tenants.add")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("tenants.firstName")} *</Label><Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} /></div>
-              <div><Label>{t("tenants.lastName")} *</Label><Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} /></div>
+            <div>
+              <Label>{t("tenants.kind")} *</Label>
+              <Select
+                value={form.kind}
+                onValueChange={v => setForm(f => ({ ...f, kind: v as TenantKind }))}
+                disabled={!!editingTenant}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">{t("tenants.kind.individual")}</SelectItem>
+                  <SelectItem value="corporation">{t("tenants.kind.corporation")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {form.kind === "individual" ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>{t("tenants.firstName")} *</Label><Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} /></div>
+                  <div><Label>{t("tenants.lastName")} *</Label><Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} /></div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>{t("tenants.companyName")} *</Label><Input value={form.companyName ?? ""} onChange={e => setForm(f => ({ ...f, companyName: e.target.value || null }))} /></div>
+                  <div><Label>{t("tenants.legalForm")}</Label><Input value={form.legalForm ?? ""} placeholder="SARL, SAS, SCI…" onChange={e => setForm(f => ({ ...f, legalForm: e.target.value || null }))} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>{t("tenants.registrationNumber")}</Label><Input value={form.registrationNumber ?? ""} onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value || null }))} /></div>
+                  <div><Label>{t("tenants.vatNumber")}</Label><Input value={form.vatNumber ?? ""} onChange={e => setForm(f => ({ ...f, vatNumber: e.target.value || null }))} /></div>
+                </div>
+              </>
+            )}
+
             <div><Label>{t("tenants.email")} *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
             <div><Label>{t("tenants.phone")}</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("tenants.dateOfBirth")}</Label><Input type="date" value={form.dateOfBirth ?? ""} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value || null }))} /></div>
+              {form.kind === "individual" ? (
+                <div><Label>{t("tenants.dateOfBirth")}</Label><Input type="date" value={form.dateOfBirth ?? ""} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value || null }))} /></div>
+              ) : <div />}
               <div><Label>{t("filter.status")} *</Label>
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as TenantStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -135,8 +187,26 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
                 <StatusTransitionAlert validation={tenantStatusValidation} />
               </div>
             </div>
-            <div><Label>{t("tenants.identificationNumber")}</Label><Input value={form.identificationNumber ?? ""} onChange={e => setForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>
-            <div><Label>{t("tenants.currentAddress")}</Label><Textarea value={form.currentAddress ?? ""} onChange={e => setForm(f => ({ ...f, currentAddress: e.target.value || null }))} rows={2} /></div>
+
+            {form.kind === "individual" && (
+              <div><Label>{t("tenants.identificationNumber")}</Label><Input value={form.identificationNumber ?? ""} onChange={e => setForm(f => ({ ...f, identificationNumber: e.target.value || null }))} /></div>
+            )}
+            <div>
+              <Label>{form.kind === "corporation" ? t("tenants.registeredAddress") : t("tenants.currentAddress")}</Label>
+              <Textarea value={form.currentAddress ?? ""} onChange={e => setForm(f => ({ ...f, currentAddress: e.target.value || null }))} rows={2} />
+            </div>
+
+            {form.kind === "corporation" && (
+              <div className="space-y-3 pt-2 border-t">
+                <p className="text-sm font-medium text-foreground">{t("tenants.mainContact")}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>{t("tenants.firstName")} *</Label><Input value={form.contactFirstName ?? ""} onChange={e => setForm(f => ({ ...f, contactFirstName: e.target.value || null }))} /></div>
+                  <div><Label>{t("tenants.lastName")} *</Label><Input value={form.contactLastName ?? ""} onChange={e => setForm(f => ({ ...f, contactLastName: e.target.value || null }))} /></div>
+                </div>
+                <div><Label>{t("tenants.contactRole")}</Label><Input value={form.contactRole ?? ""} placeholder="CEO, Property manager…" onChange={e => setForm(f => ({ ...f, contactRole: e.target.value || null }))} /></div>
+              </div>
+            )}
+
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
           <DialogFooter className="mt-6">
