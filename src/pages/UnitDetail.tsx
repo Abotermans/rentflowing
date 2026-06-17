@@ -13,7 +13,7 @@ import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, Clock, Bu
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
-import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
+import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, getUnitMillieme, DEFAULT_MILLIEME_KEY } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -350,6 +350,15 @@ export default function UnitDetail() {
     { label: t("units.bathrooms"), value: String(unit.bathrooms), icon: Bath },
     { label: t("units.furnished"), value: unit.furnished ? t("common.yes") : t("common.no"), icon: Sofa },
     { label: t("units.availableFrom"), value: unit.availableFrom ? formatDate(unit.availableFrom, property.locale) : "—", icon: CalendarClock },
+    {
+      label: t("units.millieme"),
+      value: (() => {
+        const v = getUnitMillieme(unit);
+        const base = property.milliemeBase ?? unit.milliemeBase ?? 1000;
+        return v > 0 ? `${v} / ${base}` : "—";
+      })(),
+      icon: Ruler,
+    },
     { label: t("common.description"), value: unit.description || "—", icon: FileText },
   ];
 
