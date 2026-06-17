@@ -148,6 +148,18 @@ interface AppState {
   allocateCashReceipt: (receiptId: string, manualAllocations: { receivableItemId: string; amount: number; notes?: string }[]) => void;
   autoAllocateCashReceipt: (receiptId: string) => void;
 
+  // Quick-pay a single receivable in one atomic operation
+  quickPayReceivable: (params: {
+    receivableItemId: string;
+    amountReceived: number;
+    paymentDate: string;
+    sourceType: CashReceipt["sourceType"];
+    payerName?: string | null;
+    reference?: string | null;
+    tenantIdOverride?: string | null;
+    leaseIdOverride?: string | null;
+  }) => void;
+
   // Maintenance
   addTicket: (t: Omit<MaintenanceTicket, "id">) => void;
   updateTicket: (t: MaintenanceTicket) => void;
