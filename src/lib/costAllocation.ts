@@ -1,5 +1,5 @@
 import { CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult, RecoveryType } from "@/types/costs";
-import { Unit } from "@/types";
+import { Unit, DEFAULT_MILLIEME_KEY, getUnitMillieme } from "@/types";
 
 function computeRecoverySplit(amount: number, recoveryType: RecoveryType) {
   switch (recoveryType) {
@@ -105,6 +105,36 @@ export function computeAllocations(
           propertyId: costEntry.propertyId,
           unitId: share.unitId,
           allocatedAmount: unitAmount,
+          recoveryType: costEntry.recoveryType,
+          ...split,
+          periodStart: costEntry.startDate,
+          periodEnd: costEntry.endDate,
+        });
+      });
+      break;
+    }
+
+    case "millieme": {
+      const key = (rule.shareKey ?? DEFAULT_MILLIEME_KEY) || DEFAULT_MILLIEME_KEY;
+      const unitsWithShare = units
+        .map(u => ({ unit: u, share: getUnitMillieme(u, key) }))
+        .filter(x => x.share > 0);
+      if (unitsWithShare.length === 0) return [];
+      const totalShares = unitsWithShare.reduce((sum, x) => sum + x.share, 0);
+      if (totalShares <= 0) return [];
+
+      let allocated = 0;
+      unitsWithShare.forEach(({ unit, share }, i) => {
+        const unitShare = i === unitsWithShare.length - 1
+          ? Math.round((amount - allocated) * 100) / 100
+          : Math.round(amount * (share / totalShares) * 100) / 100;
+        allocated += unitShare;
+        const split = computeRecoverySplit(unitShare, costEntry.recoveryType);
+        results.push({
+          costEntryId: costEntry.id,
+          propertyId: costEntry.propertyId,
+          unitId: unit.id,
+          allocatedAmount: unitShare,
           recoveryType: costEntry.recoveryType,
           ...split,
           periodStart: costEntry.startDate,
