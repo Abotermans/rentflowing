@@ -262,6 +262,25 @@ export default function AllocationRules() {
                 </SelectContent>
               </Select>
             </div>
+
+            {form.method === "millieme" && form.propertyId && (
+              <div className="space-y-2">
+                <Label>{t("costs.shareKey")}</Label>
+                <Select
+                  value={form.shareKey || DEFAULT_MILLIEME_KEY}
+                  onValueChange={v => setForm({ ...form, shareKey: v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {propertyKeys.map(k => (
+                      <SelectItem key={k} value={k}>{k}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{t("costs.shareKeyHelp")}</p>
+              </div>
+            )}
+
             <div className="flex items-center gap-3">
               <Switch checked={form.applyOnlyToOccupiedUnits} onCheckedChange={v => setForm({ ...form, applyOnlyToOccupiedUnits: v })} />
               <Label>{t("costs.occupiedOnly")}</Label>
@@ -298,6 +317,65 @@ export default function AllocationRules() {
                     ))}
                     <div className={`text-sm font-medium ${Math.abs(totalPct - 100) > 0.01 ? "text-destructive" : "text-success"}`}>
                       {t("common.total")}: {totalPct.toFixed(1)}% {Math.abs(totalPct - 100) > 0.01 && `— ${t("costs.totalMustBe100")}`}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Millième preview */}
+            {form.method === "millieme" && form.propertyId && milliemePreview && (
+              <div className="space-y-2 border-t border-border pt-4">
+                <Label className="text-base font-semibold">{t("costs.milliemePreview")}</Label>
+                {milliemePreview.rows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t("costs.noUnitsForProperty")}</p>
+                ) : (
+                  <>
+                    <div className="max-h-48 overflow-y-auto rounded border border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs h-8">{t("common.name")}</TableHead>
+                            <TableHead className="text-xs h-8 text-right">{t("units.millieme")}</TableHead>
+                            <TableHead className="text-xs h-8 text-right">%</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {milliemePreview.rows.map(({ unit, share }) => (
+                            <TableRow key={unit.id}>
+                              <TableCell className="py-1.5 text-xs">{unit.unitLabel} ({unit.unitCode})</TableCell>
+                              <TableCell className="py-1.5 text-xs text-right">{share || "—"}</TableCell>
+                              <TableCell className="py-1.5 text-xs text-right text-muted-foreground">
+                                {milliemePreview.includedSum > 0 && share > 0
+                                  ? `${((share / milliemePreview.includedSum) * 100).toFixed(2)}%`
+                                  : "—"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <p className="text-foreground">
+                        {t("costs.milliemeSum")}: <span className="font-medium">{milliemePreview.includedSum}</span> / {milliemeBase}
+                      </p>
+                      {Math.abs(milliemePreview.includedSum - milliemeBase) > 1 && (
+                        <p className="text-warning">
+                          {t("costs.milliemeBaseMismatch").replace("{sum}", String(milliemePreview.includedSum)).replace("{base}", String(milliemeBase))}
+                        </p>
+                      )}
+                      {milliemePreview.excludedShares > 0 && (
+                        <p className="text-muted-foreground">
+                          {t("costs.milliemeExcluded")
+                            .replace("{count}", String(propertyUnits.length - milliemePreview.rows.length))
+                            .replace("{shares}", String(milliemePreview.excludedShares))}
+                        </p>
+                      )}
+                      {milliemePreview.zeroCount > 0 && (
+                        <p className="text-muted-foreground">
+                          {t("costs.milliemeMissing").replace("{count}", String(milliemePreview.zeroCount))}
+                        </p>
+                      )}
                     </div>
                   </>
                 )}
