@@ -283,6 +283,7 @@ export default function Units() {
                   <SortableTableHead sortKey="type" sort={sort} onSort={toggle}>{t("units.type")}</SortableTableHead>
                   <SortableTableHead sortKey="floor" sort={sort} onSort={toggle} align="center">{t("units.floor")}</SortableTableHead>
                   <SortableTableHead sortKey="surface" sort={sort} onSort={toggle} align="right">{t("units.surface")}</SortableTableHead>
+                  <SortableTableHead sortKey="millieme" sort={sort} onSort={toggle} align="right">{t("units.millieme")}</SortableTableHead>
                   <SortableTableHead sortKey="rent" sort={sort} onSort={toggle} align="right">{t("units.rent")}</SortableTableHead>
                   <SortableTableHead sortKey="charges" sort={sort} onSort={toggle} align="right">{t("units.charges")}</SortableTableHead>
                   <SortableTableHead sortKey="occupancy" sort={sort} onSort={toggle}>{t("occupancy.derivedLabel")}</SortableTableHead>
@@ -303,6 +304,13 @@ export default function Units() {
                       <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
                       <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null && prop ? formatArea(u.surfaceArea, prop.measurementSystem) : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {(() => {
+                          const v = getUnitMillieme(u);
+                          const base = prop?.milliemeBase ?? u.milliemeBase ?? 1000;
+                          return v > 0 ? `${v} / ${base}` : "—";
+                        })()}
+                      </TableCell>
                       <TableCell className="text-right text-muted-foreground">{u.baseRent != null && prop ? formatCurrency(u.baseRent, prop.currencyCode, prop.locale) : "—"}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{u.baseCharges != null && prop ? formatCurrency(u.baseCharges, prop.currencyCode, prop.locale) : "—"}</TableCell>
                       <TableCell>
