@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Unit, UnitType, UnitStatus } from "@/types";
+import { Unit, UnitType, UnitStatus, DEFAULT_MILLIEME_KEY, getUnitMillieme } from "@/types";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
@@ -106,6 +106,7 @@ export default function Units() {
     propertyId: properties[0]?.id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
     floor: null, surfaceArea: null, bedrooms: 0, bathrooms: 0, furnished: false,
     currentStatus: "vacant", baseRent: null, rentTiers: [], baseCharges: null, availableFrom: null, notes: "",
+    milliemeShares: {}, milliemeBase: 1000,
   };
   const [form, setForm] = useState<UnitFormData>({ ...emptyForm });
 
