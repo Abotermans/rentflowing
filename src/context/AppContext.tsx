@@ -148,6 +148,18 @@ interface AppState {
   allocateCashReceipt: (receiptId: string, manualAllocations: { receivableItemId: string; amount: number; notes?: string }[]) => void;
   autoAllocateCashReceipt: (receiptId: string) => void;
 
+  // Quick-pay a single receivable in one atomic operation
+  quickPayReceivable: (params: {
+    receivableItemId: string;
+    amountReceived: number;
+    paymentDate: string;
+    sourceType: CashReceipt["sourceType"];
+    payerName?: string | null;
+    reference?: string | null;
+    tenantIdOverride?: string | null;
+    leaseIdOverride?: string | null;
+  }) => void;
+
   // Maintenance
   addTicket: (t: Omit<MaintenanceTicket, "id">) => void;
   updateTicket: (t: MaintenanceTicket) => void;
@@ -1159,6 +1171,139 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentPortfolioId) mirror.insertMany(TABLES.allocations, newAllocs, currentPortfolioId);
   }, [cashReceipts, receivableItems, currentPortfolioId]);
 
+  // ===== Quick-pay a single receivable (atomic create + targeted allocate + surplus auto) =====
+  const quickPayReceivable = useCallback((params: {
+    receivableItemId: string;
+    amountReceived: number;
+    paymentDate: string;
+    sourceType: CashReceipt["sourceType"];
+    payerName?: string | null;
+    reference?: string | null;
+    tenantIdOverride?: string | null;
+    leaseIdOverride?: string | null;
+  }) => {
+    const ri = receivableItems.find(r => r.id === params.receivableItemId);
+    if (!ri) return;
+    if (params.amountReceived <= 0) return;
+
+    const ts = now();
+    const tenantId = params.tenantIdOverride ?? ri.tenantId;
+    const leaseId = params.leaseIdOverride ?? ri.leaseId;
+    const lease = leaseId ? leases.find(l => l.id === leaseId) : undefined;
+    const propertyId = ri.propertyId ?? lease?.propertyId ?? null;
+    const unitId = ri.unitId ?? lease?.unitId ?? null;
+
+    const receipt: CashReceipt = {
+      id: genId("cr"),
+      tenantId: tenantId ?? null,
+      leaseId: leaseId ?? null,
+      propertyId,
+      unitId,
+      sourceType: params.sourceType,
+      paymentDate: params.paymentDate,
+      bookingDate: null,
+      valueDate: null,
+      amountReceived: params.amountReceived,
+      currencyCode: ri.currencyCode,
+      payerName: params.payerName ?? null,
+      payerIban: null,
+      payerBic: null,
+      reference: params.reference ?? null,
+      remittanceInformation: null,
+      endToEndReference: null,
+      status: "unmatched",
+      unmatchedAmount: params.amountReceived,
+      notes: "",
+      importBatchId: null,
+      rawBankTransactionId: null,
+      createdAt: ts,
+      updatedAt: ts,
+    };
+
+    // 1) Targeted allocation to the clicked receivable first.
+    const targetedAmount = Math.min(params.amountReceived, ri.outstandingAmount);
+    const riUpdates = new Map<string, ReceivableItem>();
+    const newAllocations: ReceiptAllocation[] = [];
+    let remaining = params.amountReceived;
+
+    if (targetedAmount > 0) {
+      const updatedRi: ReceivableItem = {
+        ...ri,
+        allocatedAmount: ri.allocatedAmount + targetedAmount,
+        outstandingAmount: ri.outstandingAmount - targetedAmount,
+        updatedAt: ts,
+      };
+      updatedRi.status = computeReceivableStatus(updatedRi);
+      riUpdates.set(ri.id, updatedRi);
+      newAllocations.push({
+        id: genId("al"),
+        cashReceiptId: receipt.id,
+        receivableItemId: ri.id,
+        allocatedAmount: targetedAmount,
+        allocationType: "manual",
+        allocationDate: ts,
+        notes: "",
+        createdAt: ts,
+        updatedAt: ts,
+      });
+      remaining = Math.round((remaining - targetedAmount) * 100) / 100;
+    }
+
+    // 2) Surplus → auto-allocate to other open items on same lease, else same tenant, by priority.
+    if (remaining > 0 && (receipt.leaseId || receipt.tenantId)) {
+      const otherOpen = receivableItems
+        .filter(o => {
+          if (o.id === ri.id) return false;
+          if (o.outstandingAmount <= 0) return false;
+          if (receipt.leaseId && o.leaseId === receipt.leaseId) return true;
+          if (!receipt.leaseId && receipt.tenantId && o.tenantId === receipt.tenantId) return true;
+          return false;
+        })
+        .sort((a, b) => (a.priority - b.priority) || a.dueDate.localeCompare(b.dueDate));
+
+      for (const o of otherOpen) {
+        if (remaining <= 0) break;
+        const alloc = Math.min(remaining, o.outstandingAmount);
+        if (alloc <= 0) continue;
+        const updated: ReceivableItem = {
+          ...o,
+          allocatedAmount: o.allocatedAmount + alloc,
+          outstandingAmount: o.outstandingAmount - alloc,
+          updatedAt: ts,
+        };
+        updated.status = computeReceivableStatus(updated);
+        riUpdates.set(o.id, updated);
+        newAllocations.push({
+          id: genId("al"),
+          cashReceiptId: receipt.id,
+          receivableItemId: o.id,
+          allocatedAmount: alloc,
+          allocationType: "automatic",
+          allocationDate: ts,
+          notes: "",
+          createdAt: ts,
+          updatedAt: ts,
+        });
+        remaining = Math.round((remaining - alloc) * 100) / 100;
+      }
+    }
+
+    const finalReceipt: CashReceipt = {
+      ...receipt,
+      unmatchedAmount: Math.round(remaining * 100) / 100,
+    };
+    finalReceipt.status = computeReceiptStatus(finalReceipt);
+
+    setCashReceipts(prev => [...prev, finalReceipt]);
+    setReceivableItems(prev => prev.map(x => riUpdates.get(x.id) ?? x));
+    setAllocations(prev => [...prev, ...newAllocations]);
+    if (currentPortfolioId) {
+      mirror.insert(TABLES.cashReceipts, finalReceipt, currentPortfolioId);
+      riUpdates.forEach(updatedRi => mirror.update(TABLES.receivableItems, updatedRi.id, updatedRi));
+      mirror.insertMany(TABLES.allocations, newAllocations, currentPortfolioId);
+    }
+  }, [receivableItems, leases, currentPortfolioId]);
+
   // ===== Maintenance =====
   const addTicket = useCallback((t: Omit<MaintenanceTicket, "id">) => {
     const created: MaintenanceTicket = { ...t, id: genId("mt") };
@@ -1634,6 +1779,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
+    quickPayReceivable,
     addTicket, updateTicket, deleteTicket,
     addVendor, updateVendor, deleteVendor,
     addCostCategory, updateCostCategory, deleteCostCategory,
@@ -1668,6 +1814,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
     createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
+    quickPayReceivable,
     addTicket, updateTicket, deleteTicket,
     addVendor, updateVendor, deleteVendor,
     addCostCategory, updateCostCategory, deleteCostCategory,
