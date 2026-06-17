@@ -922,6 +922,18 @@ export default function UnitDetail() {
                                     {row.totalCost > 0 ? `${((row.amount / row.totalCost) * 100).toFixed(1)}%` : "—"}
                                   </span>
                                 </div>
+                                {typeof row.milliemeShare === "number" && typeof row.milliemeTotalShares === "number" && (
+                                  <div className="grid grid-cols-[1fr_auto] gap-x-3">
+                                    <span className="text-muted-foreground">{t("costs.methodOpt.millieme")}</span>
+                                    <span className="text-right tabular-nums">
+                                      {t("costs.milliemeFormula")
+                                        .replace("{share}", String(row.milliemeShare))
+                                        .replace("{totalShares}", String(row.milliemeTotalShares))
+                                        .replace("{amount}", formatCurrency(row.totalCost, property.currencyCode, property.locale))
+                                        .replace("{allocated}", formatCurrency(row.amount, property.currencyCode, property.locale))}
+                                    </span>
+                                  </div>
+                                )}
                                 <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
                                   <span className="font-medium">{t("costs.allocatedAmount")}</span>
                                   <span className="text-right font-semibold tabular-nums">{formatCurrency(row.amount, property.currencyCode, property.locale)}</span>
