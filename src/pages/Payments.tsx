@@ -311,6 +311,7 @@ export default function Payments() {
                     <SortableTableHead sortKey="allocated" sort={rvSort} onSort={rvToggle} align="right">{t("payments.table.allocated")}</SortableTableHead>
                     <SortableTableHead sortKey="outstanding" sort={rvSort} onSort={rvToggle} align="right">{t("payments.table.outstanding")}</SortableTableHead>
                     <SortableTableHead sortKey="status" sort={rvSort} onSort={rvToggle}>{t("payments.table.status")}</SortableTableHead>
+                    <TableHead className="text-right">{t("table.action")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -326,6 +327,15 @@ export default function Payments() {
                       <TableCell className="text-right text-muted-foreground">{formatCurrency(ri.allocatedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, ri.currencyCode, ri.prop?.locale) : "—"}</TableCell>
                       <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
+                      <TableCell className="text-right">
+                        {ri.outstandingAmount > 0 && ri.status !== "cancelled" && ri.status !== "disputed" && ri.status !== "written-off" ? (
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setQuickPayRiId(ri.id)}>
+                            <CircleDollarSign className="h-3 w-3" />{t("payments.action.markPaid")}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
