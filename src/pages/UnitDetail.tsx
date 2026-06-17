@@ -766,6 +766,8 @@ export default function UnitDetail() {
                   totalCost: number;
                   ownerBorne: number;
                   recoverable: number;
+                  milliemeShare?: number;
+                  milliemeTotalShares?: number;
                 };
                 const splitRecovery = (amount: number, r: RecoveryType) => {
                   if (r === "owner-only") return { owner: amount, rec: 0 };
@@ -800,6 +802,23 @@ export default function UnitDetail() {
                 for (const r of allocResults) {
                   const parent = costEntries.find(e => e.id === r.costEntryId);
                   const rule = getAllocationRuleById(parent?.allocationRuleId ?? "");
+                  let milliemeShare: number | undefined;
+                  let milliemeTotalShares: number | undefined;
+                  if (rule?.method === "millieme" && parent) {
+                    const key = (rule.shareKey ?? DEFAULT_MILLIEME_KEY) || DEFAULT_MILLIEME_KEY;
+                    let propUnits = units.filter(u => u.propertyId === parent.propertyId);
+                    if (rule.applyOnlyToOccupiedUnits) {
+                      propUnits = propUnits.filter(u => u.currentStatus === "occupied");
+                    }
+                    if (!rule.includeUnavailableUnits) {
+                      propUnits = propUnits.filter(u => u.currentStatus !== "unavailable");
+                    }
+                    const shares = propUnits
+                      .map(u => getUnitMillieme(u, key))
+                      .filter(s => s > 0);
+                    milliemeTotalShares = shares.reduce((sum, s) => sum + s, 0);
+                    milliemeShare = getUnitMillieme(unit, key);
+                  }
                   rows.push({
                     id: `a-${r.id}`,
                     sourceEntryId: r.costEntryId,
@@ -816,6 +835,8 @@ export default function UnitDetail() {
                     totalCost: parent?.amount ?? r.allocatedAmount,
                     ownerBorne: r.ownerBurdenAmount,
                     recoverable: r.recoverableAmount,
+                    milliemeShare,
+                    milliemeTotalShares,
                   });
                 }
                 if (rows.length === 0) return null;
@@ -901,6 +922,18 @@ export default function UnitDetail() {
                                     {row.totalCost > 0 ? `${((row.amount / row.totalCost) * 100).toFixed(1)}%` : "—"}
                                   </span>
                                 </div>
+                                {typeof row.milliemeShare === "number" && typeof row.milliemeTotalShares === "number" && (
+                                  <div className="grid grid-cols-[1fr_auto] gap-x-3">
+                                    <span className="text-muted-foreground">{t("costs.methodOpt.millieme")}</span>
+                                    <span className="text-right tabular-nums">
+                                      {t("costs.milliemeFormula")
+                                        .replace("{share}", String(row.milliemeShare))
+                                        .replace("{totalShares}", String(row.milliemeTotalShares))
+                                        .replace("{amount}", formatCurrency(row.totalCost, property.currencyCode, property.locale))
+                                        .replace("{allocated}", formatCurrency(row.amount, property.currencyCode, property.locale))}
+                                    </span>
+                                  </div>
+                                )}
                                 <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
                                   <span className="font-medium">{t("costs.allocatedAmount")}</span>
                                   <span className="text-right font-semibold tabular-nums">{formatCurrency(row.amount, property.currencyCode, property.locale)}</span>
