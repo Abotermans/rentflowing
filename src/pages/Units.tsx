@@ -375,7 +375,7 @@ export default function Units() {
                     <TooltipTrigger asChild>
                       <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-[250px]">
+                    <TooltipContent side="top" className="max-w-[250px]">
                       <p className="text-xs">
                         {editingUnit && leases.some(l => l.unitId === editingUnit.id && l.lifecycleStage === "active")
                           ? t("occupancy.statusLockedByLease")
