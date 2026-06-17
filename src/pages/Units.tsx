@@ -357,14 +357,18 @@ export default function Units() {
               <div><Label>{t("units.unitCode")} *</Label><Input value={form.unitCode} onChange={e => setForm(f => ({ ...f, unitCode: e.target.value }))} placeholder="e.g. PAR-A01" /></div>
               <div><Label>{t("units.label")} *</Label><Input value={form.unitLabel} onChange={e => setForm(f => ({ ...f, unitLabel: e.target.value }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4 items-start">
-              <div><Label>{t("units.type")} *</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1">
+                  <Label>{t("units.type")} *</Label>
+                  <span className="h-3.5 w-3.5" />
+                </div>
                 <Select value={form.unitType} onValueChange={v => setForm(f => ({ ...f, unitType: v as UnitType }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{t(ut.labelKey)}</SelectItem>)}</SelectContent>
+                  <SelectContent>{UNIT_TYPES.map(ut => <SelectItem key={ut.value} value={ut.value}>{t(ut.labelKey)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-1">
                   <Label>{t("units.status")} *</Label>
                   <Tooltip>
