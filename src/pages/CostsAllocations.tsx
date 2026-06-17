@@ -26,26 +26,6 @@ export default function CostsAllocations() {
 
   const activeEntries = costEntries.filter(e => e.status === "active");
 
-  const totals = useMemo(() => {
-    let charges = 0, taxes = 0, ownerBorne = 0, recoverable = 0;
-    for (const e of activeEntries) {
-      if (e.isTax) taxes += e.amount; else charges += e.amount;
-    }
-    // From allocation results + direct unit costs
-    for (const r of costAllocationResults) {
-      ownerBorne += r.ownerBurdenAmount;
-      recoverable += r.recoverableAmount;
-    }
-    // Direct unit costs (no allocation results)
-    for (const e of activeEntries) {
-      if (e.unitId && !costAllocationResults.some(r => r.costEntryId === e.id)) {
-        if (e.recoveryType === "owner-only") ownerBorne += e.amount;
-        else if (e.recoveryType === "tenant-recoverable") recoverable += e.amount;
-        else if (e.recoveryType === "partially-recoverable") { ownerBorne += e.amount / 2; recoverable += e.amount / 2; }
-      }
-    }
-    return { charges, taxes, ownerBorne, recoverable };
-  }, [activeEntries, costAllocationResults]);
 
   // Property-level breakdown
   const propertyBreakdown = useMemo(() => {
@@ -113,33 +93,6 @@ export default function CostsAllocations() {
         <p className="text-sm text-muted-foreground">{t("costs.allocationsSubtitle")}</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground font-medium">{t("costs.totalCharges")}</p>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(totals.charges)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground font-medium">{t("costs.totalTaxes")}</p>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(totals.taxes)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground font-medium">{t("costs.ownerBorne")}</p>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(totals.ownerBorne)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground font-medium">{t("costs.recoverable")}</p>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(totals.recoverable)}</p>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Property Allocation Table */}
       <Card>
