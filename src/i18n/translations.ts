@@ -1928,6 +1928,17 @@ const fr: TranslationKeys = {
   "tenants.currentAddress": "Adresse actuelle",
   "tenants.searchPlaceholder": "Rechercher nom, email…",
   "tenants.contactInfo": "Coordonnées",
+  "tenants.kind": "Type de locataire",
+  "tenants.kind.individual": "Particulier",
+  "tenants.kind.corporation": "Société",
+  "tenants.companyName": "Raison sociale",
+  "tenants.legalForm": "Forme juridique",
+  "tenants.registrationNumber": "Numéro d'immatriculation",
+  "tenants.vatNumber": "Numéro de TVA",
+  "tenants.mainContact": "Contact principal",
+  "tenants.contactRole": "Fonction",
+  "tenants.registeredAddress": "Adresse du siège",
+  "tenants.type": "Type",
 
   // Leases
   "leases.title": "Baux",
