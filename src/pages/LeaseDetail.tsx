@@ -1064,11 +1064,13 @@ export default function LeaseDetail() {
       <Collapsible open={leaseSummaryOpen} onOpenChange={setLeaseSummaryOpen}>
         <Card>
           <CollapsibleTrigger asChild>
-            <CardHeader className="pb-3 cursor-pointer flex-row items-center space-y-0">
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 text-left">{t("detail.leaseSummary")}</CardTitle>
-              <span className="inline-flex items-center justify-center h-7 w-7">
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", leaseSummaryOpen && "rotate-180")} />
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center h-7 w-7">
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", leaseSummaryOpen && "rotate-180")} />
+                </span>
+              </div>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
