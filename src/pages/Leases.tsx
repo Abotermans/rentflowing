@@ -140,9 +140,12 @@ export default function Leases() {
   const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
 
   const emptyTenantForm: TenantFormData = {
+    kind: "individual",
     firstName: "", lastName: "", email: "", phone: "",
     dateOfBirth: null, identificationNumber: null, currentAddress: null,
     status: "active", notes: "",
+    companyName: null, legalForm: null, registrationNumber: null, vatNumber: null,
+    contactFirstName: null, contactLastName: null, contactRole: null,
   };
   const [tenantForm, setTenantForm] = useState<TenantFormData>({ ...emptyTenantForm });
   const [step, setStep] = useState(1);
