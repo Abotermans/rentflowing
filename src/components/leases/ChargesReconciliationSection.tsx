@@ -346,6 +346,9 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                 <Input type="date" value={end} onChange={e => setEnd(e.target.value)} />
               </div>
             </div>
+            {periodError && (
+              <p className="text-xs text-destructive">{periodError}</p>
+            )}
 
             {breakdown && (
               <>
