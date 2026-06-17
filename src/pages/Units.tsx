@@ -89,7 +89,7 @@ export default function Units() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
 
-  type USortKey = "code" | "label" | "property" | "type" | "floor" | "surface" | "rent" | "charges" | "occupancy" | "availableFrom";
+  type USortKey = "code" | "label" | "property" | "type" | "floor" | "surface" | "millieme" | "rent" | "charges" | "occupancy" | "availableFrom";
   const { sort, toggle } = useTableSort<USortKey>();
 
   useEffect(() => {
@@ -207,6 +207,7 @@ export default function Units() {
       case "type": return t(UNIT_TYPE_KEYS[u.unitType]);
       case "floor": return u.floor;
       case "surface": return u.surfaceArea;
+      case "millieme": return getUnitMillieme(u);
       case "rent": return u.baseRent;
       case "charges": return u.baseCharges;
       case "occupancy": return occ.derived;
