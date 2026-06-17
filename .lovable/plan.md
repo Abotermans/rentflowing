@@ -1,68 +1,47 @@
+## Audit findings
 
-## Goal
+The portfolio feature is broken at the **database permission layer**, not in the UI. Two consecutive cleanup migrations stripped grants that the Data API and RLS policies need:
 
-Standardize every list table in the app (Properties, Units, Tenants, Leases, Payments, Maintenance, Vendors, Cost Entries, Cost Categories, Allocation Rules) so they all match the Properties table's formatting, typography, and column patterns.
+### Bug 1 — Tables have zero Data API grants
+`portfolios`, `portfolio_members`, and `portfolio_invitations` have **no privileges** granted to `authenticated` or `service_role`. PostgREST therefore returns `permission denied` for any client call, regardless of RLS. This is why:
+- Creating a portfolio fails (insert blocked before RLS even runs).
+- The switcher and Portfolio Settings page can't list members or invitations.
 
-## Reference: Properties table standard
+### Bug 2 — Helper functions revoked from `authenticated`
+`is_portfolio_member`, `has_portfolio_role`, and `add_portfolio_creator_as_owner` had `EXECUTE` revoked from `authenticated`. Every RLS policy on these tables calls `is_portfolio_member(...)` or `has_portfolio_role(...)` in the caller's role context, so the policies themselves now raise `permission denied for function is_portfolio_member`. `SECURITY DEFINER` controls what the function does internally — it does not bypass the EXECUTE check.
 
-Locked in `src/pages/Properties.tsx`:
+### What's actually fine
+- RLS policies are correctly written (separate `USING` / `WITH CHECK`, scoped to `authenticated`, owner/admin checks on writes).
+- The `trg_add_portfolio_creator_as_owner` trigger correctly seeds the creator as `owner` (avoids the chicken-and-egg INSERT loop).
+- `handle_new_user` correctly creates a starter portfolio + owner membership on signup.
+- `PortfolioSwitcher.tsx` and `PortfolioSettings.tsx` already implement create / invite / role-update / remove flows — no UI changes needed.
 
-- Container: `<Card>` wrapping `<Table>` and `<TablePagination>`.
-- Header: `SortableTableHead` for sortable columns; trailing action column is a plain `<TableHead className="text-right">{t("...actions")}</TableHead>` with a translated label.
-- Row: `<TableRow className="cursor-pointer" onClick={navigate to detail}>` when the entity has a detail page.
-- Cell defaults: `className="text-muted-foreground"` — no extra `text-xs`/`text-sm` overrides. Inherits the Table component's base size.
-- Reference / code / ID cells: `className="font-mono text-xs text-muted-foreground"`.
-- Numeric cells (currency, surface, counts): `className="text-right text-muted-foreground"` (no `font-mono`, no `text-sm` override). Centered counts use `text-center text-muted-foreground`.
-- Status cell: bare `<TableCell>` containing `<StatusBadge />`.
-- Action cell: `<TableCell className="text-right" onClick={e => e.stopPropagation()}>` with `<div className="flex justify-end gap-1">` and `h-8 w-8` ghost icon buttons whose icons are `h-3.5 w-3.5`.
-- Date cells: `text-muted-foreground` only (no `text-xs`).
+## Plan
 
-## Per-page changes
+### 1. Single migration restoring grants
 
-### `src/pages/Vendors.tsx`
-- Replace hardcoded English column titles ("Vendor Name", "Trade", "Contact", "Email", "Phone", "Status", "Actions") with `t(...)` keys (add missing keys to `src/i18n/translations.ts` if absent).
-- Drop the redundant `text-sm` on `TableCell` (keep `text-muted-foreground`).
+Grant Data API access on the three tables (auth-only — no `anon`):
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.portfolios          TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.portfolio_members   TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.portfolio_invitations TO authenticated;
+GRANT ALL ON public.portfolios, public.portfolio_members, public.portfolio_invitations TO service_role;
+```
 
-### `src/pages/Tenants.tsx`
-- Keep `font-mono text-xs` for lease reference, but the "Unit" cell currently uses `font-mono text-xs` — change to plain `text-muted-foreground` unless it actually displays a unit code (verify and align with Units page where unit codes are `font-mono text-xs`).
-- No other structural changes.
+Restore EXECUTE on the helpers RLS policies depend on:
+```sql
+GRANT EXECUTE ON FUNCTION public.is_portfolio_member(uuid, uuid)                       TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_portfolio_role(uuid, uuid, portfolio_role[])       TO authenticated;
+```
 
-### `src/pages/Leases.tsx`
-- Drop `text-xs` from the start/end date cells (`text-muted-foreground` only) to match Properties.
-- Drop the `text-sm` override on the guarantee cell.
-- Keep `font-mono text-xs` for the lease reference cell.
-- Keep `font-medium text-foreground` on the total cell (Properties uses similar emphasis for the occupancy figure).
+Keep `add_portfolio_creator_as_owner()` and `handle_new_user()` revoked from `authenticated` — they're only meant to be invoked by triggers (which run as table owner).
 
-### `src/pages/Payments.tsx` (Receivables and Cash Receipts tables)
-- Remove every `className="text-xs"` on `SortableTableHead` — headers must inherit default size like Properties.
-- Remove `text-xs` from cells; keep `font-mono text-xs` only for lease reference / receipt reference codes.
-- Numeric columns: change `text-right text-sm text-muted-foreground` to `text-right text-muted-foreground`.
-- Date cells: `text-muted-foreground` only.
+### 2. Verification after migration
+- Run the Supabase linter; expect clean.
+- Confirm: a logged-in user can create a portfolio, the trigger seeds them as owner, the new portfolio appears in the switcher, and Portfolio Settings can list members + send/cancel invitations.
 
-### `src/pages/Maintenance.tsx`
-- Already mostly aligned. Verify all cells use `text-muted-foreground` without extra `text-sm`; keep `font-mono text-xs` on the unit code cell.
-- "Actions" header label already translated — leave as-is.
+### 3. No client code changes
+`PortfolioSwitcher`, `PortfolioContext`, and `PortfolioSettings` are correct as-is once the grants are restored.
 
-### `src/pages/CostEntries.tsx`
-- Drop `text-sm` overrides on text cells.
-- Amount cell: change `text-right font-mono text-sm text-muted-foreground` to `text-right text-muted-foreground` (remove `font-mono` and `text-sm`) to match Properties' numeric style.
-
-### `src/pages/CostCategories.tsx`
-- Drop `text-sm` overrides on text cells (keep `font-mono text-xs` for the code column).
-
-### `src/pages/AllocationRules.tsx`
-- Drop `text-sm` overrides on text cells.
-
-### `src/pages/Units.tsx`
-- Already close to Properties. Drop the `text-xs` on the "Available from" date cell so it matches Properties' date formatting.
-
-## Out of scope
-
-- No changes to filters, KPI cards, dialogs, business logic, column sets, sorting, pagination, or row click destinations.
-- No changes to `src/components/ui/table.tsx`, `SortableTableHead`, or `StatusBadge`.
-- No new columns added or existing columns removed; only typography/alignment normalization plus the Vendors translation cleanup.
-
-## Verification
-
-- Visit each list page in the preview, confirm header row, body text, numeric alignment, action column, and status badges look identical to Properties.
-- `bunx tsc --noEmit` clean after edits.
+## Out of scope (call out, don't change now)
+- `portfolio_invitations` accept flow (`AcceptInvite.tsx`) — works if grants are restored; if you want, a follow-up can harden it with a SECURITY DEFINER `accept_portfolio_invitation(token)` RPC so an invitee doesn't need a direct `portfolio_members` INSERT policy. Not required to unblock today's bug.
