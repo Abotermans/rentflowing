@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Unit, UnitType, UnitStatus } from "@/types";
+import { Unit, UnitType, UnitStatus, DEFAULT_MILLIEME_KEY, getUnitMillieme } from "@/types";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
@@ -89,7 +89,7 @@ export default function Units() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
 
-  type USortKey = "code" | "label" | "property" | "type" | "floor" | "surface" | "rent" | "charges" | "occupancy" | "availableFrom";
+  type USortKey = "code" | "label" | "property" | "type" | "floor" | "surface" | "millieme" | "rent" | "charges" | "occupancy" | "availableFrom";
   const { sort, toggle } = useTableSort<USortKey>();
 
   useEffect(() => {
@@ -106,6 +106,7 @@ export default function Units() {
     propertyId: properties[0]?.id ?? "", unitCode: "", unitLabel: "", unitType: "apartment",
     floor: null, surfaceArea: null, bedrooms: 0, bathrooms: 0, furnished: false,
     currentStatus: "vacant", baseRent: null, rentTiers: [], baseCharges: null, availableFrom: null, notes: "",
+    milliemeShares: {}, milliemeBase: 1000,
   };
   const [form, setForm] = useState<UnitFormData>({ ...emptyForm });
 
@@ -206,6 +207,7 @@ export default function Units() {
       case "type": return t(UNIT_TYPE_KEYS[u.unitType]);
       case "floor": return u.floor;
       case "surface": return u.surfaceArea;
+      case "millieme": return getUnitMillieme(u);
       case "rent": return u.baseRent;
       case "charges": return u.baseCharges;
       case "occupancy": return occ.derived;
@@ -281,6 +283,7 @@ export default function Units() {
                   <SortableTableHead sortKey="type" sort={sort} onSort={toggle}>{t("units.type")}</SortableTableHead>
                   <SortableTableHead sortKey="floor" sort={sort} onSort={toggle} align="center">{t("units.floor")}</SortableTableHead>
                   <SortableTableHead sortKey="surface" sort={sort} onSort={toggle} align="right">{t("units.surface")}</SortableTableHead>
+                  <SortableTableHead sortKey="millieme" sort={sort} onSort={toggle} align="right">{t("units.millieme")}</SortableTableHead>
                   <SortableTableHead sortKey="rent" sort={sort} onSort={toggle} align="right">{t("units.rent")}</SortableTableHead>
                   <SortableTableHead sortKey="charges" sort={sort} onSort={toggle} align="right">{t("units.charges")}</SortableTableHead>
                   <SortableTableHead sortKey="occupancy" sort={sort} onSort={toggle}>{t("occupancy.derivedLabel")}</SortableTableHead>
@@ -301,6 +304,13 @@ export default function Units() {
                       <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
                       <TableCell className="text-center text-muted-foreground">{u.floor != null ? u.floor : "—"}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{u.surfaceArea != null && prop ? formatArea(u.surfaceArea, prop.measurementSystem) : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {(() => {
+                          const v = getUnitMillieme(u);
+                          const base = prop?.milliemeBase ?? u.milliemeBase ?? 1000;
+                          return v > 0 ? `${v} / ${base}` : "—";
+                        })()}
+                      </TableCell>
                       <TableCell className="text-right text-muted-foreground">{u.baseRent != null && prop ? formatCurrency(u.baseRent, prop.currencyCode, prop.locale) : "—"}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{u.baseCharges != null && prop ? formatCurrency(u.baseCharges, prop.currencyCode, prop.locale) : "—"}</TableCell>
                       <TableCell>
@@ -414,6 +424,32 @@ export default function Units() {
               <div><Label>{t("units.rent")} ({selectedProperty?.currencyCode ?? "EUR"})</Label><Input type="number" value={form.baseRent ?? ""} onChange={e => setForm(f => ({ ...f, baseRent: e.target.value ? Number(e.target.value) : null }))} /></div>
               <div><Label>{t("units.charges")} ({selectedProperty?.currencyCode ?? "EUR"})</Label><Input type="number" value={form.baseCharges ?? ""} onChange={e => setForm(f => ({ ...f, baseCharges: e.target.value ? Number(e.target.value) : null }))} /></div>
             </div>
+
+            {/* Millième shares */}
+            <div className="space-y-2 border-t pt-3">
+              <Label className="text-sm font-medium">{t("units.milliemeShares")}</Label>
+              <p className="text-xs text-muted-foreground">{t("units.milliemeHelp")}</p>
+              <div className="grid grid-cols-2 gap-3">
+                {((selectedProperty?.milliemeKeys?.length ? selectedProperty.milliemeKeys : [DEFAULT_MILLIEME_KEY])).map(k => (
+                  <div key={k} className="flex items-center gap-2">
+                    <Label className="text-xs flex-1 capitalize">{k}</Label>
+                    <Input
+                      type="number" min={0} step={0.01} className="w-28 h-8 text-right"
+                      placeholder={`/ ${selectedProperty?.milliemeBase ?? 1000}`}
+                      value={(form.milliemeShares ?? {})[k] ?? ""}
+                      onChange={e => {
+                        const raw = e.target.value;
+                        const next = { ...(form.milliemeShares ?? {}) };
+                        if (raw === "") delete next[k];
+                        else next[k] = Math.max(0, Number(raw) || 0);
+                        setForm(f => ({ ...f, milliemeShares: next }));
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div>
               <Label>{t("units.rentTiers")}</Label>
               <p className="text-xs text-muted-foreground mb-2">{t("units.rentTiersHelp")}</p>

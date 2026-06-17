@@ -35,11 +35,12 @@ export const COST_ENTRY_STATUS_LABELS: Record<CostEntryStatus, string> = {
 };
 
 // ===== Allocation Method =====
-export type AllocationMethod = "equal" | "surface-area" | "manual-percentage";
+export type AllocationMethod = "equal" | "surface-area" | "manual-percentage" | "millieme";
 export const ALLOCATION_METHOD_LABELS: Record<AllocationMethod, string> = {
   equal: "Equal",
   "surface-area": "Surface Area (m²)",
   "manual-percentage": "Manual Percentage",
+  millieme: "Co-ownership share (millième)",
 };
 
 // ===== Cost Category =====
@@ -91,6 +92,11 @@ export interface AllocationRule {
   applyOnlyToOccupiedUnits: boolean;
   includeUnavailableUnits: boolean;
   notes: string;
+  /**
+   * Which millième key this rule targets when `method === "millieme"`.
+   * Defaults to "general" when null/undefined.
+   */
+  shareKey?: string | null;
   createdAt: string;
   updatedAt: string;
 }

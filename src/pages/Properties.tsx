@@ -57,6 +57,7 @@ const emptyForm: PropertyFormData = {
   name: "", referenceCode: "", address1: "", address2: "", city: "", postalCode: "",
   regionOrState: "", countryCode: "FR", locale: "fr-FR", currencyCode: "EUR", measurementSystem: "metric",
   propertyType: "residential", ownerName: "", description: "", status: "active",
+  milliemeBase: 1000, milliemeKeys: ["general"],
 };
 
 export default function Properties() {
@@ -362,6 +363,33 @@ export default function Properties() {
             <div>
               <Label htmlFor="desc">{t("properties.description")}</Label>
               <Textarea id="desc" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} />
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+              <Label className="text-sm font-medium">{t("properties.millieme")}</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">{t("properties.milliemeBase")}</Label>
+                  <Input
+                    type="number" min={1}
+                    value={form.milliemeBase ?? 1000}
+                    onChange={e => setForm(f => ({ ...f, milliemeBase: Math.max(1, Number(e.target.value) || 1000) }))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">{t("properties.milliemeKeys")}</Label>
+                  <Input
+                    value={(form.milliemeKeys ?? ["general"]).join(", ")}
+                    onChange={e => {
+                      const parts = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                      const keys = parts.includes("general") ? parts : ["general", ...parts];
+                      setForm(f => ({ ...f, milliemeKeys: keys }));
+                    }}
+                    placeholder="general, lift, heating"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("properties.milliemeKeysHelp")}</p>
             </div>
           </div>
           <DialogFooter>

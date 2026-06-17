@@ -13,7 +13,7 @@ import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, Clock, Bu
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
-import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
+import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, getUnitMillieme, DEFAULT_MILLIEME_KEY } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
 import { getDerivedOccupancy } from "@/lib/occupancy";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -161,6 +161,8 @@ export default function UnitDetail() {
         floor: form.floor, surfaceArea: form.surfaceArea, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
         furnished: form.furnished, availableFrom: form.availableFrom, currentStatus: form.currentStatus,
         description: form.description ?? "",
+        milliemeShares: form.milliemeShares ?? {},
+        milliemeBase: form.milliemeBase,
       });
     } else if (editSection === "financials") {
       persist({
@@ -350,6 +352,15 @@ export default function UnitDetail() {
     { label: t("units.bathrooms"), value: String(unit.bathrooms), icon: Bath },
     { label: t("units.furnished"), value: unit.furnished ? t("common.yes") : t("common.no"), icon: Sofa },
     { label: t("units.availableFrom"), value: unit.availableFrom ? formatDate(unit.availableFrom, property.locale) : "—", icon: CalendarClock },
+    {
+      label: t("units.millieme"),
+      value: (() => {
+        const v = getUnitMillieme(unit);
+        const base = property.milliemeBase ?? unit.milliemeBase ?? 1000;
+        return v > 0 ? `${v} / ${base}` : "—";
+      })(),
+      icon: Ruler,
+    },
     { label: t("common.description"), value: unit.description || "—", icon: FileText },
   ];
 
@@ -1003,6 +1014,29 @@ export default function UnitDetail() {
               <div className="flex items-center gap-3">
                 <Switch checked={form.furnished} onCheckedChange={v => setForm(f => f && ({ ...f, furnished: v }))} />
                 <Label>{t("units.furnished")}</Label>
+              </div>
+              <div className="space-y-2 border-t pt-3">
+                <Label className="text-sm font-medium">{t("units.milliemeShares")}</Label>
+                <p className="text-xs text-muted-foreground">{t("units.milliemeHelp")}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {((property.milliemeKeys?.length ? property.milliemeKeys : [DEFAULT_MILLIEME_KEY])).map(k => (
+                    <div key={k} className="flex items-center gap-2">
+                      <Label className="text-xs flex-1 capitalize">{k}</Label>
+                      <Input
+                        type="number" min={0} step={0.01} className="w-28 h-8 text-right"
+                        placeholder={`/ ${property.milliemeBase ?? 1000}`}
+                        value={(form.milliemeShares ?? {})[k] ?? ""}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          const next = { ...(form.milliemeShares ?? {}) };
+                          if (raw === "") delete next[k];
+                          else next[k] = Math.max(0, Number(raw) || 0);
+                          setForm(f => f && ({ ...f, milliemeShares: next }));
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
               <div>
                 <Label>{t("common.description")}</Label>
