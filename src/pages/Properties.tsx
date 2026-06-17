@@ -57,6 +57,7 @@ const emptyForm: PropertyFormData = {
   name: "", referenceCode: "", address1: "", address2: "", city: "", postalCode: "",
   regionOrState: "", countryCode: "FR", locale: "fr-FR", currencyCode: "EUR", measurementSystem: "metric",
   propertyType: "residential", ownerName: "", description: "", status: "active",
+  milliemeBase: 1000, milliemeKeys: ["general"],
 };
 
 export default function Properties() {
