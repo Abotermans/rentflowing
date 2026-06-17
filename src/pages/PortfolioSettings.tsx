@@ -20,7 +20,9 @@ export default function PortfolioSettings() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const canManage = currentPortfolio?.role === "owner" || currentPortfolio?.role === "admin";
+  const callerRole = currentPortfolio?.role as Role | undefined;
+  const isOwner = callerRole === "owner";
+  const canManage = isOwner || callerRole === "admin";
 
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("EUR");
@@ -30,6 +32,14 @@ export default function PortfolioSettings() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("editor");
   const [busy, setBusy] = useState(false);
+
+  // Add-member form
+  const [newEmail, setNewEmail] = useState("");
+  const [newFirst, setNewFirst] = useState("");
+  const [newLast, setNewLast] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState<Role>("editor");
+  const [addBusy, setAddBusy] = useState(false);
 
   useEffect(() => {
     if (!currentPortfolio) return;
@@ -106,6 +116,36 @@ export default function PortfolioSettings() {
     loadMembers();
   };
 
+  const addMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPortfolioId) return;
+    setAddBusy(true);
+    const { data, error } = await supabase.functions.invoke("create-portfolio-user", {
+      body: {
+        portfolio_id: currentPortfolioId,
+        email: newEmail,
+        password: newPassword,
+        role: newRole,
+        first_name: newFirst || null,
+        last_name: newLast || null,
+      },
+    });
+    setAddBusy(false);
+    if (error) {
+      toast({ title: "Could not add member", description: error.message, variant: "destructive" });
+      return;
+    }
+    const resp = data as { created?: boolean; email?: string };
+    toast({
+      title: resp?.created ? "User created & added" : "Existing user added",
+      description: resp?.created
+        ? `Share the password with ${resp.email}. They can sign in immediately.`
+        : `${resp?.email} now has access to this portfolio.`,
+    });
+    setNewEmail(""); setNewFirst(""); setNewLast(""); setNewPassword(""); setNewRole("editor");
+    loadMembers();
+  };
+
   const copyInviteLink = (token: string) => {
     const url = `${window.location.origin}/accept-invite/${token}`;
     navigator.clipboard.writeText(url);
@@ -167,6 +207,12 @@ export default function PortfolioSettings() {
           <Card>
             <CardHeader><CardTitle>Members</CardTitle></CardHeader>
             <CardContent className="space-y-2">
+              <div className="text-xs text-muted-foreground border rounded-md p-3 mb-2 leading-relaxed">
+                <strong>Owner</strong> — full control, including deleting the portfolio and managing other owners.{" "}
+                <strong>Admin</strong> — manage settings, members, and all data, but cannot delete the portfolio or touch owners.{" "}
+                <strong>Editor</strong> — edit business data.{" "}
+                <strong>Viewer</strong> — read-only.
+              </div>
               {members.map((m) => (
                 <div key={m.id} className="flex items-center justify-between border rounded-md px-3 py-2">
                   <div className="flex items-center gap-2 min-w-0">
@@ -174,11 +220,11 @@ export default function PortfolioSettings() {
                     {m.user_id === user?.id && <Badge variant="outline">You</Badge>}
                   </div>
                   <div className="flex items-center gap-2">
-                    {canManage && m.user_id !== user?.id ? (
+                    {canManage && m.user_id !== user?.id && !(m.role === "owner" && !isOwner) ? (
                       <Select value={m.role} onValueChange={(v) => changeRole(m.id, v as Role)}>
                         <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="owner">Owner</SelectItem>
+                          {isOwner && <SelectItem value="owner">Owner</SelectItem>}
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="editor">Editor</SelectItem>
                           <SelectItem value="viewer">Viewer</SelectItem>
@@ -187,7 +233,7 @@ export default function PortfolioSettings() {
                     ) : (
                       <Badge variant="secondary" className="capitalize">{m.role}</Badge>
                     )}
-                    {canManage && m.user_id !== user?.id && (
+                    {canManage && m.user_id !== user?.id && !(m.role === "owner" && !isOwner) && (
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeMember(m.id, m.user_id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -197,6 +243,50 @@ export default function PortfolioSettings() {
               ))}
             </CardContent>
           </Card>
+
+          {canManage && (
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>Add a member</CardTitle>
+                <CardDescription>Create a new user with a password and add them to this portfolio. They can sign in immediately with the credentials you set.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={addMember} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="ne">Email</Label>
+                      <Input id="ne" type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nf">First name</Label>
+                      <Input id="nf" value={newFirst} onChange={(e) => setNewFirst(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nl">Last name</Label>
+                      <Input id="nl" value={newLast} onChange={(e) => setNewLast(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="np">Password (min 8 chars)</Label>
+                      <Input id="np" type="text" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Role</Label>
+                      <Select value={newRole} onValueChange={(v) => setNewRole(v as Role)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {isOwner && <SelectItem value="owner">Owner</SelectItem>}
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="editor">Editor</SelectItem>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button type="submit" disabled={addBusy}>{addBusy ? "Adding…" : "Create & add"}</Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="invitations" className="mt-4 space-y-4">
@@ -209,6 +299,7 @@ export default function PortfolioSettings() {
                   <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as Role)}>
                     <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      {isOwner && <SelectItem value="owner">Owner</SelectItem>}
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="editor">Editor</SelectItem>
                       <SelectItem value="viewer">Viewer</SelectItem>
