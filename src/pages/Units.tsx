@@ -357,7 +357,7 @@ export default function Units() {
               <div><Label>{t("units.unitCode")} *</Label><Input value={form.unitCode} onChange={e => setForm(f => ({ ...f, unitCode: e.target.value }))} placeholder="e.g. PAR-A01" /></div>
               <div><Label>{t("units.label")} *</Label><Input value={form.unitLabel} onChange={e => setForm(f => ({ ...f, unitLabel: e.target.value }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 items-start">
               <div><Label>{t("units.type")} *</Label>
                 <Select value={form.unitType} onValueChange={v => setForm(f => ({ ...f, unitType: v as UnitType }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -385,12 +385,16 @@ export default function Units() {
                   onValueChange={v => setForm(f => ({ ...f, currentStatus: v as UnitStatus }))}
                   disabled={!!(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.lifecycleStage === "active"))}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue>
+                      <StatusBadge status={form.currentStatus} />
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
                     {(editingUnit && leases.some(l => l.unitId === editingUnit.id && l.lifecycleStage === "active")
                       ? UNIT_STATUSES
                       : UNIT_STATUSES_NO_LEASE
-                      ).map(s => <SelectItem key={s.value} value={s.value}>{t(s.labelKey)}</SelectItem>)}
+                      ).map(s => <SelectItem key={s.value} value={s.value}><StatusBadge status={s.value} /></SelectItem>)}
                   </SelectContent>
                 </Select>
                 <StatusTransitionAlert validation={unitStatusValidation} />
