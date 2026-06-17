@@ -161,14 +161,33 @@ export default function TenantDetail() {
         <CollapsibleContent>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {tenant.kind === "corporation" && (
+              <>
+                <div className="flex items-start gap-2"><Building2 className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.companyName")}</p><p className="text-sm font-medium text-foreground">{tenant.companyName || "—"}</p></div></div>
+                {tenant.legalForm && (
+                  <div className="flex items-start gap-2"><Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.legalForm")}</p><p className="text-sm font-medium text-foreground">{tenant.legalForm}</p></div></div>
+                )}
+                {tenant.registrationNumber && (
+                  <div className="flex items-start gap-2"><Hash className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.registrationNumber")}</p><p className="text-sm font-medium text-foreground">{tenant.registrationNumber}</p></div></div>
+                )}
+                {tenant.vatNumber && (
+                  <div className="flex items-start gap-2"><Receipt className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.vatNumber")}</p><p className="text-sm font-medium text-foreground">{tenant.vatNumber}</p></div></div>
+                )}
+                {(tenant.contactFirstName || tenant.contactLastName) && (
+                  <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.mainContact")}</p><p className="text-sm font-medium text-foreground">{`${tenant.contactFirstName ?? ""} ${tenant.contactLastName ?? ""}`.trim()}{tenant.contactRole ? ` — ${tenant.contactRole}` : ""}</p></div></div>
+                )}
+              </>
+            )}
             <div className="flex items-start gap-2"><Mail className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.email")}</p><p className="text-sm font-medium text-foreground">{tenant.email}</p></div></div>
             <div className="flex items-start gap-2"><Phone className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.phone")}</p><p className="text-sm font-medium text-foreground">{tenant.phone || "—"}</p></div></div>
-            <div className="flex items-start gap-2"><Calendar className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.dateOfBirth")}</p><p className="text-sm font-medium text-foreground">{tenant.dateOfBirth ? formatDate(tenant.dateOfBirth) : "—"}</p></div></div>
-            {tenant.identificationNumber && (
+            {tenant.kind === "individual" && (
+              <div className="flex items-start gap-2"><Calendar className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.dateOfBirth")}</p><p className="text-sm font-medium text-foreground">{tenant.dateOfBirth ? formatDate(tenant.dateOfBirth) : "—"}</p></div></div>
+            )}
+            {tenant.kind === "individual" && tenant.identificationNumber && (
               <div className="flex items-start gap-2"><CreditCard className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("detail.idNumber")}</p><p className="text-sm font-medium text-foreground">{tenant.identificationNumber}</p></div></div>
             )}
             {tenant.currentAddress && (
-              <div className="flex items-start gap-2 col-span-2"><MapPin className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{t("tenants.currentAddress")}</p><p className="text-sm font-medium text-foreground">{tenant.currentAddress}</p></div></div>
+              <div className="flex items-start gap-2 col-span-2"><MapPin className="h-4 w-4 text-muted-foreground mt-0.5" /><div><p className="text-xs text-muted-foreground">{tenant.kind === "corporation" ? t("tenants.registeredAddress") : t("tenants.currentAddress")}</p><p className="text-sm font-medium text-foreground">{tenant.currentAddress}</p></div></div>
             )}
           </div>
         </CardContent>
