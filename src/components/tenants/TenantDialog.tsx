@@ -13,7 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tenant, TenantStatus } from "@/types";
+import { Tenant, TenantStatus, TenantKind } from "@/types";
 import { canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
@@ -28,9 +28,12 @@ const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
 ];
 
 const emptyForm: TenantFormData = {
+  kind: "individual",
   firstName: "", lastName: "", email: "", phone: "",
   dateOfBirth: null, identificationNumber: null, currentAddress: null,
   status: "active", notes: "",
+  companyName: null, legalForm: null, registrationNumber: null, vatNumber: null,
+  contactFirstName: null, contactLastName: null, contactRole: null,
 };
 
 interface TenantDialogProps {
@@ -77,9 +80,24 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
   };
 
   const handleSave = () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
-      toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
+    if (!form.email.trim()) {
+      toast({ title: "Validation Error", description: "Email is required.", variant: "destructive" });
       return;
+    }
+    if (form.kind === "individual") {
+      if (!form.firstName.trim() || !form.lastName.trim()) {
+        toast({ title: "Validation Error", description: "First name and last name are required.", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!(form.companyName ?? "").trim()) {
+        toast({ title: "Validation Error", description: "Company name is required.", variant: "destructive" });
+        return;
+      }
+      if (!(form.contactFirstName ?? "").trim() || !(form.contactLastName ?? "").trim()) {
+        toast({ title: "Validation Error", description: "Main contact first and last name are required.", variant: "destructive" });
+        return;
+      }
     }
     if (editingTenant && form.status !== editingTenant.status) {
       const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
