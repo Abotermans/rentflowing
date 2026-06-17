@@ -2,12 +2,11 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, CheckCircle2, XCircle, Clock, Ban, TrendingUp, CalendarClock, Globe, Landmark, Settings2, FileText, Users, AlertTriangle, CreditCard, Shield, Bell, Truck, Home, PackageCheck, Wrench, ArrowRightLeft, Banknote, Receipt } from "lucide-react";
+import { Building2, DoorOpen, TrendingUp, CalendarClock, AlertTriangle, Shield, Bell, Truck, Wrench, ArrowRightLeft, Banknote } from "lucide-react";
 import { Link } from "react-router-dom";
-import { formatDate, formatCurrency, getCountryName, getPropertyTypeLabel } from "@/lib/formatters";
-import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus } from "@/types";
+import { formatDate, formatCurrency } from "@/lib/formatters";
+import { getTenantFullName } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
-import type { TranslationKey } from "@/i18n/translations";
 
 export default function Dashboard() {
   const { properties, units, leases, leaseUnitAssignments, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets, costEntries, costAllocationResults } = useAppData();
@@ -84,73 +83,14 @@ export default function Dashboard() {
   // Unmatched receipts for dashboard table
   const unmatchedReceipts = cashReceipts.filter(cr => cr.unmatchedAmount > 0).slice(0, 5);
 
-  // Costs & Taxes KPIs
-  const activeCostEntries = costEntries.filter(e => e.status === "active");
-  const totalCostsAmount = activeCostEntries.reduce((s, e) => s + e.amount, 0);
-  const totalChargesAmount = activeCostEntries.filter(e => !e.isTax).reduce((s, e) => s + e.amount, 0);
-  const totalTaxesAmount = activeCostEntries.filter(e => e.isTax).reduce((s, e) => s + e.amount, 0);
-  const ownerBorneTotal = activeCostEntries.filter(e => e.recoveryType === "owner-only").reduce((s, e) => s + e.amount, 0);
-
-  const kpiSections = [
-    {
-      title: t("dashboard.portfolio"),
-      items: [
-        { label: t("dashboard.totalProperties"), value: properties.length, icon: Building2, color: "text-primary" },
-        { label: t("dashboard.totalUnits"), value: totalUnits, icon: DoorOpen, color: "text-foreground" },
-        { label: t("dashboard.occupied"), value: occupied, icon: CheckCircle2, color: "text-success" },
-        { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, icon: TrendingUp, color: "text-success" },
-        ...(ancillaryLeased > 0 ? [{ label: t("dashboard.ancillaryLeased"), value: ancillaryLeased, icon: DoorOpen, color: "text-muted-foreground" }] : []),
-      ],
-    },
-    {
-      title: t("dashboard.leasesSection"),
-      items: [
-        { label: t("dashboard.activeLeases"), value: activeLeases.length, icon: FileText, color: "text-primary" },
-        { label: t("dashboard.endingSoon"), value: leasesEndingSoon.length, icon: CalendarClock, color: leasesEndingSoon.length > 0 ? "text-destructive" : "text-foreground" },
-        { label: t("dashboard.underNotice"), value: leasesUnderNotice.length, icon: Bell, color: leasesUnderNotice.length > 0 ? "text-warning" : "text-foreground" },
-        { label: t("dashboard.vacantUnits"), value: vacant, icon: XCircle, color: "text-warning" },
-      ],
-    },
-    {
-      title: t("dashboard.financial"),
-      items: [
-        { label: "Open Receivables", value: formatCurrency(totalOpenReceivables), icon: FileText, color: "text-primary", isText: true },
-        { label: t("dashboard.totalOverdue"), value: formatCurrency(totalOverdue), icon: AlertTriangle, color: totalOverdue > 0 ? "text-destructive" : "text-foreground", isText: true },
-        { label: "Unmatched Receipts", value: unmatchedReceiptsCount, icon: ArrowRightLeft, color: unmatchedReceiptsCount > 0 ? "text-warning" : "text-foreground" },
-        { label: "Unapplied Credit", value: formatCurrency(unappliedCreditTotal), icon: CreditCard, color: unappliedCreditTotal > 0 ? "text-primary" : "text-foreground", isText: true },
-      ],
-    },
-    {
-      title: t("dashboard.operations"),
-      items: [
-        { label: t("dashboard.openTickets"), value: openTicketsCount, icon: Wrench, color: openTicketsCount > 0 ? "text-warning" : "text-foreground" },
-        { label: t("dashboard.urgentTickets"), value: urgentTicketsCount, icon: Wrench, color: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
-        { label: t("dashboard.pendingMoveIns"), value: upcomingMoveIns.length, icon: Home, color: upcomingMoveIns.length > 0 ? "text-primary" : "text-foreground" },
-        { label: t("dashboard.pendingMoveOuts"), value: upcomingMoveOuts.length, icon: PackageCheck, color: upcomingMoveOuts.length > 0 ? "text-warning" : "text-foreground" },
-      ],
-    },
-    {
-      title: "Costs & Taxes",
-      items: [
-        { label: "Total Costs", value: formatCurrency(totalCostsAmount), icon: Banknote, color: "text-foreground", isText: true },
-        { label: "Charges", value: formatCurrency(totalChargesAmount), icon: Receipt, color: "text-primary", isText: true },
-        { label: "Taxes", value: formatCurrency(totalTaxesAmount), icon: Landmark, color: "text-warning", isText: true },
-        { label: "Owner-Borne", value: formatCurrency(ownerBorneTotal), icon: AlertTriangle, color: ownerBorneTotal > 0 ? "text-destructive" : "text-foreground", isText: true },
-      ],
-    },
+  // Compact KPI row — the few numbers that actually drive a decision.
+  const kpis = [
+    { label: t("dashboard.totalProperties"), value: properties.length, sub: `${totalUnits} ${t("dashboard.totalUnits").toLowerCase()}`, icon: Building2, tone: "text-foreground" },
+    { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, sub: `${occupied}/${primaryDenominator} ${t("dashboard.occupied").toLowerCase()}`, icon: TrendingUp, tone: occupancyRate >= 80 ? "text-success" : "text-warning" },
+    { label: t("dashboard.activeLeases"), value: activeLeases.length, sub: `${vacant} ${t("dashboard.vacantUnits").toLowerCase()}`, icon: DoorOpen, tone: "text-foreground" },
+    { label: "Open Receivables", value: formatCurrency(totalOpenReceivables), sub: totalOverdue > 0 ? `${formatCurrency(totalOverdue)} overdue` : "no overdue", icon: Banknote, tone: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
+    { label: t("dashboard.openTickets"), value: openTicketsCount, sub: urgentTicketsCount > 0 ? `${urgentTicketsCount} urgent` : "—", icon: Wrench, tone: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
   ];
-
-  const statusSegments = [
-    { status: "occupied" as const, count: occupied, className: "bg-success" },
-    { status: "reserved" as const, count: reserved, className: "bg-primary" },
-    { status: "vacant" as const, count: vacant, className: "bg-warning" },
-    { status: "unavailable" as const, count: unavailable, className: "bg-muted-foreground" },
-  ];
-
-  const vacancyOverview = properties.map(p => {
-    const stats = getPropertyStats(p.id);
-    return { ...p, ...stats };
-  });
 
   // Upcoming operations (next 30 days)
   const upcomingOps = [
@@ -165,52 +105,22 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
       </div>
 
-      {kpiSections.map(section => (
-        <div key={section.title}>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{section.title}</p>
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            {section.items.map(k => (
-              <Card key={k.label}>
-                <CardContent className="pt-5 pb-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</p>
-                      <p className={`font-bold text-foreground mt-1 ${(k as any).isText ? "text-lg" : "text-2xl"}`}>{k.value}</p>
-                    </div>
-                    <k.icon className={`h-5 w-5 ${k.color}`} />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("dashboard.unitsByStatus")}</CardTitle></CardHeader>
-        <CardContent>
-          {totalUnits > 0 ? (
-            <>
-              <div className="h-4 rounded-full overflow-hidden flex bg-muted">
-                {statusSegments.map(s => s.count > 0 && (
-                  <div key={s.status} className={`h-full ${s.className} transition-all`} style={{ width: `${(s.count / totalUnits) * 100}%` }} />
-                ))}
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+        {kpis.map(k => (
+          <Card key={k.label}>
+            <CardContent className="py-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide truncate">{k.label}</p>
+                  <p className={`text-xl font-bold mt-1 ${k.tone}`}>{k.value}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{k.sub}</p>
+                </div>
+                <k.icon className={`h-4 w-4 shrink-0 ${k.tone}`} />
               </div>
-              <div className="flex gap-4 mt-3 flex-wrap">
-                {statusSegments.map(s => (
-                  <div key={s.status} className="flex items-center gap-1.5 text-xs">
-                    <div className={`h-2.5 w-2.5 rounded-full ${s.className}`} />
-                    <span className="text-muted-foreground">{t(`status.${s.status}` as TranslationKey)}</span>
-                    <span className="font-medium text-foreground">{s.count}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t("dashboard.noUnits")}</p>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       {/* Upcoming Operations */}
       {upcomingOps.length > 0 && (
