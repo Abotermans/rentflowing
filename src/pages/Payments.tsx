@@ -21,13 +21,14 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType, ReceivableItemType } from "@/types/receivables";
-import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote } from "lucide-react";
+import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote, CircleDollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSettings } from "@/context/SettingsContext";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
+import { QuickPayReceivableDialog } from "@/components/payments/QuickPayReceivableDialog";
 
 export default function Payments() {
   const { t } = useSettings();
@@ -46,6 +47,7 @@ export default function Payments() {
   const [search, setSearch] = useState("");
   const [addReceiptOpen, setAddReceiptOpen] = useState(false);
   const [allocateReceiptId, setAllocateReceiptId] = useState<string | null>(null);
+  const [quickPayRiId, setQuickPayRiId] = useState<string | null>(null);
 
   // Add receipt form
   const [formSourceType, setFormSourceType] = useState<CashReceiptSourceType>("bank-transfer");
