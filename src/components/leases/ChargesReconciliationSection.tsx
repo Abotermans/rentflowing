@@ -51,6 +51,9 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
   const [notes, setNotes] = useState("");
 
   const window: ReconciliationWindow = { start, end };
+  const periodError = open && start && end && end < start
+    ? t("validation.dates.periodEndBeforeStart")
+    : null;
   const breakdown = useMemo(() => {
     if (!open) return null;
     if (!start || !end || end < start) return null;

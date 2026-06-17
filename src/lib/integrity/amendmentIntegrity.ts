@@ -51,6 +51,14 @@ export function validateAmendment(
     });
   }
 
+  // Signature must happen on or before the amendment takes effect.
+  if (amendment.effectiveDate && amendment.signedDate && amendment.signedDate > amendment.effectiveDate) {
+    blockers.push({
+      code: "AMD_SIGNED_AFTER_EFFECTIVE",
+      message: "Signed date must be on or before the effective date",
+    });
+  }
+
   // Simulate the resulting assignment table after the amendment activates.
   const eff = amendment.effectiveDate || today;
   const currentAssignments = s.leaseUnitAssignments.filter(
@@ -133,6 +141,12 @@ export function validateAmendment(
         blockers.push({
           code: "AMD_END_BEFORE_START",
           message: "End date cannot be before lease start date",
+        });
+      }
+      if (nv && amendment.effectiveDate && nv < amendment.effectiveDate) {
+        blockers.push({
+          code: "AMD_END_BEFORE_EFFECTIVE",
+          message: "New end date must be on or after the amendment effective date",
         });
       }
     }
