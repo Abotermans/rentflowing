@@ -15,6 +15,16 @@ export interface Property {
   ownerName: string;
   description: string;
   status: "active" | "inactive";
+  /**
+   * Base used for millième (co-ownership share) calculations on this property.
+   * 1000 by convention, sometimes 10000. Defaults to 1000.
+   */
+  milliemeBase?: number;
+  /**
+   * Distinct millième keys defined by the co-ownership deed for this property
+   * (e.g. "general", "lift", "heating"). Defaults to `["general"]`.
+   */
+  milliemeKeys?: string[];
   createdAt: string;
   updatedAt: string;
   /** Workspace this property belongs to. Stamped at create-time. */
@@ -51,8 +61,23 @@ export interface Unit {
   baseCharges: number | null;
   availableFrom: string | null;
   notes: string;
+  /**
+   * Per-key millième (co-ownership thousandth) for this unit. Keys mirror
+   * `Property.milliemeKeys`. Missing key = 0 = excluded from allocation.
+   */
+  milliemeShares?: Record<string, number>;
+  /** Optional per-unit base override; defaults to the property's base. */
+  milliemeBase?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Standard key used when only one millième series is defined. */
+export const DEFAULT_MILLIEME_KEY = "general";
+
+export function getUnitMillieme(u: Pick<Unit, "milliemeShares">, key: string = DEFAULT_MILLIEME_KEY): number {
+  const v = u.milliemeShares?.[key];
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0;
 }
 
 export type TenantStatus = "active" | "former" | "applicant";
