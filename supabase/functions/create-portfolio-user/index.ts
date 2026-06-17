@@ -16,8 +16,15 @@ function json(status: number, body: unknown) {
   });
 }
 
+function errMsg(e: any, fallback = "Unknown error"): string {
+  if (!e) return fallback;
+  if (typeof e === "string") return e;
+  return e.message || e.error_description || e.msg || e.details || e.hint || e.code || fallback;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
   const authHeader = req.headers.get("Authorization");
@@ -61,7 +68,7 @@ Deno.serve(async (req) => {
     .eq("portfolio_id", portfolio_id)
     .eq("user_id", callerId)
     .maybeSingle();
-  if (cmErr) return json(500, { error: cmErr.message });
+  if (cmErr) return json(500, { error: errMsg(cmErr, "Membership lookup failed") });
   if (!callerMember) return json(403, { error: "Not a member of this portfolio" });
   const callerRole = callerMember.role as Role;
   if (callerRole !== "owner" && callerRole !== "admin")
@@ -76,7 +83,7 @@ Deno.serve(async (req) => {
   let page = 1;
   while (true) {
     const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-    if (listErr) return json(500, { error: listErr.message });
+    if (listErr) return json(500, { error: errMsg(listErr, "User lookup failed") });
     const hit = list.users.find((u) => (u.email ?? "").toLowerCase() === email);
     if (hit) { userId = hit.id; break; }
     if (list.users.length < 200) break;
@@ -92,7 +99,7 @@ Deno.serve(async (req) => {
       user_metadata: { first_name: first_name ?? "", last_name: last_name ?? "" },
     });
     if (createErr || !createdUser.user)
-      return json(400, { error: createErr?.message ?? "Failed to create user" });
+      return json(400, { error: errMsg(createErr, "Failed to create user") });
     userId = createdUser.user.id;
     created = true;
   }
@@ -108,7 +115,11 @@ Deno.serve(async (req) => {
       { portfolio_id, user_id: userId, role },
       { onConflict: "portfolio_id,user_id" },
     );
-  if (memErr) return json(400, { error: memErr.message });
+  if (memErr) return json(400, { error: errMsg(memErr, "Failed to add member") });
 
   return json(200, { user_id: userId, created, email });
+  } catch (e) {
+    console.error("create-portfolio-user fatal", e);
+    return json(500, { error: errMsg(e, "Internal error") });
+  }
 });
