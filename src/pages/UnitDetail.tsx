@@ -766,6 +766,8 @@ export default function UnitDetail() {
                   totalCost: number;
                   ownerBorne: number;
                   recoverable: number;
+                  milliemeShare?: number;
+                  milliemeTotalShares?: number;
                 };
                 const splitRecovery = (amount: number, r: RecoveryType) => {
                   if (r === "owner-only") return { owner: amount, rec: 0 };
