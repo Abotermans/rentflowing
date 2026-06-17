@@ -1609,6 +1609,26 @@ const en = {
   "documents.error.dateRequired": "Document date is required",
   "documents.error.tooLarge": "File exceeds 20 MB",
   "amendments.tooltip.documents": "Documents ({n})",
+
+  // Date validation (cross-entity ordering rules)
+  "validation.dates.title": "Inconsistent dates",
+  "validation.dates.endBeforeStart": "End date must be on or after start date.",
+  "validation.dates.signedAfterStart": "Signed date must be on or before lease start date.",
+  "validation.dates.signedAfterEffective": "Signed date must be on or before the effective date.",
+  "validation.dates.newEndBeforeEffective": "New end date must be on or after the effective date.",
+  "validation.dates.releasedBeforeReceived": "Release date must be on or after the received date.",
+  "validation.dates.completedBeforeScheduled": "Completed date must be on or after the scheduled date.",
+  "validation.dates.completedBeforeCreated": "Completed date must be on or after the created date.",
+  "validation.dates.scheduledBeforeCreated": "Scheduled date must be on or after the created date.",
+  "validation.dates.moveInActualBeforeScheduled": "Actual move-in date must be on or after the scheduled move-in date.",
+  "validation.dates.moveOutActualBeforeScheduled": "Actual move-out date must be on or after the scheduled move-out date.",
+  "validation.dates.moveOutBeforeMoveIn": "Move-out date must be on or after the move-in date.",
+  "validation.dates.intendedMoveOutBeforeNotice": "Intended move-out date must be on or after the notice date.",
+  "validation.dates.periodEndBeforeStart": "End of period must be on or after start of period.",
+  "validation.dates.startDateRequired": "Start date is required.",
+  "validation.dates.paymentDateRequired": "Payment date is required.",
+  "validation.dates.returnedBeforeHandedOver": "Returned date must be on or after handed-over date.",
+  "validation.dates.allocationStartBeforePayment": "Allocation start date must be on or after the advance payment date.",
 };
 
 type TranslationKeys = typeof en;
