@@ -51,6 +51,9 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
   const [notes, setNotes] = useState("");
 
   const window: ReconciliationWindow = { start, end };
+  const periodError = open && start && end && end < start
+    ? t("validation.dates.periodEndBeforeStart")
+    : null;
   const breakdown = useMemo(() => {
     if (!open) return null;
     if (!start || !end || end < start) return null;
@@ -343,6 +346,9 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                 <Input type="date" value={end} onChange={e => setEnd(e.target.value)} />
               </div>
             </div>
+            {periodError && (
+              <p className="text-xs text-destructive">{periodError}</p>
+            )}
 
             {breakdown && (
               <>

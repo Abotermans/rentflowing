@@ -1609,6 +1609,26 @@ const en = {
   "documents.error.dateRequired": "Document date is required",
   "documents.error.tooLarge": "File exceeds 20 MB",
   "amendments.tooltip.documents": "Documents ({n})",
+
+  // Date validation (cross-entity ordering rules)
+  "validation.dates.title": "Inconsistent dates",
+  "validation.dates.endBeforeStart": "End date must be on or after start date.",
+  "validation.dates.signedAfterStart": "Signed date must be on or before lease start date.",
+  "validation.dates.signedAfterEffective": "Signed date must be on or before the effective date.",
+  "validation.dates.newEndBeforeEffective": "New end date must be on or after the effective date.",
+  "validation.dates.releasedBeforeReceived": "Release date must be on or after the received date.",
+  "validation.dates.completedBeforeScheduled": "Completed date must be on or after the scheduled date.",
+  "validation.dates.completedBeforeCreated": "Completed date must be on or after the created date.",
+  "validation.dates.scheduledBeforeCreated": "Scheduled date must be on or after the created date.",
+  "validation.dates.moveInActualBeforeScheduled": "Actual move-in date must be on or after the scheduled move-in date.",
+  "validation.dates.moveOutActualBeforeScheduled": "Actual move-out date must be on or after the scheduled move-out date.",
+  "validation.dates.moveOutBeforeMoveIn": "Move-out date must be on or after the move-in date.",
+  "validation.dates.intendedMoveOutBeforeNotice": "Intended move-out date must be on or after the notice date.",
+  "validation.dates.periodEndBeforeStart": "End of period must be on or after start of period.",
+  "validation.dates.startDateRequired": "Start date is required.",
+  "validation.dates.paymentDateRequired": "Payment date is required.",
+  "validation.dates.returnedBeforeHandedOver": "Returned date must be on or after handed-over date.",
+  "validation.dates.allocationStartBeforePayment": "Allocation start date must be on or after the advance payment date.",
 };
 
 type TranslationKeys = typeof en;
@@ -3215,6 +3235,26 @@ const fr: TranslationKeys = {
   "documents.error.dateRequired": "La date du document est requise",
   "documents.error.tooLarge": "Le fichier dépasse 20 Mo",
   "amendments.tooltip.documents": "Documents ({n})",
+
+  // Validation des dates (règles d'ordre inter-entités)
+  "validation.dates.title": "Dates incohérentes",
+  "validation.dates.endBeforeStart": "La date de fin doit être postérieure ou égale à la date de début.",
+  "validation.dates.signedAfterStart": "La date de signature doit être antérieure ou égale à la date de début du bail.",
+  "validation.dates.signedAfterEffective": "La date de signature doit être antérieure ou égale à la date d'effet.",
+  "validation.dates.newEndBeforeEffective": "La nouvelle date de fin doit être postérieure ou égale à la date d'effet.",
+  "validation.dates.releasedBeforeReceived": "La date de restitution doit être postérieure ou égale à la date d'encaissement.",
+  "validation.dates.completedBeforeScheduled": "La date de réalisation doit être postérieure ou égale à la date planifiée.",
+  "validation.dates.completedBeforeCreated": "La date de réalisation doit être postérieure ou égale à la date de création.",
+  "validation.dates.scheduledBeforeCreated": "La date planifiée doit être postérieure ou égale à la date de création.",
+  "validation.dates.moveInActualBeforeScheduled": "La date d'entrée réelle doit être postérieure ou égale à la date planifiée.",
+  "validation.dates.moveOutActualBeforeScheduled": "La date de sortie réelle doit être postérieure ou égale à la date planifiée.",
+  "validation.dates.moveOutBeforeMoveIn": "La date de sortie doit être postérieure ou égale à la date d'entrée.",
+  "validation.dates.intendedMoveOutBeforeNotice": "La date de sortie souhaitée doit être postérieure ou égale à la date du préavis.",
+  "validation.dates.periodEndBeforeStart": "La fin de période doit être postérieure ou égale au début de période.",
+  "validation.dates.startDateRequired": "La date de début est requise.",
+  "validation.dates.paymentDateRequired": "La date de paiement est requise.",
+  "validation.dates.returnedBeforeHandedOver": "La date de retour doit être postérieure ou égale à la date de remise.",
+  "validation.dates.allocationStartBeforePayment": "La date de début d'affectation doit être postérieure ou égale à la date du versement d'avance.",
 };
 
 export type TranslationKey = keyof typeof en;

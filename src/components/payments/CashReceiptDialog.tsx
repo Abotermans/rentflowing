@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { getTenantFullName } from "@/types";
 import { getSourceTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
+import { toast as sonnerToast } from "sonner";
 
 interface CashReceiptDialogProps {
   open: boolean;
@@ -60,6 +61,10 @@ export function CashReceiptDialog({
 
   const handleSave = () => {
     if (!amount) return;
+    if (!date) {
+      sonnerToast.error(t("validation.dates.title"), { description: t("validation.dates.paymentDateRequired") });
+      return;
+    }
     const amt = parseFloat(amount);
     createCashReceipt({
       tenantId: tenantId || null,

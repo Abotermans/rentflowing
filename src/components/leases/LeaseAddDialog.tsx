@@ -31,6 +31,7 @@ import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatte
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
+import { validateDateOrder } from "@/lib/dateValidation";
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
@@ -242,6 +243,14 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     }
     if (!form.leaseReference.trim() || !form.propertyId || !form.startDate || !form.endDate) {
       toast({ title: "Validation Error", description: "Reference, property, unit, start date, and end date are required.", variant: "destructive" });
+      return;
+    }
+    const dateErrors = validateDateOrder([
+      { earlier: form.startDate, later: form.endDate, message: t("validation.dates.endBeforeStart") },
+      { earlier: form.advancePaymentDate, later: form.advanceAllocationStartDate, message: t("validation.dates.allocationStartBeforePayment") },
+    ]);
+    if (dateErrors.length > 0) {
+      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
       return;
     }
     if (!form.primaryTenantId) {

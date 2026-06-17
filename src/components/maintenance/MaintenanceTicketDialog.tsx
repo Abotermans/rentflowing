@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { getTenantFullName } from "@/types";
+import { validateDateOrder } from "@/lib/dateValidation";
 import {
   MaintenanceTicket, MaintenanceCategory, MaintenancePriority, MaintenanceStatus,
   MAINTENANCE_CATEGORY_KEYS, MAINTENANCE_PRIORITY_KEYS, MAINTENANCE_STATUS_KEYS,
@@ -71,6 +72,15 @@ export function MaintenanceTicketDialog({
   const handleSave = () => {
     if (!form.title.trim() || !form.propertyId || !form.unitId) {
       toast({ title: t("common.validationError"), description: t("maintenance.validationDesc"), variant: "destructive" });
+      return;
+    }
+    const dateErrors = validateDateOrder([
+      { earlier: form.createdDate, later: form.scheduledDate, message: t("validation.dates.scheduledBeforeCreated") },
+      { earlier: form.createdDate, later: form.completedDate, message: t("validation.dates.completedBeforeCreated") },
+      { earlier: form.scheduledDate, later: form.completedDate, message: t("validation.dates.completedBeforeScheduled") },
+    ]);
+    if (dateErrors.length > 0) {
+      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
       return;
     }
     if (editing) {

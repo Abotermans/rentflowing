@@ -13,6 +13,7 @@ import {
   COST_ENTRY_STATUS_LABELS, COST_FREQUENCY_LABELS, RECOVERY_TYPE_LABELS,
 } from "@/types/costs";
 import type { TranslationKey } from "@/i18n/translations";
+import { validateDateOrder } from "@/lib/dateValidation";
 
 type FormData = Omit<CostEntry, "id" | "createdAt" | "updatedAt">;
 
@@ -90,6 +91,17 @@ export function CostEntryDialog({
   const handleSave = () => {
     if (!form.label.trim() || !form.propertyId || !form.categoryId || form.amount <= 0) {
       toast({ title: t("common.validationError"), description: t("costs.validation.entryRequired"), variant: "destructive" });
+      return;
+    }
+    if (!form.startDate) {
+      toast({ title: t("common.validationError"), description: t("validation.dates.startDateRequired"), variant: "destructive" });
+      return;
+    }
+    const dateErrors = validateDateOrder([
+      { earlier: form.startDate, later: form.endDate, message: t("validation.dates.endBeforeStart") },
+    ]);
+    if (dateErrors.length > 0) {
+      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
       return;
     }
     const category = getCostCategoryById(form.categoryId);

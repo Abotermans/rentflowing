@@ -30,6 +30,7 @@ import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
 import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
+import { validateDateOrder } from "@/lib/dateValidation";
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 
@@ -260,6 +261,19 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
     const effectiveUnitId = primaryRow.unitId;
     if (!form.leaseReference.trim() || !form.propertyId || !form.primaryTenantId || !form.startDate || !form.endDate) {
       toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
+      return;
+    }
+    const dateErrors = validateDateOrder([
+      { earlier: form.startDate, later: form.endDate, message: t("validation.dates.endBeforeStart") },
+      { earlier: form.signedDate, later: form.startDate, message: t("validation.dates.signedAfterStart") },
+      { earlier: form.advancePaymentDate, later: form.advanceAllocationStartDate, message: t("validation.dates.allocationStartBeforePayment") },
+      { earlier: form.noticeDate, later: form.intendedMoveOutDate, message: t("validation.dates.intendedMoveOutBeforeNotice") },
+      { earlier: form.moveInScheduledDate, later: form.moveInActualDate, message: t("validation.dates.moveInActualBeforeScheduled") },
+      { earlier: form.moveOutScheduledDate, later: form.moveOutActualDate, message: t("validation.dates.moveOutActualBeforeScheduled") },
+      { earlier: form.moveInActualDate, later: form.moveOutActualDate, message: t("validation.dates.moveOutBeforeMoveIn") },
+    ]);
+    if (dateErrors.length > 0) {
+      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
       return;
     }
     if (!Number.isInteger(form.dueDayOfMonth) || form.dueDayOfMonth < 1 || form.dueDayOfMonth > 28) {
