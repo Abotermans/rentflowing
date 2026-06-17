@@ -87,6 +87,7 @@ export type Database = {
           notes: string
           portfolio_id: string
           property_id: string
+          share_key: string | null
           updated_at: string
         }
         Insert: {
@@ -100,6 +101,7 @@ export type Database = {
           notes?: string
           portfolio_id: string
           property_id: string
+          share_key?: string | null
           updated_at?: string
         }
         Update: {
@@ -113,6 +115,7 @@ export type Database = {
           notes?: string
           portfolio_id?: string
           property_id?: string
+          share_key?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1348,6 +1351,8 @@ export type Database = {
           legacy_id: string | null
           locale: string
           measurement_system: string
+          millieme_base: number
+          millieme_keys: string[]
           name: string
           owner_name: string
           portfolio_id: string
@@ -1370,6 +1375,8 @@ export type Database = {
           legacy_id?: string | null
           locale?: string
           measurement_system?: string
+          millieme_base?: number
+          millieme_keys?: string[]
           name: string
           owner_name?: string
           portfolio_id: string
@@ -1392,6 +1399,8 @@ export type Database = {
           legacy_id?: string | null
           locale?: string
           measurement_system?: string
+          millieme_base?: number
+          millieme_keys?: string[]
           name?: string
           owner_name?: string
           portfolio_id?: string
@@ -1687,6 +1696,8 @@ export type Database = {
           furnished: boolean
           id: string
           legacy_id: string | null
+          millieme_base: number
+          millieme_shares: Json
           notes: string
           portfolio_id: string
           property_id: string
@@ -1710,6 +1721,8 @@ export type Database = {
           furnished?: boolean
           id?: string
           legacy_id?: string | null
+          millieme_base?: number
+          millieme_shares?: Json
           notes?: string
           portfolio_id: string
           property_id: string
@@ -1733,6 +1746,8 @@ export type Database = {
           furnished?: boolean
           id?: string
           legacy_id?: string | null
+          millieme_base?: number
+          millieme_shares?: Json
           notes?: string
           portfolio_id?: string
           property_id?: string
