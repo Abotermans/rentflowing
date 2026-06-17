@@ -34,14 +34,7 @@ export function PortfolioSwitcher() {
       toast({ title: "Could not create portfolio", description: error?.message, variant: "destructive" });
       return;
     }
-    const { error: memErr } = await supabase
-      .from("portfolio_members")
-      .insert({ portfolio_id: data.id, user_id: user.id, role: "owner" });
     setBusy(false);
-    if (memErr) {
-      toast({ title: "Created, but failed to join", description: memErr.message, variant: "destructive" });
-      return;
-    }
     await refresh();
     switchPortfolio(data.id);
     setName("");
