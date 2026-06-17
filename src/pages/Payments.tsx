@@ -620,6 +620,12 @@ export default function Payments() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ===== QUICK PAY RECEIVABLE ===== */}
+      <QuickPayReceivableDialog
+        receivableItemId={quickPayRiId}
+        onOpenChange={(open) => { if (!open) setQuickPayRiId(null); }}
+      />
     </div>
   );
 }
