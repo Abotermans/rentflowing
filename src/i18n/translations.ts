@@ -289,6 +289,17 @@ const en = {
   "tenants.currentAddress": "Current Address",
   "tenants.searchPlaceholder": "Search name, email…",
   "tenants.contactInfo": "Contact Information",
+  "tenants.kind": "Tenant type",
+  "tenants.kind.individual": "Individual",
+  "tenants.kind.corporation": "Corporation",
+  "tenants.companyName": "Company name",
+  "tenants.legalForm": "Legal form",
+  "tenants.registrationNumber": "Registration number",
+  "tenants.vatNumber": "VAT number",
+  "tenants.mainContact": "Main contact",
+  "tenants.contactRole": "Role",
+  "tenants.registeredAddress": "Registered address",
+  "tenants.type": "Type",
 
   // Leases
   "leases.title": "Leases",
