@@ -98,9 +98,12 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
   });
 
   const emptyTenantForm: TenantFormData = {
+    kind: "individual",
     firstName: "", lastName: "", email: "", phone: "",
     dateOfBirth: null, identificationNumber: null, currentAddress: null,
     status: "active", notes: "",
+    companyName: null, legalForm: null, registrationNumber: null, vatNumber: null,
+    contactFirstName: null, contactLastName: null, contactRole: null,
   };
 
   const [form, setForm] = useState<LeaseFormData>(buildEmptyForm);
