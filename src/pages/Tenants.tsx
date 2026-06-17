@@ -11,8 +11,6 @@ import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { TENANT_STATUS_ICONS } from "@/lib/filterIcons";
 import { UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { Tenant, TenantStatus, getTenantFullName } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -28,8 +26,7 @@ const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
 ];
 
 export default function Tenants() {
-  const { tenants, leases, units, deleteTenant } = useAppData();
-  const { toast } = useToast();
+  const { tenants, leases, units } = useAppData();
   const { t } = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
@@ -41,11 +38,6 @@ export default function Tenants() {
 
   const openAdd = () => { setEditingTenant(null); setSheetOpen(true); };
   const openEdit = (tenant: Tenant) => { setEditingTenant(tenant); setSheetOpen(true); };
-
-  const handleDelete = (tid: string) => {
-    deleteTenant(tid);
-    toast({ title: "Tenant deleted" });
-  };
 
   const filtered = tenants.filter(t => {
     const name = getTenantFullName(t).toLowerCase();
@@ -137,10 +129,7 @@ export default function Tenants() {
                       {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{activeLease.leaseReference}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openEdit(tenant); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <DeleteDialog entityType="tenant" entityId={tenant.id} entityLabel="tenant" onDelete={handleDelete} />
-                      </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openEdit(tenant); }}><Pencil className="h-3.5 w-3.5" /></Button>
                     </TableCell>
                   </TableRow>
                 );
