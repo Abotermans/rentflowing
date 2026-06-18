@@ -85,6 +85,39 @@ const MOVE_STATUS_DISPLAY: Record<"not-scheduled" | "scheduled" | "completed", {
   completed:       { icon: CheckCircle2,  labelKey: "status.completed",    className: "text-success" },
 };
 
+type LeaseBannerTone = "warning" | "destructive" | "info";
+
+/** Uniform banner used at the top of the lease detail page. */
+function LeaseBanner({
+  tone,
+  icon: Icon,
+  children,
+}: {
+  tone: LeaseBannerTone;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  const toneClass =
+    tone === "destructive"
+      ? "border-destructive/50 text-destructive [&>svg]:text-destructive"
+      : tone === "warning"
+      ? "border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning"
+      : "border-border bg-muted/40 text-foreground [&>svg]:text-foreground";
+  return (
+    <Alert
+      className={cn(
+        "min-h-[56px] flex items-center gap-3 py-3 px-4 [&>svg]:static [&>svg]:translate-y-0 [&>svg~*]:pl-0 [&>svg]:shrink-0",
+        toneClass,
+      )}
+    >
+      <Icon className="h-4 w-4" />
+      <AlertDescription className="flex-1 text-sm leading-snug">
+        {children}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -908,49 +941,44 @@ export default function LeaseDetail() {
 
       {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
-        <Alert className="flex items-center border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
-          <Clock className="h-4 w-4" />
-          <AlertDescription>
-            {t("leaseDetail.guaranteeBannerPrefix")} <strong>{t("guarantee.waiting")}</strong>. {t("leaseDetail.guaranteeBannerExpected")}: {formatCurrency(guarantee.expectedAmount, currency, locale)}, {t("leaseDetail.guaranteeBannerReceived")}: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
-          </AlertDescription>
-        </Alert>
+        <LeaseBanner tone="warning" icon={Clock}>
+          {t("leaseDetail.guaranteeBannerPrefix")} <strong>{t("guarantee.waiting")}</strong>. {t("leaseDetail.guaranteeBannerExpected")}: {formatCurrency(guarantee.expectedAmount, currency, locale)}, {t("leaseDetail.guaranteeBannerReceived")}: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
+        </LeaseBanner>
       )}
       {!guarantee && lease.depositOrGuaranteeAmount && lease.depositOrGuaranteeAmount > 0 && (
-        <Alert variant="destructive" className="flex items-center">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            {t("leaseDetail.noGuaranteeBanner").replace("{amount}", formatCurrency(lease.depositOrGuaranteeAmount, currency, locale))}
-            <Button variant="link" size="sm" className="ml-2 h-auto p-0" onClick={openGuaranteeForm}>{t("leaseDetail.addGuaranteeLink")}</Button>
-          </AlertDescription>
-        </Alert>
+        <LeaseBanner tone="destructive" icon={AlertTriangle}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span>
+              {t("leaseDetail.noGuaranteeBanner").replace("{amount}", formatCurrency(lease.depositOrGuaranteeAmount, currency, locale))}
+            </span>
+            <Button variant="link" size="sm" className="h-auto p-0" onClick={openGuaranteeForm}>{t("leaseDetail.addGuaranteeLink")}</Button>
+          </div>
+        </LeaseBanner>
       )}
       {lease.noticeGiven && lease.lifecycleStage !== "ended" && lease.lifecycleStage !== "terminated" && (
-        <Alert className="[&>svg]:top-1/2 [&>svg]:-translate-y-1/2">
-          <Bell className="h-4 w-4" />
-          <AlertDescription>
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span>
-                {t("leaseDetail.underNotice")}
-                {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-                {lease.intendedMoveOutDate && <> {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
-              </span>
-              <div className="flex items-center gap-2">
-                {!lease.moveOutActualDate && (
-                  <Button variant="outline" size="sm" onClick={openNoticeForm}>
-                    <Pencil className="h-3.5 w-3.5 mr-1" />
-                    {t("detail.editNotice")}
-                  </Button>
-                )}
-                {!lease.moveOutActualDate && (
-                  <Button variant="outline" size="sm" onClick={handleCancelNotice}>
-                    <XCircle className="h-3.5 w-3.5 mr-1" />
-                    {t("lease.cancelNotice")}
-                  </Button>
-                )}
-              </div>
+        <LeaseBanner tone="info" icon={Bell}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span>
+              {t("leaseDetail.underNotice")}
+              {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
+              {lease.intendedMoveOutDate && <> {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
+            </span>
+            <div className="flex items-center gap-2">
+              {!lease.moveOutActualDate && (
+                <Button variant="outline" size="sm" onClick={openNoticeForm}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  {t("detail.editNotice")}
+                </Button>
+              )}
+              {!lease.moveOutActualDate && (
+                <Button variant="outline" size="sm" onClick={handleCancelNotice}>
+                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                  {t("lease.cancelNotice")}
+                </Button>
+              )}
             </div>
-          </AlertDescription>
-        </Alert>
+          </div>
+        </LeaseBanner>
       )}
 
       {(() => {
@@ -962,39 +990,36 @@ export default function LeaseDetail() {
         const done = checklistValues.filter(Boolean).length;
         if (done === total) return null;
         return (
-          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex flex-col">
-                  <span className="font-medium">
-                    {t("lease.moveOutOverdue.title").replace("{date}", formatDate(scheduled, locale))}
-                  </span>
-                  <span className="text-sm">
-                    {t("lease.moveOutOverdue.description")
-                      .replace("{done}", String(done))
-                      .replace("{total}", String(total))}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      document.getElementById("move-out-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                  >
-                    {t("lease.moveOutOverdue.completeChecklist")}
-                  </Button>
-                  {!lease.moveOutActualDate && (
-                    <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ mode: "complete" })}>
-                      {t("lease.moveOutOverdue.recordMoveOut")}
-                    </Button>
-                  )}
-                </div>
+          <LeaseBanner tone="warning" icon={AlertTriangle}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex flex-col">
+                <span className="font-medium">
+                  {t("lease.moveOutOverdue.title").replace("{date}", formatDate(scheduled, locale))}
+                </span>
+                <span className="text-xs opacity-90">
+                  {t("lease.moveOutOverdue.description")
+                    .replace("{done}", String(done))
+                    .replace("{total}", String(total))}
+                </span>
               </div>
-            </AlertDescription>
-          </Alert>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    document.getElementById("move-out-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  {t("lease.moveOutOverdue.completeChecklist")}
+                </Button>
+                {!lease.moveOutActualDate && (
+                  <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ mode: "complete" })}>
+                    {t("lease.moveOutOverdue.recordMoveOut")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </LeaseBanner>
         );
       })()}
 
@@ -1006,37 +1031,34 @@ export default function LeaseDetail() {
         const done = checklistValues.filter(Boolean).length;
         if (done === total) return null;
         return (
-          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex flex-col">
-                  <span className="font-medium">{t("lease.moveInIncomplete.title")}</span>
-                  <span className="text-sm">
-                    {t("lease.moveInIncomplete.description")
-                      .replace("{done}", String(done))
-                      .replace("{total}", String(total))}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      document.getElementById("move-in-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                  >
-                    {t("lease.moveInIncomplete.completeChecklist")}
-                  </Button>
-                  {!lease.moveInActualDate && (
-                    <Button size="sm" variant="outline" onClick={() => openMoveInForm({ mode: "complete" })}>
-                      {t("lease.moveInIncomplete.recordMoveIn")}
-                    </Button>
-                  )}
-                </div>
+          <LeaseBanner tone="warning" icon={AlertTriangle}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex flex-col">
+                <span className="font-medium">{t("lease.moveInIncomplete.title")}</span>
+                <span className="text-xs opacity-90">
+                  {t("lease.moveInIncomplete.description")
+                    .replace("{done}", String(done))
+                    .replace("{total}", String(total))}
+                </span>
               </div>
-            </AlertDescription>
-          </Alert>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    document.getElementById("move-in-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  {t("lease.moveInIncomplete.completeChecklist")}
+                </Button>
+                {!lease.moveInActualDate && (
+                  <Button size="sm" variant="outline" onClick={() => openMoveInForm({ mode: "complete" })}>
+                    {t("lease.moveInIncomplete.recordMoveIn")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </LeaseBanner>
         );
       })()}
 
@@ -1057,41 +1079,39 @@ export default function LeaseDetail() {
         else headline = t("lease.endingSoon.title").replace("{days}", String(days));
         const showScheduleMoveOut = !lease.noticeGiven && moveOutStatus === "not-scheduled";
         return (
-          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
-            <Clock className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="font-medium">{headline}</span>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setNewAmendmentSignal(n => n + 1)}>
-                    {t("lease.endingSoon.suggestAmendment")}
+          <LeaseBanner tone="warning" icon={Clock}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-medium">{headline}</span>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setNewAmendmentSignal(n => n + 1)}>
+                  {t("lease.endingSoon.suggestAmendment")}
+                </Button>
+                {showScheduleMoveOut && (
+                  <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ prefillScheduled: endIso })}>
+                    {t("lease.endingSoon.suggestMoveOut")}
                   </Button>
-                  {showScheduleMoveOut && (
-                    <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ prefillScheduled: endIso })}>
-                      {t("lease.endingSoon.suggestMoveOut")}
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
-            </AlertDescription>
-          </Alert>
+            </div>
+          </LeaseBanner>
         );
       })()}
 
       {/* Overdue end banner */}
       {lifecycle === "overdue-end" && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="font-semibold mb-1">{t("lease.overdueBanner.title")}</div>
-            <p className="text-xs mb-2">{t("lease.overdueBanner.description").replace("{date}", formatDate(lease.endDate, locale))}</p>
+        <LeaseBanner tone="destructive" icon={AlertTriangle}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex flex-col">
+              <span className="font-medium">{t("lease.overdueBanner.title")}</span>
+              <span className="text-xs opacity-90">{t("lease.overdueBanner.description").replace("{date}", formatDate(lease.endDate, locale))}</span>
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={openRenewDialog}>{t("lease.overdueBanner.renew")}</Button>
               <Button size="sm" variant="outline" onClick={openEndDialog}>{t("lease.overdueBanner.end")}</Button>
               <Button size="sm" variant="destructive" onClick={openTermDialog}>{t("lease.overdueBanner.terminate")}</Button>
             </div>
-          </AlertDescription>
-        </Alert>
+          </div>
+        </LeaseBanner>
       )}
 
       {/* Lease Summary */}
