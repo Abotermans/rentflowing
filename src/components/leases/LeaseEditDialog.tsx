@@ -412,7 +412,9 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
                       <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
                       <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
-                      <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
+                      {!allInclusive && (
+                        <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
+                      )}
                       <TableHead className="h-9 w-auto text-right">{t("leases.units.total")}</TableHead>
                       <TableHead className="h-9 w-[40px]" />
                     </TableRow>
@@ -421,7 +423,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                     {unitRows.map((row, idx) => {
                       const usedIds = new Set<string>(unitRows.filter((_, i) => i !== idx).map(x => x.unitId).filter(Boolean));
                       const options = formUnits.filter(u => !usedIds.has(u.id));
-                      const rowTotal = (row.rentShare ?? 0) + (row.chargesShare ?? 0);
+                      const rowTotal = (row.rentShare ?? 0) + (allInclusive ? 0 : (row.chargesShare ?? 0));
                       return (
                         <TableRow key={idx}>
                           <TableCell className="py-1.5">
@@ -461,17 +463,19 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                               <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="py-1.5">
-                            <div className="flex items-center gap-1 justify-end">
-                              <Input
-                                type="number" min={0}
-                                value={row.chargesShare}
-                                onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
-                                className="h-8 w-[90px] text-right"
-                              />
-                              <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
-                            </div>
-                          </TableCell>
+                          {!allInclusive && (
+                            <TableCell className="py-1.5">
+                              <div className="flex items-center gap-1 justify-end">
+                                <Input
+                                  type="number" min={0}
+                                  value={row.chargesShare}
+                                  onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
+                                  className="h-8 w-[90px] text-right"
+                                />
+                                <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
+                              </div>
+                            </TableCell>
+                          )}
                           <TableCell className="py-1.5 text-right font-medium">
                             {fmtCurrency(rowTotal, selectedProperty?.currencyCode, selectedProperty?.locale)}
                           </TableCell>
@@ -488,8 +492,10 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                         {t("leases.units.grandTotal")}
                       </TableCell>
                       <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
-                      <TableCell className="py-2 text-right">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
-                      <TableCell className="py-2 text-right">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                      {!allInclusive && (
+                        <TableCell className="py-2 text-right">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                      )}
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalRent + (allInclusive ? 0 : totalCharges), selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
                       <TableCell className="py-2" />
                     </TableRow>
                   </TableBody>
