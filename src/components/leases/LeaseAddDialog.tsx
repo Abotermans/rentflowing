@@ -328,7 +328,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       assignmentType: r.assignmentType,
       isPrimary: r.assignmentType === "primary",
       rentShare: r.rentShare,
-      chargesShare: r.chargesShare,
+      chargesShare: form.pricingMode === "all-inclusive" ? 0 : r.chargesShare,
       startDate: form.startDate,
     })));
     toast({ title: "Lease added" });
