@@ -260,6 +260,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
 
   const [properties, setProperties] = useState<Property[]>([]);
+  const [propertyOwners, setPropertyOwnersState] = useState<PropertyOwner[]>([]);
+  const [propertyOwnerLinks, setPropertyOwnerLinks] = useState<PropertyOwnerLink[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [leases, setLeases] = useState<Lease[]>([]);
@@ -289,7 +291,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!currentPortfolioId) {
-      setProperties([]); setUnits([]); setTenants([]); setLeases([]);
+      setProperties([]); setPropertyOwnersState([]); setPropertyOwnerLinks([]);
+      setUnits([]); setTenants([]); setLeases([]);
       setGuarantees([]); setLeaseUnitAssignments([]);
       setAmendments([]); setAmendmentChanges([]);
       setReceivableItems([]); setCashReceipts([]); setAllocations([]);
@@ -304,6 +307,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadPortfolio(currentPortfolioId).then(snap => {
       if (cancelled) return;
       setProperties(snap.properties);
+      setPropertyOwnersState(snap.propertyOwners);
+      setPropertyOwnerLinks(snap.propertyOwnerLinks);
       setUnits(snap.units);
       setTenants(snap.tenants);
       setLeases(snap.leases);
@@ -428,6 +433,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setProperties(prev => [...prev, created]);
     if (currentPortfolioId) mirror.insert(TABLES.properties, created, currentPortfolioId);
+    return created;
   }, [currentPortfolioId]);
   const updateProperty = useCallback((p: Property) => {
     const next = { ...p, updatedAt: now() };
@@ -437,9 +443,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteProperty = useCallback((id: string) => {
     setProperties(prev => prev.filter(x => x.id !== id));
     setUnits(prev => prev.filter(x => x.propertyId !== id));
+    setPropertyOwnerLinks(prev => prev.filter(x => x.propertyId !== id));
     // FK ON DELETE CASCADE handles units/leases/etc. in the DB.
     mirror.remove(TABLES.properties, id);
   }, []);
+
+  // ===== Property Owners =====
+  const createPropertyOwner = useCallback((data: { name: string; type: PropertyOwnerType }) => {
+    const ts = now();
+    const created: PropertyOwner = {
+      id: genId("po"),
+      name: data.name.trim(),
+      type: data.type,
+      portfolioId: currentPortfolioId ?? undefined,
+      createdAt: ts, updatedAt: ts,
+    };
+    setPropertyOwnersState(prev => [...prev, created]);
+    if (currentPortfolioId) mirror.insert(TABLES.propertyOwners, created, currentPortfolioId);
+    return created;
+  }, [currentPortfolioId]);
+
+  const setPropertyOwners = useCallback((propertyId: string, ownerIds: string[]) => {
+    const ts = now();
+    const desired = new Set(ownerIds);
+    setPropertyOwnerLinks(prev => {
+      const existingForProp = prev.filter(l => l.propertyId === propertyId);
+      const existingIds = new Set(existingForProp.map(l => l.ownerId));
+      const toRemove = existingForProp.filter(l => !desired.has(l.ownerId));
+      const toAdd: PropertyOwnerLink[] = ownerIds
+        .filter(oid => !existingIds.has(oid))
+        .map(oid => ({
+          id: genId("pol"),
+          propertyId, ownerId: oid,
+          portfolioId: currentPortfolioId ?? undefined,
+          createdAt: ts, updatedAt: ts,
+        }));
+      // Mirror writes
+      for (const link of toRemove) mirror.remove(TABLES.propertyOwnerLinks, link.id);
+      if (toAdd.length > 0 && currentPortfolioId) {
+        mirror.insertMany(TABLES.propertyOwnerLinks, toAdd, currentPortfolioId);
+      }
+      const removeIds = new Set(toRemove.map(l => l.id));
+      return [...prev.filter(l => !removeIds.has(l.id)), ...toAdd];
+    });
+  }, [currentPortfolioId]);
+
+  const getOwnersForProperty = useCallback((propertyId: string): PropertyOwner[] => {
+    const ownerIds = propertyOwnerLinks
+      .filter(l => l.propertyId === propertyId)
+      .map(l => l.ownerId);
+    const byId = new Map(propertyOwners.map(o => [o.id, o] as const));
+    return ownerIds.map(id => byId.get(id)).filter((x): x is PropertyOwner => !!x);
+  }, [propertyOwners, propertyOwnerLinks]);
 
   // ===== Unit CRUD =====
   const addUnit = useCallback((u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => {
