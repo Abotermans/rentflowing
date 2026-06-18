@@ -20,6 +20,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { Lease } from "@/types";
 import type { ReconciliationResolution } from "@/types/chargesReconciliation";
 import { suggestResolution, computeLeaseCostOverview, type ReconciliationWindow } from "@/lib/chargesReconciliation";
+import { isAllInclusive } from "@/lib/leasePricing";
 
 interface Props { lease: Lease; currency: string; locale: string; }
 
@@ -38,6 +39,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
   } = useAppData();
 
   const mode = lease.chargesBillingMode ?? "provision-reconciled";
+  const allInclusive = isAllInclusive(lease);
   const history = getChargesReconciliationsByLease(lease.id);
   const [sectionOpen, setSectionOpen] = useState(true);
   const today = new Date().toISOString().slice(0, 10);
@@ -234,6 +236,37 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
     toast({ title: t("reconciliation.toast.created") });
     setOpen(false);
   };
+
+  if (allInclusive) {
+    return (
+      <Collapsible open={sectionOpen} onOpenChange={setSectionOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
+              <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 text-left">
+                {t("reconciliation.title")}
+                <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5">
+                  {t("leases.allInclusive.badge")}
+                </span>
+              </CardTitle>
+              <span className="inline-flex items-center justify-center h-7 w-7">
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
+              </span>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>{t("leases.allInclusive.reconciliationDisabled")}</AlertDescription>
+              </Alert>
+              {overviewCard}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+    );
+  }
 
   if (mode === "flat-rate") {
     return (
