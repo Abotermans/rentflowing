@@ -902,7 +902,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const integrityState = {
       properties, units, tenants, leases, guarantees,
       leaseUnitAssignments, amendments, amendmentChanges,
-      receivableItems, cashReceipts, allocations: receiptAllocations,
+      receivableItems, cashReceipts, allocations: allocationsState,
       tickets, costCategories, costEntries, allocationRules,
       allocationRuleUnitShares, costAllocationResults,
     } as Parameters<typeof canActivateAmendment>[1];
