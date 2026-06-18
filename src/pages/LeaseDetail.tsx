@@ -87,34 +87,52 @@ const MOVE_STATUS_DISPLAY: Record<"not-scheduled" | "scheduled" | "completed", {
 
 type LeaseBannerTone = "warning" | "destructive" | "info";
 
-/** Uniform banner used at the top of the lease detail page. */
+/**
+ * Uniform banner used at the top of the lease detail page.
+ * Every banner shares the same shell, height, padding, icon size, typography
+ * and action-area layout so they stack as a visually consistent column.
+ */
 function LeaseBanner({
   tone,
   icon: Icon,
-  children,
+  title,
+  description,
+  actions,
 }: {
   tone: LeaseBannerTone;
   icon: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  actions?: React.ReactNode;
 }) {
   const toneClass =
     tone === "destructive"
-      ? "border-destructive/50 text-destructive [&>svg]:text-destructive"
+      ? "border-destructive/50 bg-destructive/10 text-destructive"
       : tone === "warning"
-      ? "border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning"
-      : "border-border bg-muted/40 text-foreground [&>svg]:text-foreground";
+      ? "border-warning/50 bg-warning/10 text-warning"
+      : "border-border bg-muted/40 text-foreground";
   return (
-    <Alert
+    <div
+      role="alert"
       className={cn(
-        "min-h-[56px] flex items-center gap-3 py-3 px-4 [&>svg]:static [&>svg]:translate-y-0 [&>svg~*]:pl-0 [&>svg]:shrink-0",
+        "w-full min-h-[64px] rounded-lg border px-4 py-3",
+        "flex items-center gap-3",
         toneClass,
       )}
     >
-      <Icon className="h-4 w-4" />
-      <AlertDescription className="flex-1 text-sm leading-snug">
-        {children}
-      </AlertDescription>
-    </Alert>
+      <Icon className="h-5 w-5 shrink-0 self-center" />
+      <div className="flex-1 min-w-0 flex flex-col justify-center leading-snug">
+        <span className="text-sm font-medium">{title}</span>
+        {description && (
+          <span className="text-xs opacity-90 mt-0.5">{description}</span>
+        )}
+      </div>
+      {actions && (
+        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+          {actions}
+        </div>
+      )}
+    </div>
   );
 }
 
