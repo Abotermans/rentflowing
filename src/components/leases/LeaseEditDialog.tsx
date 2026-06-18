@@ -636,7 +636,13 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
               <Label>{t("leases.pricingMode")}</Label>
               <Select
                 value={form.pricingMode ?? (form.chargesBillingMode === "flat-rate" ? "flat-charges" : "separated")}
-                onValueChange={v => setForm(f => ({ ...f, pricingMode: v as "separated" | "flat-charges" | "all-inclusive" }))}
+                onValueChange={v => {
+                  const mode = v as "separated" | "flat-charges" | "all-inclusive";
+                  setForm(f => ({ ...f, pricingMode: mode }));
+                  if (mode === "all-inclusive") {
+                    setUnitRows(prev => prev.map(r => ({ ...r, chargesShare: 0 })));
+                  }
+                }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
