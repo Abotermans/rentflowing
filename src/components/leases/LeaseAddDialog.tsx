@@ -393,7 +393,9 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                     <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
                     <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
                     <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
-                    <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
+                    {!allInclusive && (
+                      <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
+                    )}
                     <TableHead className="h-9 w-auto text-right">{t("leases.units.total")}</TableHead>
                     <TableHead className="h-9 w-[40px]" />
                   </TableRow>
