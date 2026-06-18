@@ -1,68 +1,47 @@
-## Goal
+# Property Owners as Reusable Entities
 
-Add a row-level action on the **Receivables** tab (Payments page) so the user can settle an open receivable in one step: open a compact modal prefilled from the receivable, confirm, and the app creates a cash receipt and allocates it to that receivable automatically.
+Today the owner is a free-text `ownerName` string on each property. We'll turn it into a first-class, reusable record that any property can link to (one or many).
 
-## UX
+## Data model
 
-**Row action**
-- New trailing "Action" column on the receivables table.
-- Button `Mark paid` (icon `CircleDollarSign`, `h-7 text-xs`) shown only when `outstandingAmount > 0` AND status is not `cancelled` / `disputed` / `written-off`. Otherwise show `—`.
+New table `property_owners` (per portfolio):
+- `name` (text, required)
+- `type` (enum: `individual` | `corporation`, required)
+- standard fields: `id`, `portfolio_id`, `created_at`, `updated_at`
 
-**Modal — `QuickPayReceivableDialog`** (centered Dialog, `max-w-md`, per project UI convention)
-- **Header**: `Mark receivable as paid`
-- **Read-only context block** (muted card): receivable label, type, due date, tenant, lease ref, property/unit, currency, outstanding amount.
-- **Editable fields** (minimal + payer):
-  - `Amount received` — prefilled with `outstandingAmount`, editable.
-  - `Payment date` — prefilled today.
-  - `Source type` — Select, default `bank-transfer`.
-  - `Payer name` — prefilled with primary tenant full name.
-  - `Reference` — free text, optional.
-- **Orphan handling**: if the receivable has no lease AND no tenant, show a required Tenant select (active tenants) and, when chosen, a Lease select filtered to that tenant. Save disabled until a tenant is picked.
-- **Footer hints** (dynamic, muted text below amount):
-  - amount == outstanding → `Will fully settle this receivable.`
-  - amount < outstanding → `Partial payment — receivable will remain partially paid.`
-  - amount > outstanding → `Surplus of {X} will be auto-allocated to other open items for this lease/tenant by priority. Any remainder stays unmatched on the receipt.`
-- **Primary button**: `Confirm payment`.
+Linking: many-to-many via new table `property_owner_links`:
+- `property_id`, `owner_id`, `portfolio_id`
+- unique on (`property_id`, `owner_id`)
 
-## Logic
+`properties.ownerName` becomes legacy/optional. We keep the column for back-compat reads but the UI stops writing to it; existing values can be displayed as a fallback when a property has no linked owners. (We won't auto-migrate free-text values into real owner records — too risky to dedupe blindly. A small "import legacy owners" affordance can be added later if needed.)
 
-On confirm:
-1. Build the cash receipt from the receivable + form:
-   - `tenantId`, `leaseId`, `propertyId`, `unitId` copied from the receivable (or from manual pick for orphans).
-   - `currencyCode` = receivable currency.
-   - `sourceType`, `paymentDate`, `amountReceived`, `payerName`, `reference` from the form.
-   - `status: "unmatched"`, `unmatchedAmount = amountReceived`, all other optional fields null.
-2. Call `createCashReceipt(receipt, /* autoAllocate */ false)` to avoid the global auto-allocator picking another item first.
-3. Then call `allocateCashReceipt(receiptId, [{ receivableItemId: ri.id, amount: min(amountReceived, outstandingAmount) }])` — this is the targeted, guaranteed allocation to the clicked row.
-4. **Surplus handling** (`amountReceived > outstandingAmount`):
-   - Compute `surplus = amountReceived - outstandingAmount`.
-   - Find other open receivables matching the receipt's `leaseId` (fallback `tenantId`), sorted by existing priority rule (`priority` asc, then `dueDate` asc — same order used by the existing auto-allocator).
-   - Greedily build extra allocation entries up to `surplus`, then call `allocateCashReceipt` again (or pass them together in step 3) so the engine applies them and updates `unmatchedAmount` correctly. Any leftover stays as `unmatched` on the receipt — natural behavior of the existing engine.
-5. Receivable status recomputation, allocation row, and receipt status are already handled by the existing repo functions, so no new domain logic is needed beyond orchestration.
+## UI changes
 
-## Edge cases covered
+**Property create/edit dialog** (`Properties.tsx`, `PropertyDetail.tsx`):
+- Replace the single "Owner" text input with a multi-owner picker:
+  - Searchable dropdown listing all owners in the portfolio (name + type chip).
+  - Selecting an owner adds it as a chip; chips can be removed.
+  - "+ Create new owner…" entry at the bottom of the dropdown (and when the search has no match) opens a small inline sub-dialog with two fields: **Name**, **Type** (Individual / Corporation). On save the new owner is created and auto-selected.
 
-- **Terminal-status receivables**: action hidden.
-- **Zero/negative outstanding**: action hidden.
-- **Credit notes** (negative-style items): hidden by the outstanding > 0 rule.
-- **Mixed currency**: receipt currency forced to receivable currency, prevents cross-currency allocations.
-- **Orphan receivable** (no lease/tenant): manual tenant (and optional lease) pick required before save.
-- **Partial payment**: only the entered amount is allocated; receivable becomes `partially-paid` via existing `computeReceivableStatus`.
-- **Overpayment**: surplus auto-allocated to same lease/tenant by priority; any unallocatable remainder stays `unmatched` on the receipt.
-- **Concurrent / double-click**: button disabled while saving (local `isSaving` state).
-- **i18n**: all new strings go through `t()`; no `t` shadowing in loops.
+**Properties list page** (`Properties.tsx`):
+- Owner column shows the linked owner names (comma-separated, truncated with tooltip if many). Falls back to legacy `ownerName` when no links exist.
+- Add a new **Owner** multi-select filter in the existing filter row (using `MultiSelectFilter`, same pattern as other filters). Filtering matches properties whose linked owners include any selected owner.
+- Search bar also matches linked owner names.
 
-## Files
+**Property detail page**:
+- "Owner" row in the summary card lists linked owner names.
 
-- `src/components/payments/QuickPayReceivableDialog.tsx` — **new**, the modal described above.
-- `src/pages/Payments.tsx`:
-  - Add `Action` header + cell to the receivables table.
-  - Local state `quickPayRiId` and render `<QuickPayReceivableDialog>` once.
-- `src/i18n/translations.ts` — add EN/FR keys: `payments.action.markPaid`, `payments.quickPay.title`, `payments.quickPay.context`, `payments.quickPay.amount`, `payments.quickPay.confirm`, hints (`willSettle`, `partial`, `surplus`), orphan labels.
-- No DB migration, no type changes, no edits to `costAllocation`, `leaseReceivables`, or the existing `CashReceiptDialog`.
+No dedicated Owners management page in this iteration — owners are managed inline from the property dialog. (Happy to add a Settings → Owners page later if you want full CRUD / merge.)
 
-## Out of scope
+## Scope kept out
+- No deletion/merge of owners (can be added later; would need integrity checks: block delete if linked to any property).
+- No edit of an owner's name/type from the property dialog (only create + select). Edits can come with a future Owners admin page.
+- No migration of existing free-text `ownerName` values into the new table.
 
-- Bulk "mark several rows paid" — single-row only for now.
-- Editing or reversing the resulting receipt (existing receipts tab already handles this).
-- New cash-receipt source types or new allocation types.
+## Technical notes
+- New tables follow the standard 4-step migration (CREATE → GRANT to authenticated + service_role → ENABLE RLS → portfolio-member policies mirroring other tables), plus `updated_at` triggers.
+- `repo` adds `propertyOwners` and `propertyOwnerLinks` loaders + mirror writes; `AppContext` exposes `propertyOwners`, `createPropertyOwner`, `setPropertyOwners(propertyId, ownerIds[])`, plus `getOwnersForProperty(propertyId)`.
+- New types `PropertyOwner` and `PropertyOwnerLink` in `src/types/index.ts`.
+- New component `src/components/properties/PropertyOwnersPicker.tsx` (search + chips + inline create) reused by the create and edit flows.
+- i18n keys added for both EN and FR (`properties.owners`, `properties.owner.type.individual`, `…corporation`, `properties.owners.create`, etc.).
+- No changes to costs/leases/profitability logic.
