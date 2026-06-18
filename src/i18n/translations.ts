@@ -1698,6 +1698,7 @@ const en = {
   "validation.dates.paymentDateRequired": "Payment date is required.",
   "validation.dates.returnedBeforeHandedOver": "Returned date must be on or after handed-over date.",
   "validation.dates.allocationStartBeforePayment": "Allocation start date must be on or after the advance payment date.",
+  "validation.dates.dateOfBirthInFuture": "Date of birth must be on or before today.",
 
   // Property owners
   "propertyOwners.singular": "owner",
@@ -3408,6 +3409,7 @@ const fr: TranslationKeys = {
   "validation.dates.paymentDateRequired": "La date de paiement est requise.",
   "validation.dates.returnedBeforeHandedOver": "La date de retour doit être postérieure ou égale à la date de remise.",
   "validation.dates.allocationStartBeforePayment": "La date de début d'affectation doit être postérieure ou égale à la date du versement d'avance.",
+  "validation.dates.dateOfBirthInFuture": "La date de naissance doit être antérieure ou égale à aujourd'hui.",
 
   // Propriétaires
   "propertyOwners.singular": "propriétaire",
