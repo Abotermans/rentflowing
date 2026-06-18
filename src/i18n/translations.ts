@@ -572,6 +572,7 @@ const en = {
   "table.tenant": "Tenant",
   "table.property": "Property",
   "table.unit": "Unit",
+  "table.units": "Units",
   "table.type": "Type",
   "table.date": "Date",
   "table.endDate": "End Date",
