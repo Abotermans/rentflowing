@@ -2261,6 +2261,7 @@ const fr: TranslationKeys = {
   "table.tenant": "Locataire",
   "table.property": "Bien",
   "table.unit": "Lot",
+  "table.units": "Lots",
   "table.type": "Type",
   "table.date": "Date",
   "table.endDate": "Date de fin",
