@@ -444,17 +444,19 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                             <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-1.5">
-                          <div className="flex items-center gap-1 justify-end">
-                            <Input
-                              type="number" min={0}
-                              value={row.chargesShare}
-                              onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
-                              className="h-8 w-[90px] text-right"
-                            />
-                            <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
-                          </div>
-                        </TableCell>
+                        {!allInclusive && (
+                          <TableCell className="py-1.5">
+                            <div className="flex items-center gap-1 justify-end">
+                              <Input
+                                type="number" min={0}
+                                value={row.chargesShare}
+                                onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
+                                className="h-8 w-[90px] text-right"
+                              />
+                              <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell className="py-1.5 text-right font-medium">
                           {fmtCurrency(rowTotal, selectedProperty?.currencyCode, selectedProperty?.locale)}
                         </TableCell>
