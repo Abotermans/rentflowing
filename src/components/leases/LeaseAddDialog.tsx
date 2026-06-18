@@ -145,6 +145,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
   }, [open]);
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
+  const allInclusive = form.pricingMode === "all-inclusive";
 
   const commonTiers = useMemo(() => {
     const rowsWithUnits = unitRows
@@ -210,9 +211,10 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
         if (u) {
           const tierRent = getMonthlyRentForMonths(u, form.rentFormula);
           next.rentShare = tierRent ?? u.baseRent ?? 0;
-          next.chargesShare = u.baseCharges ?? 0;
+          next.chargesShare = allInclusive ? 0 : (u.baseCharges ?? 0);
         }
       }
+      if (allInclusive) next.chargesShare = 0;
       return next;
     }));
   };
