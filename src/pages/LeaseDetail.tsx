@@ -43,7 +43,7 @@ import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
 import { LeaseDocumentsDialog } from "@/components/leases/LeaseDocumentsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { ChargesReconciliationSection } from "@/components/leases/ChargesReconciliationSection";
-import { isAllInclusive, getContractualMonthlyAmount } from "@/lib/leasePricing";
+import { isAllInclusive } from "@/lib/leasePricing";
 import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
 import { newId } from "@/lib/repo";
 import type { LeasePayerAccount } from "@/types";
