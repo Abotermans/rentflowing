@@ -43,6 +43,7 @@ import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
 import { LeaseDocumentsDialog } from "@/components/leases/LeaseDocumentsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { ChargesReconciliationSection } from "@/components/leases/ChargesReconciliationSection";
+import { isAllInclusive, getContractualMonthlyAmount } from "@/lib/leasePricing";
 import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
 import { newId } from "@/lib/repo";
 import type { LeasePayerAccount } from "@/types";
@@ -797,6 +798,11 @@ export default function LeaseDetail() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{lease.leaseReference}</h1>
               <StatusBadge status={lifecycle} />
+              {isAllInclusive(lease) && (
+                <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded border border-primary/30 text-primary bg-primary/5">
+                  {t("leases.allInclusive.badge")}
+                </span>
+              )}
               <button className="text-sm text-primary hover:underline flex items-center" onClick={openDocumentsForLease}>
                 <FileText className="h-4 w-4 mr-1.5" />{t("documents.title")}
                 {documentsCount > 0 && <span className="ml-1 text-muted-foreground">({documentsCount})</span>}
