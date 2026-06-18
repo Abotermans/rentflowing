@@ -897,6 +897,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (am.effectiveDate && am.effectiveDate > todayISO) {
       return { ok: false, reason: "Effective date is in the future — schedule instead" };
     }
+    // Re-validate at activation time so date-overlap blockers introduced
+    // since the amendment was drafted are caught here too.
+    const integrityState = {
+      properties, units, tenants, leases, guarantees,
+      leaseUnitAssignments, amendments, amendmentChanges,
+      receivableItems, cashReceipts, allocations: receiptAllocations,
+      tickets, costCategories, costEntries, allocationRules,
+      allocationRuleUnitShares, costAllocationResults,
+    } as Parameters<typeof canActivateAmendment>[1];
+    const validation = canActivateAmendment(id, integrityState);
+    if (!validation.allowed) {
+      return { ok: false, reason: validation.blockers.map(b => b.message).join(". ") };
+    }
     const ts = now();
     const eff = am.effectiveDate;
     const dayBefore = (() => {
