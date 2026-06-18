@@ -41,6 +41,7 @@ import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
 import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
+import { CheckCircle2 as PaidIcon } from "lucide-react";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -90,7 +91,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 
 export default function Leases() {
   const navigate = useNavigate();
-  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits } = useAppData();
+  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits, getReceivableItemsByLease } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -105,7 +106,7 @@ export default function Leases() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingLease, setEditingLease] = useState<Lease | null>(null);
 
-  type LSortKey = "reference" | "tenant" | "property" | "unit" | "formula" | "status" | "guarantee" | "start" | "end" | "total";
+  type LSortKey = "reference" | "tenant" | "property" | "unit" | "formula" | "status" | "guarantee" | "start" | "end" | "total" | "receivables";
   const { sort, toggle } = useTableSort<LSortKey>();
 
   const emptyForm: LeaseFormData = {
