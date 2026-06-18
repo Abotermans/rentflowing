@@ -175,6 +175,7 @@ export default function Dashboard() {
                   <TableHead className="text-xs">{t("table.tenant")}</TableHead>
                   <TableHead className="text-xs">{t("table.reference")}</TableHead>
                   <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.units")}</TableHead>
                   <TableHead className="text-xs text-right">{t("table.overdue")}</TableHead>
                   <TableHead className="text-xs text-right">{t("table.outstanding")}</TableHead>
                 </TableRow>
