@@ -282,7 +282,7 @@ export default function PropertyDetail() {
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.reference")}</span><span className="text-sm font-medium text-foreground font-mono">{property.referenceCode}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
+            <div className="flex justify-between gap-2"><span className="text-sm text-muted-foreground">{t("properties.owners")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{(() => { const owners = getOwnersForProperty(property.id); if (owners.length === 0) return property.ownerName || "—"; return owners.map(o => o.name).join(", "); })()}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("common.description")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{property.description || "—"}</span></div>
@@ -610,8 +610,8 @@ export default function PropertyDetail() {
                 </div>
               </div>
               <div>
-                <Label>{t("properties.ownerName")}</Label>
-                <Input value={propertyForm.ownerName} onChange={e => setPropertyForm(f => f && ({ ...f, ownerName: e.target.value }))} />
+                <Label>{t("properties.owners")}</Label>
+                <PropertyOwnersPicker selectedIds={propertyOwnerIds} onChange={setPropertyOwnerIds} />
               </div>
               <div>
                 <Label>{t("properties.addressLine1")} *</Label>
