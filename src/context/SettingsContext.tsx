@@ -8,6 +8,10 @@ interface SettingsState {
   /** Number of days before a receivable's due date the receivable opens. */
   receivableLeadDays: number;
   setReceivableLeadDays: (days: number) => void;
+  /** Set of module keys hidden from navigation. See src/config/modules.ts. */
+  hiddenModules: ReadonlySet<string>;
+  isModuleHidden: (key: string) => boolean;
+  setModuleHidden: (key: string, hidden: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsState | null>(null);
@@ -31,9 +35,22 @@ function getInitialLeadDays(): number {
   return 15;
 }
 
+const HIDDEN_MODULES_KEY = "app-hidden-modules";
+function getInitialHiddenModules(): Set<string> {
+  try {
+    const stored = localStorage.getItem(HIDDEN_MODULES_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return new Set(parsed.filter((k): k is string => typeof k === "string"));
+    }
+  } catch {}
+  return new Set();
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
   const [receivableLeadDays, setReceivableLeadDaysState] = useState<number>(getInitialLeadDays);
+  const [hiddenModules, setHiddenModulesState] = useState<Set<string>>(getInitialHiddenModules);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
@@ -46,11 +63,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem("app-receivable-lead-days", String(clamped)); } catch {}
   }, []);
 
+  const setModuleHidden = useCallback((key: string, hidden: boolean) => {
+    setHiddenModulesState((prev) => {
+      const next = new Set(prev);
+      if (hidden) next.add(key); else next.delete(key);
+      try { localStorage.setItem(HIDDEN_MODULES_KEY, JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
+
+  const isModuleHidden = useCallback((key: string) => hiddenModules.has(key), [hiddenModules]);
+
   const t = useCallback((key: TranslationKey) => getTranslation(locale, key), [locale]);
 
   const value = useMemo(
-    () => ({ locale, setLocale, t, receivableLeadDays, setReceivableLeadDays }),
-    [locale, setLocale, t, receivableLeadDays, setReceivableLeadDays],
+    () => ({ locale, setLocale, t, receivableLeadDays, setReceivableLeadDays, hiddenModules, isModuleHidden, setModuleHidden }),
+    [locale, setLocale, t, receivableLeadDays, setReceivableLeadDays, hiddenModules, isModuleHidden, setModuleHidden],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
