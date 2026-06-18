@@ -1730,6 +1730,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!pid) {
       const empty = {
         properties: [] as Property[], units: [] as Unit[], tenants: [] as Tenant[],
+        propertyOwners: [] as PropertyOwner[], propertyOwnerLinks: [] as PropertyOwnerLink[],
         leases: [] as Lease[], guarantees: [] as Guarantee[],
         leaseUnitAssignments: [] as LeaseUnitAssignment[],
         amendments: [] as LeaseAmendment[], amendmentChanges: [] as LeaseAmendmentChange[],
@@ -1746,6 +1747,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const sProperties = properties.filter(p => p.portfolioId === pid);
     const propIds = new Set(sProperties.map(p => p.id));
+    const sPropertyOwners = propertyOwners.filter(o => o.portfolioId === pid);
+    const sPropertyOwnerLinks = propertyOwnerLinks.filter(l => propIds.has(l.propertyId));
     const sUnits = units.filter(u => propIds.has(u.propertyId));
     const unitIds = new Set(sUnits.map(u => u.id));
     const sTenants = tenants.filter(t => t.portfolioId === pid);
@@ -1782,6 +1785,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const sChargesReconciliations = chargesReconciliations.filter(r => leaseIds.has(r.leaseId));
     return {
       properties: sProperties, units: sUnits, tenants: sTenants,
+      propertyOwners: sPropertyOwners, propertyOwnerLinks: sPropertyOwnerLinks,
       leases: sLeases, guarantees: sGuarantees,
       leaseUnitAssignments: sLUA,
       amendments: sAmendments, amendmentChanges: sAmendmentChanges,
@@ -1796,7 +1800,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [
     currentPortfolioId,
-    properties, units, tenants, leases, guarantees, leaseUnitAssignments,
+    properties, propertyOwners, propertyOwnerLinks, units, tenants, leases, guarantees, leaseUnitAssignments,
     amendments, amendmentChanges, receivableItems, cashReceipts, allocationsState,
     tickets, vendors, costCategories, costEntries, allocationRules,
     allocationRuleUnitShares, costAllocationResults, chargesReconciliations,
