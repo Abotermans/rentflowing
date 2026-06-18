@@ -32,6 +32,7 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { PropertyProfitabilitySection } from "@/components/profitability/PropertyProfitabilitySection";
+import { PropertyOwnersPicker } from "@/components/properties/PropertyOwnersPicker";
 
 const UNIT_TYPE_VALUES: UnitType[] = ["apartment", "studio", "office", "parking", "storage", "house", "commercial-unit"];
 const UNIT_STATUS_VALUES: UnitStatus[] = ["vacant", "occupied", "reserved", "unavailable", "archived"];
@@ -62,7 +63,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, updateProperty, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, updateProperty, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty, getOwnersForProperty, setPropertyOwners } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const navigate = useNavigate();
