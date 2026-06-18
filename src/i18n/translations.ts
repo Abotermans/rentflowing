@@ -2204,7 +2204,7 @@ const fr: TranslationKeys = {
   "dashboard.totalUnits": "Total lots",
   "dashboard.occupied": "Occupés",
   "dashboard.occupancyRate": "Taux d'occupation",
-  "dashboard.vacantUnits": "Vacants",
+  "dashboard.vacantUnits": "lots vacants",
   "dashboard.reservedUnits": "Réservés",
   "dashboard.unavailableUnits": "Indisponibles",
   "dashboard.activeLeases": "Baux actifs",
