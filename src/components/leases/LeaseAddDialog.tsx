@@ -297,6 +297,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       draft,
       { monthlyRent: totalR, monthlyCharges: totalC },
       integrityState,
+      { startDate: form.startDate, endDate: form.endDate || null },
     );
     if (!unitsValidation.allowed) {
       toast({
