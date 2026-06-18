@@ -1,48 +1,31 @@
-## Goal
+# Lease coexistence & date continuity
 
-Make the all-inclusive pricing mode hide charges in the lease creation/edit UI (since they don't exist contractually), and fix the post-creation "Lease not found" bug.
+## Rule
 
----
+Two leases on the same unit cannot cover the same day. Overlap = `a.start <= b.end && a.end >= b.start` (open end treated as +∞). Touching boundaries (end == next start) allowed.
 
-## 1. Adapt the unit table when pricing mode is "all-inclusive"
+- **Ignored**: leases with lifecycle `terminated`, `ended`, `expired`, `cancelled`, or `archived`.
+- **Blocker, no override** for overlap with any other lease (draft, signed, scheduled, active).
+- Gap between consecutive leases → informational warning only.
 
-In `src/components/leases/LeaseAddDialog.tsx` and `src/components/leases/LeaseEditDialog.tsx`:
+## Changes
 
-- Compute `const allInclusive = form.pricingMode === "all-inclusive"`.
-- In the units table:
-  - Hide the **"Monthly Charges"** column header and the per-row charges input when `allInclusive`. (`colSpan` on the grand-total row adjusted accordingly.)
-  - Hide the **"Charges total"** footer cell; only rent total + grand total remain.
-- In row handlers:
-  - `updateUnitRow` / `addUnitRow`: when `allInclusive`, force `chargesShare = 0` (also when a unit is picked — never seed from `u.baseCharges`).
-  - When user switches pricing mode → all-inclusive, run a one-time sweep that zeros every existing row's `chargesShare`.
-- On save (`handleSave`):
-  - `monthlyCharges` is already forced to 0 for all-inclusive — keep.
-  - Also pass `chargesShare: 0` for every row in the `setLeaseUnits` payload when `allInclusive` (so assignments don't carry phantom charges).
-- The "Monthly Rent" column header label stays `leases.monthlyRent`; consider showing the "All-inclusive" badge inline next to the rent column header when active (small visual cue, optional).
+1. **New** `src/lib/integrity/leaseDateOverlap.ts` — `findOverlappingLeases(leaseId, assignments, state)` returning `{ unitId, otherLeaseId, otherStage, range }[]`. Skips ignored lifecycle stages.
+2. **`leaseUnitAssignmentIntegrity.ts`** — after the existing today-snapshot check, call the helper using each draft assignment's dates (falling back to the lease form dates). Emit a single blocker code `LUA_UNIT_OVERLAP` with `overrideAllowed: false`. Used by `LeaseAddDialog` and `LeaseEditDialog` save paths.
+3. **`amendmentIntegrity.ts`** — when an amendment changes `leaseEndDate` or adds a unit, rebuild the effective assignments and run the helper. Emit `AMD_UNIT_OVERLAP` (no override).
+4. **`AppContext.activateAmendment`** — re-run `validateAmendment` at activation and refuse on blockers.
+5. **`leaseIntegrity.canRenewLease`** + `LeaseDetail` end/terminate/renew flows — call the helper with the new end date and block on overlap.
+6. **Form UX** — `LeaseAddDialog` / `LeaseEditDialog`: inline message under start/end on blur, in addition to the save-time gate.
+7. **i18n** — EN/FR strings for the blocker and the gap warning in `src/i18n/translations.ts`.
 
-The visible `pricingMode` Select stays where it already is (just under the units table), per the previous change.
+## Files
 
-## 2. Fix the "Lease not found" bug after creation
+- new: `src/lib/integrity/leaseDateOverlap.ts`
+- edit: `src/lib/integrity/leaseUnitAssignmentIntegrity.ts`, `amendmentIntegrity.ts`, `leaseIntegrity.ts`, `index.ts`
+- edit: `src/context/AppContext.tsx`
+- edit: `src/components/leases/LeaseAddDialog.tsx`, `LeaseEditDialog.tsx`, `src/pages/LeaseDetail.tsx`
+- edit: `src/i18n/translations.ts`
 
-Symptom (from session replay): user creates a lease, gets navigated/refreshed to `/leases/{newId}`, and `LeaseDetail` renders "Lease not found." because `leases.find(l => l.id === id)` returns nothing.
+## Verification
 
-Likely cause: the freshly-created lease never lands in the scoped list because the in-memory `properties` lookup uses `form.propertyId`, but the persisted property may belong to a different portfolio than `currentPortfolioId` (the `scoped` memo filters leases through `propIds = properties.filter(p => p.portfolioId === currentPortfolioId)`). Secondary candidate: a render-time crash in the new receivables-status column for all-inclusive leases (no `charges` receivable) silently hides the row.
-
-Investigation + fix:
-
-- Add a pre-save guard in `LeaseAddDialog.handleSave` that verifies the selected `propertyId` belongs to the active portfolio; if not, toast and abort.
-- Defensive fix in `AppContext.addLease`: stamp the created lease with `portfolioId: currentPortfolioId` if the property scope lookup fails, so the scoping memo can't drop it.
-- Audit the receivables-status cell on `src/pages/Leases.tsx` to ensure it handles leases with zero `charges` receivables (all-inclusive) without throwing — fall back to "rent only" status.
-
-## Files to touch
-
-- `src/components/leases/LeaseAddDialog.tsx`
-- `src/components/leases/LeaseEditDialog.tsx`
-- `src/context/AppContext.tsx` (addLease defensive scoping)
-- `src/pages/Leases.tsx` (receivables-status cell hardening)
-
-## Out of scope
-
-- Receivables generation logic (already correct for all-inclusive).
-- Profitability / cost allocation (already adapted).
-- Any data migration of existing leases.
+Manual: A active Jan–Dec; B same unit Jun–Aug → blocked, no override option. B Jan-next-year → allowed. Schedule B next year, amend A end into B → blocked. Terminate A → B becomes allowed.

@@ -2,6 +2,7 @@ import type { LeaseUnitAssignmentType } from "@/types";
 import { isAncillaryAssignmentType } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import { findOverlappingLeases } from "./leaseDateOverlap";
 
 export interface DraftAssignment {
   unitId: string;
@@ -24,6 +25,7 @@ export function validateLeaseUnits(
   draft: DraftAssignment[],
   _totals: { monthlyRent: number; monthlyCharges: number },
   s: IntegrityState,
+  leaseDates?: { startDate?: string | null; endDate?: string | null },
 ): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
@@ -62,7 +64,8 @@ export function validateLeaseUnits(
     seen.add(d.unitId);
   }
 
-  // Overlap with other active leases on the same unit
+  // Overlap with other active leases on the same unit (today snapshot — kept
+  // for backwards-compat blocker code).
   const today = new Date().toISOString().slice(0, 10);
   for (const d of draft) {
     const conflicts = s.leaseUnitAssignments.filter(other =>
@@ -78,6 +81,31 @@ export function validateLeaseUnits(
         message: `Unit ${u?.unitCode ?? d.unitId} already belongs to another active lease`,
       });
     }
+  }
+
+  // Full date-range overlap against every other non-ended/non-terminated lease.
+  // Catches future overlaps that the today-snapshot check above misses.
+  const proposed = draft
+    .map(d => ({
+      unitId: d.unitId,
+      startDate: d.startDate || leaseDates?.startDate || "",
+      endDate: d.endDate ?? leaseDates?.endDate ?? null,
+    }))
+    .filter(p => !!p.startDate);
+  const overlaps = findOverlappingLeases(leaseId, proposed, s);
+  const seenOverlap = new Set<string>();
+  for (const hit of overlaps) {
+    const key = `${hit.unitId}|${hit.otherLeaseId}`;
+    if (seenOverlap.has(key)) continue;
+    seenOverlap.add(key);
+    const unit = s.units.find(x => x.id === hit.unitId);
+    const otherLease = s.leases.find(l => l.id === hit.otherLeaseId);
+    const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
+    const range = `${hit.otherStart} – ${hit.otherEnd ?? "open"}`;
+    blockers.push({
+      code: "LUA_UNIT_OVERLAP",
+      message: `Unit ${unit?.unitCode ?? hit.unitId} overlaps lease ${ref} (${hit.otherStage}, ${range})`,
+    });
   }
 
   // Warnings: only ancillaries

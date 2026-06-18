@@ -13,6 +13,8 @@ export { canDeleteCostCategory, canDeleteCostEntry, canDeleteAllocationRule, val
 export { validateLeaseUnits } from "./leaseUnitAssignmentIntegrity";
 export type { DraftAssignment } from "./leaseUnitAssignmentIntegrity";
 export { canActivateAmendment, validateAmendment } from "./amendmentIntegrity";
+export { findOverlappingLeases } from "./leaseDateOverlap";
+export type { OverlapAssignment, OverlapHit } from "./leaseDateOverlap";
 
 // ===== Generic Dispatchers =====
 

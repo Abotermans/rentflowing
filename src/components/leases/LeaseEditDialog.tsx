@@ -328,6 +328,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       draft,
       { monthlyRent: totalRent, monthlyCharges: totalCharges },
       integrityState,
+      { startDate: form.startDate, endDate: form.endDate || null },
     );
     if (!unitsValidation.allowed) {
       toast({

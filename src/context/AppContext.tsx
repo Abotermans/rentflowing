@@ -897,6 +897,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (am.effectiveDate && am.effectiveDate > todayISO) {
       return { ok: false, reason: "Effective date is in the future — schedule instead" };
     }
+    // Re-validate at activation time so date-overlap blockers introduced
+    // since the amendment was drafted are caught here too.
+    const integrityState = {
+      properties, units, tenants, leases, guarantees,
+      leaseUnitAssignments, amendments, amendmentChanges,
+      receivableItems, cashReceipts, allocations: allocationsState,
+      tickets, costCategories, costEntries, allocationRules,
+      allocationRuleUnitShares, costAllocationResults,
+    } as Parameters<typeof canActivateAmendment>[1];
+    const validation = canActivateAmendment(id, integrityState);
+    if (!validation.allowed) {
+      return { ok: false, reason: validation.blockers.map(b => b.message).join(". ") };
+    }
     const ts = now();
     const eff = am.effectiveDate;
     const dayBefore = (() => {
@@ -1038,7 +1051,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     return { ok: true };
-  }, [amendments, amendmentChanges, leases, leaseUnitAssignments, properties, currentPortfolioId, receivableLeadDays]);
+  }, [
+    amendments, amendmentChanges, leases, leaseUnitAssignments, properties, units, tenants,
+    guarantees, receivableItems, cashReceipts, allocationsState, tickets,
+    costCategories, costEntries, allocationRules, allocationRuleUnitShares,
+    costAllocationResults, currentPortfolioId, receivableLeadDays,
+  ]);
 
   const scheduleAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
     const am = amendments.find(a => a.id === id);
@@ -1081,9 +1099,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (amendmentId: string) => amendmentChanges.filter(c => c.amendmentId === amendmentId),
     [amendmentChanges],
   );
-
-  // Silence unused-import lint when these helpers stay one-shot.
-  void canActivateAmendment;
 
   // ===== Guarantee =====
   const addGuarantee = useCallback((g: Omit<Guarantee, "id">) => {
