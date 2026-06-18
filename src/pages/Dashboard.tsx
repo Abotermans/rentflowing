@@ -111,10 +111,10 @@ export default function Dashboard() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide truncate">{k.label}</p>
-                  <p className={`text-xl font-bold mt-1 ${k.tone}`}>{k.value}</p>
+                  <p className="text-xl font-bold mt-1 text-foreground">{k.value}</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{k.sub}</p>
                 </div>
-                <k.icon className={`h-4 w-4 shrink-0 ${k.tone}`} />
+                <k.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
               </div>
             </CardContent>
           </Card>
