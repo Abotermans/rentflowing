@@ -29,12 +29,11 @@ import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/
 import type { CashReceiptSourceType } from "@/types/receivables";
 import { formatDate, formatCurrency, formatPeriodMonth } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { useTableSort, useSortedRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { canChangeLeaseStatus, canActivateLease, canRenewLease, canSendForSignature, canMarkSigned } from "@/lib/integrity/leaseIntegrity";
-import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
+import { LeaseBanner } from "@/components/shared/LeaseBanner";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
@@ -84,57 +83,6 @@ const MOVE_STATUS_DISPLAY: Record<"not-scheduled" | "scheduled" | "completed", {
   scheduled:       { icon: Clock,         labelKey: "status.scheduled",    className: "text-warning" },
   completed:       { icon: CheckCircle2,  labelKey: "status.completed",    className: "text-success" },
 };
-
-type LeaseBannerTone = "warning" | "destructive" | "info";
-
-/**
- * Uniform banner used at the top of the lease detail page.
- * Every banner shares the same shell, height, padding, icon size, typography
- * and action-area layout so they stack as a visually consistent column.
- */
-function LeaseBanner({
-  tone,
-  icon: Icon,
-  title,
-  description,
-  actions,
-}: {
-  tone: LeaseBannerTone;
-  icon: React.ComponentType<{ className?: string }>;
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  actions?: React.ReactNode;
-}) {
-  const toneClass =
-    tone === "destructive"
-      ? "border-destructive/50 bg-destructive/10 text-destructive"
-      : tone === "warning"
-      ? "border-warning/50 bg-warning/10 text-warning"
-      : "border-border bg-muted/40 text-foreground";
-  return (
-    <div
-      role="alert"
-      className={cn(
-        "w-full min-h-[64px] rounded-lg border px-4 py-3",
-        "flex items-center gap-3",
-        toneClass,
-      )}
-    >
-      <Icon className="h-5 w-5 shrink-0 self-center" />
-      <div className="flex-1 min-w-0 flex flex-col justify-center leading-snug">
-        <span className="text-sm font-medium">{title}</span>
-        {description && (
-          <span className="text-xs opacity-90 mt-0.5">{description}</span>
-        )}
-      </div>
-      {actions && (
-        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
-          {actions}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -943,21 +891,73 @@ export default function LeaseDetail() {
         </div>
       </div>
 
-      {/* Activation Blocker Panel */}
+      {/* Banner stack — every banner shares the LeaseBanner shell for visual consistency */}
+      <div className="space-y-3">
       {lease.lifecycleStage === "draft" && (() => {
         const check = canSendForSignature(lease.id, integrityState);
-        return (check.blockers.length > 0 || check.warnings.length > 0) ? (
-          <StatusTransitionAlert validation={check} />
-        ) : null;
+        if (check.blockers.length === 0 && check.warnings.length === 0) return null;
+        return (
+          <>
+            {check.blockers.length > 0 && (
+              <LeaseBanner
+                tone="destructive"
+                icon={XCircle}
+                title={t("lease.activationBlocked")}
+                description={
+                  <span className="block space-y-0.5">
+                    {check.blockers.map(b => (<span key={b.code} className="block">{b.message}</span>))}
+                  </span>
+                }
+              />
+            )}
+            {check.warnings.length > 0 && (
+              <LeaseBanner
+                tone="warning"
+                icon={AlertTriangle}
+                title={t("lease.activationWarnings")}
+                description={
+                  <span className="block space-y-0.5">
+                    {check.warnings.map(w => (<span key={w.code} className="block">{w.message}</span>))}
+                  </span>
+                }
+              />
+            )}
+          </>
+        );
       })()}
       {lease.lifecycleStage === "active" && !lease.signedDate && (() => {
         const check = canMarkSigned(lease.id, integrityState);
-        return (check.blockers.length > 0 || check.warnings.length > 0) ? (
-          <StatusTransitionAlert validation={check} />
-        ) : null;
+        if (check.blockers.length === 0 && check.warnings.length === 0) return null;
+        return (
+          <>
+            {check.blockers.length > 0 && (
+              <LeaseBanner
+                tone="destructive"
+                icon={XCircle}
+                title={t("lease.signatureBlocked")}
+                description={
+                  <span className="block space-y-0.5">
+                    {check.blockers.map(b => (<span key={b.code} className="block">{b.message}</span>))}
+                  </span>
+                }
+              />
+            )}
+            {check.warnings.length > 0 && (
+              <LeaseBanner
+                tone="warning"
+                icon={AlertTriangle}
+                title={t("lease.signatureWarnings")}
+                description={
+                  <span className="block space-y-0.5">
+                    {check.warnings.map(w => (<span key={w.code} className="block">{w.message}</span>))}
+                  </span>
+                }
+              />
+            )}
+          </>
+        );
       })()}
 
-      {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
         <LeaseBanner
           tone="warning"
@@ -1135,6 +1135,7 @@ export default function LeaseDetail() {
           }
         />
       )}
+      </div>
 
       {/* Lease Summary */}
       <Collapsible open={leaseSummaryOpen} onOpenChange={setLeaseSummaryOpen}>

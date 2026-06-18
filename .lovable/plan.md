@@ -1,31 +1,44 @@
-# Lease coexistence & date continuity
+# Harmonize all banners on the Lease Detail page
 
-## Rule
+## Goal
+Make every warning / status banner on the Lease Detail page share the exact same visual shell: same min-height, padding, icon size, typography, vertical centering, semantic color tokens, and action-button layout. The current `LeaseBanner` warnings already look uniform, but the activation-blocker alerts still use the old `StatusTransitionAlert` styling and are visually inconsistent.
 
-Two leases on the same unit cannot cover the same day. Overlap = `a.start <= b.end && a.end >= b.start` (open end treated as +∞). Touching boundaries (end == next start) allowed.
+## Current state
+- Lease warning banners (guarantee, notice, move-in/out, end-of-lease, overdue) are rendered by a local `LeaseBanner` component in `src/pages/LeaseDetail.tsx`. They are consistent with each other.
+- Activation blocker / warning banners for `draft` and `active` (unsigned) leases are rendered by `StatusTransitionAlert`, which uses a different `Alert` shell: smaller icon, different padding, direct `amber-500` colors, and a different text stack.
+- The two groups sit in the page with ad-hoc spacing (`space-y-6` + internal `mt-2`), so they also differ in rhythm.
 
-- **Ignored**: leases with lifecycle `terminated`, `ended`, `expired`, `cancelled`, or `archived`.
-- **Blocker, no override** for overlap with any other lease (draft, signed, scheduled, active).
-- Gap between consecutive leases → informational warning only.
+## Plan
 
-## Changes
+1. **Extract a shared `LeaseBanner` component**
+   - Move the local `LeaseBanner` shell from `src/pages/LeaseDetail.tsx` to `src/components/shared/LeaseBanner.tsx` so it can be reused for the activation blockers without duplicating markup.
+   - Keep the same API: `tone: "warning" | "destructive" | "info"`, `icon`, `title`, `description?`, `actions?`.
+   - Keep semantic tokens only: `warning`, `destructive`, `border`, `muted`, etc. No hardcoded amber or other one-off colors.
 
-1. **New** `src/lib/integrity/leaseDateOverlap.ts` — `findOverlappingLeases(leaseId, assignments, state)` returning `{ unitId, otherLeaseId, otherStage, range }[]`. Skips ignored lifecycle stages.
-2. **`leaseUnitAssignmentIntegrity.ts`** — after the existing today-snapshot check, call the helper using each draft assignment's dates (falling back to the lease form dates). Emit a single blocker code `LUA_UNIT_OVERLAP` with `overrideAllowed: false`. Used by `LeaseAddDialog` and `LeaseEditDialog` save paths.
-3. **`amendmentIntegrity.ts`** — when an amendment changes `leaseEndDate` or adds a unit, rebuild the effective assignments and run the helper. Emit `AMD_UNIT_OVERLAP` (no override).
-4. **`AppContext.activateAmendment`** — re-run `validateAmendment` at activation and refuse on blockers.
-5. **`leaseIntegrity.canRenewLease`** + `LeaseDetail` end/terminate/renew flows — call the helper with the new end date and block on overlap.
-6. **Form UX** — `LeaseAddDialog` / `LeaseEditDialog`: inline message under start/end on blur, in addition to the save-time gate.
-7. **i18n** — EN/FR strings for the blocker and the gap warning in `src/i18n/translations.ts`.
+2. **Render activation blockers with the same banner shell**
+   - In `LeaseDetail.tsx`, replace the two `StatusTransitionAlert` calls with a small local helper that maps the `ValidationResult` into `LeaseBanner` instances:
+     - One **destructive** banner for `blockers` (icon `XCircle`).
+     - One **warning** banner for `warnings` (icon `AlertTriangle`).
+     - The override hint and recommended action become a description line inside the relevant banner, or a separate muted sub-line if no banner is shown.
+   - Preserve the existing validation logic (`canSendForSignature`, `canMarkSigned`).
 
-## Files
+3. **Unify the banner stack spacing**
+   - Wrap all alert banners (activation blockers + warning banners) in a single section with `className="space-y-3"`.
+   - Let the page-level `space-y-6` continue to separate the banner section from the header and lease summary card.
 
-- new: `src/lib/integrity/leaseDateOverlap.ts`
-- edit: `src/lib/integrity/leaseUnitAssignmentIntegrity.ts`, `amendmentIntegrity.ts`, `leaseIntegrity.ts`, `index.ts`
-- edit: `src/context/AppContext.tsx`
-- edit: `src/components/leases/LeaseAddDialog.tsx`, `LeaseEditDialog.tsx`, `src/pages/LeaseDetail.tsx`
-- edit: `src/i18n/translations.ts`
+4. **Polish vertical alignment and action layout**
+   - Ensure every banner row uses `flex items-center gap-3`, `min-h-[64px]`, `px-4 py-3`.
+   - Icon is `h-5 w-5 shrink-0 self-center`.
+   - Text column is `flex flex-col justify-center leading-snug` with `text-sm font-medium` title and optional `text-xs opacity-90` description.
+   - Actions are `flex flex-wrap items-center justify-end gap-2 shrink-0`.
 
-## Verification
+5. **Verify in preview**
+   - Open a lease that shows multiple banners at once (e.g. a draft lease with missing data + a pending guarantee) and confirm the stack looks uniform.
 
-Manual: A active Jan–Dec; B same unit Jun–Aug → blocked, no override option. B Jan-next-year → allowed. Schedule B next year, amend A end into B → blocked. Terminate A → B becomes allowed.
+## Optional extension
+If you want the same banner design on the other pages that use `StatusTransitionAlert` (Properties, Units, Tenants, dialogs), I can update the shared component to use the new `LeaseBanner` shell globally. That is not required for the lease page and is left as a separate decision.
+
+## Files likely touched
+- `src/pages/LeaseDetail.tsx`
+- `src/components/shared/LeaseBanner.tsx` (new)
+- `src/components/shared/StatusTransitionAlert.tsx` (only if we choose the optional global extension)
