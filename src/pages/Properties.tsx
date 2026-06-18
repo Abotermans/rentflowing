@@ -219,7 +219,7 @@ export default function Properties() {
             icon={User}
             values={filterOwner}
             onChange={setFilterOwner}
-            options={propertyOwners.map(o => ({ value: o.id, label: o.name, icon: User }))}
+            options={propertyOwners.map(o => ({ value: o.id, label: o.name, icon: o.type === "corporation" ? Building2 : User }))}
           />
         </div>
         <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
