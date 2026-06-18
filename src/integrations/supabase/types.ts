@@ -1421,6 +1421,90 @@ export type Database = {
           },
         ]
       }
+      property_owner_links: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          portfolio_id: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          portfolio_id: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          portfolio_id?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_owner_links_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "property_owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_owner_links_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_owner_links_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_owners: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          portfolio_id: string
+          type: Database["public"]["Enums"]["property_owner_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          portfolio_id: string
+          type?: Database["public"]["Enums"]["property_owner_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          portfolio_id?: string
+          type?: Database["public"]["Enums"]["property_owner_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_owners_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipt_allocations: {
         Row: {
           allocated_amount: number
@@ -1851,6 +1935,7 @@ export type Database = {
     }
     Enums: {
       portfolio_role: "owner" | "admin" | "editor" | "viewer"
+      property_owner_type: "individual" | "corporation"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1979,6 +2064,7 @@ export const Constants = {
   public: {
     Enums: {
       portfolio_role: ["owner", "admin", "editor", "viewer"],
+      property_owner_type: ["individual", "corporation"],
     },
   },
 } as const
