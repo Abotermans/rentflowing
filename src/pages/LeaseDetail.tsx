@@ -941,49 +941,44 @@ export default function LeaseDetail() {
 
       {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
-        <Alert className="flex items-center border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
-          <Clock className="h-4 w-4" />
-          <AlertDescription>
-            {t("leaseDetail.guaranteeBannerPrefix")} <strong>{t("guarantee.waiting")}</strong>. {t("leaseDetail.guaranteeBannerExpected")}: {formatCurrency(guarantee.expectedAmount, currency, locale)}, {t("leaseDetail.guaranteeBannerReceived")}: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
-          </AlertDescription>
-        </Alert>
+        <LeaseBanner tone="warning" icon={Clock}>
+          {t("leaseDetail.guaranteeBannerPrefix")} <strong>{t("guarantee.waiting")}</strong>. {t("leaseDetail.guaranteeBannerExpected")}: {formatCurrency(guarantee.expectedAmount, currency, locale)}, {t("leaseDetail.guaranteeBannerReceived")}: {formatCurrency(guarantee.receivedAmount, currency, locale)}.
+        </LeaseBanner>
       )}
       {!guarantee && lease.depositOrGuaranteeAmount && lease.depositOrGuaranteeAmount > 0 && (
-        <Alert variant="destructive" className="flex items-center">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            {t("leaseDetail.noGuaranteeBanner").replace("{amount}", formatCurrency(lease.depositOrGuaranteeAmount, currency, locale))}
-            <Button variant="link" size="sm" className="ml-2 h-auto p-0" onClick={openGuaranteeForm}>{t("leaseDetail.addGuaranteeLink")}</Button>
-          </AlertDescription>
-        </Alert>
+        <LeaseBanner tone="destructive" icon={AlertTriangle}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span>
+              {t("leaseDetail.noGuaranteeBanner").replace("{amount}", formatCurrency(lease.depositOrGuaranteeAmount, currency, locale))}
+            </span>
+            <Button variant="link" size="sm" className="h-auto p-0" onClick={openGuaranteeForm}>{t("leaseDetail.addGuaranteeLink")}</Button>
+          </div>
+        </LeaseBanner>
       )}
       {lease.noticeGiven && lease.lifecycleStage !== "ended" && lease.lifecycleStage !== "terminated" && (
-        <Alert className="[&>svg]:top-1/2 [&>svg]:-translate-y-1/2">
-          <Bell className="h-4 w-4" />
-          <AlertDescription>
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span>
-                {t("leaseDetail.underNotice")}
-                {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-                {lease.intendedMoveOutDate && <> {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
-              </span>
-              <div className="flex items-center gap-2">
-                {!lease.moveOutActualDate && (
-                  <Button variant="outline" size="sm" onClick={openNoticeForm}>
-                    <Pencil className="h-3.5 w-3.5 mr-1" />
-                    {t("detail.editNotice")}
-                  </Button>
-                )}
-                {!lease.moveOutActualDate && (
-                  <Button variant="outline" size="sm" onClick={handleCancelNotice}>
-                    <XCircle className="h-3.5 w-3.5 mr-1" />
-                    {t("lease.cancelNotice")}
-                  </Button>
-                )}
-              </div>
+        <LeaseBanner tone="info" icon={Bell}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span>
+              {t("leaseDetail.underNotice")}
+              {lease.noticeDate && <> {t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
+              {lease.intendedMoveOutDate && <> {t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
+            </span>
+            <div className="flex items-center gap-2">
+              {!lease.moveOutActualDate && (
+                <Button variant="outline" size="sm" onClick={openNoticeForm}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  {t("detail.editNotice")}
+                </Button>
+              )}
+              {!lease.moveOutActualDate && (
+                <Button variant="outline" size="sm" onClick={handleCancelNotice}>
+                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                  {t("lease.cancelNotice")}
+                </Button>
+              )}
             </div>
-          </AlertDescription>
-        </Alert>
+          </div>
+        </LeaseBanner>
       )}
 
       {(() => {
