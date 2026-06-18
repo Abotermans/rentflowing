@@ -37,11 +37,15 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
 
-  // Must have at least one tenant
-  if (!lease.tenantIds || lease.tenantIds.length === 0) {
+  // Must have at least one tenant — fall back to legacy primary/co-tenant fields
+  // when `tenantIds` hasn't been hydrated (older lease rows).
+  const effectiveTenantIds = (lease.tenantIds && lease.tenantIds.length > 0)
+    ? lease.tenantIds
+    : [lease.primaryTenantId, ...(lease.coTenantIds ?? [])].filter(Boolean);
+  if (effectiveTenantIds.length === 0) {
     blockers.push({ code: "LEASE_NO_TENANTS", message: "Lease must have at least one tenant" });
   }
-  if (lease.billingTenantId && lease.tenantIds && !lease.tenantIds.includes(lease.billingTenantId)) {
+  if (lease.billingTenantId && effectiveTenantIds.length > 0 && !effectiveTenantIds.includes(lease.billingTenantId)) {
     blockers.push({ code: "LEASE_BILLING_TENANT_INVALID", message: "Billing tenant must be one of the lease tenants" });
   }
 
