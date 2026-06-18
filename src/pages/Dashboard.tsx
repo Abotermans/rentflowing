@@ -181,15 +181,25 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {overdueTenants.map(({ tenant: tn, overdue, outstanding, lease: l, prop }) => (
-                  <TableRow key={tn!.id}>
-                    <TableCell className="text-sm font-medium"><Link to={`/tenants/${tn!.id}`} className="hover:underline text-foreground">{getTenantFullName(tn!)}</Link></TableCell>
-                    <TableCell className="font-mono text-xs">{l ? <Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link> : "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
-                    <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(overdue, prop?.currencyCode, prop?.locale)}</TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(outstanding, prop?.currencyCode, prop?.locale)}</TableCell>
-                  </TableRow>
-                ))}
+                {overdueTenants.map(({ tenant: tn, overdue, outstanding, lease: l, prop }) => {
+                  const unitLabels = l
+                    ? leaseUnitAssignments
+                        .filter(a => a.leaseId === l.id)
+                        .map(a => units.find(u => u.id === a.unitId))
+                        .filter((u): u is NonNullable<typeof u> => !!u)
+                        .map(u => u.unitLabel || u.unitCode)
+                    : [];
+                  return (
+                    <TableRow key={tn!.id}>
+                      <TableCell className="text-sm font-medium"><Link to={`/tenants/${tn!.id}`} className="hover:underline text-foreground">{getTenantFullName(tn!)}</Link></TableCell>
+                      <TableCell className="font-mono text-xs">{l ? <Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{unitLabels.length > 0 ? unitLabels.join(", ") : "—"}</TableCell>
+                      <TableCell className="text-right text-sm font-bold text-destructive">{formatCurrency(overdue, prop?.currencyCode, prop?.locale)}</TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(outstanding, prop?.currencyCode, prop?.locale)}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
