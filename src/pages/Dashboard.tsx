@@ -87,7 +87,7 @@ export default function Dashboard() {
   const kpis = [
     { label: t("dashboard.totalProperties"), value: properties.length, sub: `${totalUnits} ${t("dashboard.totalUnits").toLowerCase()}`, icon: Building2, tone: "text-foreground" },
     { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, sub: `${occupied}/${primaryDenominator} ${t("dashboard.occupied").toLowerCase()}`, icon: TrendingUp, tone: occupancyRate >= 80 ? "text-success" : "text-warning" },
-    { label: t("dashboard.activeLeases"), value: activeLeases.length, sub: `${vacant} ${t("dashboard.vacantUnits").toLowerCase()}`, icon: DoorOpen, tone: "text-foreground" },
+    { label: t("dashboard.activeLeases"), value: activeLeases.length, sub: `${vacant} ${t("dashboard.vacantUnits")}`, icon: DoorOpen, tone: "text-foreground" },
     { label: "Open Receivables", value: formatCurrency(totalOpenReceivables), sub: totalOverdue > 0 ? `${formatCurrency(totalOverdue)} overdue` : "no overdue", icon: Banknote, tone: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
     { label: t("dashboard.openTickets"), value: openTicketsCount, sub: urgentTicketsCount > 0 ? `${urgentTicketsCount} urgent` : "—", icon: Wrench, tone: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
   ];
