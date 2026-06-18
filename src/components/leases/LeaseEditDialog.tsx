@@ -644,21 +644,6 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                     ? t("leases.pricingMode.flatChargesHelp")
                     : t("leases.pricingMode.separatedHelp")}
               </p>
-              {form.pricingMode === "separated" && (
-                <div className="mt-3">
-                  <Label className="text-xs text-muted-foreground">{t("leases.chargesBillingMode")}</Label>
-                  <Select
-                    value={form.chargesBillingMode ?? "provision-reconciled"}
-                    onValueChange={v => setForm(f => ({ ...f, chargesBillingMode: v as "provision-reconciled" | "flat-rate" }))}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="provision-reconciled">{t("leases.chargesMode.provision")}</SelectItem>
-                      <SelectItem value="flat-rate">{t("leases.chargesMode.flat")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
               {form.pricingMode === "all-inclusive" && totalCharges > 0 && (
                 <p className="text-xs text-warning mt-1">{t("leases.allInclusive.chargesForced")}</p>
               )}
