@@ -562,14 +562,79 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>{t("leases.primaryTenant")} *</Label>
-                <Select
-                  value={form.primaryTenantId}
-                  onValueChange={v => setForm(f => ({ ...f, primaryTenantId: v }))}
-                >
-                  <SelectTrigger><SelectValue placeholder={t("leases.selectTenant")} /></SelectTrigger>
-                  <SelectContent>{tenants.map(t => <SelectItem key={t.id} value={t.id}>{getTenantFullName(t)}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label>{t("leases.tenant")} *</Label>
+                {(() => {
+                  const attachedIds = [form.primaryTenantId, ...form.coTenantIds].filter(Boolean);
+                  const availableExisting = tenants.filter(tt => !attachedIds.includes(tt.id));
+                  const removeTenant = (id: string) => setForm(f => {
+                    if (f.primaryTenantId === id) {
+                      const [next, ...rest] = f.coTenantIds;
+                      return { ...f, primaryTenantId: next ?? "", coTenantIds: rest ?? [] };
+                    }
+                    return { ...f, coTenantIds: f.coTenantIds.filter(x => x !== id) };
+                  });
+                  const makePrimary = (id: string) => setForm(f => {
+                    if (f.primaryTenantId === id) return f;
+                    const newCo = [f.primaryTenantId, ...f.coTenantIds].filter(x => x && x !== id);
+                    return { ...f, primaryTenantId: id, coTenantIds: newCo };
+                  });
+                  const addTenant = (id: string) => setForm(f => {
+                    if (!id) return f;
+                    if (!f.primaryTenantId) return { ...f, primaryTenantId: id };
+                    if (f.primaryTenantId === id || f.coTenantIds.includes(id)) return f;
+                    return { ...f, coTenantIds: [...f.coTenantIds, id] };
+                  });
+                  return (
+                    <div className="space-y-2">
+                      {attachedIds.length > 0 && (
+                        <div className="rounded-md border">
+                          <Table>
+                            <TableBody>
+                              {attachedIds.map(id => {
+                                const tt = tenants.find(x => x.id === id);
+                                const isPrimary = id === form.primaryTenantId;
+                                return (
+                                  <TableRow key={id}>
+                                    <TableCell className="py-1.5">
+                                      <div className="text-sm font-medium">{tt ? getTenantFullName(tt) : "—"}</div>
+                                      {tt?.email && <div className="text-xs text-muted-foreground">{tt.email}</div>}
+                                    </TableCell>
+                                    <TableCell className="py-1.5 w-32">
+                                      {isPrimary ? (
+                                        <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary">{t("leases.primaryTenant")}</span>
+                                      ) : (
+                                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => makePrimary(id)}>
+                                          {t("leases.primaryTenant")}
+                                        </Button>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="py-1.5 w-10 text-right">
+                                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeTenant(id)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                      <Select value="" onValueChange={addTenant}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("leases.selectTenant")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableExisting.length === 0 ? (
+                            <SelectItem value="__none" disabled>—</SelectItem>
+                          ) : availableExisting.map(tt => (
+                            <SelectItem key={tt.id} value={tt.id}>{getTenantFullName(tt)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })()}
               </div>
               <div>
                 <Label>{t("leases.status")} *</Label>
