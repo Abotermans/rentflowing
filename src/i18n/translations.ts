@@ -531,7 +531,7 @@ const en = {
   "dashboard.totalUnits": "Total Units",
   "dashboard.occupied": "Occupied",
   "dashboard.occupancyRate": "Occupancy Rate",
-  "dashboard.vacantUnits": "Vacant",
+  "dashboard.vacantUnits": "vacant units",
   "dashboard.reservedUnits": "Reserved",
   "dashboard.unavailableUnits": "Unavailable",
   "dashboard.activeLeases": "Active Leases",
