@@ -492,6 +492,11 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                 setForm(f => ({ ...f, pricingMode: mode }));
                 if (mode === "all-inclusive") {
                   setUnitRows(prev => prev.map(r => ({ ...r, chargesShare: 0 })));
+                } else {
+                  setUnitRows(prev => prev.map(r => {
+                    const u = units.find(uu => uu.id === r.unitId);
+                    return { ...r, chargesShare: u?.baseCharges ?? 0 };
+                  }));
                 }
               }}
             >
