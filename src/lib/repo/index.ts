@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Property, Unit, Tenant, Lease, Guarantee, LeaseUnitAssignment, advanceLeaseLifecycle } from "@/types";
+import type { PropertyOwner, PropertyOwnerLink } from "@/types";
 import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
 import type { ReceivableItem, CashReceipt, ReceiptAllocation } from "@/types/receivables";
 import type { MaintenanceTicket, Vendor } from "@/types/maintenance";
@@ -97,6 +98,8 @@ function hydrateAssignment(a: LeaseUnitAssignment): LeaseUnitAssignment {
 // ===== Table names =====
 export const TABLES = {
   properties: "properties",
+  propertyOwners: "property_owners",
+  propertyOwnerLinks: "property_owner_links",
   units: "units",
   tenants: "tenants",
   leases: "leases",
@@ -123,6 +126,8 @@ export type SupabaseTable = (typeof TABLES)[TableKey];
 // ===== Snapshot =====
 export interface PortfolioSnapshot {
   properties: Property[];
+  propertyOwners: PropertyOwner[];
+  propertyOwnerLinks: PropertyOwnerLink[];
   units: Unit[];
   tenants: Tenant[];
   leases: Lease[];
@@ -157,7 +162,7 @@ async function listAll<T>(table: SupabaseTable, portfolioId: string): Promise<T[
 
 export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnapshot> {
   const [
-    properties, units, tenants, leases, guarantees, leaseUnitAssignments,
+    properties, propertyOwners, propertyOwnerLinks, units, tenants, leases, guarantees, leaseUnitAssignments,
     amendments, amendmentChanges,
     receivableItems, cashReceipts, allocations,
     tickets, vendors,
@@ -165,6 +170,8 @@ export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnaps
     chargesReconciliations,
   ] = await Promise.all([
     listAll<Property>(TABLES.properties, portfolioId),
+    listAll<PropertyOwner>(TABLES.propertyOwners, portfolioId),
+    listAll<PropertyOwnerLink>(TABLES.propertyOwnerLinks, portfolioId),
     listAll<Unit>(TABLES.units, portfolioId),
     listAll<Tenant>(TABLES.tenants, portfolioId),
     listAll<Lease>(TABLES.leases, portfolioId),
@@ -188,7 +195,7 @@ export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnaps
   const today = new Date().toISOString().slice(0, 10);
   const hydratedLeases = leases.map(l => advanceLeaseLifecycle(hydrateLease(l, hydratedAssignments), today));
   return {
-    properties, units, tenants,
+    properties, propertyOwners, propertyOwnerLinks, units, tenants,
     leases: hydratedLeases,
     guarantees,
     leaseUnitAssignments: hydratedAssignments,
