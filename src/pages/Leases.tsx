@@ -361,6 +361,33 @@ export default function Leases() {
   const now = new Date();
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
+  // Derive a lease-level receivables status from its receivable items.
+  // Used both in the table cell and as a sort key.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const getLeaseReceivablesSummary = (leaseId: string) => {
+    const items = getReceivableItemsByLease(leaseId).filter(
+      ri => ri.status !== "cancelled" && ri.status !== "written-off",
+    );
+    if (items.length === 0) {
+      return { state: "none" as const, outstanding: 0, overdue: 0, rank: 0, currencyCode: null as string | null };
+    }
+    let outstanding = 0;
+    let overdue = 0;
+    let anyAllocated = false;
+    for (const ri of items) {
+      outstanding += ri.outstandingAmount;
+      if (ri.outstandingAmount > 0 && ri.dueDate < todayStr) overdue += ri.outstandingAmount;
+      if (ri.allocatedAmount > 0) anyAllocated = true;
+    }
+    let state: "paid" | "open" | "partial" | "overdue";
+    let rank: number;
+    if (outstanding <= 0) { state = "paid"; rank = 1; }
+    else if (overdue > 0) { state = "overdue"; rank = 4; }
+    else if (anyAllocated) { state = "partial"; rank = 2; }
+    else { state = "open"; rank = 3; }
+    return { state, outstanding, overdue, rank, currencyCode: items[0].currencyCode };
+  };
+
   const filtered = leases.filter(l => {
     const tenant = tenants.find(t => t.id === l.primaryTenantId);
     const prop = properties.find(p => p.id === l.propertyId);
@@ -391,6 +418,7 @@ export default function Leases() {
       case "start": return l.startDate;
       case "end": return l.endDate;
       case "total": return l.monthlyRent + l.monthlyCharges;
+      case "receivables": return getLeaseReceivablesSummary(l.id).rank;
     }
   });
 
