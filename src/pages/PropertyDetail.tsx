@@ -87,6 +87,7 @@ export default function PropertyDetail() {
 
   const [propertyEditOpen, setPropertyEditOpen] = useState(false);
   const [propertyForm, setPropertyForm] = useState<PropertyEditData | null>(null);
+  const [propertyOwnerIds, setPropertyOwnerIds] = useState<string[]>([]);
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [localSettingsOpen, setLocalSettingsOpen] = useState(true);
   
@@ -96,6 +97,7 @@ export default function PropertyDetail() {
     if (!property) return;
     const { id: _id, createdAt, updatedAt, ...rest } = property;
     setPropertyForm(rest);
+    setPropertyOwnerIds(getOwnersForProperty(property.id).map(o => o.id));
     setPropertyEditOpen(true);
   };
   const handleSaveProperty = () => {
@@ -105,6 +107,7 @@ export default function PropertyDetail() {
       return;
     }
     updateProperty({ ...property, ...propertyForm });
+    setPropertyOwners(property.id, propertyOwnerIds);
     toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
     setPropertyEditOpen(false);
   };
