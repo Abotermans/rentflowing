@@ -187,7 +187,7 @@ export default function Dashboard() {
                         .filter(a => a.leaseId === l.id)
                         .map(a => units.find(u => u.id === a.unitId))
                         .filter((u): u is NonNullable<typeof u> => !!u)
-                        .map(u => u.unitLabel || u.unitCode)
+                        .map(u => u.unitCode)
                     : [];
                   return (
                     <TableRow key={tn!.id}>
