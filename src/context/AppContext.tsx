@@ -1100,9 +1100,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [amendmentChanges],
   );
 
-  // Silence unused-import lint when these helpers stay one-shot.
-  void canActivateAmendment;
-
   // ===== Guarantee =====
   const addGuarantee = useCallback((g: Omit<Guarantee, "id">) => {
     const created: Guarantee = { ...g, id: genId("g") };
