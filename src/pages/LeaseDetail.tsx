@@ -893,67 +893,81 @@ export default function LeaseDetail() {
 
       {/* Banner stack — every banner shares the LeaseBanner shell for visual consistency */}
       <div className="space-y-3">
-      {lease.lifecycleStage === "draft" && (() => {
-        const check = canSendForSignature(lease.id, integrityState);
-        if (check.blockers.length === 0 && check.warnings.length === 0) return null;
+      {(() => {
+        // Build a single mapping from a blocker/warning issue code to the
+        // dedicated user action (opens a modal or scrolls to a section).
+        const issueAction = (code: string): { label: string; onClick: () => void } | null => {
+          switch (code) {
+            case "LEASE_NO_TENANTS":
+            case "LEASE_BILLING_TENANT_INVALID":
+            case "LEASE_NO_UNITS":
+            case "LEASE_PROPERTY_UNIT_MISMATCH":
+            case "LEASE_UNIT_ALREADY_ACTIVE":
+              return { label: t("lease.action.editLease"), onClick: () => setEditDialogOpen(true) };
+            case "LEASE_NO_DEPOSIT":
+              return { label: t("leaseDetail.addGuaranteeLink"), onClick: openGuaranteeForm };
+            case "LEASE_NO_MOVE_IN":
+              return {
+                label: t("lease.action.scheduleMoveIn"),
+                onClick: () => openMoveInForm({ mode: "schedule" }),
+              };
+            case "LEASE_SIGNED_DATE_REQUIRED":
+              return { label: t("lease.action.setSignedDate"), onClick: () => setEditDialogOpen(true) };
+            default:
+              return null;
+          }
+        };
+
+        const renderIssueGroup = (
+          headerText: string,
+          check: ValidationResult,
+        ) => {
+          if (check.blockers.length === 0 && check.warnings.length === 0) return null;
+          return (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground px-1">{headerText}</h3>
+              {check.blockers.map(b => {
+                const action = issueAction(b.code);
+                return (
+                  <LeaseBanner
+                    key={`b-${b.code}`}
+                    tone="destructive"
+                    icon={XCircle}
+                    title={b.message}
+                    actions={action && (
+                      <Button variant="outline" size="sm" onClick={action.onClick}>
+                        {action.label}
+                      </Button>
+                    )}
+                  />
+                );
+              })}
+              {check.warnings.map(w => {
+                const action = issueAction(w.code);
+                return (
+                  <LeaseBanner
+                    key={`w-${w.code}`}
+                    tone="warning"
+                    icon={AlertTriangle}
+                    title={w.message}
+                    actions={action && (
+                      <Button variant="outline" size="sm" onClick={action.onClick}>
+                        {action.label}
+                      </Button>
+                    )}
+                  />
+                );
+              })}
+            </div>
+          );
+        };
+
         return (
           <>
-            {check.blockers.length > 0 && (
-              <LeaseBanner
-                tone="destructive"
-                icon={XCircle}
-                title={t("lease.activationBlocked")}
-                description={
-                  <span className="block space-y-0.5">
-                    {check.blockers.map(b => (<span key={b.code} className="block">{b.message}</span>))}
-                  </span>
-                }
-              />
-            )}
-            {check.warnings.length > 0 && (
-              <LeaseBanner
-                tone="warning"
-                icon={AlertTriangle}
-                title={t("lease.activationWarnings")}
-                description={
-                  <span className="block space-y-0.5">
-                    {check.warnings.map(w => (<span key={w.code} className="block">{w.message}</span>))}
-                  </span>
-                }
-              />
-            )}
-          </>
-        );
-      })()}
-      {lease.lifecycleStage === "active" && !lease.signedDate && (() => {
-        const check = canMarkSigned(lease.id, integrityState);
-        if (check.blockers.length === 0 && check.warnings.length === 0) return null;
-        return (
-          <>
-            {check.blockers.length > 0 && (
-              <LeaseBanner
-                tone="destructive"
-                icon={XCircle}
-                title={t("lease.signatureBlocked")}
-                description={
-                  <span className="block space-y-0.5">
-                    {check.blockers.map(b => (<span key={b.code} className="block">{b.message}</span>))}
-                  </span>
-                }
-              />
-            )}
-            {check.warnings.length > 0 && (
-              <LeaseBanner
-                tone="warning"
-                icon={AlertTriangle}
-                title={t("lease.signatureWarnings")}
-                description={
-                  <span className="block space-y-0.5">
-                    {check.warnings.map(w => (<span key={w.code} className="block">{w.message}</span>))}
-                  </span>
-                }
-              />
-            )}
+            {lease.lifecycleStage === "draft" &&
+              renderIssueGroup(t("lease.activationBlocked"), canSendForSignature(lease.id, integrityState))}
+            {lease.lifecycleStage === "active" && !lease.signedDate &&
+              renderIssueGroup(t("lease.signatureBlocked"), canMarkSigned(lease.id, integrityState))}
           </>
         );
       })()}
