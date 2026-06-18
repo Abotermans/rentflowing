@@ -2,7 +2,7 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, TrendingUp, CalendarClock, AlertTriangle, Shield, Bell, Truck, Wrench, ArrowRightLeft, Banknote } from "lucide-react";
+import { DoorOpen, TrendingUp, CalendarClock, AlertTriangle, Shield, Bell, Truck, Wrench, ArrowRightLeft, Banknote } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
@@ -85,7 +85,6 @@ export default function Dashboard() {
 
   // Compact KPI row — the few numbers that actually drive a decision.
   const kpis = [
-    { label: t("dashboard.totalProperties"), value: properties.length, sub: `${totalUnits} ${t("dashboard.totalUnits").toLowerCase()}`, icon: Building2, tone: "text-foreground" },
     { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, sub: `${occupied}/${primaryDenominator} ${t("dashboard.occupied").toLowerCase()}`, icon: TrendingUp, tone: occupancyRate >= 80 ? "text-success" : "text-warning" },
     { label: t("dashboard.activeLeases"), value: activeLeases.length, sub: `${vacant} ${t("dashboard.vacantUnits")}`, icon: DoorOpen, tone: "text-foreground" },
     { label: "Open Receivables", value: formatCurrency(totalOpenReceivables), sub: totalOverdue > 0 ? `${formatCurrency(totalOverdue)} overdue` : "no overdue", icon: Banknote, tone: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
@@ -105,7 +104,7 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         {kpis.map(k => (
           <Card key={k.label}>
             <CardContent className="py-4">
