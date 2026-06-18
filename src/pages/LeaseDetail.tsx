@@ -925,7 +925,7 @@ export default function LeaseDetail() {
           if (check.blockers.length === 0 && check.warnings.length === 0) return null;
           return (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground px-1">{headerText}</h3>
+              {/* Removed header text per request */}
               {check.blockers.map(b => {
                 const action = issueAction(b.code);
                 return (
