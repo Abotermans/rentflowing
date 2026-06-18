@@ -314,7 +314,11 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       ...form,
       unitId: effectiveUnitId,
       monthlyRent: totalR,
-      monthlyCharges: totalC,
+      monthlyCharges: form.pricingMode === "all-inclusive" ? 0 : totalC,
+      chargesBillingMode:
+        form.pricingMode === "separated"
+          ? (form.chargesBillingMode ?? "provision-reconciled")
+          : "flat-rate",
     };
     const created = addLease({ ...formToPersist });
     setLeaseUnits(created.id, form.propertyId, unitRows.map(r => ({
