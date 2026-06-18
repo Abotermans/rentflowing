@@ -151,6 +151,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
 
   const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
   const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+  const allInclusive = form.pricingMode === "all-inclusive";
 
   const availableStatuses = useMemo(() => {
     const allowed = ALLOWED_TRANSITIONS[lease.lifecycleStage] || [lease.lifecycleStage];
@@ -196,9 +197,10 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
         if (u) {
           const tierRent = getMonthlyRentForMonths(u, form.rentFormula);
           next.rentShare = tierRent ?? u.baseRent ?? 0;
-          next.chargesShare = u.baseCharges ?? 0;
+          next.chargesShare = allInclusive ? 0 : (u.baseCharges ?? 0);
         }
       }
+      if (allInclusive) next.chargesShare = 0;
       return next;
     }));
   };
@@ -218,7 +220,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
         assignmentType: r.assignmentType,
         isPrimary: r.assignmentType === "primary",
         rentShare: r.rentShare,
-        chargesShare: r.chargesShare,
+        chargesShare: form.pricingMode === "all-inclusive" ? 0 : r.chargesShare,
         startDate: form.startDate,
       }));
       setLeaseUnits(leaseId, form.propertyId, draft);
