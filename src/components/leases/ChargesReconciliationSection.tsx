@@ -93,7 +93,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
             ) : overview.lines.map((l, idx) => (
               <TableRow key={`${l.costEntryId}-${l.unitId}-${idx}`} className="h-8">
                 <TableCell className="text-xs">
-                  <Link to={`/costs/entries?edit=${l.costEntryId}`} className="hover:underline text-primary">
+                  <Link to={`/costs/entries?edit=${l.costEntryId}`} className="text-foreground hover:text-primary hover:underline">
                     {l.costLabel}
                   </Link>
                 </TableCell>
