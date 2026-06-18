@@ -1,6 +1,7 @@
 import { LifecycleStage } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import { findOverlappingLeases } from "./leaseDateOverlap";
 
 export function canDeleteLease(leaseId: string, s: IntegrityState): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
@@ -186,6 +187,34 @@ export function canRenewLease(
   }
   if (lease.noticeGiven) {
     warnings.push({ code: "LEASE_RENEW_HAS_NOTICE", message: "Notice is currently active; renewing will cancel the notice", severity: "high" });
+  }
+
+  // Renewal cannot push end date into another lease's range on any of this
+  // lease's currently-assigned units.
+  if (newEndDate) {
+    const today = new Date().toISOString().slice(0, 10);
+    const myAssignments = s.leaseUnitAssignments.filter(
+      a => a.leaseId === leaseId && assignmentIsActiveOn(a, today),
+    );
+    const probe = myAssignments.map(a => ({
+      unitId: a.unitId,
+      startDate: a.startDate,
+      endDate: newEndDate,
+    }));
+    const hits = findOverlappingLeases(leaseId, probe, s);
+    const seen = new Set<string>();
+    for (const hit of hits) {
+      const k = `${hit.unitId}|${hit.otherLeaseId}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const unit = s.units.find(u => u.id === hit.unitId);
+      const otherLease = s.leases.find(l => l.id === hit.otherLeaseId);
+      const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
+      blockers.push({
+        code: "LEASE_RENEW_OVERLAP",
+        message: `New end date overlaps lease ${ref} on unit ${unit?.unitCode ?? hit.unitId} (${hit.otherStage}, ${hit.otherStart} – ${hit.otherEnd ?? "open"})`,
+      });
+    }
   }
 
   if (blockers.length > 0) return blocked(blockers, warnings);
