@@ -473,8 +473,10 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                       {t("leases.units.grandTotal")}
                     </TableCell>
                     <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
-                    <TableCell className="py-2 text-right">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
-                    <TableCell className="py-2 text-right">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                    {!allInclusive && (
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                    )}
+                    <TableCell className="py-2 text-right">{fmtCurrency(totalRent + (allInclusive ? 0 : totalCharges), selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
                     <TableCell className="py-2" />
                   </TableRow>
                 </TableBody>
