@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Briefcase, Trash2, Mail, Copy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,17 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useAuth } from "@/context/AuthContext";
@@ -19,6 +31,7 @@ export default function PortfolioSettings() {
   const { currentPortfolio, currentPortfolioId, refresh } = usePortfolio();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const callerRole = currentPortfolio?.role as Role | undefined;
   const isOwner = callerRole === "owner";
@@ -40,6 +53,11 @@ export default function PortfolioSettings() {
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<Role>("editor");
   const [addBusy, setAddBusy] = useState(false);
+
+  // Delete portfolio
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     if (!currentPortfolio) return;
@@ -152,6 +170,22 @@ export default function PortfolioSettings() {
     toast({ title: "Link copied" });
   };
 
+  const deletePortfolio = async () => {
+    if (!currentPortfolio) return;
+    setDeleteBusy(true);
+    const { error } = await supabase.from("portfolios").delete().eq("id", currentPortfolio.id);
+    setDeleteBusy(false);
+    if (error) {
+      toast({ title: "Could not delete portfolio", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Portfolio deleted" });
+    setDeleteOpen(false);
+    setDeleteConfirm("");
+    await refresh();
+    navigate("/");
+  };
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-center gap-3">
@@ -201,6 +235,53 @@ export default function PortfolioSettings() {
               </form>
             </CardContent>
           </Card>
+
+          {isOwner && (
+            <Card className="mt-4 border-destructive/40">
+              <CardHeader>
+                <CardTitle className="text-destructive">Danger zone</CardTitle>
+                <CardDescription>
+                  Permanently delete this portfolio and all of its data (properties, units, leases, tenants, payments, etc.). This action cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog open={deleteOpen} onOpenChange={(o) => { setDeleteOpen(o); if (!o) setDeleteConfirm(""); }}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete portfolio
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this portfolio?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete <strong>{currentPortfolio.name}</strong> and every record it contains. This cannot be undone.
+                        <br /><br />
+                        To confirm, type the portfolio name below:
+                        <span className="block font-mono mt-1">{currentPortfolio.name}</span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                      value={deleteConfirm}
+                      onChange={(e) => setDeleteConfirm(e.target.value)}
+                      placeholder="Type portfolio name to confirm"
+                    />
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={deleteBusy || deleteConfirm !== currentPortfolio.name}
+                        onClick={(e) => { e.preventDefault(); deletePortfolio(); }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteBusy ? "Deleting…" : "Delete portfolio"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="members" className="mt-4">
