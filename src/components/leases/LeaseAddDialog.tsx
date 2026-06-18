@@ -476,6 +476,27 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
             )}
           </div>
           <div>
+            <Label>{t("leases.pricingMode")}</Label>
+            <Select
+              value={form.pricingMode ?? "separated"}
+              onValueChange={v => setForm(f => ({ ...f, pricingMode: v as "separated" | "flat-charges" | "all-inclusive" }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="separated">{t("leases.pricingMode.separated")}</SelectItem>
+                <SelectItem value="flat-charges">{t("leases.pricingMode.flatCharges")}</SelectItem>
+                <SelectItem value="all-inclusive">{t("leases.pricingMode.allInclusive")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {form.pricingMode === "all-inclusive"
+                ? t("leases.pricingMode.allInclusiveHelp")
+                : form.pricingMode === "flat-charges"
+                  ? t("leases.pricingMode.flatChargesHelp")
+                  : t("leases.pricingMode.separatedHelp")}
+            </p>
+          </div>
+          <div>
             <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-4">
               <div>
                 <Label className="mb-2 flex h-5 items-center">{t("leases.formula")} *</Label>
