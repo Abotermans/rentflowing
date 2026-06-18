@@ -2,6 +2,7 @@ import type { Lease } from "@/types";
 import type { ReceivableItem, CashReceipt, ReceiptAllocation } from "@/types/receivables";
 import { computeReceivableStatus } from "@/types/receivables";
 import { computeCycles } from "./leaseCycles";
+import { isAllInclusive } from "./leasePricing";
 
 export interface GenerateResult {
   receivables: ReceivableItem[];
@@ -67,6 +68,7 @@ export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): G
 
   const cycles = computeCycles(lease);
   const isAdvance = (lease.rentFormula || 1) > 1;
+  const allInclusive = isAllInclusive(lease);
   const dueDay = lease.dueDayOfMonth || 1;
 
   // Global lead-time horizon: open cycles whose start date is within
@@ -92,7 +94,9 @@ export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): G
         leaseId: lease.id, tenantId: lease.primaryTenantId,
         propertyId: lease.propertyId, unitId: lease.unitId,
         itemType: "rent",
-        label: isAdvance ? `Rent — ${cycle.months}-month advance${cycleSuffix}` : "Monthly Rent",
+        label: allInclusive
+          ? (isAdvance ? `All-inclusive rent — ${cycle.months}-month advance${cycleSuffix}` : "Monthly all-inclusive rent")
+          : (isAdvance ? `Rent — ${cycle.months}-month advance${cycleSuffix}` : "Monthly Rent"),
         periodMonth, dueDate,
         currencyCode,
         expectedAmount: cycle.rentTotal,
@@ -107,7 +111,10 @@ export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): G
       rentItem.status = computeReceivableStatus(rentItem);
       receivables.push(rentItem);
     }
-    if (cycle.chargesTotal > 0) {
+    // All-inclusive leases never emit a contractual charges receivable —
+    // the rent line already covers the full tenant-facing amount. Actual
+    // allocated charges/taxes are computed internally for reporting only.
+    if (!allInclusive && cycle.chargesTotal > 0) {
       const chargesItem: ReceivableItem = {
         id: genId("ri"),
         leaseId: lease.id, tenantId: lease.primaryTenantId,

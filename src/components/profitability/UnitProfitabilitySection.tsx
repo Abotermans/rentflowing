@@ -13,6 +13,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useUnitProfitability } from "@/hooks/use-profitability";
 import { defaultPeriod, ytdPeriod, allTimePeriod, type Period } from "@/lib/profitability";
 import { ProfitabilityBar } from "./ProfitabilityBar";
+import { isAllInclusive, getContractualMonthlyAmount } from "@/lib/leasePricing";
 
 type PresetKey = "ytd" | "12m" | "all";
 function pct(v: number | null): string { return v === null ? "—" : `${(v * 100).toFixed(1)}%`; }
@@ -55,6 +56,7 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
   const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
   const activeLease = getActiveLease(unitId);
   const isFlatRate = activeLease?.chargesBillingMode === "flat-rate";
+  const allInclusive = !!activeLease && isAllInclusive(activeLease);
 
   const [preset, setPreset] = useState<PresetKey>("12m");
   const [open, setOpen] = useState(true);
@@ -68,6 +70,20 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
   const cur = p.currencyCode;
   const locale = property?.locale ?? "fr-FR";
   const showRegularization = !isFlatRate && Math.abs(p.recovery.regularizationDelta) > 0.5;
+  // All-inclusive analytical KPIs — computed from the active lease's bundled
+  // contractual amount and the actual allocated costs of the period.
+  const monthsInPeriod = Math.max(1, Math.round(
+    ((new Date(period.end).getTime() - new Date(period.start).getTime()) / 86400000 + 1) / 30.4375
+  ));
+  const allInclusiveContractual = allInclusive
+    ? getContractualMonthlyAmount(activeLease!) * monthsInPeriod
+    : 0;
+  const occupancyCostRatio = allInclusive && allInclusiveContractual > 0
+    ? p.costs.totalActual / allInclusiveContractual
+    : null;
+  const netContribution = allInclusive
+    ? allInclusiveContractual - p.costs.totalActual
+    : 0;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -129,6 +145,19 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
               <KpiCard label={t("prof.kpi.netYield")} value="—" hint={`${t("prof.kpi.netYieldHint")} ${t("prof.kpi.yieldUnavailable")}`} tone="muted" />
             </div>
           </div>
+
+          {allInclusive && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
+                {t("leases.allInclusive.badge")}
+              </p>
+              <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <KpiCard label={t("leases.allInclusive.amountLabel")} value={formatCurrency(allInclusiveContractual, cur, locale)} />
+                <KpiCard label={t("prof.allInclusive.netContribution")} value={formatCurrency(netContribution, cur, locale)} hint={t("prof.allInclusive.netContributionHint")} />
+                <KpiCard label={t("prof.allInclusive.occupancyCostRatio")} value={pct(occupancyCostRatio)} hint={t("prof.allInclusive.occupancyCostRatioHint")} />
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-3 md:grid-cols-2">
             <Card>

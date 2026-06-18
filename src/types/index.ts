@@ -394,6 +394,24 @@ export interface Lease {
   chargesBillingMode?: "provision-reconciled" | "flat-rate";
 
   /**
+   * Contractual lease pricing mode. Three conceptually distinct cases:
+   *  - "separated"      : rent and charges are contractually split. The
+   *                       tenant sees both lines. Charges may be provisional
+   *                       (reconciled) or flat depending on chargesBillingMode.
+   *  - "flat-charges"   : rent + a contractually defined fixed charge amount.
+   *                       No reconciliation against actuals.
+   *  - "all-inclusive"  : the tenant owes ONE single monthly amount and the
+   *                       lease does NOT define a charges component at all.
+   *                       `monthlyRent` carries the bundled amount and
+   *                       `monthlyCharges` MUST be 0. Actual charges and
+   *                       taxes still flow through the cost engine for
+   *                       reporting and profitability — they are absorbed
+   *                       by the owner, never re-billed to the tenant.
+   * Defaults to "separated" for legacy leases.
+   */
+  pricingMode?: "separated" | "flat-charges" | "all-inclusive";
+
+  /**
    * Expected payer account(s) for this lease. Used to auto-match incoming
    * bank receipts to the lease independently of who is named as tenant.
    */

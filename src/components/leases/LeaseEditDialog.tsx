@@ -230,7 +230,14 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       ...form,
       unitId: primaryRow?.unitId ?? form.unitId,
       monthlyRent: computedTotalRent,
-      monthlyCharges: computedTotalCharges,
+      monthlyCharges: form.pricingMode === "all-inclusive" ? 0 : computedTotalCharges,
+      // Keep chargesBillingMode in sync with pricingMode for backwards-compat:
+      // all-inclusive and flat-charges leases use a flat-rate charge billing
+      // mode (no reconciliation), separated leases keep provision-reconciled.
+      chargesBillingMode:
+        form.pricingMode === "separated"
+          ? (form.chargesBillingMode ?? "provision-reconciled")
+          : "flat-rate",
     };
     updateLease({ ...lease, ...formToPersist });
     persistAssignments(lease.id);
@@ -618,22 +625,43 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
               </div>
             </div>
             <div>
-              <Label>{t("leases.chargesBillingMode")}</Label>
+              <Label>{t("leases.pricingMode")}</Label>
               <Select
-                value={form.chargesBillingMode ?? "provision-reconciled"}
-                onValueChange={v => setForm(f => ({ ...f, chargesBillingMode: v as "provision-reconciled" | "flat-rate" }))}
+                value={form.pricingMode ?? (form.chargesBillingMode === "flat-rate" ? "flat-charges" : "separated")}
+                onValueChange={v => setForm(f => ({ ...f, pricingMode: v as "separated" | "flat-charges" | "all-inclusive" }))}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="provision-reconciled">{t("leases.chargesMode.provision")}</SelectItem>
-                  <SelectItem value="flat-rate">{t("leases.chargesMode.flat")}</SelectItem>
+                  <SelectItem value="separated">{t("leases.pricingMode.separated")}</SelectItem>
+                  <SelectItem value="flat-charges">{t("leases.pricingMode.flatCharges")}</SelectItem>
+                  <SelectItem value="all-inclusive">{t("leases.pricingMode.allInclusive")}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                {form.chargesBillingMode === "flat-rate"
-                  ? t("leases.chargesMode.flatHelp")
-                  : t("leases.chargesMode.provisionHelp")}
+                {form.pricingMode === "all-inclusive"
+                  ? t("leases.pricingMode.allInclusiveHelp")
+                  : form.pricingMode === "flat-charges"
+                    ? t("leases.pricingMode.flatChargesHelp")
+                    : t("leases.pricingMode.separatedHelp")}
               </p>
+              {form.pricingMode === "separated" && (
+                <div className="mt-3">
+                  <Label className="text-xs text-muted-foreground">{t("leases.chargesBillingMode")}</Label>
+                  <Select
+                    value={form.chargesBillingMode ?? "provision-reconciled"}
+                    onValueChange={v => setForm(f => ({ ...f, chargesBillingMode: v as "provision-reconciled" | "flat-rate" }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="provision-reconciled">{t("leases.chargesMode.provision")}</SelectItem>
+                      <SelectItem value="flat-rate">{t("leases.chargesMode.flat")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {form.pricingMode === "all-inclusive" && totalCharges > 0 && (
+                <p className="text-xs text-warning mt-1">{t("leases.allInclusive.chargesForced")}</p>
+              )}
             </div>
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
