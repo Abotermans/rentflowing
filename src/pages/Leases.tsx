@@ -41,7 +41,6 @@ import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
 import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
-import { CheckCircle2 as PaidIcon } from "lucide-react";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
