@@ -891,21 +891,73 @@ export default function LeaseDetail() {
         </div>
       </div>
 
-      {/* Activation Blocker Panel */}
+      {/* Banner stack — every banner shares the LeaseBanner shell for visual consistency */}
+      <div className="space-y-3">
       {lease.lifecycleStage === "draft" && (() => {
         const check = canSendForSignature(lease.id, integrityState);
-        return (check.blockers.length > 0 || check.warnings.length > 0) ? (
-          <StatusTransitionAlert validation={check} />
-        ) : null;
+        if (check.blockers.length === 0 && check.warnings.length === 0) return null;
+        return (
+          <>
+            {check.blockers.length > 0 && (
+              <LeaseBanner
+                tone="destructive"
+                icon={XCircle}
+                title={t("lease.activationBlocked")}
+                description={
+                  <span className="block space-y-0.5">
+                    {check.blockers.map(b => (<span key={b.code} className="block">{b.message}</span>))}
+                  </span>
+                }
+              />
+            )}
+            {check.warnings.length > 0 && (
+              <LeaseBanner
+                tone="warning"
+                icon={AlertTriangle}
+                title={t("lease.activationWarnings")}
+                description={
+                  <span className="block space-y-0.5">
+                    {check.warnings.map(w => (<span key={w.code} className="block">{w.message}</span>))}
+                  </span>
+                }
+              />
+            )}
+          </>
+        );
       })()}
       {lease.lifecycleStage === "active" && !lease.signedDate && (() => {
         const check = canMarkSigned(lease.id, integrityState);
-        return (check.blockers.length > 0 || check.warnings.length > 0) ? (
-          <StatusTransitionAlert validation={check} />
-        ) : null;
+        if (check.blockers.length === 0 && check.warnings.length === 0) return null;
+        return (
+          <>
+            {check.blockers.length > 0 && (
+              <LeaseBanner
+                tone="destructive"
+                icon={XCircle}
+                title={t("lease.signatureBlocked")}
+                description={
+                  <span className="block space-y-0.5">
+                    {check.blockers.map(b => (<span key={b.code} className="block">{b.message}</span>))}
+                  </span>
+                }
+              />
+            )}
+            {check.warnings.length > 0 && (
+              <LeaseBanner
+                tone="warning"
+                icon={AlertTriangle}
+                title={t("lease.signatureWarnings")}
+                description={
+                  <span className="block space-y-0.5">
+                    {check.warnings.map(w => (<span key={w.code} className="block">{w.message}</span>))}
+                  </span>
+                }
+              />
+            )}
+          </>
+        );
       })()}
 
-      {/* Warning banners */}
       {guarantee && (guarantee.status === "pending" || guarantee.status === "incomplete") && (
         <LeaseBanner
           tone="warning"
@@ -1083,6 +1135,7 @@ export default function LeaseDetail() {
           }
         />
       )}
+      </div>
 
       {/* Lease Summary */}
       <Collapsible open={leaseSummaryOpen} onOpenChange={setLeaseSummaryOpen}>
