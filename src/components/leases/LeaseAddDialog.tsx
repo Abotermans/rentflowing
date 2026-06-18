@@ -476,6 +476,27 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
             )}
           </div>
           <div>
+            <Label>{t("leases.pricingMode")}</Label>
+            <Select
+              value={form.pricingMode ?? "separated"}
+              onValueChange={v => setForm(f => ({ ...f, pricingMode: v as "separated" | "flat-charges" | "all-inclusive" }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="separated">{t("leases.pricingMode.separated")}</SelectItem>
+                <SelectItem value="flat-charges">{t("leases.pricingMode.flatCharges")}</SelectItem>
+                <SelectItem value="all-inclusive">{t("leases.pricingMode.allInclusive")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {form.pricingMode === "all-inclusive"
+                ? t("leases.pricingMode.allInclusiveHelp")
+                : form.pricingMode === "flat-charges"
+                  ? t("leases.pricingMode.flatChargesHelp")
+                  : t("leases.pricingMode.separatedHelp")}
+            </p>
+          </div>
+          <div>
             <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-4">
               <div>
                 <Label className="mb-2 flex h-5 items-center">{t("leases.formula")} *</Label>
@@ -728,42 +749,6 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                 );
               })()}
             </div>
-          </div>
-          <div>
-            <Label>{t("leases.pricingMode")}</Label>
-            <Select
-              value={form.pricingMode ?? "separated"}
-              onValueChange={v => setForm(f => ({ ...f, pricingMode: v as "separated" | "flat-charges" | "all-inclusive" }))}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="separated">{t("leases.pricingMode.separated")}</SelectItem>
-                <SelectItem value="flat-charges">{t("leases.pricingMode.flatCharges")}</SelectItem>
-                <SelectItem value="all-inclusive">{t("leases.pricingMode.allInclusive")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              {form.pricingMode === "all-inclusive"
-                ? t("leases.pricingMode.allInclusiveHelp")
-                : form.pricingMode === "flat-charges"
-                  ? t("leases.pricingMode.flatChargesHelp")
-                  : t("leases.pricingMode.separatedHelp")}
-            </p>
-            {form.pricingMode === "separated" && (
-              <div className="mt-3">
-                <Label className="text-xs text-muted-foreground">{t("leases.chargesBillingMode")}</Label>
-                <Select
-                  value={form.chargesBillingMode ?? "provision-reconciled"}
-                  onValueChange={v => setForm(f => ({ ...f, chargesBillingMode: v as "provision-reconciled" | "flat-rate" }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="provision-reconciled">{t("leases.chargesMode.provision")}</SelectItem>
-                    <SelectItem value="flat-rate">{t("leases.chargesMode.flat")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
           <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
           <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
