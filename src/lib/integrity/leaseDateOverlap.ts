@@ -9,10 +9,7 @@ import type { IntegrityState } from "./types";
 const IGNORED_STAGES: ReadonlySet<LifecycleStage> = new Set<LifecycleStage>([
   "terminated",
   "ended",
-  "expired",
-  "cancelled",
-  "archived",
-] as LifecycleStage[]);
+]);
 
 export interface OverlapAssignment {
   unitId: string;
