@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee, getTenantFullName } from "@/types";
-import type { LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
+import type { LeaseUnitAssignment, LeaseUnitAssignmentType, PropertyOwner, PropertyOwnerLink, PropertyOwnerType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
@@ -58,6 +58,8 @@ interface PropertyStats {
 interface AppState {
   loading: boolean;
   properties: Property[];
+  propertyOwners: PropertyOwner[];
+  propertyOwnerLinks: PropertyOwnerLink[];
   units: Unit[];
   tenants: Tenant[];
   leases: Lease[];
@@ -80,9 +82,14 @@ interface AppState {
   chargesReconciliations: ChargesReconciliation[];
 
   // Property CRUD
-  addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => void;
+  addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => Property;
   updateProperty: (p: Property) => void;
   deleteProperty: (id: string) => void;
+
+  // Property Owners
+  createPropertyOwner: (data: { name: string; type: PropertyOwnerType }) => PropertyOwner;
+  setPropertyOwners: (propertyId: string, ownerIds: string[]) => void;
+  getOwnersForProperty: (propertyId: string) => PropertyOwner[];
 
   // Unit CRUD
   addUnit: (u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => void;
