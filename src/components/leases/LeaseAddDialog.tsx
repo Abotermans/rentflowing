@@ -404,7 +404,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                   {unitRows.map((row, idx) => {
                     const usedIds = new Set<string>(unitRows.filter((_, i) => i !== idx).map(x => x.unitId).filter(Boolean));
                     const options = formUnits.filter(u => !usedIds.has(u.id));
-                    const rowTotal = (row.rentShare ?? 0) + (row.chargesShare ?? 0);
+                    const rowTotal = (row.rentShare ?? 0) + (allInclusive ? 0 : (row.chargesShare ?? 0));
                     return (
                       <TableRow key={idx}>
                         <TableCell className="py-1.5">
