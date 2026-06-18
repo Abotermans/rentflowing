@@ -230,6 +230,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
     const computedTotalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
     const formToPersist = {
       ...form,
+      tenantIds: [form.primaryTenantId, ...form.coTenantIds].filter(Boolean),
+      billingTenantId: form.billingTenantId || form.primaryTenantId,
       unitId: primaryRow?.unitId ?? form.unitId,
       monthlyRent: computedTotalRent,
       monthlyCharges: form.pricingMode === "all-inclusive" ? 0 : computedTotalCharges,
