@@ -3360,6 +3360,21 @@ const fr: TranslationKeys = {
   "validation.dates.paymentDateRequired": "La date de paiement est requise.",
   "validation.dates.returnedBeforeHandedOver": "La date de retour doit être postérieure ou égale à la date de remise.",
   "validation.dates.allocationStartBeforePayment": "La date de début d'affectation doit être postérieure ou égale à la date du versement d'avance.",
+
+  // Propriétaires
+  "propertyOwners.singular": "propriétaire",
+  "propertyOwners.plural": "propriétaires",
+  "propertyOwners.name": "Nom",
+  "propertyOwners.type": "Type",
+  "propertyOwners.type.individual": "Particulier",
+  "propertyOwners.type.corporation": "Société",
+  "propertyOwners.pickerPlaceholder": "Sélectionner des propriétaires…",
+  "propertyOwners.searchPlaceholder": "Rechercher un propriétaire…",
+  "propertyOwners.createNew": "Créer un propriétaire",
+  "propertyOwners.createTitle": "Créer un propriétaire",
+  "propertyOwners.nameRequired": "Le nom du propriétaire est requis.",
+  "propertyOwners.filterLabel": "Propriétaire",
+  "properties.owners": "Propriétaires",
 };
 
 export type TranslationKey = keyof typeof en;
