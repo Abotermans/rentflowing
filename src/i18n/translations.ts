@@ -1674,6 +1674,21 @@ const en = {
   "validation.dates.paymentDateRequired": "Payment date is required.",
   "validation.dates.returnedBeforeHandedOver": "Returned date must be on or after handed-over date.",
   "validation.dates.allocationStartBeforePayment": "Allocation start date must be on or after the advance payment date.",
+
+  // Property owners
+  "propertyOwners.singular": "owner",
+  "propertyOwners.plural": "owners",
+  "propertyOwners.name": "Name",
+  "propertyOwners.type": "Type",
+  "propertyOwners.type.individual": "Individual",
+  "propertyOwners.type.corporation": "Corporation",
+  "propertyOwners.pickerPlaceholder": "Select owners…",
+  "propertyOwners.searchPlaceholder": "Search owners…",
+  "propertyOwners.createNew": "Create new owner",
+  "propertyOwners.createTitle": "Create owner",
+  "propertyOwners.nameRequired": "Owner name is required.",
+  "propertyOwners.filterLabel": "Owner",
+  "properties.owners": "Owners",
 };
 
 type TranslationKeys = typeof en;
