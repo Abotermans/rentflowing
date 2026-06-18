@@ -104,7 +104,7 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         {kpis.map(k => (
           <Card key={k.label}>
             <CardContent className="py-4">
