@@ -34,6 +34,26 @@ export interface Property {
 export type PropertyStatus = "active" | "inactive";
 export type PropertyType = "residential" | "commercial" | "mixed-use";
 
+export type PropertyOwnerType = "individual" | "corporation";
+
+export interface PropertyOwner {
+  id: string;
+  name: string;
+  type: PropertyOwnerType;
+  portfolioId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PropertyOwnerLink {
+  id: string;
+  propertyId: string;
+  ownerId: string;
+  portfolioId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type UnitType = "apartment" | "studio" | "office" | "parking" | "storage" | "house" | "commercial-unit";
 export type UnitStatus = "vacant" | "occupied" | "reserved" | "unavailable" | "archived";
 
