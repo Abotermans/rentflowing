@@ -3409,6 +3409,7 @@ const fr: TranslationKeys = {
   "validation.dates.paymentDateRequired": "La date de paiement est requise.",
   "validation.dates.returnedBeforeHandedOver": "La date de retour doit être postérieure ou égale à la date de remise.",
   "validation.dates.allocationStartBeforePayment": "La date de début d'affectation doit être postérieure ou égale à la date du versement d'avance.",
+  "validation.dates.dateOfBirthInFuture": "La date de naissance doit être antérieure ou égale à aujourd'hui.",
 
   // Propriétaires
   "propertyOwners.singular": "propriétaire",
