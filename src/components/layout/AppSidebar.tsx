@@ -22,15 +22,15 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 
-const items: { titleKey: TranslationKey; url: string; icon: typeof LayoutDashboard }[] = [
+const items: { titleKey: TranslationKey; url: string; icon: typeof LayoutDashboard; moduleKey?: string }[] = [
   { titleKey: "nav.dashboard", url: "/", icon: LayoutDashboard },
   { titleKey: "nav.properties", url: "/properties", icon: Building2 },
   { titleKey: "nav.units", url: "/units", icon: DoorOpen },
   { titleKey: "nav.tenants", url: "/tenants", icon: Users },
   { titleKey: "nav.leases", url: "/leases", icon: FileText },
   { titleKey: "nav.payments", url: "/payments", icon: CreditCard },
-  { titleKey: "nav.maintenance", url: "/maintenance", icon: Wrench },
-  { titleKey: "nav.vendors", url: "/vendors", icon: HardHat },
+  { titleKey: "nav.maintenance", url: "/maintenance", icon: Wrench, moduleKey: "maintenance" },
+  { titleKey: "nav.vendors", url: "/vendors", icon: HardHat, moduleKey: "vendors" },
   { titleKey: "nav.reports", url: "/reports", icon: BarChart3 },
 ];
 
@@ -43,10 +43,13 @@ const costsChildren: { titleKey: TranslationKey; url: string; icon: typeof Layou
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { t } = useSettings();
+  const { t, isModuleHidden } = useSettings();
   const { pathname } = useLocation();
   const collapsed = state === "collapsed";
   const costsActive = pathname.startsWith("/costs");
+  const visibleItems = items.filter((item) => !item.moduleKey || !isModuleHidden(item.moduleKey));
+  const topItems = visibleItems.slice(0, Math.min(8, Math.max(0, visibleItems.length - 1)));
+  const bottomItems = visibleItems.slice(topItems.length);
 
   return (
     <Sidebar collapsible="icon">
@@ -64,7 +67,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>{t("nav.menu")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.slice(0, 8).map((item) => (
+              {topItems.map((item) => (
                 <SidebarMenuItem key={item.titleKey}>
                   <SidebarMenuButton asChild tooltip={t(item.titleKey)}>
                     <NavLink
@@ -114,7 +117,7 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               </Collapsible>
 
-              {items.slice(8).map((item) => (
+              {bottomItems.map((item) => (
                 <SidebarMenuItem key={item.titleKey}>
                   <SidebarMenuButton asChild tooltip={t(item.titleKey)}>
                     <NavLink
