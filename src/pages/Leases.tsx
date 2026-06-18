@@ -660,36 +660,61 @@ export default function Leases() {
                         const locale = prop?.locale;
                         if (s.state === "paid") {
                           return (
-                            <div className="flex items-center gap-1.5 text-xs text-success">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              <span>{t("payments.paid")}</span>
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5 text-xs text-success cursor-help">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  <span>{t("payments.paid")}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <span>{formatCurrency(s.outstanding, cur, locale)}</span>
+                              </TooltipContent>
+                            </Tooltip>
                           );
                         }
                         if (s.state === "overdue") {
                           return (
-                            <div className="flex items-center gap-1.5 text-xs text-destructive">
-                              <AlertTriangle className="h-3.5 w-3.5" />
-                              <span>{t("payments.overdue")}</span>
-                              <span className="font-medium">{formatCurrency(s.overdue, cur, locale)}</span>
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5 text-xs text-destructive cursor-help">
+                                  <AlertTriangle className="h-3.5 w-3.5" />
+                                  <span>{t("payments.overdue")}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <span>{formatCurrency(s.overdue, cur, locale)}</span>
+                              </TooltipContent>
+                            </Tooltip>
                           );
                         }
                         if (s.state === "partial") {
                           return (
-                            <div className="flex items-center gap-1.5 text-xs text-warning">
-                              <Clock className="h-3.5 w-3.5" />
-                              <span>{t("payments.partiallyPaid")}</span>
-                              <span className="font-medium">{formatCurrency(s.outstanding, cur, locale)}</span>
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5 text-xs text-warning cursor-help">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  <span>{t("payments.partiallyPaid")}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <span>{formatCurrency(s.outstanding, cur, locale)}</span>
+                              </TooltipContent>
+                            </Tooltip>
                           );
                         }
                         return (
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span>{t("payments.due")}</span>
-                            <span className="font-medium text-foreground">{formatCurrency(s.outstanding, cur, locale)}</span>
-                          </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-help">
+                                <Clock className="h-3.5 w-3.5" />
+                                <span>{t("payments.due")}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <span>{formatCurrency(s.outstanding, cur, locale)}</span>
+                            </TooltipContent>
+                          </Tooltip>
                         );
                       })()}
                     </TableCell>
