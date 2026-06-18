@@ -90,7 +90,7 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 
 export default function Leases() {
   const navigate = useNavigate();
-  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits } = useAppData();
+  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits, getReceivableItemsByLease } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -105,7 +105,7 @@ export default function Leases() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingLease, setEditingLease] = useState<Lease | null>(null);
 
-  type LSortKey = "reference" | "tenant" | "property" | "unit" | "formula" | "status" | "guarantee" | "start" | "end" | "total";
+  type LSortKey = "reference" | "tenant" | "property" | "unit" | "formula" | "status" | "guarantee" | "start" | "end" | "total" | "receivables";
   const { sort, toggle } = useTableSort<LSortKey>();
 
   const emptyForm: LeaseFormData = {
@@ -360,6 +360,33 @@ export default function Leases() {
   const now = new Date();
   const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
+  // Derive a lease-level receivables status from its receivable items.
+  // Used both in the table cell and as a sort key.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const getLeaseReceivablesSummary = (leaseId: string) => {
+    const items = getReceivableItemsByLease(leaseId).filter(
+      ri => ri.status !== "cancelled" && ri.status !== "written-off",
+    );
+    if (items.length === 0) {
+      return { state: "none" as const, outstanding: 0, overdue: 0, rank: 0, currencyCode: null as string | null };
+    }
+    let outstanding = 0;
+    let overdue = 0;
+    let anyAllocated = false;
+    for (const ri of items) {
+      outstanding += ri.outstandingAmount;
+      if (ri.outstandingAmount > 0 && ri.dueDate < todayStr) overdue += ri.outstandingAmount;
+      if (ri.allocatedAmount > 0) anyAllocated = true;
+    }
+    let state: "paid" | "open" | "partial" | "overdue";
+    let rank: number;
+    if (outstanding <= 0) { state = "paid"; rank = 1; }
+    else if (overdue > 0) { state = "overdue"; rank = 4; }
+    else if (anyAllocated) { state = "partial"; rank = 2; }
+    else { state = "open"; rank = 3; }
+    return { state, outstanding, overdue, rank, currencyCode: items[0].currencyCode };
+  };
+
   const filtered = leases.filter(l => {
     const tenant = tenants.find(t => t.id === l.primaryTenantId);
     const prop = properties.find(p => p.id === l.propertyId);
@@ -390,6 +417,7 @@ export default function Leases() {
       case "start": return l.startDate;
       case "end": return l.endDate;
       case "total": return l.monthlyRent + l.monthlyCharges;
+      case "receivables": return getLeaseReceivablesSummary(l.id).rank;
     }
   });
 
@@ -547,6 +575,7 @@ export default function Leases() {
                 <SortableTableHead sortKey="start" sort={sort} onSort={toggle}>{t("leases.start")}</SortableTableHead>
                 <SortableTableHead sortKey="end" sort={sort} onSort={toggle}>{t("leases.end")}</SortableTableHead>
                 <SortableTableHead sortKey="total" sort={sort} onSort={toggle} align="right">{t("leases.total")}</SortableTableHead>
+                <SortableTableHead sortKey="receivables" sort={sort} onSort={toggle}>{t("leases.receivables")}</SortableTableHead>
                 <TableHead className="text-right">{t("leases.actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -621,6 +650,49 @@ export default function Leases() {
                     <TableCell className="text-muted-foreground">{formatDate(l.startDate, prop?.locale)}</TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(l.endDate, prop?.locale)}</TableCell>
                     <TableCell className="text-right font-medium text-foreground">{prop ? formatCurrency(l.monthlyRent + l.monthlyCharges, prop.currencyCode, prop.locale) : l.monthlyRent + l.monthlyCharges}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const s = getLeaseReceivablesSummary(l.id);
+                        if (s.state === "none") {
+                          return <span className="text-xs text-muted-foreground">—</span>;
+                        }
+                        const cur = s.currencyCode ?? prop?.currencyCode ?? "EUR";
+                        const locale = prop?.locale;
+                        if (s.state === "paid") {
+                          return (
+                            <div className="flex items-center gap-1.5 text-xs text-success">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>{t("payments.paid")}</span>
+                            </div>
+                          );
+                        }
+                        if (s.state === "overdue") {
+                          return (
+                            <div className="flex items-center gap-1.5 text-xs text-destructive">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              <span>{t("payments.overdue")}</span>
+                              <span className="font-medium">{formatCurrency(s.overdue, cur, locale)}</span>
+                            </div>
+                          );
+                        }
+                        if (s.state === "partial") {
+                          return (
+                            <div className="flex items-center gap-1.5 text-xs text-warning">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>{t("payments.partiallyPaid")}</span>
+                              <span className="font-medium">{formatCurrency(s.outstanding, cur, locale)}</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>{t("payments.due")}</span>
+                            <span className="font-medium text-foreground">{formatCurrency(s.outstanding, cur, locale)}</span>
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {l.lifecycleStage === "draft" && (
