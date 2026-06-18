@@ -990,39 +990,36 @@ export default function LeaseDetail() {
         const done = checklistValues.filter(Boolean).length;
         if (done === total) return null;
         return (
-          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex flex-col">
-                  <span className="font-medium">
-                    {t("lease.moveOutOverdue.title").replace("{date}", formatDate(scheduled, locale))}
-                  </span>
-                  <span className="text-sm">
-                    {t("lease.moveOutOverdue.description")
-                      .replace("{done}", String(done))
-                      .replace("{total}", String(total))}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      document.getElementById("move-out-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                  >
-                    {t("lease.moveOutOverdue.completeChecklist")}
-                  </Button>
-                  {!lease.moveOutActualDate && (
-                    <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ mode: "complete" })}>
-                      {t("lease.moveOutOverdue.recordMoveOut")}
-                    </Button>
-                  )}
-                </div>
+          <LeaseBanner tone="warning" icon={AlertTriangle}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex flex-col">
+                <span className="font-medium">
+                  {t("lease.moveOutOverdue.title").replace("{date}", formatDate(scheduled, locale))}
+                </span>
+                <span className="text-xs opacity-90">
+                  {t("lease.moveOutOverdue.description")
+                    .replace("{done}", String(done))
+                    .replace("{total}", String(total))}
+                </span>
               </div>
-            </AlertDescription>
-          </Alert>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    document.getElementById("move-out-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  {t("lease.moveOutOverdue.completeChecklist")}
+                </Button>
+                {!lease.moveOutActualDate && (
+                  <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ mode: "complete" })}>
+                    {t("lease.moveOutOverdue.recordMoveOut")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </LeaseBanner>
         );
       })()}
 
@@ -1034,37 +1031,34 @@ export default function LeaseDetail() {
         const done = checklistValues.filter(Boolean).length;
         if (done === total) return null;
         return (
-          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex flex-col">
-                  <span className="font-medium">{t("lease.moveInIncomplete.title")}</span>
-                  <span className="text-sm">
-                    {t("lease.moveInIncomplete.description")
-                      .replace("{done}", String(done))
-                      .replace("{total}", String(total))}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      document.getElementById("move-in-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                  >
-                    {t("lease.moveInIncomplete.completeChecklist")}
-                  </Button>
-                  {!lease.moveInActualDate && (
-                    <Button size="sm" variant="outline" onClick={() => openMoveInForm({ mode: "complete" })}>
-                      {t("lease.moveInIncomplete.recordMoveIn")}
-                    </Button>
-                  )}
-                </div>
+          <LeaseBanner tone="warning" icon={AlertTriangle}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex flex-col">
+                <span className="font-medium">{t("lease.moveInIncomplete.title")}</span>
+                <span className="text-xs opacity-90">
+                  {t("lease.moveInIncomplete.description")
+                    .replace("{done}", String(done))
+                    .replace("{total}", String(total))}
+                </span>
               </div>
-            </AlertDescription>
-          </Alert>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    document.getElementById("move-in-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  {t("lease.moveInIncomplete.completeChecklist")}
+                </Button>
+                {!lease.moveInActualDate && (
+                  <Button size="sm" variant="outline" onClick={() => openMoveInForm({ mode: "complete" })}>
+                    {t("lease.moveInIncomplete.recordMoveIn")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </LeaseBanner>
         );
       })()}
 
@@ -1085,24 +1079,21 @@ export default function LeaseDetail() {
         else headline = t("lease.endingSoon.title").replace("{days}", String(days));
         const showScheduleMoveOut = !lease.noticeGiven && moveOutStatus === "not-scheduled";
         return (
-          <Alert className="border-warning/50 bg-warning/10 text-warning [&>svg]:text-warning">
-            <Clock className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="font-medium">{headline}</span>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setNewAmendmentSignal(n => n + 1)}>
-                    {t("lease.endingSoon.suggestAmendment")}
+          <LeaseBanner tone="warning" icon={Clock}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-medium">{headline}</span>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setNewAmendmentSignal(n => n + 1)}>
+                  {t("lease.endingSoon.suggestAmendment")}
+                </Button>
+                {showScheduleMoveOut && (
+                  <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ prefillScheduled: endIso })}>
+                    {t("lease.endingSoon.suggestMoveOut")}
                   </Button>
-                  {showScheduleMoveOut && (
-                    <Button size="sm" variant="outline" onClick={() => openMoveOutForm({ prefillScheduled: endIso })}>
-                      {t("lease.endingSoon.suggestMoveOut")}
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
-            </AlertDescription>
-          </Alert>
+            </div>
+          </LeaseBanner>
         );
       })()}
 
