@@ -1099,18 +1099,19 @@ export default function LeaseDetail() {
 
       {/* Overdue end banner */}
       {lifecycle === "overdue-end" && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="font-semibold mb-1">{t("lease.overdueBanner.title")}</div>
-            <p className="text-xs mb-2">{t("lease.overdueBanner.description").replace("{date}", formatDate(lease.endDate, locale))}</p>
+        <LeaseBanner tone="destructive" icon={AlertTriangle}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex flex-col">
+              <span className="font-medium">{t("lease.overdueBanner.title")}</span>
+              <span className="text-xs opacity-90">{t("lease.overdueBanner.description").replace("{date}", formatDate(lease.endDate, locale))}</span>
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={openRenewDialog}>{t("lease.overdueBanner.renew")}</Button>
               <Button size="sm" variant="outline" onClick={openEndDialog}>{t("lease.overdueBanner.end")}</Button>
               <Button size="sm" variant="destructive" onClick={openTermDialog}>{t("lease.overdueBanner.terminate")}</Button>
             </div>
-          </AlertDescription>
-        </Alert>
+          </div>
+        </LeaseBanner>
       )}
 
       {/* Lease Summary */}
