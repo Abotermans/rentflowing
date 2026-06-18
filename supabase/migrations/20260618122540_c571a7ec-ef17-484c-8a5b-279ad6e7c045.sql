@@ -1,0 +1,1 @@
+ALTER TABLE public.leases ADD COLUMN IF NOT EXISTS pricing_mode text;

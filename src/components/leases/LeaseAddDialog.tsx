@@ -145,6 +145,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
   }, [open]);
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
+  const allInclusive = form.pricingMode === "all-inclusive";
 
   const commonTiers = useMemo(() => {
     const rowsWithUnits = unitRows
@@ -210,9 +211,10 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
         if (u) {
           const tierRent = getMonthlyRentForMonths(u, form.rentFormula);
           next.rentShare = tierRent ?? u.baseRent ?? 0;
-          next.chargesShare = u.baseCharges ?? 0;
+          next.chargesShare = allInclusive ? 0 : (u.baseCharges ?? 0);
         }
       }
+      if (allInclusive) next.chargesShare = 0;
       return next;
     }));
   };
@@ -326,7 +328,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       assignmentType: r.assignmentType,
       isPrimary: r.assignmentType === "primary",
       rentShare: r.rentShare,
-      chargesShare: r.chargesShare,
+      chargesShare: form.pricingMode === "all-inclusive" ? 0 : r.chargesShare,
       startDate: form.startDate,
     })));
     toast({ title: "Lease added" });
@@ -391,7 +393,9 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                     <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
                     <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
                     <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
-                    <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
+                    {!allInclusive && (
+                      <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
+                    )}
                     <TableHead className="h-9 w-auto text-right">{t("leases.units.total")}</TableHead>
                     <TableHead className="h-9 w-[40px]" />
                   </TableRow>
@@ -400,7 +404,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                   {unitRows.map((row, idx) => {
                     const usedIds = new Set<string>(unitRows.filter((_, i) => i !== idx).map(x => x.unitId).filter(Boolean));
                     const options = formUnits.filter(u => !usedIds.has(u.id));
-                    const rowTotal = (row.rentShare ?? 0) + (row.chargesShare ?? 0);
+                    const rowTotal = (row.rentShare ?? 0) + (allInclusive ? 0 : (row.chargesShare ?? 0));
                     return (
                       <TableRow key={idx}>
                         <TableCell className="py-1.5">
@@ -440,17 +444,19 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                             <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-1.5">
-                          <div className="flex items-center gap-1 justify-end">
-                            <Input
-                              type="number" min={0}
-                              value={row.chargesShare}
-                              onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
-                              className="h-8 w-[90px] text-right"
-                            />
-                            <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
-                          </div>
-                        </TableCell>
+                        {!allInclusive && (
+                          <TableCell className="py-1.5">
+                            <div className="flex items-center gap-1 justify-end">
+                              <Input
+                                type="number" min={0}
+                                value={row.chargesShare}
+                                onChange={ev => updateUnitRow(idx, { chargesShare: Number(ev.target.value) || 0 })}
+                                className="h-8 w-[90px] text-right"
+                              />
+                              <span className="text-xs text-muted-foreground">{selectedProperty ? getCurrencySymbol(selectedProperty.currencyCode) : ""}</span>
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell className="py-1.5 text-right font-medium">
                           {fmtCurrency(rowTotal, selectedProperty?.currencyCode, selectedProperty?.locale)}
                         </TableCell>
@@ -467,8 +473,10 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                       {t("leases.units.grandTotal")}
                     </TableCell>
                     <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
-                    <TableCell className="py-2 text-right">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
-                    <TableCell className="py-2 text-right">{fmtCurrency(totalRent + totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                    {!allInclusive && (
+                      <TableCell className="py-2 text-right">{fmtCurrency(totalCharges, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
+                    )}
+                    <TableCell className="py-2 text-right">{fmtCurrency(totalRent + (allInclusive ? 0 : totalCharges), selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
                     <TableCell className="py-2" />
                   </TableRow>
                 </TableBody>
@@ -479,7 +487,13 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
             <Label>{t("leases.pricingMode")}</Label>
             <Select
               value={form.pricingMode ?? "separated"}
-              onValueChange={v => setForm(f => ({ ...f, pricingMode: v as "separated" | "flat-charges" | "all-inclusive" }))}
+              onValueChange={v => {
+                const mode = v as "separated" | "flat-charges" | "all-inclusive";
+                setForm(f => ({ ...f, pricingMode: mode }));
+                if (mode === "all-inclusive") {
+                  setUnitRows(prev => prev.map(r => ({ ...r, chargesShare: 0 })));
+                }
+              }}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
