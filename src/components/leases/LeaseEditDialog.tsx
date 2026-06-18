@@ -515,7 +515,12 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                       const u = units.find(uu => uu.id === r.unitId);
                       if (!u) return r;
                       const tier = getMonthlyRentForMonths(u, months);
-                      return tier == null ? r : { ...r, rentShare: tier };
+                      if (tier == null) return r;
+                      return {
+                        ...r,
+                        rentShare: tier,
+                        chargesShare: allInclusive ? 0 : (u.baseCharges ?? 0),
+                      };
                     }));
                     setForm(f => ({
                       ...f,
