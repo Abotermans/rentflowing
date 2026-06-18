@@ -2,7 +2,7 @@ import { useAppData } from "@/context/AppContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, DoorOpen, TrendingUp, CalendarClock, AlertTriangle, Shield, Bell, Truck, Wrench, ArrowRightLeft, Banknote } from "lucide-react";
+import { DoorOpen, TrendingUp, CalendarClock, AlertTriangle, Shield, Bell, Truck, Wrench, ArrowRightLeft, Banknote } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
