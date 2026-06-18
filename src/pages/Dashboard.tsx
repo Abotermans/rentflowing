@@ -258,6 +258,7 @@ export default function Dashboard() {
                   <TableHead className="text-xs">{t("table.reference")}</TableHead>
                   <TableHead className="text-xs">{t("table.tenant")}</TableHead>
                   <TableHead className="text-xs">{t("table.property")}</TableHead>
+                  <TableHead className="text-xs">{t("table.units")}</TableHead>
                   <TableHead className="text-xs">{t("table.noticeDate")}</TableHead>
                   <TableHead className="text-xs">{t("table.intendedMoveOut")}</TableHead>
                 </TableRow>
@@ -266,11 +267,17 @@ export default function Dashboard() {
                 {leasesUnderNotice.map(l => {
                   const tenant = tenants.find(tn => tn.id === l.primaryTenantId);
                   const prop = properties.find(p => p.id === l.propertyId);
+                  const unitLabels = leaseUnitAssignments
+                    .filter(a => a.leaseId === l.id)
+                    .map(a => units.find(u => u.id === a.unitId))
+                    .filter((u): u is NonNullable<typeof u> => !!u)
+                    .map(u => u.unitCode);
                   return (
                     <TableRow key={l.id}>
                       <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{tenant ? getTenantFullName(tenant) : "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{unitLabels.length > 0 ? unitLabels.join(", ") : "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{l.noticeDate ? formatDate(l.noticeDate, prop?.locale) : "—"}</TableCell>
                       <TableCell className="text-xs text-warning font-medium">{l.intendedMoveOutDate ? formatDate(l.intendedMoveOutDate, prop?.locale) : "—"}</TableCell>
                     </TableRow>
