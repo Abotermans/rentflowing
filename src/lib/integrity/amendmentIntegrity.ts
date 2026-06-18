@@ -2,6 +2,7 @@ import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
 import type { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning } from "./types";
 import { ok, blocked, allowedWithWarnings } from "./types";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import { findOverlappingLeases } from "./leaseDateOverlap";
 
 /**
  * Validate an amendment before activation. Simulates the resulting lease state and
@@ -99,6 +100,24 @@ export function validateAmendment(
           message: `Unit ${unit.unitCode} is already leased by another active lease`,
         });
       }
+      // Full date-range overlap: added unit must be free for eff → lease end.
+      const addHits = findOverlappingLeases(lease.id, [{
+        unitId: unit.id,
+        startDate: c.metadata.startDate ?? eff,
+        endDate: lease.endDate ?? null,
+      }], s);
+      const seenAdd = new Set<string>();
+      for (const hit of addHits) {
+        const k = `${hit.unitId}|${hit.otherLeaseId}`;
+        if (seenAdd.has(k)) continue;
+        seenAdd.add(k);
+        const otherLease = s.leases.find(l => l.id === hit.otherLeaseId);
+        const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
+        blockers.push({
+          code: "AMD_UNIT_OVERLAP",
+          message: `Unit ${unit.unitCode} overlaps lease ${ref} (${hit.otherStage}, ${hit.otherStart} – ${hit.otherEnd ?? "open"})`,
+        });
+      }
       if (sim.find(x => x.unitId === unit.id)) {
         blockers.push({
           code: "AMD_UNIT_DUPLICATE",
@@ -148,6 +167,32 @@ export function validateAmendment(
           code: "AMD_END_BEFORE_EFFECTIVE",
           message: "New end date must be on or after the amendment effective date",
         });
+      }
+      // Extending the lease end must not overlap another future/active lease
+      // on any of this lease's units.
+      if (nv) {
+        const myAssignments = s.leaseUnitAssignments.filter(
+          a => a.leaseId === lease.id && assignmentIsActiveOn(a, eff),
+        );
+        const probe = myAssignments.map(a => ({
+          unitId: a.unitId,
+          startDate: a.startDate,
+          endDate: nv,
+        }));
+        const endHits = findOverlappingLeases(lease.id, probe, s);
+        const seenEnd = new Set<string>();
+        for (const hit of endHits) {
+          const k = `${hit.unitId}|${hit.otherLeaseId}`;
+          if (seenEnd.has(k)) continue;
+          seenEnd.add(k);
+          const unit = s.units.find(u => u.id === hit.unitId);
+          const otherLease = s.leases.find(l => l.id === hit.otherLeaseId);
+          const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
+          blockers.push({
+            code: "AMD_END_OVERLAP",
+            message: `Extending the end date overlaps lease ${ref} on unit ${unit?.unitCode ?? hit.unitId} (${hit.otherStage}, ${hit.otherStart} – ${hit.otherEnd ?? "open"})`,
+          });
+        }
       }
     }
   }
