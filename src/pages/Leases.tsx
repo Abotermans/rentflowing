@@ -576,6 +576,7 @@ export default function Leases() {
                 <SortableTableHead sortKey="start" sort={sort} onSort={toggle}>{t("leases.start")}</SortableTableHead>
                 <SortableTableHead sortKey="end" sort={sort} onSort={toggle}>{t("leases.end")}</SortableTableHead>
                 <SortableTableHead sortKey="total" sort={sort} onSort={toggle} align="right">{t("leases.total")}</SortableTableHead>
+                <SortableTableHead sortKey="receivables" sort={sort} onSort={toggle}>{t("leases.receivables")}</SortableTableHead>
                 <TableHead className="text-right">{t("leases.actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -650,6 +651,49 @@ export default function Leases() {
                     <TableCell className="text-muted-foreground">{formatDate(l.startDate, prop?.locale)}</TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(l.endDate, prop?.locale)}</TableCell>
                     <TableCell className="text-right font-medium text-foreground">{prop ? formatCurrency(l.monthlyRent + l.monthlyCharges, prop.currencyCode, prop.locale) : l.monthlyRent + l.monthlyCharges}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const s = getLeaseReceivablesSummary(l.id);
+                        if (s.state === "none") {
+                          return <span className="text-xs text-muted-foreground">—</span>;
+                        }
+                        const cur = s.currencyCode ?? prop?.currencyCode ?? "EUR";
+                        const locale = prop?.locale;
+                        if (s.state === "paid") {
+                          return (
+                            <div className="flex items-center gap-1.5 text-xs text-success">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>{t("payments.paid")}</span>
+                            </div>
+                          );
+                        }
+                        if (s.state === "overdue") {
+                          return (
+                            <div className="flex items-center gap-1.5 text-xs text-destructive">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              <span>{t("payments.overdue")}</span>
+                              <span className="font-medium">{formatCurrency(s.overdue, cur, locale)}</span>
+                            </div>
+                          );
+                        }
+                        if (s.state === "partial") {
+                          return (
+                            <div className="flex items-center gap-1.5 text-xs text-warning">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>{t("payments.partiallyPaid")}</span>
+                              <span className="font-medium">{formatCurrency(s.outstanding, cur, locale)}</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>{t("payments.due")}</span>
+                            <span className="font-medium text-foreground">{formatCurrency(s.outstanding, cur, locale)}</span>
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {l.lifecycleStage === "draft" && (
