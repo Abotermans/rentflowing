@@ -788,6 +788,16 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                     toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
                     return;
                   }
+                  if (tenantForm.dateOfBirth) {
+                    const today = new Date().toISOString().slice(0, 10);
+                    const dateErrors = validateDateOrder([
+                      { earlier: tenantForm.dateOfBirth, later: today, message: t("validation.dates.dateOfBirthInFuture") },
+                    ]);
+                    if (dateErrors.length > 0) {
+                      toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
+                      return;
+                    }
+                  }
                   const created = addTenant(tenantForm);
                   setForm(f => {
                     if (!f.primaryTenantId) return { ...f, primaryTenantId: created.id };
