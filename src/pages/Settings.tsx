@@ -3,12 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Settings as SettingsIcon, Globe, CalendarClock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Settings as SettingsIcon, Globe, CalendarClock, LayoutGrid } from "lucide-react";
 import { LOCALE_LABELS, type Locale } from "@/i18n/translations";
 import { useToast } from "@/hooks/use-toast";
+import { OPTIONAL_MODULES } from "@/config/modules";
 
 export default function Settings() {
-  const { locale, setLocale, t, receivableLeadDays, setReceivableLeadDays } = useSettings();
+  const { locale, setLocale, t, receivableLeadDays, setReceivableLeadDays, isModuleHidden, setModuleHidden } = useSettings();
   const { toast } = useToast();
 
   const handleLocaleChange = (value: string) => {
@@ -87,6 +90,52 @@ export default function Settings() {
                 />
                 <span className="text-sm text-muted-foreground">{t("settings.daysBeforeDue")}</span>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Navigation / Modules visibility */}
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("settings.navigation")}</h2>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">{t("settings.modulesVisibility")}</CardTitle>
+              </div>
+              <CardDescription>{t("settings.modulesVisibilityDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {OPTIONAL_MODULES.map((mod, idx) => {
+                const hidden = isModuleHidden(mod.key);
+                const id = `module-toggle-${mod.key}`;
+                return (
+                  <div key={mod.key}>
+                    {idx > 0 && <Separator className="my-2" />}
+                    <div className="flex items-start justify-between gap-4 py-2">
+                      <div className="min-w-0">
+                        <Label htmlFor={id} className="text-sm font-medium text-foreground cursor-pointer">
+                          {t(mod.labelKey)}
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t(mod.descriptionKey)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground">
+                          {hidden ? t("settings.moduleHidden") : t("settings.moduleVisible")}
+                        </span>
+                        <Switch
+                          id={id}
+                          checked={!hidden}
+                          onCheckedChange={(checked) => {
+                            setModuleHidden(mod.key, !checked);
+                            toast({ title: t("settings.saved") });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </div>

@@ -519,6 +519,13 @@ const en = {
   "settings.receivableLeadDays": "Receivable opening lead time",
   "settings.receivableLeadDaysDesc": "Number of days before a receivable's due date that the receivable is automatically opened. Applies to all leases.",
   "settings.daysBeforeDue": "days before due date",
+  "settings.navigation": "Navigation",
+  "settings.modulesVisibility": "Module visibility",
+  "settings.modulesVisibilityDesc": "Hide modules you don't use. Hidden modules disappear from the sidebar; existing data stays untouched and can be restored at any time.",
+  "settings.moduleVisible": "Visible",
+  "settings.moduleHidden": "Hidden",
+  "settings.module.maintenanceDesc": "Track maintenance tickets, priorities and vendor assignments.",
+  "settings.module.vendorsDesc": "Manage the vendor directory used by maintenance work.",
   "leases.dueDayRequired": "Due day is required (1–28).",
 
   // Dashboard
@@ -2209,6 +2216,13 @@ const fr: TranslationKeys = {
   "settings.receivableLeadDays": "Délai d'ouverture des quittances",
   "settings.receivableLeadDaysDesc": "Nombre de jours avant la date d'échéance d'une quittance à partir desquels elle est ouverte automatiquement. S'applique à tous les baux.",
   "settings.daysBeforeDue": "jours avant l'échéance",
+  "settings.navigation": "Navigation",
+  "settings.modulesVisibility": "Visibilité des modules",
+  "settings.modulesVisibilityDesc": "Masquez les modules que vous n'utilisez pas. Les modules masqués disparaissent de la barre latérale ; les données existantes sont conservées et peuvent être réaffichées à tout moment.",
+  "settings.moduleVisible": "Visible",
+  "settings.moduleHidden": "Masqué",
+  "settings.module.maintenanceDesc": "Suivez les tickets de maintenance, les priorités et les affectations aux prestataires.",
+  "settings.module.vendorsDesc": "Gérez l'annuaire des prestataires utilisés pour la maintenance.",
   "leases.dueDayRequired": "Le jour d'échéance est obligatoire (1 à 28).",
 
   // Dashboard
