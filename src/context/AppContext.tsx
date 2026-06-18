@@ -1051,7 +1051,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     return { ok: true };
-  }, [amendments, amendmentChanges, leases, leaseUnitAssignments, properties, currentPortfolioId, receivableLeadDays]);
+  }, [
+    amendments, amendmentChanges, leases, leaseUnitAssignments, properties, units, tenants,
+    guarantees, receivableItems, cashReceipts, allocationsState, tickets,
+    costCategories, costEntries, allocationRules, allocationRuleUnitShares,
+    costAllocationResults, currentPortfolioId, receivableLeadDays,
+  ]);
 
   const scheduleAmendment = useCallback((id: string): { ok: boolean; reason?: string } => {
     const am = amendments.find(a => a.id === id);
