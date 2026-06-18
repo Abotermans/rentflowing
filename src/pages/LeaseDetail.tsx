@@ -30,7 +30,6 @@ import type { CashReceiptSourceType } from "@/types/receivables";
 import { formatDate, formatCurrency, formatPeriodMonth } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { useTableSort, useSortedRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
