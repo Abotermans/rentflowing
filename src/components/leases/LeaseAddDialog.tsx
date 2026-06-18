@@ -484,86 +484,84 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
               </Table>
             )}
           </div>
-          <div>
-            <Label>{t("leases.pricingMode")}</Label>
-            <Select
-              value={form.pricingMode ?? "separated"}
-              onValueChange={v => {
-                const mode = v as "separated" | "flat-charges" | "all-inclusive";
-                setForm(f => ({ ...f, pricingMode: mode }));
-                if (mode === "all-inclusive") {
-                  setUnitRows(prev => prev.map(r => ({ ...r, chargesShare: 0 })));
-                } else {
-                  setUnitRows(prev => prev.map(r => {
-                    const u = units.find(uu => uu.id === r.unitId);
-                    return { ...r, chargesShare: u?.baseCharges ?? 0 };
-                  }));
-                }
-              }}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="separated">{t("leases.pricingMode.separated")}</SelectItem>
-                <SelectItem value="flat-charges">{t("leases.pricingMode.flatCharges")}</SelectItem>
-                <SelectItem value="all-inclusive">{t("leases.pricingMode.allInclusive")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              {form.pricingMode === "all-inclusive"
-                ? t("leases.pricingMode.allInclusiveHelp")
-                : form.pricingMode === "flat-charges"
-                  ? t("leases.pricingMode.flatChargesHelp")
-                  : t("leases.pricingMode.separatedHelp")}
-            </p>
-          </div>
-          <div>
-            <div className="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-4">
-              <div>
-                <Label className="mb-2 flex h-5 items-center">{t("leases.formula")} *</Label>
-                <Select
-                  value={String(form.rentFormula)}
-                  disabled={commonTiers.length === 0}
-                  onValueChange={(raw) => {
-                    const months = Number(raw) as RentFormula;
+          <div className="flex items-start gap-4">
+            <div className="w-[300px]">
+              <Label className="mb-2 flex h-5 items-center">{t("leases.pricingMode")}</Label>
+              <Select
+                value={form.pricingMode ?? "separated"}
+                onValueChange={v => {
+                  const mode = v as "separated" | "flat-charges" | "all-inclusive";
+                  setForm(f => ({ ...f, pricingMode: mode }));
+                  if (mode === "all-inclusive") {
+                    setUnitRows(prev => prev.map(r => ({ ...r, chargesShare: 0 })));
+                  } else {
                     setUnitRows(prev => prev.map(r => {
                       const u = units.find(uu => uu.id === r.unitId);
-                      if (!u) return r;
-                      const tier = getMonthlyRentForMonths(u, months);
-                      if (tier == null) return r;
-                      return {
-                        ...r,
-                        rentShare: tier,
-                        chargesShare: allInclusive ? 0 : (u.baseCharges ?? 0),
-                      };
+                      return { ...r, chargesShare: u?.baseCharges ?? 0 };
                     }));
-                    setForm(f => ({
-                      ...f, rentFormula: months,
-                      hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
-                      advanceAllocationMethod: null, advanceAppliedTo: null,
-                      advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
-                      fixedMonthlyReductionAmount: null,
-                    }));
-                  }}
-                >
-                  <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {commonTiers.length === 0 && (
-                      <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
-                    )}
-                    {commonTiers.map(tier => (
-                      <SelectItem key={tier.durationMonths} value={String(tier.durationMonths)}>
-                        {tier.durationMonths === 1
-                          ? t("leases.formula.monthly")
-                          : `${tier.durationMonths} months`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  }
+                }}
+              >
+                <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="separated">{t("leases.pricingMode.separated")}</SelectItem>
+                  <SelectItem value="flat-charges">{t("leases.pricingMode.flatCharges")}</SelectItem>
+                  <SelectItem value="all-inclusive">{t("leases.pricingMode.allInclusive")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {form.pricingMode === "all-inclusive"
+                  ? t("leases.pricingMode.allInclusiveHelp")
+                  : form.pricingMode === "flat-charges"
+                    ? t("leases.pricingMode.flatChargesHelp")
+                    : t("leases.pricingMode.separatedHelp")}
+              </p>
             </div>
-            {commonTiers.length === 0 && (
-              <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
-            )}
+            <div className="flex-1 min-w-0">
+              <Label className="mb-2 flex h-5 items-center">{t("leases.formula")} *</Label>
+              <Select
+                value={String(form.rentFormula)}
+                disabled={commonTiers.length === 0}
+                onValueChange={(raw) => {
+                  const months = Number(raw) as RentFormula;
+                  setUnitRows(prev => prev.map(r => {
+                    const u = units.find(uu => uu.id === r.unitId);
+                    if (!u) return r;
+                    const tier = getMonthlyRentForMonths(u, months);
+                    if (tier == null) return r;
+                    return {
+                      ...r,
+                      rentShare: tier,
+                      chargesShare: allInclusive ? 0 : (u.baseCharges ?? 0),
+                    };
+                  }));
+                  setForm(f => ({
+                    ...f, rentFormula: months,
+                    hasAdvancePayment: false, advancePaymentAmount: null, advancePaymentDate: null,
+                    advanceAllocationMethod: null, advanceAppliedTo: null,
+                    advanceAllocationStartDate: null, advanceAllocationDurationMonths: null,
+                    fixedMonthlyReductionAmount: null,
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {commonTiers.length === 0 && (
+                    <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
+                  )}
+                  {commonTiers.map(tier => (
+                    <SelectItem key={tier.durationMonths} value={String(tier.durationMonths)}>
+                      {tier.durationMonths === 1
+                        ? t("leases.formula.monthly")
+                        : `${tier.durationMonths} months`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {commonTiers.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{t("leases.formula.requiresCommonTiers")}</p>
+              )}
+            </div>
           </div>
           </>)}
 
