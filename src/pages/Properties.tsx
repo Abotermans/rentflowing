@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { PROPERTY_TYPE_ICONS, PROPERTY_STATUS_ICONS, COUNTRY_ICON } from "@/lib/filterIcons";
-import { Tag, CircleCheck } from "lucide-react";
+import { Tag, CircleCheck, User } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Building2, Plus, Pencil, Search } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -27,6 +27,7 @@ import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
+import { PropertyOwnersPicker } from "@/components/properties/PropertyOwnersPicker";
 
 const EUROPEAN_COUNTRIES = [
   { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
@@ -61,7 +62,10 @@ const emptyForm: PropertyFormData = {
 };
 
 export default function Properties() {
-  const { properties, units, leases, addProperty, updateProperty, deleteProperty, getPropertyStats } = useAppData();
+  const {
+    properties, units, leases, addProperty, updateProperty, deleteProperty, getPropertyStats,
+    propertyOwners, getOwnersForProperty, setPropertyOwners,
+  } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const navigate = useNavigate();
@@ -69,10 +73,12 @@ export default function Properties() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<PropertyFormData>({ ...emptyForm });
+  const [formOwnerIds, setFormOwnerIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string[]>([]);
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [filterCountry, setFilterCountry] = useState<string[]>([]);
+  const [filterOwner, setFilterOwner] = useState<string[]>([]);
 
   type PSortKey = "reference" | "name" | "city" | "country" | "type" | "owner" | "units" | "occupancy" | "status";
   const { sort, toggle } = useTableSort<PSortKey>();
@@ -85,11 +91,12 @@ export default function Properties() {
     return null;
   })();
 
-  const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setFormOwnerIds([]); setOpen(true); };
   const openEdit = (p: Property) => {
     setEditing(p);
     const { id, createdAt, updatedAt, ...rest } = p;
     setForm(rest);
+    setFormOwnerIds(getOwnersForProperty(p.id).map(o => o.id));
     setOpen(true);
   };
 
@@ -109,9 +116,11 @@ export default function Properties() {
     }
     if (editing) {
       updateProperty({ ...editing, ...form });
+      setPropertyOwners(editing.id, formOwnerIds);
       toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
     } else {
-      addProperty(form);
+      const created = addProperty(form);
+      setPropertyOwners(created.id, formOwnerIds);
       toast({ title: `${t("properties.title")} ${t("common.added").toLowerCase()}` });
     }
     setOpen(false);
@@ -122,13 +131,22 @@ export default function Properties() {
     toast({ title: `${t("properties.title")} ${t("common.deleted").toLowerCase()}` });
   };
 
+  const ownerNamesByProperty = (pid: string) => getOwnersForProperty(pid).map(o => o.name);
   const filtered = properties.filter(p => {
     const q = search.toLowerCase();
-    const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.referenceCode.toLowerCase().includes(q) || p.city.toLowerCase().includes(q) || p.ownerName.toLowerCase().includes(q);
+    const ownerNames = ownerNamesByProperty(p.id);
+    const matchesSearch = !q
+      || p.name.toLowerCase().includes(q)
+      || p.referenceCode.toLowerCase().includes(q)
+      || p.city.toLowerCase().includes(q)
+      || (p.ownerName || "").toLowerCase().includes(q)
+      || ownerNames.some(n => n.toLowerCase().includes(q));
     const matchesType = filterType.length === 0 || filterType.includes(p.propertyType);
     const matchesStatus = filterStatus.length === 0 || filterStatus.includes(p.status);
     const matchesCountry = filterCountry.length === 0 || filterCountry.includes(p.countryCode);
-    return matchesSearch && matchesType && matchesStatus && matchesCountry;
+    const ownerIds = getOwnersForProperty(p.id).map(o => o.id);
+    const matchesOwner = filterOwner.length === 0 || ownerIds.some(id => filterOwner.includes(id));
+    return matchesSearch && matchesType && matchesStatus && matchesCountry && matchesOwner;
   });
 
   const sorted = sortRows(filtered, sort, (p, key) => {
@@ -138,7 +156,7 @@ export default function Properties() {
       case "city": return p.city;
       case "country": return getCountryName(p.countryCode);
       case "type": return getPropertyTypeLabel(p.propertyType);
-      case "owner": return p.ownerName;
+      case "owner": return ownerNamesByProperty(p.id).join(", ") || p.ownerName || "";
       case "units": return getPropertyStats(p.id).total;
       case "occupancy": return getPropertyStats(p.id).occupancyRate;
       case "status": return p.status;
@@ -196,6 +214,13 @@ export default function Properties() {
               { value: "inactive", label: t("properties.inactive"), icon: PROPERTY_STATUS_ICONS.inactive },
             ]}
           />
+          <MultiSelectFilter
+            label={t("propertyOwners.filterLabel")}
+            icon={User}
+            values={filterOwner}
+            onChange={setFilterOwner}
+            options={propertyOwners.map(o => ({ value: o.id, label: o.name, icon: User }))}
+          />
         </div>
         <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
           {filtered.length} {t("properties.title").toLowerCase()}
@@ -233,7 +258,14 @@ export default function Properties() {
                     <TableCell className="text-muted-foreground">{p.city}</TableCell>
                     <TableCell className="text-muted-foreground">{getCountryName(p.countryCode)}</TableCell>
                     <TableCell className="text-muted-foreground">{getPropertyTypeLabel(p.propertyType)}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{p.ownerName || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {(() => {
+                        const names = ownerNamesByProperty(p.id);
+                        if (names.length === 0) return p.ownerName || "—";
+                        if (names.length <= 2) return names.join(", ");
+                        return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+                      })()}
+                    </TableCell>
                     <TableCell className="text-center text-muted-foreground">{stats.total}</TableCell>
                     <TableCell className="text-center">
                       <span className="font-medium text-foreground">{stats.occupied}/{stats.total}</span>
@@ -273,8 +305,8 @@ export default function Properties() {
               </div>
             </div>
             <div>
-              <Label htmlFor="owner">{t("properties.ownerName")}</Label>
-              <Input id="owner" value={form.ownerName} onChange={e => setForm(f => ({ ...f, ownerName: e.target.value }))} placeholder="e.g. SCI Rivoli Patrimoine" />
+              <Label>{t("properties.owners")}</Label>
+              <PropertyOwnersPicker selectedIds={formOwnerIds} onChange={setFormOwnerIds} />
             </div>
             <div>
               <Label htmlFor="addr1">{t("properties.addressLine1")} *</Label>

@@ -32,6 +32,7 @@ import { useOverrideHistory } from "@/context/OverrideContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { PropertyProfitabilitySection } from "@/components/profitability/PropertyProfitabilitySection";
+import { PropertyOwnersPicker } from "@/components/properties/PropertyOwnersPicker";
 
 const UNIT_TYPE_VALUES: UnitType[] = ["apartment", "studio", "office", "parking", "storage", "house", "commercial-unit"];
 const UNIT_STATUS_VALUES: UnitStatus[] = ["vacant", "occupied", "reserved", "unavailable", "archived"];
@@ -62,7 +63,7 @@ type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
-  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, updateProperty, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, updateProperty, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty, getOwnersForProperty, setPropertyOwners } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const navigate = useNavigate();
@@ -86,6 +87,7 @@ export default function PropertyDetail() {
 
   const [propertyEditOpen, setPropertyEditOpen] = useState(false);
   const [propertyForm, setPropertyForm] = useState<PropertyEditData | null>(null);
+  const [propertyOwnerIds, setPropertyOwnerIds] = useState<string[]>([]);
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [localSettingsOpen, setLocalSettingsOpen] = useState(true);
   
@@ -95,6 +97,7 @@ export default function PropertyDetail() {
     if (!property) return;
     const { id: _id, createdAt, updatedAt, ...rest } = property;
     setPropertyForm(rest);
+    setPropertyOwnerIds(getOwnersForProperty(property.id).map(o => o.id));
     setPropertyEditOpen(true);
   };
   const handleSaveProperty = () => {
@@ -104,6 +107,7 @@ export default function PropertyDetail() {
       return;
     }
     updateProperty({ ...property, ...propertyForm });
+    setPropertyOwners(property.id, propertyOwnerIds);
     toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
     setPropertyEditOpen(false);
   };
@@ -278,7 +282,7 @@ export default function PropertyDetail() {
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.reference")}</span><span className="text-sm font-medium text-foreground font-mono">{property.referenceCode}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.address")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{fullAddress}</span></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.owner")}</span><span className="text-sm font-medium text-foreground">{property.ownerName || "—"}</span></div>
+            <div className="flex justify-between gap-2"><span className="text-sm text-muted-foreground">{t("properties.owners")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{(() => { const owners = getOwnersForProperty(property.id); if (owners.length === 0) return property.ownerName || "—"; return owners.map(o => o.name).join(", "); })()}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("common.description")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{property.description || "—"}</span></div>
@@ -606,8 +610,8 @@ export default function PropertyDetail() {
                 </div>
               </div>
               <div>
-                <Label>{t("properties.ownerName")}</Label>
-                <Input value={propertyForm.ownerName} onChange={e => setPropertyForm(f => f && ({ ...f, ownerName: e.target.value }))} />
+                <Label>{t("properties.owners")}</Label>
+                <PropertyOwnersPicker selectedIds={propertyOwnerIds} onChange={setPropertyOwnerIds} />
               </div>
               <div>
                 <Label>{t("properties.addressLine1")} *</Label>
