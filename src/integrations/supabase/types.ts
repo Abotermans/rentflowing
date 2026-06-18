@@ -949,6 +949,7 @@ export type Database = {
           notice_period_text: string
           payer_accounts: Json
           portfolio_id: string
+          pricing_mode: string | null
           property_id: string
           rent_formula: number
           return_notes: string
@@ -1003,6 +1004,7 @@ export type Database = {
           notice_period_text?: string
           payer_accounts?: Json
           portfolio_id: string
+          pricing_mode?: string | null
           property_id: string
           rent_formula?: number
           return_notes?: string
@@ -1057,6 +1059,7 @@ export type Database = {
           notice_period_text?: string
           payer_accounts?: Json
           portfolio_id?: string
+          pricing_mode?: string | null
           property_id?: string
           rent_formula?: number
           return_notes?: string
