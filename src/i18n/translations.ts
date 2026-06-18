@@ -1698,6 +1698,7 @@ const en = {
   "validation.dates.paymentDateRequired": "Payment date is required.",
   "validation.dates.returnedBeforeHandedOver": "Returned date must be on or after handed-over date.",
   "validation.dates.allocationStartBeforePayment": "Allocation start date must be on or after the advance payment date.",
+  "validation.dates.dateOfBirthInFuture": "Date of birth must be on or before today.",
 
   // Property owners
   "propertyOwners.singular": "owner",
