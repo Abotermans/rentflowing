@@ -27,7 +27,6 @@ import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
 import { logLeaseStatusChange } from "@/hooks/useLeaseStatusHistory";
-import { usePortfolio } from "@/context/PortfolioContext";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
