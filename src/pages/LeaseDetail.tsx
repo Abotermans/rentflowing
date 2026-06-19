@@ -1053,34 +1053,6 @@ export default function LeaseDetail() {
           }
         />
       )}
-      {lease.noticeGiven && lease.lifecycleStage !== "ended" && lease.lifecycleStage !== "terminated" && (
-        <LeaseBanner
-          tone="info"
-          icon={Bell}
-          title={t("leaseDetail.underNotice")}
-          description={
-            <>
-              {lease.noticeDate && <>{t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-              {lease.noticeDate && lease.intendedMoveOutDate && " · "}
-              {lease.intendedMoveOutDate && <>{t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
-            </>
-          }
-          actions={
-            !lease.moveOutActualDate && (
-              <>
-                <Button variant="outline" size="sm" onClick={openNoticeForm}>
-                  <Pencil className="h-3.5 w-3.5 mr-1" />
-                  {t("detail.editNotice")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleCancelNotice}>
-                  <XCircle className="h-3.5 w-3.5 mr-1" />
-                  {t("lease.cancelNotice")}
-                </Button>
-              </>
-            )
-          }
-        />
-      )}
 
       {(() => {
         const scheduled = lease.moveOutScheduledDate;
