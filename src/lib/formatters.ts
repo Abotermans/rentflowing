@@ -1,12 +1,48 @@
 import type { TranslationKey } from "@/i18n/translations";
 
-export function formatCurrency(amount: number, currencyCode: string = "EUR", locale: string = "fr-FR"): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currencyCode,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+/**
+ * Canonical money format across the app:
+ *   1 790 €   (whole amounts, decimals hidden)
+ *   1 790,50 €  (non-zero decimals shown, always 2 dp)
+ *   -1 790 €  (negatives)
+ *   1 790 £ / 1 790 $  (symbol always suffixed with NBSP, regardless of currency)
+ * Decimal mark `,` and narrow no-break space grouping (fr-FR via Intl).
+ */
+export function formatCurrency(
+  amount: number | null | undefined,
+  currencyCode: string = "EUR",
+  _locale: string = "fr-FR",
+): string {
+  if (amount === null || amount === undefined || Number.isNaN(amount)) return "—";
+  const hasCents = Math.abs(amount - Math.trunc(amount)) > 0.0049;
+  const number = new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
+    useGrouping: true,
   }).format(amount);
+  const symbol = getCurrencySymbol(currencyCode);
+  // U+00A0 non-breaking space between number and symbol.
+  return `${number}\u00A0${symbol}`;
+}
+
+/**
+ * Non-currency numeric formatter (kWh, m³, counts, etc.).
+ * Grouping matches formatCurrency for visual consistency.
+ */
+export function formatNumber(
+  value: number | null | undefined,
+  opts: { decimals?: number; unit?: string } = {},
+): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  const { decimals, unit } = opts;
+  const min = decimals ?? 0;
+  const max = decimals ?? (Math.abs(value - Math.trunc(value)) > 0.0049 ? 2 : 0);
+  const number = new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: min,
+    maximumFractionDigits: max,
+    useGrouping: true,
+  }).format(value);
+  return unit ? `${number}\u00A0${unit}` : number;
 }
 
 export function formatDate(dateStr: string, locale: string = "fr-FR"): string {

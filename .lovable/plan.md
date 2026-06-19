@@ -1,67 +1,58 @@
+# Uniform currency formatting audit
+
 ## Goal
-Track every lease lifecycle status change (e.g. `draft → active`, `active → ended`, `active → terminated`, signature cancellation `active → draft`) with a persisted audit log, surface it inside the Lease detail page, and add a "Status history" entry in the existing kebab menu that opens a modal listing all changes.
+Every monetary figure across tables, detail pages, dialogs, KPIs and CSV exports renders in one canonical format:
 
-## Scope
-- Persist status changes to the backend so they survive reload (the existing override history is in-memory only and is not enough for an audit log).
-- Log every lifecycle transition centrally, not only override-driven ones.
-- Read-only display — no editing of past entries.
+- Grouping: non-breaking thin space every 3 digits → `1 790 €`, `12 500 €`, `1 250 000 €`
+- Decimals: hidden when zero, shown (always 2) when non-zero → `1 790 €` vs `1 790,50 €`
+- Symbol: always suffixed with a non-breaking space, regardless of currency → `1 790 €` / `1 790 £` / `1 790 $`
+- Decimal mark: `,` (European), to stay consistent with the space grouping
 
-## Data model
-New table `public.lease_status_changes`:
-- `lease_id` (FK → leases, cascade)
-- `portfolio_id` (for RLS — copied from lease)
-- `from_stage` text nullable (null for initial creation)
-- `to_stage` text not null
-- `reason` text nullable (uses end/termination/override reason where applicable)
-- `notes` text nullable
-- `changed_by` uuid nullable (auth.uid())
-- `changed_at` timestamptz default now()
-- Standard `id`, `created_at`
+## Single source of truth
 
-RLS: same pattern as `leases` — members can read, editors/owners can insert. No update/delete (immutable log).
+Rewrite `src/lib/formatters.ts` → `formatCurrency(amount, currencyCode?, opts?)`:
 
-Initial backfill: insert one row per existing lease with `to_stage = current lifecycle_stage` and `reason = 'backfill'`, so each lease has at least one history entry.
+- Build a `Intl.NumberFormat("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })` to get the number part (gives the European space grouping and `,` decimal).
+- Append a non-breaking space + symbol resolved through `getCurrencySymbol(currencyCode)` (already exists). Defaults currency to the active portfolio's currency.
+- Handle: `null`/`undefined`/`NaN` → `"—"`; negatives → minus sign in front of the digits (`-1 790 €`); zero → `0 €`.
+- Add `formatCurrencyCompact(amount, currency)` for KPI tiles that today use `formatCompactNumber` style — same suffix rule, K/M abbreviation kept.
+- Add `formatNumber(value, { decimals })` for non-currency numerics (m³, kWh, %) so grouping stays consistent (`1 250 kWh`, `1 790 m³`).
 
-## Where to log
-Single helper `logLeaseStatusChange(leaseId, fromStage, toStage, { reason, notes })` called from every place that mutates `lifecycle_stage`:
-- `LeaseDetail.performEndLease` (→ ended)
-- `LeaseDetail.performTerminate` (→ terminated)
-- `LeaseDetail.handleCancelSignature` (active/signed → draft)
-- `LeaseEditDialog` when `lifecycleStage` changes (e.g. activation from draft, manual edits)
-- Any other call to `updateLease` that flips `lifecycleStage` (audit and add)
+All call sites must consume these helpers — no ad-hoc `toLocaleString` / `toFixed` / `${symbol}${amount}` strings.
 
-The helper is invoked alongside the existing `updateLease`. If the user used the override flow, the override `reason` is also stored on the status change row, so both logs stay consistent.
+## Audit & rewrite scope
 
-## UI
+Searched the codebase: 210 existing `formatCurrency(...)` call sites (already centralised, only the helper changes) plus ~30 ad-hoc spots that need to be migrated:
 
-### Kebab menu (LeaseDetail header)
-Add a new item `Status history` (always enabled) above the destructive section, with a `History` icon. Selecting it opens a modal.
+Tables / lists
+- `src/pages/Leases.tsx`, `Payments.tsx`, `Tenants.tsx`, `Properties.tsx`, `Units.tsx`, `Vendors.tsx`, `CostEntries.tsx`, `CostsAllocations.tsx`, `AllocationRules.tsx`, `Maintenance.tsx`, `Reports.tsx`, `Dashboard.tsx`
 
-### Status history modal
-Centered `Dialog` (project convention — never Sheet). Contents:
-- Header: lease reference + current status badge.
-- Compact table, newest first:
-  - Date/time (DD/MM/YYYY HH:mm, European format)
-  - From → To (status badges)
-  - Reason (e.g. `natural-expiry`, `notice-completed`, free text from termination, `backfill`)
-  - Notes (truncated, tooltip for full)
-  - Changed by (user name from profiles, or "—")
-- Empty state: "No status changes recorded yet." (shouldn't appear after backfill).
-- Footer: Close button.
+Detail pages
+- `LeaseDetail.tsx` (incl. utility meter readings line 1738/1743 → `formatNumber`), `PropertyDetail.tsx`, `UnitDetail.tsx`, `TenantDetail.tsx`, `VendorDetail.tsx`, `MaintenanceDetail.tsx`
 
-### Inline summary on lease page
-In the lease header card, under the status badge, show "Last change: <date> · <from → to>" as a small muted line linking to the history modal. Keeps the change discoverable without forcing the modal.
+Dialogs / sections
+- `ChargesReconciliationSection.tsx`, `AmendmentDialog.tsx` (lines 616-617 raw `toFixed(2)` → `formatCurrency`), `AmendmentChangesDialog.tsx`, `AmendmentConfirmDialog.tsx`, `LeaseEditDialog.tsx`, `LeaseAddDialog.tsx`, `CostEntryDialog.tsx`, `CashReceiptDialog.tsx`, `QuickPayReceivableDialog.tsx` (input default → `amount.toFixed(2)` kept as raw input value, not display), `RentTiersEditor.tsx`, profitability components
 
-## i18n
-Add EN/FR keys under `lease.statusHistory.*`: `title`, `columns.date/from/to/reason/notes/by`, `empty`, `lastChange`, `menuItem`, plus reason labels (`reason.naturalExpiry`, `reason.noticeCompleted`, `reason.terminated`, `reason.signatureCanceled`, `reason.backfill`).
+Exports
+- `src/lib/exportCsv.ts` + `Reports.tsx`: route monetary columns through `formatCurrency` so CSVs match the on-screen format.
+
+Out of scope (left untouched)
+- Editable `<Input type="number">` values (raw numbers must stay machine-parseable).
+- Percentages and ratios (`%`) — already consistent via `toFixed(1)`; only wrap with `formatNumber` where grouping matters.
+- Date and area formatters.
+
+## Validation
+
+1. Grep guard: after the refactor, `rg -nP "toLocaleString\(|\.toFixed\(\d" src` must return only allowed call sites (file-size formatter, percentage helpers, input defaults).
+2. Spot-check each surface listed above in the preview (Leases list, Lease detail KPI strip, Cost & taxes section, Payments table, Dashboard KPIs, Reports + exported CSV) to confirm:
+   - `1 790 €` for whole amounts
+   - `1 790,50 €` for amounts with cents
+   - `-1 790 €` for negatives
+   - Same suffix + space for `£` and `$` portfolios
+3. Build passes (auto-run by the harness).
 
 ## Technical notes
-- Migration runs first (creates table + GRANTs + RLS + backfill insert).
-- After migration, add `src/hooks/useLeaseStatusHistory.ts` (list + add) and the `<LeaseStatusHistoryDialog>` component.
-- Wire the helper into the four call sites listed above; keep the existing override audit log untouched (it complements, not replaces, this log).
-- No change to `leases` schema.
 
-## Out of scope
-- Editing/deleting log entries.
-- Exporting the history.
-- Logging non-status field changes (covered separately by amendments).
+- Use `\u202F` (narrow no-break space) between the number and the symbol so the pair never wraps and the spacing stays tight, matching the user's "1790 €" intent while keeping AFNOR-style readability.
+- `Intl.NumberFormat("fr-FR")` already emits `\u202F` as its grouping separator in modern runtimes; we reuse the same character for the symbol gap for consistency.
+- The portfolio's active currency comes from `PortfolioContext`; keep `formatCurrency`'s `currencyCode` parameter optional and fall back to that context at the call site (helper stays pure — call sites pass the currency, as they already do today).
