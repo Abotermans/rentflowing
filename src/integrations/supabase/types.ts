@@ -1280,6 +1280,7 @@ export type Database = {
           default_locale: string
           id: string
           name: string
+          show_occupancy_operations: boolean
           slug: string | null
           updated_at: string
         }
@@ -1290,6 +1291,7 @@ export type Database = {
           default_locale?: string
           id?: string
           name: string
+          show_occupancy_operations?: boolean
           slug?: string | null
           updated_at?: string
         }
@@ -1300,6 +1302,7 @@ export type Database = {
           default_locale?: string
           id?: string
           name?: string
+          show_occupancy_operations?: boolean
           slug?: string | null
           updated_at?: string
         }
