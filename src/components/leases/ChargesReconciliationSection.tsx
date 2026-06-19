@@ -12,9 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, Calculator, Info, ChevronDown } from "lucide-react";
+import { Trash2, Calculator, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { Lease } from "@/types";
@@ -309,10 +309,6 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>{t("reconciliation.flatExplain")}</AlertDescription>
-            </Alert>
             {overviewCard}
           </CardContent>
         </CollapsibleContent>
