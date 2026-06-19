@@ -1417,6 +1417,10 @@ export default function LeaseDetail() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div>
+                <p className="text-xs text-muted-foreground">{t("advanceCycle.frequency")}</p>
+                <p className="text-sm font-medium text-foreground">{t("advanceCycle.everyN").replace("{n}", String(lease.rentFormula))}</p>
+              </div>
+              <div>
                 <p className="text-xs text-muted-foreground">{t("advanceCycle.paidFrom")}</p>
                 <p className="text-sm font-medium text-foreground">{currentCycle ? formatDate(currentCycle.startDate, locale) : "—"}</p>
               </div>
