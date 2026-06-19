@@ -416,7 +416,9 @@ export default function LeaseDetail() {
       toast({ title: t("leaseToast.cannotActivate"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
+    const fromStage = lease.lifecycleStage;
     updateLease({ ...lease, lifecycleStage: "active" });
+    logLeaseStatusChange({ leaseId: lease.id, portfolioId: portfolioIdForLogs, fromStage, toStage: "active", reason: "activated" });
     if (validation.warnings.length > 0) {
       toast({ title: t("leaseToast.activatedWithWarnings"), description: validation.warnings.map(w => w.message).join(". ") });
     } else {
@@ -434,7 +436,9 @@ export default function LeaseDetail() {
       toast({ title: t("leaseToast.cannotActivate"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
+    const fromStage = lease.lifecycleStage;
     updateLease({ ...lease, lifecycleStage: "pending-signature" });
+    logLeaseStatusChange({ leaseId: lease.id, portfolioId: portfolioIdForLogs, fromStage, toStage: "pending-signature", reason: "sent-for-signature" });
     toast({ title: t("lease.toastSentForSignature") });
   };
 
@@ -454,14 +458,18 @@ export default function LeaseDetail() {
     }
     const stage: typeof lease.lifecycleStage =
       (lease.startDate && lease.startDate <= today) ? "active" : "signed";
+    const fromStage = lease.lifecycleStage;
     const next = { ...lease, signedDate: signDateInput, lifecycleStage: stage };
     updateLease(next);
+    logLeaseStatusChange({ leaseId: lease.id, portfolioId: portfolioIdForLogs, fromStage, toStage: stage, reason: stage === "active" ? "activated" : "signed" });
     toast({ title: t("lease.toastSigned") });
     setSignDialogOpen(false);
   };
 
   const handleCancelSignature = () => {
+    const fromStage = lease.lifecycleStage;
     updateLease({ ...lease, lifecycleStage: "draft", signedDate: null });
+    logLeaseStatusChange({ leaseId: lease.id, portfolioId: portfolioIdForLogs, fromStage, toStage: "draft", reason: "signature-canceled" });
     toast({ title: t("lease.toastCanceledSignature") });
   };
 
