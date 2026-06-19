@@ -146,55 +146,67 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-xs text-right">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
-                        {formatCurrency(l.recoverableAmount, currency, locale)}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
-                      <div className="font-medium text-sm border-b pb-1.5">{l.costLabel}</div>
-                      <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-                        <span className="text-muted-foreground">{t("reconciliation.overview.col.totalAmount")}</span>
-                        <span className="text-right tabular-nums">{formatCurrency(l.allocatedAmount, currency, locale)}</span>
-                        <span className="text-muted-foreground">{t("reconciliation.overview.tip.recovery")}</span>
-                        <span className="text-right">{t(`reconciliation.overview.tip.recoveryType.${l.recoveryType}` as never)}</span>
-                        <span className="text-muted-foreground">{t("reconciliation.overview.tip.recoverable")}</span>
-                        <span className="text-right tabular-nums">
-                          {l.allocatedAmount > 0 ? `${((l.recoverableAmount / l.allocatedAmount) * 100).toFixed(0)}%` : "—"}
+                  {l.recoveryType === "owner-only" ? (
+                    "—"
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
+                          {formatCurrency(l.recoverableAmount, currency, locale)}
                         </span>
-                      </div>
-                      <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
-                        <span className="font-medium">{t("reconciliation.col.full")}</span>
-                        <span className="text-right font-semibold tabular-nums">{formatCurrency(l.recoverableAmount, currency, locale)}</span>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
+                        <div className="font-medium text-sm border-b pb-1.5">{l.costLabel}</div>
+                        <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                          <span className="text-muted-foreground">{t("reconciliation.overview.col.totalAmount")}</span>
+                          <span className="text-right tabular-nums">{formatCurrency(l.allocatedAmount, currency, locale)}</span>
+                          <span className="text-muted-foreground">{t("reconciliation.overview.tip.recovery")}</span>
+                          <span className="text-right">{t(`reconciliation.overview.tip.recoveryType.${l.recoveryType}` as never)}</span>
+                          <span className="text-muted-foreground">{t("reconciliation.overview.tip.recoverable")}</span>
+                          <span className="text-right tabular-nums">
+                            {l.allocatedAmount > 0 ? `${((l.recoverableAmount / l.allocatedAmount) * 100).toFixed(0)}%` : "—"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
+                          <span className="font-medium">{t("reconciliation.col.full")}</span>
+                          <span className="text-right font-semibold tabular-nums">{formatCurrency(l.recoverableAmount, currency, locale)}</span>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </TableCell>
                 <TableCell className="text-xs text-right">
-                  {l.overlapDays}/{l.totalDays} {t("amendments.noticeUnit.days" as never)} ({Math.round(l.proRataFactor * 100)}%)
+                  {l.recoveryType === "owner-only" ? "—" : (
+                    <>
+                      {l.overlapDays}/{l.totalDays} {t("amendments.noticeUnit.days" as never)} ({Math.round(l.proRataFactor * 100)}%)
+                    </>
+                  )}
                 </TableCell>
                 <TableCell className="text-xs text-right font-medium">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
-                        {formatCurrency(l.proRatedRecoverable, currency, locale)}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
-                      <div className="font-medium text-sm border-b pb-1.5">{l.costLabel}</div>
-                      <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-                        <span className="text-muted-foreground">{t("reconciliation.col.period")}</span>
-                        <span className="text-right tabular-nums">{formatDate(l.costPeriodStart, locale)} → {formatDate(l.costPeriodEnd, locale)}</span>
-                        <span className="text-muted-foreground">{t("reconciliation.overview.tip.timeProRata")}</span>
-                        <span className="text-right tabular-nums">{l.overlapDays}/{l.totalDays}</span>
-                      </div>
-                      <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
-                        <span className="font-medium">{t("reconciliation.overview.tip.timeProRata")}</span>
-                        <span className="text-right font-semibold tabular-nums">{(l.proRataFactor * 100).toFixed(1)}%</span>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                  {l.recoveryType === "owner-only" ? (
+                    "—"
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
+                          {formatCurrency(l.proRatedRecoverable, currency, locale)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
+                        <div className="font-medium text-sm border-b pb-1.5">{l.costLabel}</div>
+                        <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                          <span className="text-muted-foreground">{t("reconciliation.col.period")}</span>
+                          <span className="text-right tabular-nums">{formatDate(l.costPeriodStart, locale)} → {formatDate(l.costPeriodEnd, locale)}</span>
+                          <span className="text-muted-foreground">{t("reconciliation.overview.tip.timeProRata")}</span>
+                          <span className="text-right tabular-nums">{l.overlapDays}/{l.totalDays}</span>
+                        </div>
+                        <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
+                          <span className="font-medium">{t("reconciliation.overview.tip.timeProRata")}</span>
+                          <span className="text-right font-semibold tabular-nums">{(l.proRataFactor * 100).toFixed(1)}%</span>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
