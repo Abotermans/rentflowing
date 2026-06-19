@@ -28,7 +28,7 @@ import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatu
 import { ASSIGNMENT_TYPE_LABELS, isAncillaryAssignmentType } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
-import { formatDate, formatCurrency, formatPeriodMonth } from "@/lib/formatters";
+import { formatDate, formatCurrency, formatPeriodMonth, formatNumber } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { useTableSort, useSortedRows } from "@/hooks/use-table-sort";
