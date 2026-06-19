@@ -1586,7 +1586,7 @@ export default function LeaseDetail() {
         <CollapsibleContent>
         <CardContent>
         <div className="grid gap-6 lg:grid-cols-2">
-          {(() => {
+          {showOccupancyOps && (() => {
             const miKeys = Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[];
             const moKeys = Object.keys(lease.moveOutChecklist) as (keyof MoveOutChecklist)[];
             const maxLen = Math.max(miKeys.length, moKeys.length);
