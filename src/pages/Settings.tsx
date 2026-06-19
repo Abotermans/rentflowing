@@ -5,14 +5,40 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Settings as SettingsIcon, Globe, CalendarClock, LayoutGrid } from "lucide-react";
+import { Settings as SettingsIcon, Globe, CalendarClock, LayoutGrid, LogIn } from "lucide-react";
 import { LOCALE_LABELS, type Locale } from "@/i18n/translations";
 import { useToast } from "@/hooks/use-toast";
 import { OPTIONAL_MODULES } from "@/config/modules";
+import { usePortfolio } from "@/context/PortfolioContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 export default function Settings() {
   const { locale, setLocale, t, receivableLeadDays, setReceivableLeadDays, isModuleHidden, setModuleHidden } = useSettings();
   const { toast } = useToast();
+  const { currentPortfolio, refresh } = usePortfolio();
+  const callerRole = currentPortfolio?.role as string | undefined;
+  const canManage = callerRole === "owner" || callerRole === "admin";
+  const [showOccupancyOps, setShowOccupancyOps] = useState(false);
+  useEffect(() => {
+    if (currentPortfolio) setShowOccupancyOps(!!currentPortfolio.show_occupancy_operations);
+  }, [currentPortfolio]);
+
+  const toggleOccupancyOps = async (checked: boolean) => {
+    if (!currentPortfolio) return;
+    setShowOccupancyOps(checked);
+    const { error } = await supabase
+      .from("portfolios")
+      .update({ show_occupancy_operations: checked })
+      .eq("id", currentPortfolio.id);
+    if (error) {
+      setShowOccupancyOps(!checked);
+      toast({ title: "Could not save", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: t("settings.saved") });
+    refresh();
+  };
 
   const handleLocaleChange = (value: string) => {
     setLocale(value as Locale);
@@ -136,6 +162,38 @@ export default function Settings() {
                   </div>
                 );
               })}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Leases / Occupancy operations */}
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Leases</h2>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <LogIn className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">Show Move-in / Move-out section</CardTitle>
+              </div>
+              <CardDescription>
+                Display the move-in and move-out occupancy operations section on each lease page. Applies to the current portfolio. Off by default.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="show-occupancy-ops" className="text-sm font-medium text-foreground">
+                  {showOccupancyOps ? "Visible" : "Hidden"}
+                </Label>
+                <Switch
+                  id="show-occupancy-ops"
+                  checked={showOccupancyOps}
+                  onCheckedChange={toggleOccupancyOps}
+                  disabled={!canManage || !currentPortfolio}
+                />
+              </div>
+              {!canManage && currentPortfolio && (
+                <p className="text-xs text-muted-foreground mt-2">Only portfolio owners or admins can change this.</p>
+              )}
             </CardContent>
           </Card>
         </div>
