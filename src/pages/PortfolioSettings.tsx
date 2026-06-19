@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +41,7 @@ export default function PortfolioSettings() {
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [locale, setLocale] = useState("en");
+  const [showOccupancyOps, setShowOccupancyOps] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
   const [invites, setInvites] = useState<any[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -64,6 +66,7 @@ export default function PortfolioSettings() {
     setName(currentPortfolio.name);
     setCurrency(currentPortfolio.default_currency);
     setLocale(currentPortfolio.default_locale);
+    setShowOccupancyOps(!!currentPortfolio.show_occupancy_operations);
   }, [currentPortfolio]);
 
   const loadMembers = async () => {
@@ -91,7 +94,7 @@ export default function PortfolioSettings() {
     setBusy(true);
     const { error } = await supabase
       .from("portfolios")
-      .update({ name, default_currency: currency, default_locale: locale })
+      .update({ name, default_currency: currency, default_locale: locale, show_occupancy_operations: showOccupancyOps })
       .eq("id", currentPortfolio.id);
     setBusy(false);
     if (error) toast({ title: "Could not save", description: error.message, variant: "destructive" });
