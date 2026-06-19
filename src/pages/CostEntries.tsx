@@ -15,8 +15,8 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Receipt, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
-  CostEntry, CostEntryStatus, CostFrequency, CostNature, RecoveryType,
-  COST_NATURE_LABELS, COST_ENTRY_STATUS_LABELS, RECOVERY_TYPE_LABELS,
+  CostEntry, CostFrequency, CostNature, RecoveryType,
+  COST_NATURE_LABELS, RECOVERY_TYPE_LABELS,
 } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
