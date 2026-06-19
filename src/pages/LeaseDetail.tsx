@@ -953,7 +953,6 @@ export default function LeaseDetail() {
         />
       )}
 
-
       {(() => {
         // Build a single mapping from a blocker/warning issue code to the
         // dedicated user action (opens a modal or scrolls to a section).
