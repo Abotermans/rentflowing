@@ -26,6 +26,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
+import { logLeaseStatusChange } from "@/hooks/useLeaseStatusHistory";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
@@ -245,6 +246,16 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
     };
     updateLease({ ...lease, ...formToPersist });
     persistAssignments(lease.id);
+    const property = properties.find(p => p.id === formToPersist.propertyId);
+    if (formToPersist.lifecycleStage !== lease.lifecycleStage) {
+      void logLeaseStatusChange({
+        leaseId: lease.id,
+        portfolioId: property?.portfolioId ?? "",
+        fromStage: lease.lifecycleStage,
+        toStage: formToPersist.lifecycleStage,
+        reason: "edited",
+      });
+    }
     toast({ title: "Lease updated" });
     onOpenChange(false);
     onSaved?.();

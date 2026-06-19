@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn, FileText } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn, FileText, History } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -37,6 +37,8 @@ import { canChangeLeaseStatus, canActivateLease, canRenewLease, canSendForSignat
 import { LeaseBanner } from "@/components/shared/LeaseBanner";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import { useOverrideHistory } from "@/context/OverrideContext";
+import { logLeaseStatusChange } from "@/hooks/useLeaseStatusHistory";
+import { LeaseStatusHistoryDialog } from "@/components/leases/LeaseStatusHistoryDialog";
 import type { ValidationResult } from "@/lib/integrity/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { AmendmentsSection } from "@/components/amendments/AmendmentsSection";
@@ -99,10 +101,12 @@ export default function LeaseDetail() {
   const { toast } = useToast();
   const { t } = useSettings();
   const { currentPortfolio } = usePortfolio();
+  const portfolioIdForLogs = currentPortfolio?.id ?? "";
   const showOccupancyOps = !!currentPortfolio?.show_occupancy_operations;
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const [statusHistoryOpen, setStatusHistoryOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
   const [pendingOverrideAction, setPendingOverrideAction] = useState<string>("");
   const [receivablesOpen, setReceivablesOpen] = useState(true);
@@ -412,7 +416,9 @@ export default function LeaseDetail() {
       toast({ title: t("leaseToast.cannotActivate"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
+    const fromStage = lease.lifecycleStage;
     updateLease({ ...lease, lifecycleStage: "active" });
+    logLeaseStatusChange({ leaseId: lease.id, portfolioId: portfolioIdForLogs, fromStage, toStage: "active", reason: "activated" });
     if (validation.warnings.length > 0) {
       toast({ title: t("leaseToast.activatedWithWarnings"), description: validation.warnings.map(w => w.message).join(". ") });
     } else {
@@ -430,7 +436,9 @@ export default function LeaseDetail() {
       toast({ title: t("leaseToast.cannotActivate"), description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
       return;
     }
+    const fromStage = lease.lifecycleStage;
     updateLease({ ...lease, lifecycleStage: "pending-signature" });
+    logLeaseStatusChange({ leaseId: lease.id, portfolioId: portfolioIdForLogs, fromStage, toStage: "pending-signature", reason: "sent-for-signature" });
     toast({ title: t("lease.toastSentForSignature") });
   };
 
@@ -450,14 +458,18 @@ export default function LeaseDetail() {
     }
     const stage: typeof lease.lifecycleStage =
       (lease.startDate && lease.startDate <= today) ? "active" : "signed";
+    const fromStage = lease.lifecycleStage;
     const next = { ...lease, signedDate: signDateInput, lifecycleStage: stage };
     updateLease(next);
+    logLeaseStatusChange({ leaseId: lease.id, portfolioId: portfolioIdForLogs, fromStage, toStage: stage, reason: stage === "active" ? "activated" : "signed" });
     toast({ title: t("lease.toastSigned") });
     setSignDialogOpen(false);
   };
 
   const handleCancelSignature = () => {
+    const fromStage = lease.lifecycleStage;
     updateLease({ ...lease, lifecycleStage: "draft", signedDate: null });
+    logLeaseStatusChange({ leaseId: lease.id, portfolioId: portfolioIdForLogs, fromStage, toStage: "draft", reason: "signature-canceled" });
     toast({ title: t("lease.toastCanceledSignature") });
   };
 
@@ -506,6 +518,12 @@ export default function LeaseDetail() {
       notes: endNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[End] ${endNotesInput}` : lease.notes,
     };
     updateLease(updatedLease);
+    logLeaseStatusChange({
+      leaseId: lease.id, portfolioId: portfolioIdForLogs,
+      fromStage: lease.lifecycleStage, toStage: "ended",
+      reason: endReasonInput || "ended",
+      notes: endNotesInput || null,
+    });
     if (endFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
       updateUnit({ ...unit, currentStatus: "vacant", availableFrom: updatedLease.endDate });
     }
@@ -562,6 +580,12 @@ export default function LeaseDetail() {
       endDate: termDateInput,
       terminationReason: termReasonInput,
       notes: termNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[Terminate] ${termNotesInput}` : lease.notes,
+    });
+    logLeaseStatusChange({
+      leaseId: lease.id, portfolioId: portfolioIdForLogs,
+      fromStage: lease.lifecycleStage, toStage: "terminated",
+      reason: termReasonInput || "terminated",
+      notes: termNotesInput || null,
     });
     if (termFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
       updateUnit({ ...unit, currentStatus: "vacant", availableFrom: termDateInput });
@@ -840,6 +864,10 @@ export default function LeaseDetail() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onSelect={() => setStatusHistoryOpen(true)}>
+                  <History className="h-4 w-4 mr-2" />{t("lease.statusHistory.menuItem")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {lease.lifecycleStage === "pending-signature" && (
                   <>
                     <DropdownMenuItem onSelect={() => handleCancelSignature()}>
@@ -2256,6 +2284,14 @@ export default function LeaseDetail() {
           onOverride={handleLeaseOverrideConfirm}
         />
       )}
+
+      <LeaseStatusHistoryDialog
+        open={statusHistoryOpen}
+        onOpenChange={setStatusHistoryOpen}
+        leaseId={lease.id}
+        leaseReference={lease.leaseReference}
+        currentStage={lease.lifecycleStage}
+      />
 
       {/* End Lease Dialog */}
       <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
