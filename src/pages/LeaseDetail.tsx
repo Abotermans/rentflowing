@@ -864,6 +864,10 @@ export default function LeaseDetail() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onSelect={() => setStatusHistoryOpen(true)}>
+                  <History className="h-4 w-4 mr-2" />{t("lease.statusHistory.menuItem")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {lease.lifecycleStage === "pending-signature" && (
                   <>
                     <DropdownMenuItem onSelect={() => handleCancelSignature()}>
