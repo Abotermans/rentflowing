@@ -257,9 +257,16 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 text-left">
                 {t("reconciliation.title")}
-                <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5">
-                  {t("leases.allInclusive.badge")}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5 cursor-help">
+                      {t("leases.allInclusive.badge")}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-xs">
+                    {t("leases.pricingMode.allInclusiveHelp")}
+                  </TooltipContent>
+                </Tooltip>
               </CardTitle>
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
@@ -288,9 +295,16 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex items-center gap-1.5 flex-1 text-left">
               {t("reconciliation.title")}
-              <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5">
-                {t("reconciliation.flatBadge")}
-              </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5 cursor-help">
+                      {t("reconciliation.flatBadge")}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-xs">
+                    {t("leases.pricingMode.flatChargesHelp")}
+                  </TooltipContent>
+                </Tooltip>
             </CardTitle>
             <span className="inline-flex items-center justify-center h-7 w-7">
               <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
