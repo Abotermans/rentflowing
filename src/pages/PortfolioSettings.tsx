@@ -234,6 +234,21 @@ export default function PortfolioSettings() {
                     </Select>
                   </div>
                 </div>
+                <Separator />
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="show-occupancy-ops" className="text-sm font-medium">Show Move-in / Move-out section</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Display the move-in and move-out occupancy operations section on each lease page. Off by default.
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-occupancy-ops"
+                    checked={showOccupancyOps}
+                    onCheckedChange={setShowOccupancyOps}
+                    disabled={!canManage}
+                  />
+                </div>
                 <Button type="submit" disabled={busy || !canManage}>Save</Button>
               </form>
             </CardContent>
