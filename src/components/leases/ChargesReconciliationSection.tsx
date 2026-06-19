@@ -275,10 +275,6 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="space-y-4">
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>{t("leases.allInclusive.reconciliationDisabled")}</AlertDescription>
-              </Alert>
               {overviewCard}
             </CardContent>
           </CollapsibleContent>
