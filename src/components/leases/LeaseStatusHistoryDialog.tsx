@@ -41,7 +41,7 @@ export function LeaseStatusHistoryDialog({ open, onOpenChange, leaseId, leaseRef
         </DialogHeader>
         <div className="mt-4">
           {loading ? (
-            <p className="text-xs text-muted-foreground italic px-3 py-6 text-center">{t("common.loading")}</p>
+            <p className="text-xs text-muted-foreground italic px-3 py-6 text-center">{t("lease.statusHistory.loading")}</p>
           ) : entries.length === 0 ? (
             <p className="text-xs text-muted-foreground italic px-3 py-6 text-center">{t("lease.statusHistory.empty")}</p>
           ) : (
