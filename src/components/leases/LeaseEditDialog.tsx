@@ -245,6 +245,15 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
     };
     updateLease({ ...lease, ...formToPersist });
     persistAssignments(lease.id);
+    if (formToPersist.lifecycleStage !== lease.lifecycleStage) {
+      void logLeaseStatusChange({
+        leaseId: lease.id,
+        portfolioId: lease.portfolioId ?? "",
+        fromStage: lease.lifecycleStage,
+        toStage: formToPersist.lifecycleStage,
+        reason: "edited",
+      });
+    }
     toast({ title: "Lease updated" });
     onOpenChange(false);
     onSaved?.();
