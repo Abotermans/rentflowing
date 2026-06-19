@@ -7,6 +7,7 @@ export interface Portfolio {
   name: string;
   default_currency: string;
   default_locale: string;
+  show_occupancy_operations: boolean;
   role: "owner" | "admin" | "editor" | "viewer";
 }
 
@@ -38,7 +39,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const { data, error } = await supabase
       .from("portfolio_members")
-      .select("role, portfolios:portfolio_id(id, name, default_currency, default_locale)")
+      .select("role, portfolios:portfolio_id(id, name, default_currency, default_locale, show_occupancy_operations)")
       .eq("user_id", user.id);
 
     if (error || !data) {
@@ -52,6 +53,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         name: row.portfolios.name,
         default_currency: row.portfolios.default_currency,
         default_locale: row.portfolios.default_locale,
+        show_occupancy_operations: !!row.portfolios.show_occupancy_operations,
         role: row.role,
       } : null)
       .filter(Boolean) as Portfolio[];

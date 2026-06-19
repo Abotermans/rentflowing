@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
+import { usePortfolio } from "@/context/PortfolioContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,8 @@ export default function LeaseDetail() {
   } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const { currentPortfolio } = usePortfolio();
+  const showOccupancyOps = !!currentPortfolio?.show_occupancy_operations;
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
@@ -1583,7 +1586,7 @@ export default function LeaseDetail() {
         <CollapsibleContent>
         <CardContent>
         <div className="grid gap-6 lg:grid-cols-2">
-          {(() => {
+          {showOccupancyOps && (() => {
             const miKeys = Object.keys(lease.moveInChecklist) as (keyof MoveInChecklist)[];
             const moKeys = Object.keys(lease.moveOutChecklist) as (keyof MoveOutChecklist)[];
             const maxLen = Math.max(miKeys.length, moKeys.length);
