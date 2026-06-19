@@ -518,6 +518,12 @@ export default function LeaseDetail() {
       notes: endNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[End] ${endNotesInput}` : lease.notes,
     };
     updateLease(updatedLease);
+    logLeaseStatusChange({
+      leaseId: lease.id, portfolioId: portfolioIdForLogs,
+      fromStage: lease.lifecycleStage, toStage: "ended",
+      reason: endReasonInput || "ended",
+      notes: endNotesInput || null,
+    });
     if (endFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
       updateUnit({ ...unit, currentStatus: "vacant", availableFrom: updatedLease.endDate });
     }
@@ -574,6 +580,12 @@ export default function LeaseDetail() {
       endDate: termDateInput,
       terminationReason: termReasonInput,
       notes: termNotesInput ? `${lease.notes}${lease.notes ? "\n" : ""}[Terminate] ${termNotesInput}` : lease.notes,
+    });
+    logLeaseStatusChange({
+      leaseId: lease.id, portfolioId: portfolioIdForLogs,
+      fromStage: lease.lifecycleStage, toStage: "terminated",
+      reason: termReasonInput || "terminated",
+      notes: termNotesInput || null,
     });
     if (termFreeUnit && unit && unit.currentStatus !== "vacant" && unit.currentStatus !== "archived") {
       updateUnit({ ...unit, currentStatus: "vacant", availableFrom: termDateInput });
