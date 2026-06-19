@@ -247,10 +247,11 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
     };
     updateLease({ ...lease, ...formToPersist });
     persistAssignments(lease.id);
+    const property = properties.find(p => p.id === formToPersist.propertyId);
     if (formToPersist.lifecycleStage !== lease.lifecycleStage) {
       void logLeaseStatusChange({
         leaseId: lease.id,
-        portfolioId: lease.portfolioId ?? "",
+        portfolioId: property?.portfolioId ?? "",
         fromStage: lease.lifecycleStage,
         toStage: formToPersist.lifecycleStage,
         reason: "edited",
