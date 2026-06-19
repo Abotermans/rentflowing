@@ -79,7 +79,10 @@ function RentRollReport() {
 
   const doExport = () => exportToCSV("rent-roll", ["Reference", "Property", "Unit", "Tenant", "Rent", "Charges", "Total", "Deposit Status"], data.map(d => [
     d.l.leaseReference, d.prop?.name ?? "", d.unit?.unitCode ?? "", d.tenant ? getTenantFullName(d.tenant) : "",
-    String(d.l.monthlyRent), String(d.l.monthlyCharges), String(d.total), d.guarantee?.status ?? "none",
+    formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale),
+    formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale),
+    formatCurrency(d.total, d.prop?.currencyCode, d.prop?.locale),
+    d.guarantee?.status ?? "none",
   ]));
 
   return (
@@ -158,7 +161,8 @@ function OccupancyReport() {
 
   const doExport = () => exportToCSV("occupancy", ["Unit", "Property", "Type", "Status", "Tenant", "Rent"], data.map(d => [
     d.u.unitCode, d.prop?.name ?? "", d.u.unitType, d.u.currentStatus,
-    d.tenant ? getTenantFullName(d.tenant) : "", d.lease ? String(d.lease.monthlyRent) : "",
+    d.tenant ? getTenantFullName(d.tenant) : "",
+    d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "",
   ]));
 
   return (
@@ -242,7 +246,8 @@ function OverdueReport() {
 
   const doExport = () => exportToCSV("overdue", ["Tenant", "Lease", "Property", "Overdue", "Outstanding"], data.map(d => [
     d.tenant ? getTenantFullName(d.tenant) : "", d.lease?.leaseReference ?? "", d.prop?.name ?? "",
-    String(d.overdue), String(d.outstanding),
+    formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale),
+    formatCurrency(d.outstanding, d.prop?.currencyCode, d.prop?.locale),
   ]));
 
   return (
@@ -383,7 +388,10 @@ function DepositsReport() {
 
   const doExport = () => exportToCSV("deposits", ["Lease", "Tenant", "Property", "Type", "Expected", "Received", "Status"], data.map(d => [
     d.lease?.leaseReference ?? "", d.tenant ? getTenantFullName(d.tenant) : "", d.prop?.name ?? "",
-    GUARANTEE_TYPE_LABELS[d.g.type], String(d.g.expectedAmount), String(d.g.receivedAmount), d.g.status,
+    GUARANTEE_TYPE_LABELS[d.g.type],
+    formatCurrency(d.g.expectedAmount, d.prop?.currencyCode, d.prop?.locale),
+    formatCurrency(d.g.receivedAmount, d.prop?.currencyCode, d.prop?.locale),
+    d.g.status,
   ]));
 
   return (
