@@ -98,6 +98,8 @@ export default function LeaseDetail() {
   } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const { currentPortfolio } = usePortfolio();
+  const showOccupancyOps = !!currentPortfolio?.show_occupancy_operations;
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
