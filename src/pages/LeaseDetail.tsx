@@ -1047,6 +1047,7 @@ export default function LeaseDetail() {
           title={t("leaseDetail.noGuaranteeBanner").replace("{amount}", formatCurrency(lease.depositOrGuaranteeAmount, currency, locale))}
           actions={
             <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
               {t("leaseDetail.addGuaranteeLink")}
             </Button>
           }
