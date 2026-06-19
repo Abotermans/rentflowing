@@ -924,6 +924,35 @@ export default function LeaseDetail() {
 
       {/* Banner stack — every banner shares the LeaseBanner shell for visual consistency */}
       <div className="space-y-3">
+      {lease.noticeGiven && lease.lifecycleStage !== "ended" && lease.lifecycleStage !== "terminated" && (
+        <LeaseBanner
+          tone="info"
+          icon={Bell}
+          title={t("leaseDetail.underNotice")}
+          description={
+            <>
+              {lease.noticeDate && <>{t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
+              {lease.noticeDate && lease.intendedMoveOutDate && " · "}
+              {lease.intendedMoveOutDate && <>{t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
+            </>
+          }
+          actions={
+            !lease.moveOutActualDate && (
+              <>
+                <Button variant="outline" size="sm" onClick={openNoticeForm}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  {t("detail.editNotice")}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleCancelNotice}>
+                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                  {t("lease.cancelNotice")}
+                </Button>
+              </>
+            )
+          }
+        />
+      )}
+
       {(() => {
         // Build a single mapping from a blocker/warning issue code to the
         // dedicated user action (opens a modal or scrolls to a section).
@@ -1020,34 +1049,6 @@ export default function LeaseDetail() {
             <Button variant="outline" size="sm" onClick={openGuaranteeForm}>
               {t("leaseDetail.addGuaranteeLink")}
             </Button>
-          }
-        />
-      )}
-      {lease.noticeGiven && lease.lifecycleStage !== "ended" && lease.lifecycleStage !== "terminated" && (
-        <LeaseBanner
-          tone="info"
-          icon={Bell}
-          title={t("leaseDetail.underNotice")}
-          description={
-            <>
-              {lease.noticeDate && <>{t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-              {lease.noticeDate && lease.intendedMoveOutDate && " · "}
-              {lease.intendedMoveOutDate && <>{t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
-            </>
-          }
-          actions={
-            !lease.moveOutActualDate && (
-              <>
-                <Button variant="outline" size="sm" onClick={openNoticeForm}>
-                  <Pencil className="h-3.5 w-3.5 mr-1" />
-                  {t("detail.editNotice")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleCancelNotice}>
-                  <XCircle className="h-3.5 w-3.5 mr-1" />
-                  {t("lease.cancelNotice")}
-                </Button>
-              </>
-            )
           }
         />
       )}
