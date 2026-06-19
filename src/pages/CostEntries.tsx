@@ -7,17 +7,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
-import { PROPERTY_ICON, COST_NATURE_ICONS, COST_ENTRY_STATUS_ICONS, RECOVERY_TYPE_ICONS } from "@/lib/filterIcons";
-import { Tag, CircleDot, Shield } from "lucide-react";
+import { PROPERTY_ICON, COST_NATURE_ICONS, RECOVERY_TYPE_ICONS } from "@/lib/filterIcons";
+import { Tag, Shield } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Receipt, Plus, Search, Pencil, Trash2 } from "lucide-react";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
-  CostEntry, CostEntryStatus, CostFrequency, CostNature, RecoveryType,
-  COST_NATURE_LABELS, COST_ENTRY_STATUS_LABELS, RECOVERY_TYPE_LABELS,
+  CostEntry, CostFrequency, CostNature, RecoveryType,
+  COST_NATURE_LABELS, RECOVERY_TYPE_LABELS,
 } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
@@ -38,17 +37,15 @@ export default function CostEntries() {
   const natureLabel = (n: CostNature) => t(`costs.nature.${n}` as TranslationKey);
   const recoveryLabel = (r: RecoveryType) => t(`costs.recovery.${r}` as TranslationKey);
   const frequencyLabel = (f: CostFrequency) => t(`costs.frequency.${f}` as TranslationKey);
-  const statusLabel = (s: CostEntryStatus) => t(`costs.entryStatus.${s}` as TranslationKey);
 
   const [search, setSearch] = useState("");
   const [filterProperty, setFilterProperty] = useState<string[]>([]);
   const [filterNature, setFilterNature] = useState<string[]>([]);
   const [filterRecovery, setFilterRecovery] = useState<string[]>([]);
-  const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<CostEntry | null>(null);
 
-  type ESortKey = "label" | "category" | "nature" | "property" | "unit" | "frequency" | "amount" | "recovery" | "status";
+  type ESortKey = "label" | "category" | "nature" | "property" | "unit" | "frequency" | "amount" | "recovery" | "period";
   const { sort, toggle } = useTableSort<ESortKey>();
 
   const openAdd = () => { setEditing(null); setSheetOpen(true); };
@@ -81,7 +78,6 @@ export default function CostEntries() {
       if (!cat || !filterNature.includes(cat.nature)) return false;
     }
     if (filterRecovery.length > 0 && !filterRecovery.includes(e.recoveryType)) return false;
-    if (filterStatus.length > 0 && !filterStatus.includes(e.status)) return false;
     return true;
   });
 
@@ -98,15 +94,11 @@ export default function CostEntries() {
       case "frequency": return frequencyLabel(e.frequency);
       case "amount": return e.amount;
       case "recovery": return recoveryLabel(e.recoveryType);
-      case "status": return e.status;
+      case "period": return e.startDate;
     }
   });
 
   const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
-
-  const statusMap: Record<CostEntryStatus, string> = {
-    draft: "draft", active: "active", cancelled: "cancelled", closed: "closed",
-  };
 
   return (
     <div className="space-y-6">
@@ -151,15 +143,6 @@ export default function CostEntries() {
             value: r, label: recoveryLabel(r), icon: RECOVERY_TYPE_ICONS[r],
           }))}
         />
-        <MultiSelectFilter
-          label={t("filter.status")}
-          icon={CircleDot}
-          values={filterStatus}
-          onChange={setFilterStatus}
-          options={(Object.keys(COST_ENTRY_STATUS_LABELS) as CostEntryStatus[]).map(s => ({
-            value: s, label: statusLabel(s), icon: COST_ENTRY_STATUS_ICONS[s],
-          }))}
-        />
       </div>
 
       {/* Table */}
@@ -179,7 +162,7 @@ export default function CostEntries() {
                   <SortableTableHead sortKey="frequency" sort={sort} onSort={toggle}>{t("costs.frequency")}</SortableTableHead>
                   <SortableTableHead sortKey="amount" sort={sort} onSort={toggle} align="right">{t("costs.amount")}</SortableTableHead>
                   <SortableTableHead sortKey="recovery" sort={sort} onSort={toggle}>{t("costs.recoveryType")}</SortableTableHead>
-                  <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
+                  <SortableTableHead sortKey="period" sort={sort} onSort={toggle}>{t("costs.period")}</SortableTableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
@@ -198,7 +181,9 @@ export default function CostEntries() {
                       <TableCell className="text-muted-foreground">{frequencyLabel(e.frequency)}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{formatCurrency(e.amount, e.currencyCode)}</TableCell>
                       <TableCell className="text-muted-foreground">{recoveryLabel(e.recoveryType)}</TableCell>
-                      <TableCell><StatusBadge status={statusMap[e.status] as any} /></TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
+                        {formatDate(e.startDate)} – {e.endDate ? formatDate(e.endDate) : "—"}
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}>

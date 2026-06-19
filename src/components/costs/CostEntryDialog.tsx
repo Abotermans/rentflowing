@@ -198,7 +198,7 @@ export function CostEntryDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>{t("costs.startDate")}</Label>
+              <Label>{t("costs.startDate")} *</Label>
               <Input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
             </div>
             <div className="space-y-2">
