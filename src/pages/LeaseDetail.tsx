@@ -28,7 +28,7 @@ import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatu
 import { ASSIGNMENT_TYPE_LABELS, isAncillaryAssignmentType } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
-import { formatDate, formatCurrency, formatPeriodMonth } from "@/lib/formatters";
+import { formatDate, formatCurrency, formatPeriodMonth, formatNumber } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { useTableSort, useSortedRows } from "@/hooks/use-table-sort";
@@ -1735,12 +1735,12 @@ export default function LeaseDetail() {
                 <div className="flex items-center gap-1.5 text-foreground"><Zap className="h-3.5 w-3.5 text-warning" />{t("detail.electricity")}</div>
                 <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-10" value={lease.moveInMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span></div>
                 <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-10" value={lease.moveOutMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span></div>
-                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInMeterReading && lease.moveOutMeterReading ? `${(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading)).toLocaleString()} kWh` : "—"}</div>
+                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInMeterReading && lease.moveOutMeterReading ? formatNumber(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading), { unit: "kWh" }) : "—"}</div>
 
                 <div className="flex items-center gap-1.5 text-foreground"><Droplet className="h-3.5 w-3.5 text-primary" />{t("detail.water")}</div>
                 <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-8" value={lease.moveInWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInWaterMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span></div>
                 <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-8" value={lease.moveOutWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutWaterMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span></div>
-                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInWaterMeterReading && lease.moveOutWaterMeterReading ? `${(parseFloat(lease.moveOutWaterMeterReading) - parseFloat(lease.moveInWaterMeterReading)).toLocaleString()} m³` : "—"}</div>
+                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInWaterMeterReading && lease.moveOutWaterMeterReading ? formatNumber(parseFloat(lease.moveOutWaterMeterReading) - parseFloat(lease.moveInWaterMeterReading), { unit: "m³" }) : "—"}</div>
               </div>
             </CardContent>
           </Card>

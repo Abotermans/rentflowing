@@ -30,6 +30,7 @@ import type { Lease, LeaseUnitAssignmentType } from "@/types";
 import { ASSIGNMENT_TYPE_LABELS } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
+import { formatCurrency } from "@/lib/formatters";
 
 type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">;
 
@@ -613,8 +614,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                     {(currentUnits.length > 0 || unitsToAdd.length > 0) && (
                       <TableRow className="h-9 border-t-2 border-t-border font-medium bg-muted/30">
                         <TableCell colSpan={2} className="py-1 text-xs">{t("common.total")}</TableCell>
-                        <TableCell className="py-1 text-xs text-right tabular-nums">{totalRent.toFixed(2)}</TableCell>
-                        <TableCell className="py-1 text-xs text-right tabular-nums">{totalCharges.toFixed(2)}</TableCell>
+                        <TableCell className="py-1 text-xs text-right tabular-nums">{formatCurrency(totalRent, "EUR")}</TableCell>
+                        <TableCell className="py-1 text-xs text-right tabular-nums">{formatCurrency(totalCharges, "EUR")}</TableCell>
                         <TableCell className="py-1" />
                         <TableCell className="py-1" />
                       </TableRow>
