@@ -2285,6 +2285,14 @@ export default function LeaseDetail() {
         />
       )}
 
+      <LeaseStatusHistoryDialog
+        open={statusHistoryOpen}
+        onOpenChange={setStatusHistoryOpen}
+        leaseId={lease.id}
+        leaseReference={lease.leaseReference}
+        currentStage={lease.lifecycleStage}
+      />
+
       {/* End Lease Dialog */}
       <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
         <DialogContent className="max-w-md">
