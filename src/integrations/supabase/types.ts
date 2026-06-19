@@ -834,6 +834,60 @@ export type Database = {
           },
         ]
       }
+      lease_status_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          created_at: string
+          from_stage: string | null
+          id: string
+          lease_id: string
+          notes: string | null
+          portfolio_id: string
+          reason: string | null
+          to_stage: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          created_at?: string
+          from_stage?: string | null
+          id?: string
+          lease_id: string
+          notes?: string | null
+          portfolio_id: string
+          reason?: string | null
+          to_stage: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          created_at?: string
+          from_stage?: string | null
+          id?: string
+          lease_id?: string
+          notes?: string | null
+          portfolio_id?: string
+          reason?: string | null
+          to_stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lease_status_changes_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lease_status_changes_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lease_unit_assignments: {
         Row: {
           assignment_type: string
