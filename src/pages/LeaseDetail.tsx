@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
+import { usePortfolio } from "@/context/PortfolioContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
