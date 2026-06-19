@@ -1397,6 +1397,7 @@ const en = {
 
   // Advance billing cycles
   "advanceCycle.title": "Advance billing",
+  "advanceCycle.frequency": "Frequency",
   "advanceCycle.everyN": "every {n} months",
   "advanceCycle.paidFrom": "Paid from",
   "advanceCycle.paidUntil": "Paid until",
@@ -3115,6 +3116,7 @@ const fr: TranslationKeys = {
 
   // Advance billing cycles
   "advanceCycle.title": "Facturation à échéance",
+  "advanceCycle.frequency": "Fréquence",
   "advanceCycle.everyN": "tous les {n} mois",
   "advanceCycle.paidFrom": "Payé depuis le",
   "advanceCycle.paidUntil": "Payé jusqu'au",
