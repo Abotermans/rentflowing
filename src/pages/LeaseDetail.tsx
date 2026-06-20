@@ -997,6 +997,7 @@ export default function LeaseDetail() {
                     title={b.message}
                     actions={action && (
                       <Button variant="outline" size="sm" onClick={action.onClick}>
+                        {action.icon && <action.icon className="h-4 w-4 mr-1.5" />}
                         {action.label}
                       </Button>
                     )}
