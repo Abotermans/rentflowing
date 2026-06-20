@@ -932,8 +932,8 @@ export default function LeaseDetail() {
           description={
             <>
               {lease.noticeDate && <>{t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-              {lease.noticeDate && lease.intendedMoveOutDate && " · "}
-              {lease.intendedMoveOutDate && <>{t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
+              {showOccupancyOps && lease.noticeDate && lease.intendedMoveOutDate && " · "}
+              {showOccupancyOps && lease.intendedMoveOutDate && <>{t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
             </>
           }
           actions={
