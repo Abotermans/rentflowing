@@ -956,23 +956,24 @@ export default function LeaseDetail() {
       {(() => {
         // Build a single mapping from a blocker/warning issue code to the
         // dedicated user action (opens a modal or scrolls to a section).
-        const issueAction = (code: string): { label: string; onClick: () => void } | null => {
+        const issueAction = (code: string): { label: string; onClick: () => void; icon?: LucideIcon } | null => {
           switch (code) {
             case "LEASE_NO_TENANTS":
             case "LEASE_BILLING_TENANT_INVALID":
             case "LEASE_NO_UNITS":
             case "LEASE_PROPERTY_UNIT_MISMATCH":
             case "LEASE_UNIT_ALREADY_ACTIVE":
-              return { label: t("lease.action.editLease"), onClick: () => setEditDialogOpen(true) };
+              return { label: t("lease.action.editLease"), onClick: () => setEditDialogOpen(true), icon: Pencil };
             case "LEASE_NO_DEPOSIT":
-              return { label: t("leaseDetail.addGuaranteeLink"), onClick: openGuaranteeForm };
+              return { label: t("leaseDetail.addGuaranteeLink"), onClick: openGuaranteeForm, icon: Plus };
             case "LEASE_NO_MOVE_IN":
               return {
                 label: t("lease.action.scheduleMoveIn"),
                 onClick: () => openMoveInForm({ mode: "schedule" }),
+                icon: CalendarCheck,
               };
             case "LEASE_SIGNED_DATE_REQUIRED":
-              return { label: t("lease.action.setSignedDate"), onClick: () => setEditDialogOpen(true) };
+              return { label: t("lease.action.setSignedDate"), onClick: () => setEditDialogOpen(true), icon: Pencil };
             default:
               return null;
           }
