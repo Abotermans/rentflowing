@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn, FileText, History } from "lucide-react";
+import { ArrowLeft, Clock, Plus, AlertTriangle, Bell, CheckCircle2, XCircle, ChevronDown, MoreVertical, Trash2, Undo2, Zap, Droplet, RefreshCw, Mail, Phone, Pencil, FileSignature, LogOut, LogIn, FileText, History, CalendarCheck } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -956,23 +956,24 @@ export default function LeaseDetail() {
       {(() => {
         // Build a single mapping from a blocker/warning issue code to the
         // dedicated user action (opens a modal or scrolls to a section).
-        const issueAction = (code: string): { label: string; onClick: () => void } | null => {
+        const issueAction = (code: string): { label: string; onClick: () => void; icon?: LucideIcon } | null => {
           switch (code) {
             case "LEASE_NO_TENANTS":
             case "LEASE_BILLING_TENANT_INVALID":
             case "LEASE_NO_UNITS":
             case "LEASE_PROPERTY_UNIT_MISMATCH":
             case "LEASE_UNIT_ALREADY_ACTIVE":
-              return { label: t("lease.action.editLease"), onClick: () => setEditDialogOpen(true) };
+              return { label: t("lease.action.editLease"), onClick: () => setEditDialogOpen(true), icon: Pencil };
             case "LEASE_NO_DEPOSIT":
-              return { label: t("leaseDetail.addGuaranteeLink"), onClick: openGuaranteeForm };
+              return { label: t("leaseDetail.addGuaranteeLink"), onClick: openGuaranteeForm, icon: Plus };
             case "LEASE_NO_MOVE_IN":
               return {
                 label: t("lease.action.scheduleMoveIn"),
                 onClick: () => openMoveInForm({ mode: "schedule" }),
+                icon: CalendarCheck,
               };
             case "LEASE_SIGNED_DATE_REQUIRED":
-              return { label: t("lease.action.setSignedDate"), onClick: () => setEditDialogOpen(true) };
+              return { label: t("lease.action.setSignedDate"), onClick: () => setEditDialogOpen(true), icon: Pencil };
             default:
               return null;
           }
@@ -996,6 +997,7 @@ export default function LeaseDetail() {
                     title={b.message}
                     actions={action && (
                       <Button variant="outline" size="sm" onClick={action.onClick}>
+                        {action.icon && <action.icon className="h-4 w-4 mr-1.5" />}
                         {action.label}
                       </Button>
                     )}
@@ -1012,6 +1014,7 @@ export default function LeaseDetail() {
                     title={w.message}
                     actions={action && (
                       <Button variant="outline" size="sm" onClick={action.onClick}>
+                        {action.icon && <action.icon className="h-4 w-4 mr-1.5" />}
                         {action.label}
                       </Button>
                     )}
