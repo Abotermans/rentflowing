@@ -983,7 +983,10 @@ export default function LeaseDetail() {
           headerText: string,
           check: ValidationResult,
         ) => {
-          if (check.blockers.length === 0 && check.warnings.length === 0) return null;
+          const visibleWarnings = check.warnings.filter(
+            w => showOccupancyOps || w.code !== "LEASE_NO_MOVE_IN",
+          );
+          if (check.blockers.length === 0 && visibleWarnings.length === 0) return null;
           return (
             <div className="space-y-2">
               {/* Removed header text per request */}
@@ -1004,7 +1007,7 @@ export default function LeaseDetail() {
                   />
                 );
               })}
-              {check.warnings.map(w => {
+              {visibleWarnings.map(w => {
                 const action = issueAction(w.code);
                 return (
                   <LeaseBanner
