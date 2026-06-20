@@ -1099,6 +1099,7 @@ export default function LeaseDetail() {
       })()}
 
       {(() => {
+        if (!showOccupancyOps) return null;
         const stage = lease.lifecycleStage;
         if (stage !== "pending-signature" && stage !== "signed" && stage !== "active") return null;
         const checklistValues = Object.values(lease.moveInChecklist);
