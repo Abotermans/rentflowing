@@ -1604,7 +1604,16 @@ export default function LeaseDetail() {
               {guarantee.notes && <div className="col-span-full"><p className="text-xs text-muted-foreground">{t("common.notes")}</p><p className="text-sm text-foreground">{guarantee.notes}</p></div>}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">{t("detail.noGuaranteeDesc")}</p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{t("table.expected")}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {effDeposit != null ? formatCurrency(effDeposit, currency, locale) : "—"}
+                  {amSuffix(depositAmNum)}
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">{t("detail.noGuaranteeDesc")}</p>
+            </div>
           )}
         </CardContent>
         </CollapsibleContent>
