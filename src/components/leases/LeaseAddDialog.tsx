@@ -515,7 +515,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                     );
                   })}
                   <TableRow className="bg-muted/30 font-medium">
-                    <TableCell colSpan={2} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    <TableCell colSpan={4} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
                       {t("leases.units.grandTotal")}
                     </TableCell>
                     <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
