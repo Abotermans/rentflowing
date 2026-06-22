@@ -988,7 +988,7 @@ export default function LeaseDetail() {
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   {t("detail.editNotice")}
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleCancelNotice}>
+                <Button variant="outline" size="sm" onClick={() => setCancelNoticeConfirmOpen(true)}>
                   <XCircle className="h-3.5 w-3.5 mr-1" />
                   {t("lease.cancelNotice")}
                 </Button>
@@ -2140,7 +2140,21 @@ export default function LeaseDetail() {
           <div className="space-y-4 mt-4">
             <div><Label>{t("detail.noticeDate")}</Label><Input type="date" value={nDate} max={nNewEnd || undefined} onChange={e => handleNoticeDateChange(e.target.value)} /></div>
             <div>
-              <Label>{t("leaseDialog.newEndDate")}</Label>
+              <Label className="flex items-center gap-1.5">
+                {t("leaseDialog.newEndDate")}
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="info">
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs text-xs">
+                      {t("leaseDialog.newEndDateTooltip")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Label>
               <Input type="date" value={nNewEnd} min={nDate || undefined} onChange={e => { setNNewEnd(e.target.value); setNNewEndTouched(true); }} />
               {!nNewEndTouched && <p className="text-[11px] text-muted-foreground mt-1">{t("leaseDialog.newEndDateHint")}</p>}
             </div>
