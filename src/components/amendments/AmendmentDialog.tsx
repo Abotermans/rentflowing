@@ -332,9 +332,11 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     const coverageEnd = currentTerms?.endDate ?? lease.endDate;
     if (!coverageEnd) return false;
     if (effectiveDate <= coverageEnd) return false;
-    if (newEndDate && newEndDate >= effectiveDate) return false;
+    // If any per-unit end date edit extends past the effective date, gap is bridged.
+    const maxNewEnd = Object.values(editedEndDates).reduce((m, d) => (d && d > m ? d : m), "");
+    if (maxNewEnd && maxNewEnd >= effectiveDate) return false;
     return true;
-  }, [effectiveDate, newEndDate, lease, integrityState]);
+  }, [effectiveDate, editedEndDates, lease, integrityState]);
 
   const save = (status: AmendmentStatus) => {
     if (!canSubmit) return;
@@ -427,7 +429,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             <Label>{t("amendments.titleField")} <span className="text-destructive">*</span></Label>
             <Input className="h-8" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
-          <div className="col-span-2 grid grid-cols-3 gap-3">
+          <div className="col-span-2 grid grid-cols-2 gap-3">
             <div>
               <Label>{t("amendments.effectiveDate")} <span className="text-destructive">*</span></Label>
               <div className="flex items-center gap-2">
@@ -454,10 +456,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
             <div>
               <Label>{t("amendments.signedDate")}</Label>
               <Input className="h-8" type="date" value={signedDate} onChange={e => setSignedDate(e.target.value)} />
-            </div>
-            <div>
-              <Label>{t("amendments.newEndDate")}</Label>
-              <Input className="h-8" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
             </div>
           </div>
           <div className="col-span-2">
