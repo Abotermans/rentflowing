@@ -27,14 +27,13 @@ import { AlertTriangle, Plus, Minus, X, ChevronDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { Lease, LeaseUnitAssignmentType } from "@/types";
-import { ASSIGNMENT_TYPE_LABELS } from "@/types";
+import { deriveAssignmentTypeFromUnit } from "@/lib/leaseAssignments";
 import type { TranslationKey } from "@/i18n/translations";
 import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
 import { formatCurrency } from "@/lib/formatters";
+import { Info } from "lucide-react";
 
 type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">;
-
-const ANC_ROLES: LeaseUnitAssignmentType[] = ["parking", "cellar", "storage", "office-secondary", "commercial-addon", "ancillary", "other"];
 
 function deriveAmendmentType(changes: ChangeDraft[], lease: Lease): AmendmentType {
   const cats = new Set<AmendmentType>();
@@ -46,6 +45,10 @@ function deriveAmendmentType(changes: ChangeDraft[], lease: Lease): AmendmentTyp
       case "unitChargesShare": cats.add("charges-change"); break;
       case "leaseEndDate":
         cats.add(String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening"); break;
+      case "unitEndDate": {
+        const nv = String(c.newValue ?? "");
+        cats.add(nv > lease.endDate ? "term-extension" : "term-shortening"); break;
+      }
       case "depositAmount": cats.add("deposit-change"); break;
       case "noticePeriodText": cats.add("notice-change"); break;
       case "clauseSummary": cats.add("clause-change"); break;
