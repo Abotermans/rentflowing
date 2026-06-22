@@ -405,7 +405,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[760px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <DialogContent className="w-[1080px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("leases.edit")}</DialogTitle>
           </DialogHeader>
