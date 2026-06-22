@@ -338,6 +338,8 @@ export interface Lease {
   noticeDate: string | null;
   intendedMoveOutDate: string | null;
   terminationReason: string | null;
+  /** End date snapshot taken when a notice is registered, so cancelling restores it. */
+  preNoticeEndDate?: string | null;
   // Move-in fields
   moveInScheduledDate: string | null;
   moveInActualDate: string | null;
