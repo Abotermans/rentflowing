@@ -420,6 +420,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                   <TableRow>
                     <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
                     <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
+                    <TableHead className="h-9 w-auto">{t("leases.col.start")}</TableHead>
+                    <TableHead className="h-9 w-auto">{t("leases.col.end")}</TableHead>
                     <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
                     {!allInclusive && (
                       <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
@@ -460,6 +462,22 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                               ))}
                             </SelectContent>
                           </Select>
+                        </TableCell>
+                        <TableCell className="py-1.5">
+                          <Input
+                            type="date"
+                            value={row.startDate}
+                            onChange={ev => updateUnitRow(idx, { startDate: ev.target.value })}
+                            className="h-8 w-[140px]"
+                          />
+                        </TableCell>
+                        <TableCell className="py-1.5">
+                          <Input
+                            type="date"
+                            value={row.endDate ?? ""}
+                            onChange={ev => updateUnitRow(idx, { endDate: ev.target.value || null })}
+                            className="h-8 w-[140px]"
+                          />
                         </TableCell>
                         <TableCell className="py-1.5">
                           <div className="flex items-center gap-1 justify-end">
