@@ -2171,7 +2171,7 @@ export default function LeaseDetail() {
             <AlertDialogDescription>{t("lease.cancelNoticeConfirmDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setCancelNoticeConfirmOpen(false); handleCancelNotice(); }}>
               {t("lease.cancelNotice")}
             </AlertDialogAction>
