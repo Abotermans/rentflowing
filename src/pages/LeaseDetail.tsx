@@ -49,6 +49,7 @@ import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
 import { newId } from "@/lib/repo";
 import type { LeasePayerAccount } from "@/types";
 import { validateDateOrder } from "@/lib/dateValidation";
+import { parseNoticeText, addNoticePeriod } from "@/lib/noticePeriod";
 
 const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
   "cash-deposit": "guarantee.type.cashDeposit",
@@ -97,6 +98,7 @@ export default function LeaseDetail() {
     addGuarantee, updateGuarantee, updateLease, updateUnit, deleteLease,
     createCashReceipt, getTenantUnappliedCredit,
     getLeaseAssignments,
+    setLeaseAssignmentsEndDate,
   } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
@@ -145,7 +147,8 @@ export default function LeaseDetail() {
   // Notice form
   const [noticeSheetOpen, setNoticeSheetOpen] = useState(false);
   const [nDate, setNDate] = useState("");
-  const [nMoveOut, setNMoveOut] = useState("");
+  const [nNewEnd, setNNewEnd] = useState("");
+  const [nNewEndTouched, setNNewEndTouched] = useState(false);
   const [nReason, setNReason] = useState("");
 
   // End / Terminate / Renew dialogs
@@ -342,7 +345,33 @@ export default function LeaseDetail() {
     setGuaranteeSheetOpen(false);
   };
 
-  const openNoticeForm = () => { setNDate(lease.noticeDate ?? ""); setNMoveOut(lease.intendedMoveOutDate ?? ""); setNReason(lease.terminationReason ?? ""); setNoticeSheetOpen(true); };
+  const openNoticeForm = () => {
+    const initialDate = lease.noticeDate ?? new Date().toISOString().slice(0, 10);
+    setNDate(initialDate);
+    // When already under notice, pre-fill with the current lease end date
+    // (which IS the post-notice end date). Otherwise auto-derive from notice period.
+    if (lease.noticeGiven) {
+      setNNewEnd(lease.endDate ?? "");
+      setNNewEndTouched(true);
+    } else {
+      const parsed = parseNoticeText(effNotice || lease.noticePeriodText || "");
+      const derived = parsed.value ? addNoticePeriod(initialDate, parsed.value, parsed.unit) : "";
+      setNNewEnd(derived);
+      setNNewEndTouched(false);
+    }
+    setNReason(lease.terminationReason ?? "");
+    setNoticeSheetOpen(true);
+  };
+
+  // Re-derive the new end date when the user edits the notice date,
+  // unless they have manually touched the end-date field.
+  const handleNoticeDateChange = (v: string) => {
+    setNDate(v);
+    if (!nNewEndTouched && !lease.noticeGiven) {
+      const parsed = parseNoticeText(effNotice || lease.noticePeriodText || "");
+      if (parsed.value && v) setNNewEnd(addNoticePeriod(v, parsed.value, parsed.unit));
+    }
+  };
 
   // === Payer accounts ===
   const openPayerForm = (payerId: string | null) => {
@@ -393,20 +422,28 @@ export default function LeaseDetail() {
 
   const handleSaveNotice = () => {
     const dateErrors = validateDateOrder([
-      { earlier: nDate, later: nMoveOut, message: t("validation.dates.intendedMoveOutBeforeNotice") },
+      { earlier: nDate, later: nNewEnd, message: t("validation.dates.newEndBeforeNotice") },
     ]);
     if (dateErrors.length > 0) {
       toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
       return;
     }
+    const newEnd = nNewEnd || null;
+    // Snapshot the pre-notice end date only the first time, so successive
+    // edits to the notice keep the original end date for restore-on-cancel.
+    const snapshot = lease.preNoticeEndDate ?? (lease.noticeGiven ? lease.preNoticeEndDate ?? null : lease.endDate);
     updateLease({
       ...lease,
       noticeGiven: true,
       noticeDate: nDate || null,
-      intendedMoveOutDate: nMoveOut || null,
+      intendedMoveOutDate: newEnd,
       terminationReason: nReason || null,
-      ...(lease.moveOutActualDate ? {} : { moveOutScheduledDate: nMoveOut || null }),
+      endDate: newEnd ?? lease.endDate,
+      preNoticeEndDate: snapshot,
+      ...(lease.moveOutActualDate ? {} : { moveOutScheduledDate: newEnd }),
     });
+    // Cascade the new end date to every unit assignment on this lease.
+    setLeaseAssignmentsEndDate(lease.id, newEnd);
     toast({ title: t("leaseToast.noticeRegistered") });
     setNoticeSheetOpen(false);
   };
@@ -631,14 +668,19 @@ export default function LeaseDetail() {
 
   const handleCancelNotice = () => {
     const clearScheduled = !lease.moveOutActualDate;
+    const restoreEnd = lease.preNoticeEndDate ?? lease.endDate;
     updateLease({
       ...lease,
       noticeGiven: false,
       noticeDate: null,
       intendedMoveOutDate: null,
       terminationReason: null,
+      endDate: restoreEnd,
+      preNoticeEndDate: null,
       ...(clearScheduled ? { moveOutScheduledDate: null } : {}),
     });
+    // Restore unit assignment end dates to the pre-notice value.
+    setLeaseAssignmentsEndDate(lease.id, restoreEnd || null);
     toast({ title: t("lease.toastNoticeCancelled") });
   };
 
@@ -932,8 +974,8 @@ export default function LeaseDetail() {
           description={
             <>
               {lease.noticeDate && <>{t("leaseDetail.noticeGivenOn").replace("{date}", formatDate(lease.noticeDate, locale))}</>}
-              {showOccupancyOps && lease.noticeDate && lease.intendedMoveOutDate && " · "}
-              {showOccupancyOps && lease.intendedMoveOutDate && <>{t("detail.intendedMoveOut")}: {formatDate(lease.intendedMoveOutDate, locale)}</>}
+              {lease.noticeDate && lease.endDate && " · "}
+              {lease.endDate && <>{t("detail.newEndDate")}: {formatDate(lease.endDate, locale)}</>}
             </>
           }
           actions={
@@ -2091,10 +2133,14 @@ export default function LeaseDetail() {
       {/* Notice Sheet */}
       <Dialog open={noticeSheetOpen} onOpenChange={setNoticeSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{t("leaseDialog.registerNotice")}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{lease.noticeGiven ? t("detail.editNotice") : t("leaseDialog.registerNotice")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div><Label>{t("detail.noticeDate")}</Label><Input type="date" value={nDate} onChange={e => setNDate(e.target.value)} /></div>
-            <div><Label>{t("leaseDialog.intendedMoveOut")}</Label><Input type="date" value={nMoveOut} onChange={e => setNMoveOut(e.target.value)} /></div>
+            <div><Label>{t("detail.noticeDate")}</Label><Input type="date" value={nDate} max={nNewEnd || undefined} onChange={e => handleNoticeDateChange(e.target.value)} /></div>
+            <div>
+              <Label>{t("leaseDialog.newEndDate")}</Label>
+              <Input type="date" value={nNewEnd} min={nDate || undefined} onChange={e => { setNNewEnd(e.target.value); setNNewEndTouched(true); }} />
+              {!nNewEndTouched && <p className="text-[11px] text-muted-foreground mt-1">{t("leaseDialog.newEndDateHint")}</p>}
+            </div>
             <div><Label>{t("detail.reason")}</Label><Textarea value={nReason} onChange={e => setNReason(e.target.value)} rows={2} /></div>
             <Button onClick={handleSaveNotice} className="w-full">{t("leaseDialog.saveNotice")}</Button>
           </div>

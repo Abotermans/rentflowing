@@ -1,54 +1,61 @@
 ## Goal
 
-Make each unit row on a lease carry its own start and end date in the Add/Edit Lease dialogs, persist those dates per assignment, and remove the dialog's generic lease-level Start/End date inputs.
+Reshape the "Register notice" flow on the lease detail page so it captures the **new lease end date** instead of the intended move-out date, and propagate that end date to the lease and to every assigned unit. Cancelling the notice restores the previous end dates.
 
 ## Changes
 
-### 1. Units table in dialogs — add Start / End columns
+### 1. Notice dialog (`src/pages/LeaseDetail.tsx`)
 
-In `src/components/leases/LeaseAddDialog.tsx` and `src/components/leases/LeaseEditDialog.tsx`:
+- Rename the second field from "Intended move-out date" to "New end date" (new translation key, e.g. `leaseDialog.newEndDate`).
+- Default value computation:
+  - When opening the dialog (or when the user edits the notice date), compute `noticeDate + noticePeriod` using the existing `parseNoticeText` helper (`src/lib/noticePeriod.ts`) and the lease's effective `noticePeriodText`.
+  - Pre-fill the field with this computed value if the field is empty or was previously auto-derived; never overwrite a value the user has manually edited.
+  - User can freely modify the date.
+- Validation: new end date must be ≥ notice date and (soft) ≥ today. Keep existing reason field.
 
-- Extend the local `UnitRow` type with `startDate: string` and `endDate: string | null`.
-- New defaults when a row is added:
-  - `startDate` = empty (user must fill); pre-filled from the prefilled unit's current assignment in edit mode, or copied from the first existing row in add mode.
-  - `endDate` = `null` (open-ended).
-- Add two `<TableHead>` cells "Start" and "End" between Role and Rent (compact `h-8` date inputs, same styling as the existing numeric inputs).
-- In edit mode, hydrate each row from the existing `LeaseUnitAssignment.startDate` / `endDate`.
+### 2. Save notice handler (`handleSaveNotice`)
 
-### 2. Remove the generic Start / End date fields
+- Persist `noticeGiven`, `noticeDate`, `terminationReason` as today.
+- New behaviour:
+  - Capture the current `lease.endDate` into a new field `preNoticeEndDate` (only if not already set, so editing the notice twice keeps the original).
+  - Set `lease.endDate = newEndDate`.
+  - Clear `intendedMoveOutDate` (legacy) or set it equal to the new end date for backwards display compatibility — pick clearing.
+  - Update every assignment of this lease in `leaseUnitAssignments` to set `endDate = newEndDate` (overwrite regardless of existing value, including currently-open `null` assignments). This requires a small helper in `AppContext` (e.g. `setLeaseUnitsEndDate(leaseId, endDate)`) that updates all assignments where `leaseId` matches, mirrors via `mirror.update`, and bumps `updatedAt`.
+- Toast unchanged.
 
-- Delete the two `<div>` blocks rendering `leases.startDate` / `leases.endDate` inputs (LeaseAddDialog line 714-715, LeaseEditDialog line 666-667) and the surrounding grid wrapper if it becomes empty.
-- Remove `startDate` / `endDate` from form-level required-field validation. Replace with per-row validation:
-  - Every row must have a `startDate`.
-  - For each row, if `endDate` is set it must be ≥ `startDate` (uses the existing `validateDateOrder` helper / `t("validation.dates.endBeforeStart")`).
-  - `signedDate` (if set) must be ≤ the earliest row `startDate`.
+### 3. Edit notice
 
-### 3. Derive lease-level dates from rows
+- Same dialog reused. When already under notice, pre-fill `nNewEnd` with current `lease.endDate`. Saving overwrites lease end date + unit end dates again (no second snapshot of `preNoticeEndDate`).
 
-The `Lease` entity keeps `startDate` / `endDate` (used by receivables, lifecycle, overlap, banners). They become derived at save time:
+### 4. Cancel notice (`handleCancelNotice`)
 
-- `lease.startDate` = min of all row `startDate`s.
-- `lease.endDate` = max of all row `endDate`s, or `null` if any row is open-ended.
+- Restore `lease.endDate` from `preNoticeEndDate` (fallback: keep current if absent).
+- Restore every assignment's `endDate` to `preNoticeEndDate` value (use the same helper).
+- Clear `noticeGiven`, `noticeDate`, `terminationReason`, `preNoticeEndDate`, and `intendedMoveOutDate`.
 
-Apply this derivation in both dialogs' submit handlers before calling `addLease` / `updateLease`.
+### 5. Banner
 
-### 4. Persist per-unit dates
+- The "Under notice" banner currently shows the intended move-out date. Replace with the new lease end date (`{t("detail.newEndDate")}: …`).
 
-- In the `DraftAssignment[]` passed to `validateLeaseUnits` and in the payload passed to `setLeaseUnits`, replace the current `startDate: form.startDate, endDate: null` with the row's own `startDate` and `endDate`.
-- `setLeaseUnits` and the `lease_unit_assignments` table already accept `startDate` / `endDate` per row (used today by overlap detection), so no schema change is needed.
+### 6. Types & storage
 
-### 5. Translations
+- Add `preNoticeEndDate?: string | null` to the lease type in `src/types/index.ts`.
+- Add the new helper to `AppContext` (signature, mirror upsert, exported in `useAppData`).
+- Add a Supabase migration to add `pre_notice_end_date` column on `leases` and (no schema change needed for `lease_unit_assignments` — `end_date` already exists). Existing repo/mirror mapping for `leases` needs the new column wired.
 
-Add two keys (EN + FR) in `src/i18n/translations.ts`:
-- `leases.col.startDate` → "Start" / "Début"
-- `leases.col.endDate` → "End" / "Fin"
+### 7. i18n
+
+- Add keys (EN/FR): `leaseDialog.newEndDate`, `detail.newEndDate`, `validation.dates.newEndBeforeNotice`.
+- Keep legacy `leaseDialog.intendedMoveOut` for any remaining usage.
+
+## Technical notes
+
+- `parseNoticeText` returns `{ value, unit }` where unit ∈ days/weeks/months/years. Implement an `addNoticePeriod(date, value, unit)` util in `src/lib/noticePeriod.ts` returning an ISO date string.
+- Validation reuses `validateDateOrder` (`src/lib/dateValidation.ts`).
+- Auto-derivation should only fire when the user has not manually touched the new-end-date input — track via a `userEditedRef`/state flag.
 
 ## Out of scope
 
-- No DB migration (per-assignment dates already exist on `lease_unit_assignments`).
-- No changes to amendment, receivables, or move-in/out flows — they keep reading `lease.startDate` / `lease.endDate`, which are now derived.
-- Lease detail page units table is not modified in this change; only the Add/Edit dialogs.
-
-## Open question
-
-Confirm the derivation rule for `lease.endDate`: **max of row end dates, treating any row with no end date as making the lease open-ended (`endDate = null`)**. This matches today's "open lease" semantics. If you'd rather force every row to have an end date, say so and I'll add it as a blocker instead.
+- Lease renewal flow (separate code path).
+- Multi-unit per-unit independent end dates on notice — the user confirmed all units adopt the new lease end date.
+- Receivable/charge recalculation triggered by the end date change.

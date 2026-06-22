@@ -18,3 +18,20 @@ export function serializeNotice(value: string, unit: NoticeUnit): string {
   if (!value) return "";
   return `${value} ${unit}`;
 }
+
+/**
+ * Add a notice period (value + unit) to an ISO date string (YYYY-MM-DD).
+ * Returns "" when the inputs are invalid so callers can fall back gracefully.
+ */
+export function addNoticePeriod(isoDate: string, value: string | number, unit: NoticeUnit): string {
+  if (!isoDate) return "";
+  const n = typeof value === "number" ? value : parseInt(value, 10);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  const d = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  if (unit === "days") d.setDate(d.getDate() + n);
+  else if (unit === "weeks") d.setDate(d.getDate() + n * 7);
+  else if (unit === "months") d.setMonth(d.getMonth() + n);
+  else if (unit === "years") d.setFullYear(d.getFullYear() + n);
+  return d.toISOString().slice(0, 10);
+}

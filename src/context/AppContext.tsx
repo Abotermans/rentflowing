@@ -118,6 +118,12 @@ interface AppState {
   }[]) => void;
   getLeaseAssignments: (leaseId: string) => LeaseUnitAssignment[];
   getActiveLeaseAssignmentForUnit: (unitId: string) => { lease: Lease; assignment: LeaseUnitAssignment } | undefined;
+  /**
+   * Force every unit assignment of a lease to a specific end date.
+   * Used when registering / editing / cancelling a notice so units stay
+   * in sync with the lease end date.
+   */
+  setLeaseAssignmentsEndDate: (leaseId: string, endDate: string | null) => void;
   getLeaseAssignedUnits: (leaseId: string, opts?: { activeOnly?: boolean }) => { unit: Unit; assignment: LeaseUnitAssignment }[];
   getPrimaryLeaseUnit: (leaseId: string) => Unit | undefined;
   getAncillaryLeaseUnits: (leaseId: string, opts?: { activeOnly?: boolean }) => { unit: Unit; assignment: LeaseUnitAssignment }[];
@@ -800,6 +806,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (leaseId: string) => leaseUnitAssignments.filter(a => a.leaseId === leaseId),
     [leaseUnitAssignments],
   );
+
+  const setLeaseAssignmentsEndDateFn = useCallback((leaseId: string, endDate: string | null) => {
+    const ts = now();
+    setLeaseUnitAssignments(prev => {
+      const touched: LeaseUnitAssignment[] = [];
+      const next = prev.map(a => {
+        if (a.leaseId !== leaseId) return a;
+        if (a.endDate === endDate) return a;
+        const updated = { ...a, endDate, updatedAt: ts };
+        touched.push(updated);
+        return updated;
+      });
+      touched.forEach(a => mirror.update(TABLES.leaseUnitAssignments, a.id, { endDate: a.endDate }));
+      return next;
+    });
+  }, []);
 
   const getActiveLeaseAssignmentForUnit = useCallback(
     (unitId: string) => findActiveLeaseForUnit(unitId, leases, leaseUnitAssignments),
@@ -1852,6 +1874,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLeaseUnits: setLeaseUnitsFn,
     getLeaseAssignments,
     getActiveLeaseAssignmentForUnit,
+    setLeaseAssignmentsEndDate: setLeaseAssignmentsEndDateFn,
     getLeaseAssignedUnits: getLeaseAssignedUnitsFn,
     getPrimaryLeaseUnit: getPrimaryLeaseUnitFn,
     getAncillaryLeaseUnits: getAncillaryLeaseUnitsFn,
@@ -1892,6 +1915,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addTenant, updateTenant, deleteTenant,
     addLease, updateLease, deleteLease, confirmMoveOut,
     setLeaseUnitsFn, getLeaseAssignments, getActiveLeaseAssignmentForUnit,
+    setLeaseAssignmentsEndDateFn,
     getLeaseAssignedUnitsFn, getPrimaryLeaseUnitFn, getAncillaryLeaseUnitsFn, isUnitAssignedToActiveLeaseFn,
     addAmendment, updateAmendment, deleteAmendment, setAmendmentStatus,
     activateAmendment, scheduleAmendment, terminateAmendment, revertAmendmentToDraft,
