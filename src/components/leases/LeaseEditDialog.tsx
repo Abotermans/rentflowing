@@ -58,6 +58,8 @@ type UnitRow = {
   assignmentType: LeaseUnitAssignmentType;
   rentShare: number;
   chargesShare: number;
+  startDate: string;
+  endDate: string | null;
 };
 
 export interface LeaseEditDialogProps {
@@ -99,6 +101,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
         assignmentType: a.isPrimary ? "primary" : a.assignmentType,
         rentShare: a.rentShare ?? 0,
         chargesShare: a.chargesShare ?? 0,
+        startDate: a.startDate ?? lease.startDate ?? "",
+        endDate: a.endDate ?? lease.endDate ?? null,
       }));
       if (!rows.some(r => r.assignmentType === "primary") && lease.unitId) {
         rows.unshift({
@@ -106,6 +110,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
           assignmentType: "primary",
           rentShare: lease.monthlyRent,
           chargesShare: lease.monthlyCharges,
+          startDate: lease.startDate ?? "",
+          endDate: lease.endDate ?? null,
         });
       }
       setUnitRows(rows);
@@ -167,6 +173,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
   const addUnitRow = () => {
     setUnitRows(prev => {
       const hasPrimary = prev.some(r => r.assignmentType === "primary");
+      const seed = prev[0];
       return [
         ...prev,
         {
@@ -174,6 +181,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
           assignmentType: hasPrimary ? "parking" : "primary",
           rentShare: 0,
           chargesShare: 0,
+          startDate: seed?.startDate ?? "",
+          endDate: seed?.endDate ?? null,
         },
       ];
     });
@@ -222,15 +231,23 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
         isPrimary: r.assignmentType === "primary",
         rentShare: r.rentShare,
         chargesShare: form.pricingMode === "all-inclusive" ? 0 : r.chargesShare,
-        startDate: form.startDate,
+        startDate: r.startDate,
+        endDate: r.endDate,
       }));
       setLeaseUnits(leaseId, form.propertyId, draft);
     };
     const primaryRow = unitRows.find(r => r.assignmentType === "primary");
     const computedTotalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
     const computedTotalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+    const derivedStart = unitRows.map(r => r.startDate).sort()[0] ?? form.startDate;
+    const anyOpen = unitRows.some(r => !r.endDate);
+    const derivedEnd = anyOpen
+      ? ""
+      : unitRows.map(r => r.endDate as string).sort().slice(-1)[0] ?? "";
     const formToPersist = {
       ...form,
+      startDate: derivedStart,
+      endDate: derivedEnd,
       tenantIds: [form.primaryTenantId, ...form.coTenantIds].filter(Boolean),
       billingTenantId: form.billingTenantId || form.primaryTenantId,
       unitId: primaryRow?.unitId ?? form.unitId,
@@ -281,13 +298,27 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       return;
     }
     const effectiveUnitId = primaryRow.unitId;
-    if (!form.leaseReference.trim() || !form.propertyId || !form.primaryTenantId || !form.startDate || !form.endDate) {
-      toast({ title: "Validation Error", description: "Reference, property, unit, tenant, start date, and end date are required.", variant: "destructive" });
+    if (!form.leaseReference.trim() || !form.propertyId || !form.primaryTenantId) {
+      toast({ title: "Validation Error", description: "Reference, property, and tenant are required.", variant: "destructive" });
       return;
     }
+    if (unitRows.some(r => !r.startDate)) {
+      toast({ title: "Validation Error", description: "Every unit must have a start date.", variant: "destructive" });
+      return;
+    }
+    const derivedStart = unitRows.map(r => r.startDate).sort()[0];
+    const anyOpen = unitRows.some(r => !r.endDate);
+    const derivedEnd = anyOpen
+      ? ""
+      : unitRows.map(r => r.endDate as string).sort().slice(-1)[0];
+    const rowDateChecks = unitRows.flatMap(r =>
+      r.endDate
+        ? [{ earlier: r.startDate, later: r.endDate, message: t("validation.dates.endBeforeStart") }]
+        : []
+    );
     const dateErrors = validateDateOrder([
-      { earlier: form.startDate, later: form.endDate, message: t("validation.dates.endBeforeStart") },
-      { earlier: form.signedDate, later: form.startDate, message: t("validation.dates.signedAfterStart") },
+      ...rowDateChecks,
+      { earlier: form.signedDate, later: derivedStart, message: t("validation.dates.signedAfterStart") },
       { earlier: form.advancePaymentDate, later: form.advanceAllocationStartDate, message: t("validation.dates.allocationStartBeforePayment") },
       { earlier: form.noticeDate, later: form.intendedMoveOutDate, message: t("validation.dates.intendedMoveOutBeforeNotice") },
       { earlier: form.moveInScheduledDate, later: form.moveInActualDate, message: t("validation.dates.moveInActualBeforeScheduled") },
@@ -328,8 +359,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       unitId: r.unitId,
       assignmentType: r.assignmentType,
       isPrimary: r.assignmentType === "primary",
-      startDate: form.startDate,
-      endDate: null,
+      startDate: r.startDate,
+      endDate: r.endDate,
       rentShare: r.rentShare,
       chargesShare: r.chargesShare,
     }));
@@ -339,7 +370,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       draft,
       { monthlyRent: totalRent, monthlyCharges: totalCharges },
       integrityState,
-      { startDate: form.startDate, endDate: form.endDate || null },
+      { startDate: derivedStart, endDate: derivedEnd || null },
     );
     if (!unitsValidation.allowed) {
       toast({
@@ -425,6 +456,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                     <TableRow>
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
                       <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
+                      <TableHead className="h-9 w-auto">{t("leases.col.start")}</TableHead>
+                      <TableHead className="h-9 w-auto">{t("leases.col.end")}</TableHead>
                       <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
                       {!allInclusive && (
                         <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
@@ -467,6 +500,22 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                             </Select>
                           </TableCell>
                           <TableCell className="py-1.5">
+                            <Input
+                              type="date"
+                              value={row.startDate}
+                              onChange={ev => updateUnitRow(idx, { startDate: ev.target.value })}
+                              className="h-8 w-[140px]"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Input
+                              type="date"
+                              value={row.endDate ?? ""}
+                              onChange={ev => updateUnitRow(idx, { endDate: ev.target.value || null })}
+                              className="h-8 w-[140px]"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1.5">
                             <div className="flex items-center gap-1 justify-end">
                               <Input
                                 type="number" min={0}
@@ -502,7 +551,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                       );
                     })}
                     <TableRow className="bg-muted/30 font-medium">
-                      <TableCell colSpan={2} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      <TableCell colSpan={4} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
                         {t("leases.units.grandTotal")}
                       </TableCell>
                       <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
@@ -662,9 +711,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                 <StatusTransitionAlert validation={statusValidation} />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
-              <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             </div>
             <div>

@@ -41,6 +41,8 @@ type UnitRow = {
   assignmentType: LeaseUnitAssignmentType;
   rentShare: number;
   chargesShare: number;
+  startDate: string;
+  endDate: string | null;
 };
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
@@ -132,6 +134,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
         assignmentType: "primary",
         rentShare: u?.baseRent ?? 0,
         chargesShare: u?.baseCharges ?? 0,
+        startDate: "",
+        endDate: null,
       }]);
     } else {
       setUnitRows([{
@@ -139,6 +143,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
         assignmentType: "primary",
         rentShare: 0,
         chargesShare: 0,
+        startDate: "",
+        endDate: null,
       }]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -185,11 +191,14 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
   const addUnitRow = () => {
     setUnitRows(prev => {
       const hasPrimary = prev.some(r => r.assignmentType === "primary");
+      const seed = prev[0];
       return [...prev, {
         unitId: "",
         assignmentType: hasPrimary ? "parking" : "primary",
         rentShare: 0,
         chargesShare: 0,
+        startDate: seed?.startDate ?? "",
+        endDate: seed?.endDate ?? null,
       }];
     });
   };
@@ -247,12 +256,27 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       toast({ title: "Validation Error", description: "Duplicate units in the table.", variant: "destructive" });
       return;
     }
-    if (!form.leaseReference.trim() || !form.propertyId || !form.startDate || !form.endDate) {
-      toast({ title: "Validation Error", description: "Reference, property, unit, start date, and end date are required.", variant: "destructive" });
+    if (!form.leaseReference.trim() || !form.propertyId) {
+      toast({ title: "Validation Error", description: "Reference and property are required.", variant: "destructive" });
       return;
     }
+    if (unitRows.some(r => !r.startDate)) {
+      toast({ title: "Validation Error", description: "Every unit must have a start date.", variant: "destructive" });
+      return;
+    }
+    // Derived lease-level dates from the per-unit rows.
+    const derivedStart = unitRows.map(r => r.startDate).sort()[0];
+    const anyOpen = unitRows.some(r => !r.endDate);
+    const derivedEnd = anyOpen
+      ? ""
+      : unitRows.map(r => r.endDate as string).sort().slice(-1)[0];
+    const rowDateChecks = unitRows.flatMap(r =>
+      r.endDate
+        ? [{ earlier: r.startDate, later: r.endDate, message: t("validation.dates.endBeforeStart") }]
+        : []
+    );
     const dateErrors = validateDateOrder([
-      { earlier: form.startDate, later: form.endDate, message: t("validation.dates.endBeforeStart") },
+      ...rowDateChecks,
       { earlier: form.advancePaymentDate, later: form.advanceAllocationStartDate, message: t("validation.dates.allocationStartBeforePayment") },
     ]);
     if (dateErrors.length > 0) {
@@ -286,8 +310,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       unitId: r.unitId,
       assignmentType: r.assignmentType,
       isPrimary: r.assignmentType === "primary",
-      startDate: form.startDate,
-      endDate: null,
+      startDate: r.startDate,
+      endDate: r.endDate,
       rentShare: r.rentShare,
       chargesShare: r.chargesShare,
     }));
@@ -297,7 +321,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       draft,
       { monthlyRent: totalR, monthlyCharges: totalC },
       integrityState,
-      { startDate: form.startDate, endDate: form.endDate || null },
+      { startDate: derivedStart, endDate: derivedEnd || null },
     );
     if (!unitsValidation.allowed) {
       toast({
@@ -315,6 +339,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     }
     const formToPersist = {
       ...form,
+      startDate: derivedStart,
+      endDate: derivedEnd,
       unitId: effectiveUnitId,
       monthlyRent: totalR,
       monthlyCharges: form.pricingMode === "all-inclusive" ? 0 : totalC,
@@ -330,7 +356,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       isPrimary: r.assignmentType === "primary",
       rentShare: r.rentShare,
       chargesShare: form.pricingMode === "all-inclusive" ? 0 : r.chargesShare,
-      startDate: form.startDate,
+      startDate: r.startDate,
+      endDate: r.endDate,
     })));
     toast({ title: "Lease added" });
     onOpenChange(false);
@@ -393,6 +420,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                   <TableRow>
                     <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
                     <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
+                    <TableHead className="h-9 w-auto">{t("leases.col.start")}</TableHead>
+                    <TableHead className="h-9 w-auto">{t("leases.col.end")}</TableHead>
                     <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
                     {!allInclusive && (
                       <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
@@ -435,6 +464,22 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                           </Select>
                         </TableCell>
                         <TableCell className="py-1.5">
+                          <Input
+                            type="date"
+                            value={row.startDate}
+                            onChange={ev => updateUnitRow(idx, { startDate: ev.target.value })}
+                            className="h-8 w-[140px]"
+                          />
+                        </TableCell>
+                        <TableCell className="py-1.5">
+                          <Input
+                            type="date"
+                            value={row.endDate ?? ""}
+                            onChange={ev => updateUnitRow(idx, { endDate: ev.target.value || null })}
+                            className="h-8 w-[140px]"
+                          />
+                        </TableCell>
+                        <TableCell className="py-1.5">
                           <div className="flex items-center gap-1 justify-end">
                             <Input
                               type="number" min={0}
@@ -470,7 +515,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                     );
                   })}
                   <TableRow className="bg-muted/30 font-medium">
-                    <TableCell colSpan={2} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    <TableCell colSpan={4} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
                       {t("leases.units.grandTotal")}
                     </TableCell>
                     <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
@@ -709,10 +754,6 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
               </Select>
               <StatusTransitionAlert validation={null} />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
-            <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
           </div>
           <div>
             <Label>{t("leases.dueDay")} *</Label>
