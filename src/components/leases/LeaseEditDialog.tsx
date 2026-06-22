@@ -503,6 +503,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                             <Input
                               type="date"
                               value={row.startDate}
+                              max={row.endDate ?? undefined}
                               onChange={ev => updateUnitRow(idx, { startDate: ev.target.value })}
                               className="h-8 w-[140px]"
                             />
@@ -511,6 +512,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                             <Input
                               type="date"
                               value={row.endDate ?? ""}
+                              min={row.startDate || undefined}
                               onChange={ev => updateUnitRow(idx, { endDate: ev.target.value || null })}
                               className="h-8 w-[140px]"
                             />
