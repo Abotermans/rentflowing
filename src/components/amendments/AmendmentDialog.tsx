@@ -195,9 +195,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       metadata?: AmendmentChangeMetadata,
     ) => out.push({ fieldName, changeType, oldValue, newValue, metadata });
 
-    if (newEndDate && newEndDate !== lease.endDate) {
-      push("leaseEndDate", "set", lease.endDate, newEndDate);
-    }
     if (newDeposit && Number(newDeposit) !== (lease.depositOrGuaranteeAmount ?? 0)) {
       push("depositAmount", "set", lease.depositOrGuaranteeAmount, Number(newDeposit));
     }
@@ -211,21 +208,27 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     for (const r of currentUnits) {
       if (unitsToRemove.includes(r.unit.id)) continue;
       const e = editedShares[r.unit.id];
-      if (!e) continue;
       const oldRent = r.assignment.rentShare ?? 0;
       const oldCh = r.assignment.chargesShare ?? 0;
-      if (e.rentShare !== undefined && e.rentShare !== "" && Number(e.rentShare) !== oldRent) {
-        push("unitRentShare", "set", oldRent, Number(e.rentShare), { unitId: r.unit.id });
+      if (e) {
+        if (e.rentShare !== undefined && e.rentShare !== "" && Number(e.rentShare) !== oldRent) {
+          push("unitRentShare", "set", oldRent, Number(e.rentShare), { unitId: r.unit.id });
+        }
+        if (e.chargesShare !== undefined && e.chargesShare !== "" && Number(e.chargesShare) !== oldCh) {
+          push("unitChargesShare", "set", oldCh, Number(e.chargesShare), { unitId: r.unit.id });
+        }
       }
-      if (e.chargesShare !== undefined && e.chargesShare !== "" && Number(e.chargesShare) !== oldCh) {
-        push("unitChargesShare", "set", oldCh, Number(e.chargesShare), { unitId: r.unit.id });
+      const oldEnd = r.assignment.endDate ?? lease.endDate;
+      const newEnd = editedEndDates[r.unit.id];
+      if (newEnd !== undefined && newEnd !== "" && newEnd !== oldEnd) {
+        push("unitEndDate", "set", oldEnd, newEnd, { unitId: r.unit.id });
       }
     }
     for (const a of unitsToAdd) {
       if (!a.unitId) continue;
       push("unitAssignments", "add", null,
         { rentShare: Number(a.rentShare || 0), chargesShare: Number(a.chargesShare || 0) },
-        { unitId: a.unitId, assignmentType: a.assignmentType, startDate: effectiveDate });
+        { unitId: a.unitId, assignmentType: a.assignmentType, startDate: effectiveDate, endDate: a.endDate || lease.endDate });
     }
     for (const uid of unitsToRemove) {
       push("unitAssignments", "remove", { unitId: uid }, null,
@@ -238,8 +241,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       push("coTenantIds", "remove", lease.coTenantIds, lease.coTenantIds.filter(x => x !== tid), { tenantId: tid });
     }
     return out;
-  }, [newEndDate, newDeposit, noticeValue, noticeUnit, clauseSummary,
-      unitsToAdd, unitsToRemove, editedShares, currentUnits, tenantsToAdd, tenantsToRemove,
+  }, [newDeposit, noticeValue, noticeUnit, clauseSummary,
+      unitsToAdd, unitsToRemove, editedShares, editedEndDates, currentUnits, tenantsToAdd, tenantsToRemove,
       lease, effectiveDate]);
 
   const { totalRent, totalCharges } = useMemo(() => {
