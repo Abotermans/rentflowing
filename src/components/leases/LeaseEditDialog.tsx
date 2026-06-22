@@ -456,6 +456,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                     <TableRow>
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
                       <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
+                      <TableHead className="h-9 w-auto">{t("leases.col.start")}</TableHead>
+                      <TableHead className="h-9 w-auto">{t("leases.col.end")}</TableHead>
                       <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
                       {!allInclusive && (
                         <TableHead className="h-9 w-auto text-right">{t("leases.monthlyCharges")}</TableHead>
@@ -498,6 +500,22 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                             </Select>
                           </TableCell>
                           <TableCell className="py-1.5">
+                            <Input
+                              type="date"
+                              value={row.startDate}
+                              onChange={ev => updateUnitRow(idx, { startDate: ev.target.value })}
+                              className="h-8 w-[140px]"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <Input
+                              type="date"
+                              value={row.endDate ?? ""}
+                              onChange={ev => updateUnitRow(idx, { endDate: ev.target.value || null })}
+                              className="h-8 w-[140px]"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1.5">
                             <div className="flex items-center gap-1 justify-end">
                               <Input
                                 type="number" min={0}
@@ -533,7 +551,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                       );
                     })}
                     <TableRow className="bg-muted/30 font-medium">
-                      <TableCell colSpan={2} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      <TableCell colSpan={4} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
                         {t("leases.units.grandTotal")}
                       </TableCell>
                       <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
