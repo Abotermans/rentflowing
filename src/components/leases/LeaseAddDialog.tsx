@@ -365,7 +365,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[760px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+      <DialogContent className="w-[1080px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("leases.add")}</DialogTitle>
           <div className="mt-3 space-y-2">
