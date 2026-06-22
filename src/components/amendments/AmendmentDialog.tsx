@@ -93,16 +93,16 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const [signedDate, setSignedDate] = useState("");
 
   // Per-type fields
-  const [newEndDate, setNewEndDate] = useState("");
   const [newDeposit, setNewDeposit] = useState("");
   const [noticeValue, setNoticeValue] = useState("");
   const [noticeUnit, setNoticeUnit] = useState<"days" | "weeks" | "months" | "years">("months");
   const [clauseSummary, setClauseSummary] = useState("");
   // Unit-change drafts (multi-row, intuitive add/remove UX)
-  type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string };
+  type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string; endDate: string };
   const [unitsToAdd, setUnitsToAdd] = useState<AddDraft[]>([]);
   const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
   const [editedShares, setEditedShares] = useState<Record<string, { rentShare?: string; chargesShare?: string }>>({});
+  const [editedEndDates, setEditedEndDates] = useState<Record<string, string>>({});
   const [tenantsToAdd, setTenantsToAdd] = useState<string[]>([]);
   const [tenantsToRemove, setTenantsToRemove] = useState<string[]>([]);
   const [addTenantOpen, setAddTenantOpen] = useState(false);
@@ -132,7 +132,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       setSignedDate(existing.signedDate ?? "");
       const chs = getAmendmentChanges(existing.id);
       const find = (f: AmendmentFieldName) => chs.find(c => c.fieldName === f);
-      setNewEndDate(String(find("leaseEndDate")?.newValue ?? ""));
       setNewDeposit(String(find("depositAmount")?.newValue ?? ""));
       {
         const parsed = parseNoticeText(String(find("noticePeriodText")?.newValue ?? ""));
@@ -148,14 +147,22 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         if (c.fieldName === "unitChargesShare") edits[uid] = { ...edits[uid], chargesShare: String(c.newValue ?? "") };
       }
       setEditedShares(edits);
+      const endEdits: Record<string, string> = {};
+      for (const c of chs) {
+        if (c.fieldName === "unitEndDate" && c.metadata?.unitId) {
+          endEdits[c.metadata.unitId] = String(c.newValue ?? "");
+        }
+      }
+      setEditedEndDates(endEdits);
       const addChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "add");
       setUnitsToAdd(addChs.map(c => {
         const nv = (c.newValue ?? {}) as { rentShare?: number; chargesShare?: number };
         return {
           unitId: c.metadata?.unitId ?? "",
-          assignmentType: c.metadata?.assignmentType ?? "parking",
+          assignmentType: c.metadata?.assignmentType ?? "ancillary",
           rentShare: String(nv.rentShare ?? ""),
           chargesShare: String(nv.chargesShare ?? "0"),
+          endDate: c.metadata?.endDate ?? "",
         };
       }));
       const remChs = chs.filter(c => c.fieldName === "unitAssignments" && c.changeType === "remove");
@@ -167,14 +174,13 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     } else {
       setTitle(""); setReason(""); setNotes("");
       setEffectiveDate(""); setSignedDate("");
-      setNewEndDate(lease.endDate);
       setNewDeposit(String(lease.depositOrGuaranteeAmount ?? ""));
       {
         const parsed = parseNoticeText(lease.noticePeriodText);
         setNoticeValue(parsed.value);
         setNoticeUnit(parsed.unit);
       }
-      setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]); setEditedShares({});
+      setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]); setEditedShares({}); setEditedEndDates({});
       setTenantsToAdd([]); setTenantsToRemove([]);
     }
   }, [existing, open, lease, getAmendmentChanges]);
