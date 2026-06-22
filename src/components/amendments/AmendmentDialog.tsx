@@ -509,7 +509,13 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                             key={u.id}
                             className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
                             onClick={() => {
-                              setUnitsToAdd(arr => [...arr, { unitId: u.id, assignmentType: "parking", rentShare: "", chargesShare: "0" }]);
+                              setUnitsToAdd(arr => [...arr, {
+                                unitId: u.id,
+                                assignmentType: deriveAssignmentTypeFromUnit(u),
+                                rentShare: "",
+                                chargesShare: "0",
+                                endDate: lease.endDate,
+                              }]);
                               setAddUnitOpen(false);
                             }}
                           >
@@ -527,9 +533,21 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                   <TableHeader>
                     <TableRow className="h-8">
                       <TableHead className="h-8 text-xs">{t("amendments.unitName")}</TableHead>
-                      <TableHead className="h-8 text-xs">{t("amendments.role")}</TableHead>
                       <TableHead className="h-8 text-xs text-right">{t("amendments.rentShare")}</TableHead>
                       <TableHead className="h-8 text-xs text-right">{t("amendments.chargesShare")}</TableHead>
+                      <TableHead className="h-8 text-xs">
+                        <span className="inline-flex items-center gap-1">
+                          {t("amendments.unitEndDate")}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs max-w-[260px]">{t("amendments.unitEndDateTooltip")}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </span>
+                      </TableHead>
                       <TableHead className="h-8 text-xs">{t("amendments.status")}</TableHead>
                       <TableHead className="h-8 text-xs text-right w-12">{t("amendments.action")}</TableHead>
                     </TableRow>
@@ -537,17 +555,18 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                   <TableBody>
                     {currentUnits.map(r => {
                       const marked = unitsToRemove.includes(r.unit.id);
-                      const canRemove = !r.assignment.isPrimary;
+                      const remainingCount = currentUnits.length - unitsToRemove.length + unitsToAdd.length;
+                      const canRemove = marked || remainingCount > 1;
                       const ed = editedShares[r.unit.id] ?? {};
                       const rentVal = ed.rentShare !== undefined ? ed.rentShare : String(r.assignment.rentShare ?? "");
                       const chargesVal = ed.chargesShare !== undefined ? ed.chargesShare : String(r.assignment.chargesShare ?? "");
+                      const endVal = editedEndDates[r.unit.id] !== undefined
+                        ? editedEndDates[r.unit.id]
+                        : (r.assignment.endDate ?? lease.endDate);
                       return (
                         <TableRow key={r.unit.id} className={`h-9 ${marked ? "bg-destructive/5" : ""}`}>
                           <TableCell className={`py-1 text-xs ${marked ? "line-through text-muted-foreground" : ""}`}>
                             {r.unit.unitCode} — {r.unit.unitLabel}
-                          </TableCell>
-                          <TableCell className="py-1 text-xs text-muted-foreground">
-                            {r.assignment.isPrimary ? "primary" : ASSIGNMENT_TYPE_LABELS[r.assignment.assignmentType as LeaseUnitAssignmentType] ?? "—"}
                           </TableCell>
                           <TableCell className="py-1">
                             <Input className="h-7 text-xs text-right tabular-nums" type="number" disabled={marked}
@@ -558,6 +577,11 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                             <Input className="h-7 text-xs text-right tabular-nums" type="number" disabled={marked}
                               value={chargesVal}
                               onChange={(e) => setEditedShares(m => ({ ...m, [r.unit.id]: { ...m[r.unit.id], chargesShare: e.target.value } }))} />
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Input className="h-7 text-xs" type="date" disabled={marked}
+                              value={endVal}
+                              onChange={(e) => setEditedEndDates(m => ({ ...m, [r.unit.id]: e.target.value }))} />
                           </TableCell>
                           <TableCell className="py-1 text-xs">
                             {marked
@@ -590,15 +614,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                             {u ? `${u.unitCode} — ${u.unitLabel}` : a.unitId}
                           </TableCell>
                           <TableCell className="py-1">
-                            <Select value={a.assignmentType}
-                              onValueChange={(v) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, assignmentType: v as LeaseUnitAssignmentType } : x))}>
-                              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {ANC_ROLES.map(r => <SelectItem key={r} value={r}>{ASSIGNMENT_TYPE_LABELS[r]}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell className="py-1">
                             <Input className="h-7 text-xs text-right tabular-nums" type="number"
                               value={a.rentShare}
                               onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, rentShare: e.target.value } : x))} />
@@ -607,6 +622,11 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                             <Input className="h-7 text-xs text-right tabular-nums" type="number"
                               value={a.chargesShare}
                               onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, chargesShare: e.target.value } : x))} />
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Input className="h-7 text-xs" type="date"
+                              value={a.endDate}
+                              onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, endDate: e.target.value } : x))} />
                           </TableCell>
                           <TableCell className="py-1 text-xs">
                             <Badge className="text-[10px] bg-success text-success-foreground hover:bg-success">{t("amendments.toAdd")}</Badge>
@@ -623,9 +643,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                     })}
                     {(currentUnits.length > 0 || unitsToAdd.length > 0) && (
                       <TableRow className="h-9 border-t-2 border-t-border font-medium bg-muted/30">
-                        <TableCell colSpan={2} className="py-1 text-xs">{t("common.total")}</TableCell>
+                        <TableCell className="py-1 text-xs">{t("common.total")}</TableCell>
                         <TableCell className="py-1 text-xs text-right tabular-nums">{formatCurrency(totalRent, "EUR")}</TableCell>
                         <TableCell className="py-1 text-xs text-right tabular-nums">{formatCurrency(totalCharges, "EUR")}</TableCell>
+                        <TableCell className="py-1" />
                         <TableCell className="py-1" />
                         <TableCell className="py-1" />
                       </TableRow>
