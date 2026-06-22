@@ -755,10 +755,6 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
               <StatusTransitionAlert validation={null} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
-            <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
-          </div>
           <div>
             <Label>{t("leases.dueDay")} *</Label>
             <Input
