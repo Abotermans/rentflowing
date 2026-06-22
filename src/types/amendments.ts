@@ -35,7 +35,9 @@ export type AmendmentStatus =
 export type AmendmentFieldName =
   | "baseMonthlyRentTotal"
   | "baseMonthlyChargesTotal"
+  /** @deprecated Use per-unit `unitEndDate` changes. Kept for legacy rows. */
   | "leaseEndDate"
+  | "unitEndDate"
   | "depositAmount"
   | "noticePeriodText"
   | "tenantIds"
