@@ -49,6 +49,7 @@ import { getEffectiveLeaseTerms, getLeaseAmendments } from "@/lib/amendments";
 import { newId } from "@/lib/repo";
 import type { LeasePayerAccount } from "@/types";
 import { validateDateOrder } from "@/lib/dateValidation";
+import { parseNoticeText, addNoticePeriod } from "@/lib/noticePeriod";
 
 const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
   "cash-deposit": "guarantee.type.cashDeposit",
@@ -97,6 +98,7 @@ export default function LeaseDetail() {
     addGuarantee, updateGuarantee, updateLease, updateUnit, deleteLease,
     createCashReceipt, getTenantUnappliedCredit,
     getLeaseAssignments,
+    setLeaseAssignmentsEndDate,
   } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
