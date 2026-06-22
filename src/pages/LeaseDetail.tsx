@@ -151,6 +151,7 @@ export default function LeaseDetail() {
   const [nDate, setNDate] = useState("");
   const [nNewEnd, setNNewEnd] = useState("");
   const [nNewEndTouched, setNNewEndTouched] = useState(false);
+  const [cancelNoticeConfirmOpen, setCancelNoticeConfirmOpen] = useState(false);
   const [nReason, setNReason] = useState("");
 
   // End / Terminate / Renew dialogs
