@@ -2164,6 +2164,21 @@ export default function LeaseDetail() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={cancelNoticeConfirmOpen} onOpenChange={setCancelNoticeConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("lease.cancelNoticeConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("lease.cancelNoticeConfirmDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setCancelNoticeConfirmOpen(false); handleCancelNotice(); }}>
+              {t("lease.cancelNotice")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Move-In Sheet */}
       <Dialog open={moveInSheetOpen} onOpenChange={setMoveInSheetOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
