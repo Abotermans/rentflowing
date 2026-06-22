@@ -147,7 +147,8 @@ export default function LeaseDetail() {
   // Notice form
   const [noticeSheetOpen, setNoticeSheetOpen] = useState(false);
   const [nDate, setNDate] = useState("");
-  const [nMoveOut, setNMoveOut] = useState("");
+  const [nNewEnd, setNNewEnd] = useState("");
+  const [nNewEndTouched, setNNewEndTouched] = useState(false);
   const [nReason, setNReason] = useState("");
 
   // End / Terminate / Renew dialogs
