@@ -711,9 +711,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                 <StatusTransitionAlert validation={statusValidation} />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>{t("leases.startDate")} *</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
-              <div><Label>{t("leases.endDate")} *</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-4">
               <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
             </div>
             <div>
