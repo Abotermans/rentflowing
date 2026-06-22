@@ -1032,11 +1032,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         amendments: nextAmendments, amendmentChanges,
       });
       if (eff2) {
+        // Derived lease end date = latest end date across active assignments
+        // (per-unit end dates are now authoritative). Falls back to the
+        // effective-terms value when no assignment carries an end date.
+        const activeEnds = nextAssignments
+          .filter(a => a.leaseId === am.leaseId && assignmentIsActiveOn(a, eff) && !!a.endDate)
+          .map(a => a.endDate as string);
+        const derivedEnd = activeEnds.length > 0
+          ? activeEnds.reduce((m, d) => (d > m ? d : m), activeEnds[0])
+          : (eff2.endDate || lease.endDate);
         patched = {
           ...lease,
           monthlyRent: eff2.monthlyRent || lease.monthlyRent,
           monthlyCharges: eff2.monthlyCharges || lease.monthlyCharges,
-          endDate: eff2.endDate || lease.endDate,
+          endDate: derivedEnd,
           depositOrGuaranteeAmount: eff2.depositAmount ?? lease.depositOrGuaranteeAmount,
           noticePeriodText: eff2.noticePeriodText || lease.noticePeriodText,
           primaryTenantId: eff2.primaryTenantId || lease.primaryTenantId,
