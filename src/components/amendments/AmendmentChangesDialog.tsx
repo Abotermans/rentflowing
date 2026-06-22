@@ -76,6 +76,15 @@ export function AmendmentChangesDialog({ open, onOpenChange, amendment, changes 
           out.push({ label: `${t("amendments.chargesShare")} · ${unitLabel(uid)}`, before: fmt(Number(c.oldValue) || 0), after: fmt(Number(c.newValue) || 0) });
           break;
         }
+        case "unitEndDate": {
+          const uid = c.metadata?.unitId ?? "";
+          out.push({
+            label: `${t("amendments.unitEndDate")} · ${unitLabel(uid)}`,
+            before: c.oldValue ? formatDate(String(c.oldValue), locale) : "—",
+            after: c.newValue ? formatDate(String(c.newValue), locale) : "—",
+          });
+          break;
+        }
         case "unitAssignments": {
           const uid = c.metadata?.unitId ?? "";
           if (c.changeType === "add") out.push({ label: t("amendments.type.unit-addition"), before: "—", after: unitLabel(uid) });

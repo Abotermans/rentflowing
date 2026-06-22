@@ -165,6 +165,11 @@ export function getEffectiveLeaseTerms(
         case "leaseEndDate":
           terms.endDate = String(c.newValue);
           break;
+        case "unitEndDate":
+          // Per-unit end dates are applied via live assignment rows in
+          // activateAmendment. The lease-level endDate below is recomputed
+          // from the live assignments after the switch.
+          break;
         case "depositAmount":
           terms.depositAmount = c.newValue == null ? null : Number(c.newValue);
           break;
@@ -201,6 +206,15 @@ export function getEffectiveLeaseTerms(
     const sumCharges = liveUnits.reduce((s2, u) => s2 + u.chargesShare, 0);
     if (sumRent > 0) terms.monthlyRent = sumRent;
     if (sumCharges > 0) terms.monthlyCharges = sumCharges;
+  }
+
+  // Lease end date = latest end date across live assignments (per-unit
+  // end dates are authoritative once their amendment is activated).
+  const liveAssignments = s.leaseUnitAssignments
+    .filter(a => a.leaseId === leaseId && assignmentIsActiveOn(a, date) && !!a.endDate);
+  if (liveAssignments.length > 0) {
+    const max = liveAssignments.reduce((m, a) => ((a.endDate as string) > m ? (a.endDate as string) : m), liveAssignments[0].endDate as string);
+    terms.endDate = max;
   }
 
   return terms;

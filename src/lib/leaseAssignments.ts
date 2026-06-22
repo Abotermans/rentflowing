@@ -189,3 +189,25 @@ export function isAncillaryRole(
   if (unit && ANCILLARY_UNIT_TYPES.has(unit.unitType)) return true;
   return false;
 }
+
+/**
+ * Map a unit's physical type to the LeaseUnitAssignmentType that best
+ * describes its role on a lease. Used so the UI doesn't need to expose a
+ * separate "Role" choice — the role can always be derived from the unit.
+ */
+export function deriveAssignmentTypeFromUnit(
+  unit: Pick<Unit, "unitType"> | undefined,
+): LeaseUnitAssignmentType {
+  switch (unit?.unitType) {
+    case "parking": return "parking";
+    case "storage": return "storage";
+    case "apartment":
+    case "studio":
+    case "house":
+    case "office":
+    case "commercial-unit":
+      return "primary";
+    default:
+      return "ancillary";
+  }
+}

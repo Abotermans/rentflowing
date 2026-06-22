@@ -1,61 +1,85 @@
 ## Goal
 
-Reshape the "Register notice" flow on the lease detail page so it captures the **new lease end date** instead of the intended move-out date, and propagate that end date to the lease and to every assigned unit. Cancelling the notice restores the previous end dates.
+Align amendment end-date logic with the new per-unit end-date model (introduced in the notice flow), simplify the unit-changes table, and drop the redundant "Role" concept on assignments.
 
 ## Changes
 
-### 1. Notice dialog (`src/pages/LeaseDetail.tsx`)
+### 1. Per-unit end date on amendments
 
-- Rename the second field from "Intended move-out date" to "New end date" (new translation key, e.g. `leaseDialog.newEndDate`).
-- Default value computation:
-  - When opening the dialog (or when the user edits the notice date), compute `noticeDate + noticePeriod` using the existing `parseNoticeText` helper (`src/lib/noticePeriod.ts`) and the lease's effective `noticePeriodText`.
-  - Pre-fill the field with this computed value if the field is empty or was previously auto-derived; never overwrite a value the user has manually edited.
-  - User can freely modify the date.
-- Validation: new end date must be ≥ notice date and (soft) ≥ today. Keep existing reason field.
+**UI — `src/components/amendments/AmendmentDialog.tsx`**
+- Remove the global "New end date" field at the top of the dialog (the `newEndDate` state + input).
+- Add an **End date** column to the unit-changes table, between *Charges share* and *Status*.
+  - For current units: editable `<input type="date">`, defaults to the assignment's current `endDate` (or `lease.endDate` if null). Disabled when the row is marked for removal.
+  - For units being added: editable `<input type="date">`, defaults to `lease.endDate`.
+- Track edits in a new `editedEndDates: Record<unitId, string>` map, plus `endDate?: string` on each `AddDraft`.
+- Add a small tooltip on the column header explaining: each unit can have its own end date; the lease end date is the latest of all unit end dates.
 
-### 2. Save notice handler (`handleSaveNotice`)
+**Change-draft generation (same file, `changesDraft` memo)**
+- Drop the `leaseEndDate` push.
+- For each current unit whose `editedEndDates[unitId]` differs from the current assignment end date, push a new change of `fieldName: "unitEndDate"`, `changeType: "set"`, `metadata: { unitId }`, `oldValue`/`newValue` = ISO dates.
+- For added units, include `endDate` in the `metadata` of the existing `unitAssignments` add change (read by `activateAmendment`).
 
-- Persist `noticeGiven`, `noticeDate`, `terminationReason` as today.
-- New behaviour:
-  - Capture the current `lease.endDate` into a new field `preNoticeEndDate` (only if not already set, so editing the notice twice keeps the original).
-  - Set `lease.endDate = newEndDate`.
-  - Clear `intendedMoveOutDate` (legacy) or set it equal to the new end date for backwards display compatibility — pick clearing.
-  - Update every assignment of this lease in `leaseUnitAssignments` to set `endDate = newEndDate` (overwrite regardless of existing value, including currently-open `null` assignments). This requires a small helper in `AppContext` (e.g. `setLeaseUnitsEndDate(leaseId, endDate)`) that updates all assignments where `leaseId` matches, mirrors via `mirror.update`, and bumps `updatedAt`.
-- Toast unchanged.
+### 2. New `unitEndDate` amendment field
 
-### 3. Edit notice
+**Types — `src/types/amendments.ts`**
+- Add `"unitEndDate"` to `AmendmentFieldName`.
+- Mark `"leaseEndDate"` as `@deprecated` (kept for legacy rows; still rendered read-only in `AmendmentChangesDialog`).
 
-- Same dialog reused. When already under notice, pre-fill `nNewEnd` with current `lease.endDate`. Saving overwrites lease end date + unit end dates again (no second snapshot of `preNoticeEndDate`).
+**Activation — `src/context/AppContext.tsx` `activateAmendment`**
+- Inside the `nextAssignments` reducer, handle `c.fieldName === "unitEndDate"`: set the matching active assignment's `endDate = String(c.newValue) || null`.
+- Inside the add branch, honour `c.metadata.endDate` when building the new assignment (instead of `endDate: null`).
+- After computing `nextAssignments`, derive the lease's new `endDate` as the latest non-null `endDate` among active assignments for the lease, and apply it to `patched.endDate` (overriding the value coming from `libGetEffectiveLeaseTerms`).
 
-### 4. Cancel notice (`handleCancelNotice`)
+**Integrity — `src/lib/integrity/amendmentIntegrity.ts`**
+- Add a case for `c.fieldName === "unitEndDate"`:
+  - Blocker if `newValue < lease.startDate` or `newValue < amendment.effectiveDate`.
+  - Reuse `findOverlappingLeases` with the new per-unit `endDate` to catch extension overlaps.
+- Drop the existing `leaseEndDate` overlap block once UI no longer emits it (keep the field handling for legacy rows: still validate but no UI path creates them).
 
-- Restore `lease.endDate` from `preNoticeEndDate` (fallback: keep current if absent).
-- Restore every assignment's `endDate` to `preNoticeEndDate` value (use the same helper).
-- Clear `noticeGiven`, `noticeDate`, `terminationReason`, `preNoticeEndDate`, and `intendedMoveOutDate`.
+**Derivation — `src/lib/amendments.ts`**
+- In the effective-terms folding, replace the `leaseEndDate` aggregation with: lease end date = max of all active assignment end dates as of `asOfDate`. Keep legacy `leaseEndDate` change handling as a fallback when no per-unit changes exist.
 
-### 5. Banner
+**Diff display — `src/components/amendments/AmendmentChangesDialog.tsx`**
+- Add a row renderer for `unitEndDate`: label `End date · {unitCode}`, before = formatted old date, after = formatted new date.
 
-- The "Under notice" banner currently shows the intended move-out date. Replace with the new lease end date (`{t("detail.newEndDate")}: …`).
+### 3. Allow removing any unit except the last one
 
-### 6. Types & storage
+**`src/components/amendments/AmendmentDialog.tsx`**
+- Replace `canRemove = !r.assignment.isPrimary` with a computed `remainingCount = currentUnits.length - unitsToRemove.length + unitsToAdd.length`. `canRemove = !marked && remainingCount > 1`.
+- When a row IS marked, always allow the undo button.
+- The remove button is disabled (with a tooltip "A lease must keep at least one unit") when `remainingCount <= 1`.
 
-- Add `preNoticeEndDate?: string | null` to the lease type in `src/types/index.ts`.
-- Add the new helper to `AppContext` (signature, mirror upsert, exported in `useAppData`).
-- Add a Supabase migration to add `pre_notice_end_date` column on `leases` and (no schema change needed for `lease_unit_assignments` — `end_date` already exists). Existing repo/mirror mapping for `leases` needs the new column wired.
+**Integrity — `src/lib/integrity/leaseUnitAssignmentIntegrity.ts` / `amendmentIntegrity.ts`**
+- Existing `LUA_NO_UNITS` / `AMD_NO_UNITS_LEFT` blockers already cover the empty case — no change.
+- Drop `AMD_NO_PRIMARY_LEFT` and `AMD_MULTIPLE_PRIMARIES` enforcement (see step 4).
 
-### 7. i18n
+### 4. Remove the "Role" concept on assignments
 
-- Add keys (EN/FR): `leaseDialog.newEndDate`, `detail.newEndDate`, `validation.dates.newEndBeforeNotice`.
-- Keep legacy `leaseDialog.intendedMoveOut` for any remaining usage.
+The `assignmentType` field stays on the data model (some logic depends on it), but it is no longer surfaced as a user-facing "Role" choice — it is derived from the unit's own type.
 
-## Technical notes
+**Helper — `src/lib/leaseAssignments.ts`** (new function)
+- `deriveAssignmentTypeFromUnit(unit): LeaseUnitAssignmentType` — maps `unit.unitType` (`apartment`, `house`, `office`, `parking`, `cellar`, `storage`, …) to the matching `LeaseUnitAssignmentType` (`primary` for the lease's main residential/office unit type, otherwise the matching ancillary value).
 
-- `parseNoticeText` returns `{ value, unit }` where unit ∈ days/weeks/months/years. Implement an `addNoticePeriod(date, value, unit)` util in `src/lib/noticePeriod.ts` returning an ISO date string.
-- Validation reuses `validateDateOrder` (`src/lib/dateValidation.ts`).
-- Auto-derivation should only fire when the user has not manually touched the new-end-date input — track via a `userEditedRef`/state flag.
+**`src/components/amendments/AmendmentDialog.tsx`**
+- Remove the `Role` column header and cells from the unit-changes table.
+- Remove the `assignmentType` `Select` on rows being added; instead, set `assignmentType = deriveAssignmentTypeFromUnit(unit)` when the user picks a unit from the popover.
+- Stop pushing/handling `isPrimary` state in this dialog; primary is no longer user-editable here.
+
+**`src/components/leases/LeaseAddDialog.tsx` and `LeaseEditDialog.tsx`**
+- Remove any "Role" / `assignmentType` selector and "Primary" toggle in the units sub-table (out of strict scope but required for consistency — confirm in the technical section below). Derive `assignmentType` from each unit. Default the first picked rentable unit to `isPrimary = true` automatically.
+
+**Translations — `src/i18n/translations.ts`**
+- Remove `amendments.role` from the EN/FR bundles (and any leftover `leases.role` keys used only in these tables).
+- Add `amendments.unitEndDate`, `amendments.unitEndDateTooltip`, `validation.dates.unitEndBeforeStart`, `validation.dates.unitEndBeforeEffective`.
 
 ## Out of scope
 
-- Lease renewal flow (separate code path).
-- Multi-unit per-unit independent end dates on notice — the user confirmed all units adopt the new lease end date.
-- Receivable/charge recalculation triggered by the end date change.
+- No database migration: per-unit `endDate` already exists on `lease_unit_assignments`; no new column needed.
+- No changes to receivable generation other than the existing regen path triggered by lease updates on activation.
+- No changes to the cancel-notice or move-out flows.
+
+## Technical notes
+
+- The derived lease `endDate` rule (max of active assignment end dates) supersedes the legacy `leaseEndDate` amendment field. Legacy amendment rows with `leaseEndDate` continue to display correctly in the changes dialog but new amendments no longer create them.
+- Primary-unit invariants previously enforced by integrity (`AMD_NO_PRIMARY_LEFT`, `LUA_MULTIPLE_PRIMARY`, `LUA_NO_PRIMARY`) are relaxed to: "at least one unit remains". Existing leases keep their `isPrimary` flag but it is no longer mutated through the amendment UI.
+- `deriveAssignmentTypeFromUnit` keeps the mapping centralised so future unit types only need updating in one place.

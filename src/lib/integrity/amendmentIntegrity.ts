@@ -194,6 +194,45 @@ export function validateAmendment(
           });
         }
       }
+    } else if (c.fieldName === "unitEndDate" && c.metadata?.unitId) {
+      const nv = String(c.newValue ?? "");
+      if (nv && nv < lease.startDate) {
+        blockers.push({
+          code: "AMD_UNIT_END_BEFORE_START",
+          message: "Unit end date cannot be before the lease start date",
+        });
+      }
+      if (nv && amendment.effectiveDate && nv < amendment.effectiveDate) {
+        blockers.push({
+          code: "AMD_UNIT_END_BEFORE_EFFECTIVE",
+          message: "Unit end date must be on or after the amendment effective date",
+        });
+      }
+      if (nv) {
+        const a = s.leaseUnitAssignments.find(
+          x => x.leaseId === lease.id && x.unitId === c.metadata!.unitId && assignmentIsActiveOn(x, eff),
+        );
+        if (a) {
+          const endHits = findOverlappingLeases(lease.id, [{
+            unitId: a.unitId,
+            startDate: a.startDate,
+            endDate: nv,
+          }], s);
+          const seen = new Set<string>();
+          for (const hit of endHits) {
+            const k = `${hit.unitId}|${hit.otherLeaseId}`;
+            if (seen.has(k)) continue;
+            seen.add(k);
+            const unit = s.units.find(u => u.id === hit.unitId);
+            const otherLease = s.leases.find(l => l.id === hit.otherLeaseId);
+            const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
+            blockers.push({
+              code: "AMD_UNIT_END_OVERLAP",
+              message: `New end date on unit ${unit?.unitCode ?? hit.unitId} overlaps lease ${ref} (${hit.otherStage}, ${hit.otherStart} – ${hit.otherEnd ?? "open"})`,
+            });
+          }
+        }
+      }
     }
   }
 
