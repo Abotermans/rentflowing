@@ -955,7 +955,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             assignmentType: c.metadata.assignmentType ?? "ancillary",
             isPrimary: false,
             startDate: c.metadata.startDate ?? eff,
-            endDate: null,
+            endDate: c.metadata.endDate ?? null,
             rentShare: Number(v.rentShare ?? 0),
             chargesShare: Number(v.chargesShare ?? 0),
             notes: `Added by amendment ${am.amendmentNumber}`,
@@ -966,6 +966,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           next = next.map(a =>
             a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && !a.endDate
               ? { ...a, endDate: dayBefore, updatedAt: ts }
+              : a,
+          );
+        } else if (c.fieldName === "unitEndDate" && c.metadata?.unitId) {
+          const nv = String(c.newValue ?? "");
+          next = next.map(a =>
+            a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && assignmentIsActiveOn(a, eff)
+              ? { ...a, endDate: nv || null, updatedAt: ts }
               : a,
           );
         } else if (c.fieldName === "primaryUnitId") {
