@@ -128,10 +128,10 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">{t("prof.group.costs")}</p>
             <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-              <KpiCard label={t("prof.kpi.actualCharges")} value={formatCurrency(p.costs.directCharges + p.costs.allocatedCharges, cur, locale)} />
-              <KpiCard label={t("prof.kpi.actualTaxes")} value={formatCurrency(p.costs.directTaxes + p.costs.allocatedTaxes, cur, locale)} />
-              <KpiCard label={t("prof.kpi.recovered")} value={formatCurrency(p.recovery.actualRecovered, cur, locale)} />
-              <KpiCard label={t("prof.recovery.ownerBorne")} value={formatCurrency(p.recovery.ownerBorne, cur, locale)} />
+              <KpiCard label={t("prof.kpi.actualCharges")} value={formatCurrency(p.costs.directCharges + p.costs.allocatedCharges, cur, locale)} hint={t("prof.kpi.actualChargesHint")} />
+              <KpiCard label={t("prof.kpi.actualTaxes")} value={formatCurrency(p.costs.directTaxes + p.costs.allocatedTaxes, cur, locale)} hint={t("prof.kpi.actualTaxesHint")} />
+              <KpiCard label={t("prof.kpi.recovered")} value={formatCurrency(p.recovery.actualRecovered, cur, locale)} hint={t("prof.kpi.recoveredHint")} />
+              <KpiCard label={t("prof.recovery.ownerBorne")} value={formatCurrency(p.recovery.ownerBorne, cur, locale)} hint={t("prof.recovery.ownerBorneHint")} />
               <KpiCard label={t("prof.kpi.recoveryRatio")} value={pct(p.recovery.recoveryRatio)} hint={t("prof.kpi.recoveryRatioHint")} />
             </div>
           </div>
