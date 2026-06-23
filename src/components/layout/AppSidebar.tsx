@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3, Settings, Coins, Tags, Settings2, PieChart, ChevronRight, Megaphone } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3, Settings, Coins, Tags, Settings2, PieChart, ChevronRight } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useEffect } from "react";
@@ -26,8 +26,6 @@ import { Separator } from "@/components/ui/separator";
 const items: { titleKey: TranslationKey; url: string; icon: typeof LayoutDashboard; moduleKey?: string }[] = [
   { titleKey: "nav.dashboard", url: "/", icon: LayoutDashboard },
   { titleKey: "nav.properties", url: "/properties", icon: Building2 },
-  { titleKey: "nav.owners", url: "/owners", icon: Users },
-  { titleKey: "nav.listings", url: "/listings", icon: Megaphone },
   { titleKey: "nav.units", url: "/units", icon: DoorOpen },
   { titleKey: "nav.tenants", url: "/tenants", icon: Users },
   { titleKey: "nav.leases", url: "/leases", icon: FileText },

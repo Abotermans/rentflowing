@@ -9,8 +9,6 @@ const en = {
   // Nav
   "nav.dashboard": "Dashboard",
   "nav.properties": "Properties",
-  "nav.owners": "Owners",
-  "nav.listings": "Listings",
   "nav.units": "Units",
   "nav.tenants": "Tenants",
   "nav.leases": "Leases",
@@ -1747,8 +1745,6 @@ const fr: TranslationKeys = {
   // Nav
   "nav.dashboard": "Tableau de bord",
   "nav.properties": "Biens",
-  "nav.owners": "Propriétaires",
-  "nav.listings": "Annonces",
   "nav.units": "Lots",
   "nav.tenants": "Locataires",
   "nav.leases": "Baux",

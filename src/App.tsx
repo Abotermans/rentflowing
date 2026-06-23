@@ -13,8 +13,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
-import Owners from "./pages/Owners";
-import Listings from "./pages/Listings";
 import Units from "./pages/Units";
 import UnitDetail from "./pages/UnitDetail";
 import Tenants from "./pages/Tenants";
@@ -67,8 +65,6 @@ const App = () => (
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/properties" element={<Properties />} />
                   <Route path="/properties/:id" element={<PropertyDetail />} />
-                  <Route path="/owners" element={<Owners />} />
-                  <Route path="/listings" element={<Listings />} />
                   <Route path="/units" element={<Units />} />
                   <Route path="/units/:id" element={<UnitDetail />} />
                   <Route path="/tenants" element={<Tenants />} />
