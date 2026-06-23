@@ -24,7 +24,7 @@ Do not close security-header findings until the deployed response includes the r
 
 ## Session Replay
 
-`index.html` loads `/security/replay-guard.js` before the React app. The guard removes and blocks known Lovable/rrweb replay scripts whose `src` or replay data attributes contain `/__l5e/` or `rrweb`.
+`src/main.tsx` installs `installReplayGuard()` before the React app mounts. The guard removes and blocks known Lovable/rrweb replay scripts whose `src` or replay data attributes contain `/__l5e/` or `rrweb`. `index.html` also loads `/security/replay-guard.js` as a defense-in-depth path for hosts that serve Vite `public/` assets directly.
 
 This is a repo-level defense-in-depth control. Production closure still requires browser verification on the deployed authenticated app:
 
