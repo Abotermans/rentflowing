@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.r2.dev; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://othaxlwgtqpodncnlglv.supabase.co wss://othaxlwgtqpodncnlglv.supabase.co; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob: data:; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src https://rentflowing.lovable.app/assets/ https://rentflowing.lovable.app/security/ http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.r2.dev; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://othaxlwgtqpodncnlglv.supabase.co wss://othaxlwgtqpodncnlglv.supabase.co; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob: data:; upgrade-insecure-requests
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff

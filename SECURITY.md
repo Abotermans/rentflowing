@@ -14,6 +14,8 @@ Required controls:
 - `Referrer-Policy: strict-origin-when-cross-origin`.
 - A restrictive `Permissions-Policy`.
 
+The CSP intentionally avoids `script-src 'self'` for production because Lovable injects replay scripts from same-origin `/__l5e/` paths. Production scripts are restricted to `/assets/` and `/security/` on `https://rentflowing.lovable.app`.
+
 Verify production after every host/config change:
 
 ```sh
