@@ -13,7 +13,7 @@ import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, MoreVertic
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { getTenantFullName, getLeaseStatus } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
 import { formatDate, formatCurrency, formatPeriodMonth } from "@/lib/formatters";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
@@ -28,13 +28,12 @@ import { detailLinkClass } from "@/lib/detailLinks";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
-  const { tenants, leases, units, properties, deleteTenant, updateTenant, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
+  const { tenants, leases, units, properties, deleteTenant, updateTenant, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant } = useAppData();
   const { t } = useSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [contactOpen, setContactOpen] = useState(true);
   const [receivablesOpen, setReceivablesOpen] = useState(true);
-  const [currentLeaseOpen, setCurrentLeaseOpen] = useState(true);
   const [receiptsOpen, setReceiptsOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
@@ -54,8 +53,7 @@ export default function TenantDetail() {
   }
 
   const tenantLeases = leases.filter(l => l.primaryTenantId === tenant.id || l.coTenantIds.includes(tenant.id));
-  const activeLeases = tenantLeases.filter(l => l.lifecycleStage === "active");
-  const activeLease = activeLeases[0];
+  const activeLease = tenantLeases.find(l => l.lifecycleStage === "active");
   const activeProperty = activeLease ? properties.find(p => p.id === activeLease.propertyId) : null;
   const unappliedCredit = getTenantUnappliedCredit(tenant.id);
   const recentReceipts = getCashReceiptsByTenant(tenant.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
@@ -202,56 +200,6 @@ export default function TenantDetail() {
         </CollapsibleContent>
       </Card>
       </Collapsible>
-
-      {/* Current Lease Summary */}
-      {activeLeases.length > 0 && (
-        <Collapsible open={currentLeaseOpen} onOpenChange={setCurrentLeaseOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
-              <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.currentLease")}</CardTitle>
-              <span className="inline-flex items-center justify-center h-7 w-7">
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", currentLeaseOpen && "rotate-180")} />
-              </span>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-          <CardContent className="space-y-5">
-            {activeLeases.map((lease) => {
-              const leaseUnit = units.find(u => u.id === lease.unitId);
-              const leaseProperty = properties.find(p => p.id === lease.propertyId);
-              const guarantee = getGuaranteeByLease(lease.id);
-              if (!leaseProperty || !leaseUnit) return null;
-              return (
-                <div key={lease.id} className="grid grid-cols-2 md:grid-cols-3 gap-4 border-b pb-4 last:border-b-0 last:pb-0">
-                  <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${lease.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{lease.leaseReference}</Link></div>
-                  <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${leaseUnit.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{leaseUnit.unitCode}</Link></div>
-                  <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${leaseProperty.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{leaseProperty.name}</Link></div>
-                  <div><p className="text-xs text-muted-foreground">{t("leases.period")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, leaseProperty.locale)} — {formatDate(lease.endDate, leaseProperty.locale)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(lease.monthlyRent, leaseProperty.currencyCode, leaseProperty.locale)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(lease.monthlyCharges, leaseProperty.currencyCode, leaseProperty.locale)}</p></div>
-                  {guarantee && (
-                    <>
-                      <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeType")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[guarantee.type]}</p></div>
-                      <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeStatus")}</p><StatusBadge status={guarantee.status} /></div>
-                    </>
-                  )}
-                  {lease.noticeGiven && (
-                    <div><p className="text-xs text-muted-foreground">{t("detail.noticeStatus")}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <StatusBadge status="under-notice" />
-                        {lease.intendedMoveOutDate && <span className="text-xs text-muted-foreground">{t("detail.moveOutLabel")}: {formatDate(lease.intendedMoveOutDate, leaseProperty.locale)}</span>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </CardContent>
-          </CollapsibleContent>
-        </Card>
-        </Collapsible>
-      )}
 
       {/* Lease History */}
       <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
