@@ -698,7 +698,6 @@ export type Database = {
       lease_amendments: {
         Row: {
           amendment_number: number
-          amendment_type: string
           created_at: string
           effective_date: string
           id: string
@@ -715,7 +714,6 @@ export type Database = {
         }
         Insert: {
           amendment_number?: number
-          amendment_type?: string
           created_at?: string
           effective_date: string
           id?: string
@@ -732,7 +730,6 @@ export type Database = {
         }
         Update: {
           amendment_number?: number
-          amendment_type?: string
           created_at?: string
           effective_date?: string
           id?: string
@@ -890,7 +887,6 @@ export type Database = {
       }
       lease_unit_assignments: {
         Row: {
-          assignment_type: string
           charges_share: number | null
           created_at: string
           end_date: string | null
@@ -905,7 +901,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assignment_type?: string
           charges_share?: number | null
           created_at?: string
           end_date?: string | null
@@ -920,7 +915,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assignment_type?: string
           charges_share?: number | null
           created_at?: string
           end_date?: string | null

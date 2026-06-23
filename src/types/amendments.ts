@@ -1,25 +1,3 @@
-import type { LeaseUnitAssignmentType } from "./index";
-
-/**
- * Type of contractual change carried by a lease amendment ("avenant").
- * "mixed" allows several distinct kinds of change in a single signed amendment.
- */
-export type AmendmentType =
-  | "rent-change"
-  | "charges-change"
-  | "term-extension"
-  | "term-shortening"
-  | "unit-addition"
-  | "unit-removal"
-  | "unit-change"
-  | "tenant-addition"
-  | "tenant-removal"
-  | "guarantee-change"
-  | "deposit-change"
-  | "notice-change"
-  | "clause-change"
-  | "mixed";
-
 export type AmendmentStatus =
   | "draft"
   | "scheduled"
@@ -46,20 +24,16 @@ export type AmendmentFieldName =
   | "primaryTenantId"
   /** @deprecated Use `tenantIds`. Kept for legacy amendment rows. */
   | "coTenantIds"
-  /** @deprecated Use `unitAssignments` + `assignmentType`. Kept for legacy rows. */
-  | "primaryUnitId"
   | "guaranteeSummary"
-  | "unitAssignments"      // add/remove unit (metadata carries unitId + assignmentType)
+  | "unitAssignments"      // add/remove unit (metadata carries unitId)
   | "unitRentShare"        // per-unit rent share change (metadata.unitId)
   | "unitChargesShare"     // per-unit charges share change (metadata.unitId)
-  | "unitAssignmentType"   // role change on an existing unit
   | "clauseSummary";
 
 export type AmendmentChangeType = "set" | "add" | "remove" | "replace";
 
 export interface AmendmentChangeMetadata {
   unitId?: string;
-  assignmentType?: LeaseUnitAssignmentType;
   startDate?: string;
   endDate?: string | null;
   tenantId?: string;
@@ -86,7 +60,6 @@ export interface LeaseAmendment {
   id: string;
   leaseId: string;
   amendmentNumber: number;
-  amendmentType: AmendmentType;
   title: string;
   reason: string;
   notes: string;
@@ -120,33 +93,13 @@ export interface EffectiveLeaseTerms {
   primaryTenantId: string;
   /** @deprecated Legacy mirror of `tenantIds` minus the billing tenant. */
   coTenantIds: string[];
-  /** Unit assignments active on `asOfDate`, primary first. */
+  /** Unit assignments active on `asOfDate`, ordered with main unit types first. */
   units: {
     unitId: string;
-    assignmentType: LeaseUnitAssignmentType;
     rentShare: number;
     chargesShare: number;
-    /** @deprecated Derived from `assignmentType === "primary"`. */
-    isPrimary: boolean;
   }[];
 }
-
-export const AMENDMENT_TYPE_LABELS: Record<AmendmentType, string> = {
-  "rent-change": "Rent change",
-  "charges-change": "Charges change",
-  "term-extension": "Term extension",
-  "term-shortening": "Term shortening",
-  "unit-addition": "Unit added",
-  "unit-removal": "Unit removed",
-  "unit-change": "Unit changed",
-  "tenant-addition": "Tenant added",
-  "tenant-removal": "Tenant removed",
-  "guarantee-change": "Guarantee change",
-  "deposit-change": "Deposit change",
-  "notice-change": "Notice change",
-  "clause-change": "Clause change",
-  mixed: "Mixed amendment",
-};
 
 export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {
   draft: "Draft",

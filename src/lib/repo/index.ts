@@ -8,6 +8,7 @@ import type {
   CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult,
 } from "@/types/costs";
 import type { ChargesReconciliation } from "@/types/chargesReconciliation";
+import { isMainLeaseUnit } from "@/lib/leaseAssignments";
 
 // ===== Case conversion =====
 const toSnake = (s: string) =>
@@ -24,7 +25,7 @@ const SKIP_TO_ROW = new Set(["createdAt", "updatedAt"]);
  */
 const LEGACY_FIELDS_BY_TABLE: Partial<Record<SupabaseTable, ReadonlySet<string>>> = {
   leases: new Set(["primary_tenant_id", "co_tenant_ids", "unit_id"]),
-  lease_unit_assignments: new Set(["is_primary"]),
+  lease_amendments: new Set(["amendment_type"]),
 };
 
 function toRow<T extends Record<string, any>>(
@@ -70,16 +71,16 @@ function fromRow<T = any>(row: Record<string, any>): T {
  * Hydrate legacy compatibility shims on a loaded Lease row:
  *   primaryTenantId ← billing_tenant_id ?? tenant_ids[0]
  *   coTenantIds     ← tenant_ids minus primaryTenantId
- *   unitId          ← first `primary` assignment, else first assignment
+ *   unitId          ← first main-unit assignment, else first assignment
  */
-function hydrateLease(lease: Lease, assignments: readonly LeaseUnitAssignment[]): Lease {
+function hydrateLease(lease: Lease, assignments: readonly LeaseUnitAssignment[], units: readonly Unit[]): Lease {
   const tIds: string[] = Array.isArray(lease.tenantIds) ? lease.tenantIds as string[] : [];
   const primaryTenantId: string =
     (lease.billingTenantId as string | undefined) || tIds[0] || "";
   const coTenantIds: string[] = tIds.filter(t => t !== primaryTenantId);
   const my = assignments.filter(a => a.leaseId === lease.id);
   const primaryAssignment =
-    my.find(a => a.assignmentType === "primary") ?? my[0];
+    my.find(a => isMainLeaseUnit(units.find(u => u.id === a.unitId))) ?? my[0];
   return {
     ...lease,
     tenantIds: tIds,
@@ -88,11 +89,6 @@ function hydrateLease(lease: Lease, assignments: readonly LeaseUnitAssignment[])
     coTenantIds,
     unitId: primaryAssignment?.unitId ?? "",
   };
-}
-
-/** Hydrate compatibility `isPrimary` from `assignmentType === "primary"`. */
-function hydrateAssignment(a: LeaseUnitAssignment): LeaseUnitAssignment {
-  return { ...a, isPrimary: a.assignmentType === "primary" };
 }
 
 // ===== Table names =====
@@ -191,14 +187,13 @@ export async function loadPortfolio(portfolioId: string): Promise<PortfolioSnaps
     listAll<CostAllocationResult>(TABLES.costAllocationResults, portfolioId),
     listAll<ChargesReconciliation>(TABLES.chargesReconciliations, portfolioId),
   ]);
-  const hydratedAssignments = leaseUnitAssignments.map(hydrateAssignment);
   const today = new Date().toISOString().slice(0, 10);
-  const hydratedLeases = leases.map(l => advanceLeaseLifecycle(hydrateLease(l, hydratedAssignments), today));
+  const hydratedLeases = leases.map(l => advanceLeaseLifecycle(hydrateLease(l, leaseUnitAssignments, units), today));
   return {
     properties, propertyOwners, propertyOwnerLinks, units, tenants,
     leases: hydratedLeases,
     guarantees,
-    leaseUnitAssignments: hydratedAssignments,
+    leaseUnitAssignments,
     amendments, amendmentChanges,
     receivableItems, cashReceipts, allocations,
     tickets, vendors,
@@ -213,6 +208,44 @@ function logErr(label: string, err: any) {
 }
 
 export const mirror = {
+  async insertAsync<T extends Record<string, any>>(table: SupabaseTable, obj: T, portfolioId: string): Promise<any | null> {
+    const row = toRow(obj, portfolioId, table);
+    const { error } = await (supabase as any).from(table).insert(row);
+    logErr(`insert ${table}`, error);
+    return error ?? null;
+  },
+  async insertManyAsync<T extends Record<string, any>>(table: SupabaseTable, objs: T[], portfolioId: string): Promise<any | null> {
+    if (objs.length === 0) return null;
+    const rows = objs.map((o) => toRow(o, portfolioId, table));
+    const { error } = await (supabase as any).from(table).insert(rows);
+    logErr(`insertMany ${table}`, error);
+    return error ?? null;
+  },
+  async upsertManyAsync<T extends Record<string, any>>(table: SupabaseTable, objs: T[], portfolioId: string): Promise<any | null> {
+    if (objs.length === 0) return null;
+    const rows = objs.map((o) => toRow(o, portfolioId, table));
+    const { error } = await (supabase as any).from(table).upsert(rows);
+    logErr(`upsertMany ${table}`, error);
+    return error ?? null;
+  },
+  async updateAsync<T extends Record<string, any>>(table: SupabaseTable, id: string, obj: T): Promise<any | null> {
+    const row = toRow(obj, undefined, table);
+    delete row.id;
+    delete row.portfolio_id;
+    const { error } = await (supabase as any).from(table).update(row).eq("id", id);
+    logErr(`update ${table}`, error);
+    return error ?? null;
+  },
+  async removeAsync(table: SupabaseTable, id: string): Promise<any | null> {
+    const { error } = await (supabase as any).from(table).delete().eq("id", id);
+    logErr(`delete ${table}`, error);
+    return error ?? null;
+  },
+  async removeWhereAsync(table: SupabaseTable, column: string, value: string): Promise<any | null> {
+    const { error } = await (supabase as any).from(table).delete().eq(column, value);
+    logErr(`delete ${table} where ${column}`, error);
+    return error ?? null;
+  },
   insert<T extends Record<string, any>>(table: SupabaseTable, obj: T, portfolioId: string): void {
     const row = toRow(obj, portfolioId, table);
     void (supabase as any).from(table).insert(row).then(({ error }: any) => logErr(`insert ${table}`, error));

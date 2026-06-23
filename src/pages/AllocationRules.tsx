@@ -33,7 +33,7 @@ const emptyForm: FormData = {
 export default function AllocationRules() {
   const {
     allocationRules, allocationRuleUnitShares, properties, units,
-    addAllocationRule, updateAllocationRule, deleteAllocationRule,
+    addAllocationRulePersisted, updateAllocationRule, deleteAllocationRule,
     setAllocationRuleUnitShares, getPropertyById,
   } = useAppData();
   const { t } = useSettings();
@@ -97,7 +97,7 @@ export default function AllocationRules() {
     return Object.values(unitShares).reduce((sum, v) => sum + (v || 0), 0);
   }, [unitShares]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim() || !form.propertyId) {
       toast({ title: t("common.validationError"), description: t("costs.validation.ruleRequired"), variant: "destructive" });
       return;
@@ -128,10 +128,23 @@ export default function AllocationRules() {
       }
       toast({ title: t("common.updated"), description: form.name });
     } else {
-      // We need the new rule ID for shares; addAllocationRule doesn't return it.
-      // For now, add rule then set shares after (context generates ID internally).
-      addAllocationRule(form);
-      toast({ title: t("common.added"), description: form.name });
+      try {
+        const created = await addAllocationRulePersisted(form);
+        if (form.method === "manual-percentage") {
+          const shares: Omit<AllocationRuleUnitShare, "id">[] = Object.entries(unitShares).map(([unitId, pct]) => ({
+            allocationRuleId: created.id, unitId, percentageShare: pct, fixedAmountShare: null, coefficient: null,
+          }));
+          setAllocationRuleUnitShares(created.id, shares);
+        }
+        toast({ title: t("common.added"), description: form.name });
+      } catch (err) {
+        toast({
+          title: t("common.validationError"),
+          description: err instanceof Error ? err.message : "Allocation rule could not be saved.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setSheetOpen(false);
   };

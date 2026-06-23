@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useToast } from "@/hooks/use-toast";
+import { isValidEmail } from "@/lib/validation";
 
 export default function Profile() {
   const { user, updatePassword } = useAuth();
@@ -26,6 +27,7 @@ export default function Profile() {
 
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const newEmailValid = newEmail.trim().length > 0 && isValidEmail(newEmail);
 
   useEffect(() => {
     if (!user) return;
@@ -56,6 +58,10 @@ export default function Profile() {
 
   const changeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newEmailValid) {
+      toast({ title: "Invalid email", description: "Enter a valid email address before updating your account.", variant: "destructive" });
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ email: newEmail });
     setBusy(false);
@@ -128,8 +134,8 @@ export default function Profile() {
             <CardHeader><CardTitle>Email</CardTitle><CardDescription>Current: {user?.email}</CardDescription></CardHeader>
             <CardContent>
               <form onSubmit={changeEmail} className="space-y-4">
-                <div className="space-y-2"><Label htmlFor="ne">New email</Label><Input id="ne" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required /></div>
-                <Button type="submit" disabled={busy || !newEmail}>Update email</Button>
+                <div className="space-y-2"><Label htmlFor="ne">New email</Label><Input id="ne" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} aria-invalid={!newEmailValid} required /></div>
+                <Button type="submit" disabled={busy || !newEmailValid}>Update email</Button>
               </form>
             </CardContent>
           </Card>

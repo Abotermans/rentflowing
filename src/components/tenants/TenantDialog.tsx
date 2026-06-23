@@ -18,6 +18,7 @@ import { canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
 import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import type { ValidationResult } from "@/lib/integrity/types";
+import { isValidEmail } from "@/lib/validation";
 
 type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
 
@@ -43,7 +44,7 @@ interface TenantDialogProps {
 }
 
 export function TenantDialog({ open, onOpenChange, editingTenant = null }: TenantDialogProps) {
-  const { addTenant, updateTenant } = useAppData();
+  const { addTenantPersisted, updateTenant } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -68,20 +69,33 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
     return canChangeTenantStatus(editingTenant.id, form.status, integrityState);
   })();
 
-  const executeSave = () => {
+  const executeSave = async () => {
     if (editingTenant) {
       updateTenant({ ...editingTenant, ...form });
       toast({ title: "Tenant updated" });
     } else {
-      addTenant(form);
-      toast({ title: "Tenant added" });
+      try {
+        await addTenantPersisted(form);
+        toast({ title: "Tenant added" });
+      } catch (err) {
+        toast({
+          title: "Validation Error",
+          description: err instanceof Error ? err.message : "Tenant could not be saved.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     onOpenChange(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.email.trim()) {
       toast({ title: "Validation Error", description: "Email is required.", variant: "destructive" });
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      toast({ title: "Validation Error", description: "Enter a valid email address.", variant: "destructive" });
       return;
     }
     if (form.kind === "individual") {
@@ -111,7 +125,7 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
         return;
       }
     }
-    executeSave();
+    await executeSave();
   };
 
   const handleOverrideConfirm = (reason: string) => {

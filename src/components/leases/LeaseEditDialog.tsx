@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, X as XIcon, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, X as XIcon, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,9 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Lease, LifecycleStage, RentFormula, getTenantFullName } from "@/types";
-import type { LeaseUnitAssignmentType } from "@/types";
-import type { TranslationKey } from "@/i18n/translations";
+import { Lease, LifecycleStage, RentFormula, getTenantFullName, isAncillaryUnitType } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
@@ -55,7 +53,6 @@ const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
 
 type UnitRow = {
   unitId: string;
-  assignmentType: LeaseUnitAssignmentType;
   rentShare: number;
   chargesShare: number;
   startDate: string;
@@ -72,13 +69,17 @@ export interface LeaseEditDialogProps {
 export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEditDialogProps) {
   const {
     units, properties, tenants,
-    getActiveLease, getLeaseAssignments,
+    getLeaseAssignments,
     updateLease, setLeaseUnits,
   } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
+  const isMainRow = (row: Pick<UnitRow, "unitId">) => {
+    const unit = units.find(u => u.id === row.unitId);
+    return !!unit && !isAncillaryUnitType(unit.unitType);
+  };
 
   const [form, setForm] = useState<LeaseFormData>(() => {
     const { id, createdAt, updatedAt, ...rest } = lease;
@@ -95,19 +96,19 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       const today = new Date().toISOString().slice(0, 10);
       const all = getLeaseAssignments(lease.id)
         .filter(a => !a.endDate || a.endDate >= today)
-        .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
-      const rows: UnitRow[] = all.map(a => ({
-        unitId: a.unitId,
-        assignmentType: a.isPrimary ? "primary" : a.assignmentType,
-        rentShare: a.rentShare ?? 0,
-        chargesShare: a.chargesShare ?? 0,
-        startDate: a.startDate ?? lease.startDate ?? "",
-        endDate: a.endDate ?? lease.endDate ?? null,
-      }));
-      if (!rows.some(r => r.assignmentType === "primary") && lease.unitId) {
+        .sort((a, b) => Number(isMainRow(b)) - Number(isMainRow(a)));
+      const rows: UnitRow[] = all.map(a => {
+        return {
+          unitId: a.unitId,
+          rentShare: a.rentShare ?? 0,
+          chargesShare: a.chargesShare ?? 0,
+          startDate: a.startDate ?? lease.startDate ?? "",
+          endDate: a.endDate ?? lease.endDate ?? null,
+        };
+      });
+      if (!rows.some(isMainRow) && lease.unitId) {
         rows.unshift({
           unitId: lease.unitId,
-          assignmentType: "primary",
           rentShare: lease.monthlyRent,
           chargesShare: lease.monthlyCharges,
           startDate: lease.startDate ?? "",
@@ -116,7 +117,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       }
       setUnitRows(rows);
     }
-  }, [open, lease.id]);
+  }, [open, lease.id, getLeaseAssignments, units]);
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
   const selectedProperty = useMemo(
@@ -160,6 +161,26 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
   const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
   const allInclusive = form.pricingMode === "all-inclusive";
 
+  const unitDateConflictMessages = useMemo(() => {
+    if (!form.propertyId || unitRows.length === 0) return [];
+    const draft: DraftAssignment[] = unitRows.map(r => ({
+      unitId: r.unitId,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      rentShare: r.rentShare,
+      chargesShare: r.chargesShare,
+    }));
+    return validateLeaseUnits(
+      lease.id,
+      form.propertyId,
+      draft,
+      { monthlyRent: totalRent, monthlyCharges: totalCharges },
+      integrityState,
+    ).blockers
+      .filter(b => b.code === "LUA_UNIT_OVERLAP")
+      .map(b => b.message);
+  }, [lease.id, form.propertyId, unitRows, totalRent, totalCharges, integrityState]);
+
   const availableStatuses = useMemo(() => {
     const allowed = ALLOWED_TRANSITIONS[lease.lifecycleStage] || [lease.lifecycleStage];
     return LEASE_STAGES.filter(s => allowed.includes(s.value));
@@ -172,13 +193,11 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
 
   const addUnitRow = () => {
     setUnitRows(prev => {
-      const hasPrimary = prev.some(r => r.assignmentType === "primary");
       const seed = prev[0];
       return [
         ...prev,
         {
           unitId: "",
-          assignmentType: hasPrimary ? "parking" : "primary",
           rentShare: 0,
           chargesShare: 0,
           startDate: seed?.startDate ?? "",
@@ -189,13 +208,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
   };
 
   const removeUnitRow = (idx: number) => {
-    setUnitRows(prev => {
-      const next = prev.filter((_, i) => i !== idx);
-      if (next.length > 0 && !next.some(r => r.assignmentType === "primary")) {
-        next[0] = { ...next[0], assignmentType: "primary" };
-      }
-      return next;
-    });
+    setUnitRows(prev => prev.filter((_, i) => i !== idx));
   };
 
   const updateUnitRow = (idx: number, patch: Partial<UnitRow>) => {
@@ -215,20 +228,10 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
     }));
   };
 
-  const setRoleForRow = (idx: number, role: LeaseUnitAssignmentType) => {
-    setUnitRows(prev => prev.map((r, i) => {
-      if (i === idx) return { ...r, assignmentType: role };
-      if (role === "primary" && r.assignmentType === "primary") return { ...r, assignmentType: "parking" };
-      return r;
-    }));
-  };
-
   const executeLeaseSave = () => {
     const persistAssignments = (leaseId: string) => {
       const draft = unitRows.map(r => ({
         unitId: r.unitId,
-        assignmentType: r.assignmentType,
-        isPrimary: r.assignmentType === "primary",
         rentShare: r.rentShare,
         chargesShare: form.pricingMode === "all-inclusive" ? 0 : r.chargesShare,
         startDate: r.startDate,
@@ -236,7 +239,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       }));
       setLeaseUnits(leaseId, form.propertyId, draft);
     };
-    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const primaryRow = unitRows.find(isMainRow);
     const computedTotalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
     const computedTotalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
     const derivedStart = unitRows.map(r => r.startDate).sort()[0] ?? form.startDate;
@@ -279,17 +282,17 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
   };
 
   const handleSave = () => {
-    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const primaryRow = unitRows.find(isMainRow);
     if (unitRows.length === 0 || !primaryRow || !primaryRow.unitId) {
-      toast({ title: "Validation Error", description: "Add at least one unit with role Primary.", variant: "destructive" });
+      toast({ title: "Validation Error", description: "Add at least one residential or main commercial unit.", variant: "destructive" });
       return;
     }
     if (unitRows.some(r => !r.unitId)) {
       toast({ title: "Validation Error", description: "Every row in Units must have a unit selected.", variant: "destructive" });
       return;
     }
-    if (unitRows.filter(r => r.assignmentType === "primary").length !== 1) {
-      toast({ title: "Validation Error", description: "Exactly one unit must be marked as Primary.", variant: "destructive" });
+    if (unitRows.filter(isMainRow).length === 0) {
+      toast({ title: "Validation Error", description: "At least one selected unit must be residential or main commercial.", variant: "destructive" });
       return;
     }
     const dupCheck = new Set(unitRows.map(r => r.unitId));
@@ -348,17 +351,8 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
         toast({ title: "Lease saved with warnings", description: validation.warnings.map(w => w.message).join(". ") });
       }
     }
-    if (form.lifecycleStage === "active") {
-      const existing = getActiveLease(effectiveUnitId);
-      if (existing && existing.id !== lease.id) {
-        toast({ title: "Conflict", description: `Unit already has an active lease: ${existing.leaseReference}`, variant: "destructive" });
-        return;
-      }
-    }
     const draft: DraftAssignment[] = unitRows.map(r => ({
       unitId: r.unitId,
-      assignmentType: r.assignmentType,
-      isPrimary: r.assignmentType === "primary",
       startDate: r.startDate,
       endDate: r.endDate,
       rentShare: r.rentShare,
@@ -455,7 +449,6 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
-                      <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
                       <TableHead className="h-9 w-auto">{t("leases.col.start")}</TableHead>
                       <TableHead className="h-9 w-auto">{t("leases.col.end")}</TableHead>
                       <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
@@ -477,24 +470,10 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                             <Select value={row.unitId} onValueChange={v => updateUnitRow(idx, { unitId: v })}>
                               <SelectTrigger className="h-8 w-full min-w-[140px]"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                               <SelectContent>
-                                {options.map(u => {
-                                  const existing = getActiveLease(u.id);
-                                  const blocked = existing && existing.id !== lease.id;
-                                  return (
-                                    <SelectItem key={u.id} value={u.id} disabled={!!blocked}>
-                                      {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
-                                    </SelectItem>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell className="py-1.5">
-                            <Select value={row.assignmentType} onValueChange={v => setRoleForRow(idx, v as LeaseUnitAssignmentType)}>
-                              <SelectTrigger className="h-8 w-full min-w-[90px]"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {(["primary", "parking", "cellar", "storage", "ancillary", "office-secondary", "commercial-addon", "other"] as LeaseUnitAssignmentType[]).map(at => (
-                                  <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
+                                {options.map(u => (
+                                  <SelectItem key={u.id} value={u.id}>
+                                    {u.unitCode} — {u.unitLabel}
+                                  </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -553,7 +532,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                       );
                     })}
                     <TableRow className="bg-muted/30 font-medium">
-                      <TableCell colSpan={4} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      <TableCell colSpan={3} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
                         {t("leases.units.grandTotal")}
                       </TableCell>
                       <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
@@ -565,6 +544,21 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                     </TableRow>
                   </TableBody>
                 </Table>
+              )}
+              {unitDateConflictMessages.length > 0 && (
+                <div className="mt-2 rounded border border-destructive/30 bg-destructive/5 p-2">
+                  <div className="flex items-start gap-2 text-xs text-destructive">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <div>
+                      <p className="font-medium">Date conflict</p>
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                        {unitDateConflictMessages.map(message => (
+                          <li key={message}>{message}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 

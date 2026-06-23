@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { getTenantFullName } from "@/types";
 import { getSourceTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
+import { positiveNumber } from "@/lib/validation";
 import { toast as sonnerToast } from "sonner";
 
 interface CashReceiptDialogProps {
@@ -25,7 +26,7 @@ export function CashReceiptDialog({
   open, onOpenChange, prefillTenantId, prefillLeaseId, lockTenant = false,
 }: CashReceiptDialogProps) {
   const { t } = useSettings();
-  const { tenants, leases, properties, createCashReceipt } = useAppData();
+  const { tenants, leases, properties, createCashReceiptPersisted } = useAppData();
 
   const [sourceType, setSourceType] = useState<CashReceiptSourceType>("bank-transfer");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
@@ -59,14 +60,18 @@ export function CashReceiptDialog({
   const selectedProp = selectedLease ? properties.find(p => p.id === selectedLease.propertyId) : undefined;
   const currency = selectedProp?.currencyCode ?? "EUR";
 
-  const handleSave = () => {
-    if (!amount) return;
+  const handleSave = async () => {
+    if (!positiveNumber(amount)) {
+      sonnerToast.error(t("common.validationError"), { description: "Receipt amount must be greater than zero." });
+      return;
+    }
     if (!date) {
       sonnerToast.error(t("validation.dates.title"), { description: t("validation.dates.paymentDateRequired") });
       return;
     }
     const amt = parseFloat(amount);
-    createCashReceipt({
+    try {
+      await createCashReceiptPersisted({
       tenantId: tenantId || null,
       leaseId: leaseId || null,
       propertyId: selectedLease?.propertyId ?? null,
@@ -88,7 +93,13 @@ export function CashReceiptDialog({
       notes,
       importBatchId: null,
       rawBankTransactionId: null,
-    }, autoAllocate);
+      }, autoAllocate);
+    } catch (err) {
+      sonnerToast.error(t("common.validationError"), {
+        description: err instanceof Error ? err.message : "Cash receipt could not be saved.",
+      });
+      return;
+    }
     onOpenChange(false);
   };
 
@@ -167,7 +178,7 @@ export function CashReceiptDialog({
             <Label>{t("payments.dialog.autoAllocate")}</Label>
             <Switch checked={autoAllocate} onCheckedChange={setAutoAllocate} />
           </div>
-          <Button onClick={handleSave} disabled={!amount} className="w-full">{t("payments.recordCashReceipt")}</Button>
+          <Button onClick={handleSave} disabled={!positiveNumber(amount)} className="w-full">{t("payments.recordCashReceipt")}</Button>
         </div>
       </DialogContent>
     </Dialog>

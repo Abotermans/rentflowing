@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
@@ -12,10 +12,11 @@ import { Tag, Shield } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Receipt, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
-  CostEntry, CostFrequency, CostNature, RecoveryType,
+  CostEntry, CostFrequency, CostNature, RecoveryType, CostEntryStatus,
   COST_NATURE_LABELS, RECOVERY_TYPE_LABELS,
 } from "@/types/costs";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -27,11 +28,12 @@ import { CostEntryDialog } from "@/components/costs/CostEntryDialog";
 
 export default function CostEntries() {
   const {
-    costEntries, properties, deleteCostEntry,
+    costEntries, properties, costCategories, deleteCostEntry,
     getPropertyById, getUnitById, getCostCategoryById, getAllocationRuleById,
   } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const natureLabel = (n: CostNature) => t(`costs.nature.${n}` as TranslationKey);
@@ -45,10 +47,23 @@ export default function CostEntries() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<CostEntry | null>(null);
 
-  type ESortKey = "label" | "category" | "nature" | "property" | "unit" | "frequency" | "amount" | "recovery" | "period";
+  type ESortKey = "label" | "category" | "nature" | "property" | "unit" | "frequency" | "amount" | "recovery" | "period" | "status";
   const { sort, toggle } = useTableSort<ESortKey>();
 
-  const openAdd = () => { setEditing(null); setSheetOpen(true); };
+  const openAdd = () => {
+    if (properties.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a property before adding cost entries.", variant: "destructive" });
+      navigate("/properties");
+      return;
+    }
+    if (costCategories.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a cost category before adding cost entries.", variant: "destructive" });
+      navigate("/costs/categories");
+      return;
+    }
+    setEditing(null);
+    setSheetOpen(true);
+  };
   const openEdit = (e: CostEntry) => { setEditing(e); setSheetOpen(true); };
 
   useEffect(() => {
@@ -95,6 +110,7 @@ export default function CostEntries() {
       case "amount": return e.amount;
       case "recovery": return recoveryLabel(e.recoveryType);
       case "period": return e.startDate;
+      case "status": return e.status || "active";
     }
   });
 
@@ -102,15 +118,15 @@ export default function CostEntries() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("costs.entries")}</h1>
           <p className="text-sm text-muted-foreground">{t("costs.entriesSubtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative inline-flex">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
           <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />{t("costs.addEntry")}</Button>
         </div>
@@ -163,6 +179,7 @@ export default function CostEntries() {
                   <SortableTableHead sortKey="amount" sort={sort} onSort={toggle} align="right">{t("costs.amount")}</SortableTableHead>
                   <SortableTableHead sortKey="recovery" sort={sort} onSort={toggle}>{t("costs.recoveryType")}</SortableTableHead>
                   <SortableTableHead sortKey="period" sort={sort} onSort={toggle}>{t("costs.period")}</SortableTableHead>
+                  <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
@@ -184,9 +201,10 @@ export default function CostEntries() {
                       <TableCell className="text-muted-foreground whitespace-nowrap">
                         {formatDate(e.startDate)} – {e.endDate ? formatDate(e.endDate) : "—"}
                       </TableCell>
+                      <TableCell><StatusBadge status={(e.status || "active") as CostEntryStatus} /></TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${e.label}`} title={`Edit ${e.label}`} onClick={() => openEdit(e)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <DeleteDialog

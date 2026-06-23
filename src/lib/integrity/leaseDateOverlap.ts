@@ -21,6 +21,8 @@ export interface OverlapHit {
   unitId: string;
   otherLeaseId: string;
   otherStage: LifecycleStage;
+  proposedStart: string;
+  proposedEnd: string | null;
   otherStart: string;
   otherEnd: string | null;
 }
@@ -62,10 +64,28 @@ export function findOverlappingLeases(
         unitId: p.unitId,
         otherLeaseId: other.leaseId,
         otherStage: otherLease.lifecycleStage,
+        proposedStart: p.startDate,
+        proposedEnd: p.endDate,
         otherStart: other.startDate,
         otherEnd: other.endDate,
       });
     }
   }
   return hits;
+}
+
+export function formatOverlapRange(startDate: string, endDate: string | null): string {
+  return `${startDate} – ${endDate ?? "open-ended"}`;
+}
+
+export function formatOverlapConflictMessage(
+  hit: OverlapHit,
+  labels: { unitLabel: string; leaseRef: string },
+): string {
+  const proposedRange = formatOverlapRange(hit.proposedStart, hit.proposedEnd);
+  const occupiedRange = formatOverlapRange(hit.otherStart, hit.otherEnd);
+  const availability = hit.otherEnd
+    ? ` The unit is available from ${hit.otherEnd} onward.`
+    : " The conflicting assignment has no end date, so the unit is unavailable until that assignment is closed.";
+  return `Unit ${labels.unitLabel} is not available for ${proposedRange}: it overlaps lease ${labels.leaseRef} (${hit.otherStage}) during ${occupiedRange}.${availability}`;
 }

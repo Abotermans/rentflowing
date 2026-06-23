@@ -1,11 +1,11 @@
-import type { Lease, LeaseUnitAssignment } from "@/types";
+import type { Lease, LeaseUnitAssignment, Unit } from "@/types";
 import type {
   LeaseAmendment,
   LeaseAmendmentChange,
   EffectiveLeaseTerms,
   AmendmentStatus,
 } from "@/types/amendments";
-import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import { assignmentIsActiveOn, isMainLeaseUnit } from "@/lib/leaseAssignments";
 import type { IntegrityState } from "@/lib/integrity/types";
 import { validateAmendment } from "@/lib/integrity/amendmentIntegrity";
 
@@ -78,6 +78,7 @@ export function nextAmendmentNumber(
 
 interface State {
   leases: readonly Lease[];
+  units: readonly Unit[];
   leaseUnitAssignments: readonly LeaseUnitAssignment[];
   amendments: readonly LeaseAmendment[];
   amendmentChanges: readonly LeaseAmendmentChange[];
@@ -110,11 +111,13 @@ export function getOriginalLeaseTerms(
     coTenantIds: [...lease.coTenantIds],
     units: originalAssignments
       .slice()
-      .sort((x, y) => (y.isPrimary ? 1 : 0) - (x.isPrimary ? 1 : 0))
+      .sort((x, y) => {
+        const xu = s.units.find(u => u.id === x.unitId);
+        const yu = s.units.find(u => u.id === y.unitId);
+        return Number(isMainLeaseUnit(yu)) - Number(isMainLeaseUnit(xu));
+      })
       .map(a => ({
         unitId: a.unitId,
-        assignmentType: a.assignmentType,
-        isPrimary: a.isPrimary,
         rentShare: a.rentShare ?? 0,
         chargesShare: a.chargesShare ?? 0,
       })),
@@ -142,11 +145,13 @@ export function getEffectiveLeaseTerms(
   // Live unit projection from assignment rows active on `date`.
   const liveUnits = s.leaseUnitAssignments
     .filter(a => a.leaseId === leaseId && assignmentIsActiveOn(a, date))
-    .sort((x, y) => (y.isPrimary ? 1 : 0) - (x.isPrimary ? 1 : 0))
+    .sort((x, y) => {
+      const xu = s.units.find(u => u.id === x.unitId);
+      const yu = s.units.find(u => u.id === y.unitId);
+      return Number(isMainLeaseUnit(yu)) - Number(isMainLeaseUnit(xu));
+    })
     .map(a => ({
       unitId: a.unitId,
-      assignmentType: a.assignmentType,
-      isPrimary: a.isPrimary,
       rentShare: a.rentShare ?? 0,
       chargesShare: a.chargesShare ?? 0,
     }));
@@ -230,7 +235,7 @@ export function getCurrentLeaseTerms(leaseId: string, s: State): EffectiveLeaseT
 
 export type AmendmentDraftLike = Pick<
   LeaseAmendment,
-  "id" | "leaseId" | "amendmentNumber" | "amendmentType" | "title" | "reason" |
+  "id" | "leaseId" | "amendmentNumber" | "title" | "reason" |
   "notes" | "effectiveDate" | "signedDate" | "status" | "supersedesAmendmentId"
 >;
 

@@ -33,7 +33,7 @@ interface MaintenanceTicketDialogProps {
 export function MaintenanceTicketDialog({
   open, onOpenChange, editing = null, prefillPropertyId, prefillUnitId, lockUnit = false,
 }: MaintenanceTicketDialogProps) {
-  const { properties, units, tenants, vendors, addTicket, updateTicket } = useAppData();
+  const { properties, units, tenants, vendors, addTicketPersisted, updateTicket } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
 
@@ -68,10 +68,27 @@ export function MaintenanceTicketDialog({
   }, [open, editing, prefillPropertyId, prefillUnitId]);
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
+  const canSubmit = !!form.title.trim() && !!form.propertyId && !!form.unitId;
 
-  const handleSave = () => {
-    if (!form.title.trim() || !form.propertyId || !form.unitId) {
-      toast({ title: t("common.validationError"), description: t("maintenance.validationDesc"), variant: "destructive" });
+  const handleSave = async () => {
+    if (properties.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a property before opening a maintenance ticket.", variant: "destructive" });
+      return;
+    }
+    if (formUnits.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a unit for this property before opening a maintenance ticket.", variant: "destructive" });
+      return;
+    }
+    if (!form.title.trim()) {
+      toast({ title: t("common.validationError"), description: "Ticket title is required.", variant: "destructive" });
+      return;
+    }
+    if (!form.propertyId) {
+      toast({ title: t("common.validationError"), description: "Select a property before creating the ticket.", variant: "destructive" });
+      return;
+    }
+    if (!form.unitId) {
+      toast({ title: t("common.validationError"), description: "Select a unit before creating the ticket.", variant: "destructive" });
       return;
     }
     const dateErrors = validateDateOrder([
@@ -87,8 +104,17 @@ export function MaintenanceTicketDialog({
       updateTicket({ ...editing, ...form });
       toast({ title: t("maintenance.toastUpdated") });
     } else {
-      addTicket(form);
-      toast({ title: t("maintenance.toastCreated") });
+      try {
+        await addTicketPersisted(form);
+        toast({ title: t("maintenance.toastCreated") });
+      } catch (err) {
+        toast({
+          title: t("common.validationError"),
+          description: err instanceof Error ? err.message : "Maintenance ticket could not be saved.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     onOpenChange(false);
   };
@@ -163,7 +189,7 @@ export function MaintenanceTicketDialog({
         </div>
         <DialogFooter className="mt-6">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
-          <Button onClick={handleSave}>{editing ? t("action.save") : t("maintenance.createTicket")}</Button>
+          <Button onClick={handleSave} disabled={!canSubmit}>{editing ? t("action.save") : t("maintenance.createTicket")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

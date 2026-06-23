@@ -35,6 +35,7 @@ import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
+import { nonNegativeNumber, normalizedCode, positiveNumber } from "@/lib/validation";
 
 import type { TranslationKey } from "@/i18n/translations";
 
@@ -65,6 +66,8 @@ const OCCUPANCY_FILTERS: { value: DerivedOccupancy | "all"; labelKey: Translatio
   { value: "all", labelKey: "units.allOccupancy" },
   { value: "vacant", labelKey: "status.vacant" },
   { value: "occupied", labelKey: "status.occupied" },
+  { value: "reserved", labelKey: "status.reserved" },
+  { value: "unavailable", labelKey: "status.unavailable" },
   { value: "under-notice", labelKey: "status.underNotice" },
   { value: "move-in-pending", labelKey: "status.moveInPending" },
   { value: "move-out-scheduled", labelKey: "status.moveOutScheduled" },
@@ -73,7 +76,7 @@ const OCCUPANCY_FILTERS: { value: DerivedOccupancy | "all"; labelKey: Translatio
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function Units() {
-  const { properties, units, leases, leaseUnitAssignments, addUnit, updateUnit, deleteUnit } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, addUnitPersisted, updateUnit, deleteUnit } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
@@ -110,7 +113,16 @@ export default function Units() {
   };
   const [form, setForm] = useState<UnitFormData>({ ...emptyForm });
 
-  const openAdd = () => { setEditingUnit(null); setForm({ ...emptyForm }); setSheetOpen(true); };
+  const openAdd = () => {
+    if (properties.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a property before adding units.", variant: "destructive" });
+      navigate("/properties");
+      return;
+    }
+    setEditingUnit(null);
+    setForm({ ...emptyForm });
+    setSheetOpen(true);
+  };
   const openEdit = (u: Unit) => {
     setEditingUnit(u);
     const { id, createdAt, updatedAt, ...rest } = u;
@@ -122,21 +134,58 @@ export default function Units() {
     if (!editingUnit || form.currentStatus === editingUnit.currentStatus) return null;
     return canChangeUnitStatus(editingUnit.id, form.currentStatus, integrityState);
   })();
+  const unitFormValid =
+    !!form.unitCode.trim() &&
+    !!form.unitLabel.trim() &&
+    !!form.propertyId &&
+    nonNegativeNumber(form.bedrooms) &&
+    nonNegativeNumber(form.bathrooms) &&
+    (form.surfaceArea == null || positiveNumber(form.surfaceArea)) &&
+    (form.baseRent == null || positiveNumber(form.baseRent)) &&
+    (form.baseCharges == null || positiveNumber(form.baseCharges));
 
-  const executeSave = () => {
+  const executeSave = async () => {
     if (editingUnit) {
       updateUnit({ ...editingUnit, ...form });
       toast({ title: t("units.toastUpdated") });
     } else {
-      addUnit(form);
-      toast({ title: t("units.toastAdded") });
+      try {
+        await addUnitPersisted(form);
+        toast({ title: t("units.toastAdded") });
+      } catch (err) {
+        toast({
+          title: t("common.validationError"),
+          description: err instanceof Error ? err.message : "Unit could not be saved.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setSheetOpen(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.unitCode.trim() || !form.unitLabel.trim() || !form.propertyId) {
       toast({ title: t("common.validationError"), description: t("units.requiredFields"), variant: "destructive" });
+      return;
+    }
+    const duplicateCode = units.some(u =>
+      u.id !== editingUnit?.id &&
+      u.propertyId === form.propertyId &&
+      normalizedCode(u.unitCode) === normalizedCode(form.unitCode),
+    );
+    if (duplicateCode) {
+      toast({ title: t("common.validationError"), description: "Unit codes must be unique within a property.", variant: "destructive" });
+      return;
+    }
+    if (!nonNegativeNumber(form.bedrooms) || !nonNegativeNumber(form.bathrooms)) {
+      toast({ title: t("common.validationError"), description: "Bedroom and bathroom counts cannot be negative.", variant: "destructive" });
+      return;
+    }
+    if ((form.surfaceArea !== null && form.surfaceArea !== undefined && !positiveNumber(form.surfaceArea)) ||
+        (form.baseRent !== null && form.baseRent !== undefined && !positiveNumber(form.baseRent)) ||
+        (form.baseCharges !== null && form.baseCharges !== undefined && !positiveNumber(form.baseCharges))) {
+      toast({ title: t("common.validationError"), description: "Surface, rent, and charges must be positive when provided.", variant: "destructive" });
       return;
     }
     if (editingUnit && form.currentStatus !== editingUnit.currentStatus) {
@@ -151,7 +200,7 @@ export default function Units() {
         return;
       }
     }
-    executeSave();
+    await executeSave();
   };
 
   const handleOverrideConfirm = (reason: string) => {
@@ -177,7 +226,7 @@ export default function Units() {
   // Compute derived occupancy for each unit
   const unitsWithOccupancy = units.map(u => ({
     unit: u,
-    occupancy: getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments),
+    occupancy: getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments, u),
   }));
 
   const filtered = unitsWithOccupancy.filter(({ unit: u, occupancy }) => {
@@ -186,7 +235,7 @@ export default function Units() {
     const matchSearch = !q || u.unitCode.toLowerCase().includes(q) || u.unitLabel.toLowerCase().includes(q) || (prop?.name.toLowerCase().includes(q) ?? false);
     const matchProp = filterProperty.length === 0 || filterProperty.includes(u.propertyId);
     const matchType = filterType.length === 0 || filterType.includes(u.unitType);
-    // Stored-status filters match unit.currentStatus (what's displayed); lifecycle-nuance filters match derived.
+    // Stored operational filters match unit.currentStatus; occupancy filters match derived lease reality.
     const storedStatusFilters: DerivedOccupancy[] = ["vacant", "occupied", "reserved", "unavailable"];
     const matchOccupancy =
       filterOccupancy.length === 0 ||
@@ -315,7 +364,7 @@ export default function Units() {
                       <TableCell className="text-right text-muted-foreground">{u.baseCharges != null && prop ? formatCurrency(u.baseCharges, prop.currencyCode, prop.locale) : "—"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <StatusBadge status={u.currentStatus} />
+                          <StatusBadge status={occupancy.derived} />
                           {occupancy.inconsistent && (
                             <Tooltip>
                               <TooltipTrigger>
@@ -337,7 +386,7 @@ export default function Units() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${u.unitCode}`} title={`Edit ${u.unitCode}`} onClick={() => openEdit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
                           <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDelete} />
                         </div>
                       </TableCell>
@@ -470,7 +519,7 @@ export default function Units() {
           </div>
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
-            <Button onClick={handleSave}>{editingUnit ? t("action.save") : t("units.add")}</Button>
+            <Button onClick={handleSave} disabled={!unitFormValid}>{editingUnit ? t("action.save") : t("units.add")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

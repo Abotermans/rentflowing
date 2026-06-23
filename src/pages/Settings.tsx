@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Settings as SettingsIcon, Globe, CalendarClock, LayoutGrid, LogIn } from "lucide-react";
-import { LOCALE_LABELS, type Locale } from "@/i18n/translations";
+import { getTranslation, LOCALE_LABELS, type Locale } from "@/i18n/translations";
 import { useToast } from "@/hooks/use-toast";
 import { OPTIONAL_MODULES } from "@/config/modules";
 import { usePortfolio } from "@/context/PortfolioContext";
@@ -33,7 +33,7 @@ export default function Settings() {
       .eq("id", currentPortfolio.id);
     if (error) {
       setShowOccupancyOps(!checked);
-      toast({ title: "Could not save", description: error.message, variant: "destructive" });
+      toast({ title: t("settings.saveFailed"), description: error.message, variant: "destructive" });
       return;
     }
     toast({ title: t("settings.saved") });
@@ -41,8 +41,9 @@ export default function Settings() {
   };
 
   const handleLocaleChange = (value: string) => {
-    setLocale(value as Locale);
-    toast({ title: t("settings.saved") });
+    const nextLocale = value as Locale;
+    setLocale(nextLocale);
+    toast({ title: getTranslation(nextLocale, "settings.saved") });
   };
 
   const handleLeadDaysChange = (value: string) => {
@@ -168,21 +169,19 @@ export default function Settings() {
 
         {/* Leases / Occupancy operations */}
         <div>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Leases</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("settings.leases")}</h2>
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <LogIn className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-base">Show Move-in / Move-out section</CardTitle>
+                <CardTitle className="text-base">{t("settings.occupancyOpsTitle")}</CardTitle>
               </div>
-              <CardDescription>
-                Display the move-in and move-out occupancy operations section on each lease page. Applies to the current portfolio. Off by default.
-              </CardDescription>
+              <CardDescription>{t("settings.occupancyOpsDesc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between gap-4">
                 <Label htmlFor="show-occupancy-ops" className="text-sm font-medium text-foreground">
-                  {showOccupancyOps ? "Visible" : "Hidden"}
+                  {showOccupancyOps ? t("settings.moduleVisible") : t("settings.moduleHidden")}
                 </Label>
                 <Switch
                   id="show-occupancy-ops"
@@ -192,7 +191,7 @@ export default function Settings() {
                 />
               </div>
               {!canManage && currentPortfolio && (
-                <p className="text-xs text-muted-foreground mt-2">Only portfolio owners or admins can change this.</p>
+                <p className="text-xs text-muted-foreground mt-2">{t("settings.adminOnly")}</p>
               )}
             </CardContent>
           </Card>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { isValidEmail } from "@/lib/validation";
 
 export default function ForgotPassword() {
   const { resetPasswordForEmail } = useAuth();
@@ -13,9 +14,14 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const emailValid = email.trim().length > 0 && isValidEmail(email);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!emailValid) {
+      toast({ title: "Check your email", description: "Enter a valid email address.", variant: "destructive" });
+      return;
+    }
     setBusy(true);
     const { error } = await resetPasswordForEmail(email);
     setBusy(false);
@@ -43,9 +49,9 @@ export default function ForgotPassword() {
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={email.length > 0 && !emailValid} />
               </div>
-              <Button type="submit" className="w-full" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</Button>
+              <Button type="submit" className="w-full" disabled={busy || !emailValid}>{busy ? "Sending…" : "Send reset link"}</Button>
               <p className="text-sm text-center"><Link to="/login" className="text-primary hover:underline">Back to sign in</Link></p>
             </form>
           )}

@@ -2,7 +2,8 @@ import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
 import type { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning } from "./types";
 import { ok, blocked, allowedWithWarnings } from "./types";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
-import { findOverlappingLeases } from "./leaseDateOverlap";
+import { findOverlappingLeases, formatOverlapConflictMessage } from "./leaseDateOverlap";
+import { isAncillaryUnitType } from "@/types";
 
 /**
  * Validate an amendment before activation. Simulates the resulting lease state and
@@ -66,10 +67,9 @@ export function validateAmendment(
     a => a.leaseId === amendment.leaseId && assignmentIsActiveOn(a, eff),
   );
 
-  type SimUnit = { unitId: string; isPrimary: boolean; rentShare: number; chargesShare: number };
+  type SimUnit = { unitId: string; rentShare: number; chargesShare: number };
   let sim: SimUnit[] = currentAssignments.map(a => ({
     unitId: a.unitId,
-    isPrimary: a.isPrimary,
     rentShare: a.rentShare ?? 0,
     chargesShare: a.chargesShare ?? 0,
   }));
@@ -87,24 +87,11 @@ export function validateAmendment(
           message: `Unit ${unit.unitCode} belongs to a different property`,
         });
       }
-      // Overlap with another active lease on the same unit at effectiveDate.
-      const otherActive = s.leaseUnitAssignments.find(o =>
-        o.unitId === unit.id &&
-        o.leaseId !== lease.id &&
-        assignmentIsActiveOn(o, eff) &&
-        s.leases.find(l => l.id === o.leaseId)?.lifecycleStage === "active",
-      );
-      if (otherActive) {
-        blockers.push({
-          code: "AMD_UNIT_IN_OTHER_LEASE",
-          message: `Unit ${unit.unitCode} is already leased by another active lease`,
-        });
-      }
       // Full date-range overlap: added unit must be free for eff → lease end.
       const addHits = findOverlappingLeases(lease.id, [{
         unitId: unit.id,
-        startDate: c.metadata.startDate ?? eff,
-        endDate: lease.endDate ?? null,
+        startDate: eff,
+        endDate: c.metadata.endDate || lease.endDate || null,
       }], s);
       const seenAdd = new Set<string>();
       for (const hit of addHits) {
@@ -115,7 +102,10 @@ export function validateAmendment(
         const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
         blockers.push({
           code: "AMD_UNIT_OVERLAP",
-          message: `Unit ${unit.unitCode} overlaps lease ${ref} (${hit.otherStage}, ${hit.otherStart} – ${hit.otherEnd ?? "open"})`,
+          message: formatOverlapConflictMessage(hit, {
+            unitLabel: unit.unitCode,
+            leaseRef: ref,
+          }),
         });
       }
       if (sim.find(x => x.unitId === unit.id)) {
@@ -124,20 +114,14 @@ export function validateAmendment(
           message: `Unit ${unit.unitCode} is already on this lease`,
         });
       } else {
-        const newRent = c.metadata.assignmentType ? 0 : 0;
-        const newCharges = 0;
         sim.push({
           unitId: unit.id,
-          isPrimary: false,
-          rentShare: Number((c.newValue as { rentShare?: number })?.rentShare ?? newRent) || 0,
-          chargesShare: Number((c.newValue as { chargesShare?: number })?.chargesShare ?? newCharges) || 0,
+          rentShare: Number((c.newValue as { rentShare?: number })?.rentShare ?? 0) || 0,
+          chargesShare: Number((c.newValue as { chargesShare?: number })?.chargesShare ?? 0) || 0,
         });
       }
     } else if (c.fieldName === "unitAssignments" && c.changeType === "remove" && c.metadata?.unitId) {
       sim = sim.filter(x => x.unitId !== c.metadata!.unitId);
-    } else if (c.fieldName === "primaryUnitId") {
-      const newId = String(c.newValue);
-      sim = sim.map(x => ({ ...x, isPrimary: x.unitId === newId }));
     } else if (c.fieldName === "unitRentShare" && c.metadata?.unitId) {
       sim = sim.map(x => x.unitId === c.metadata!.unitId
         ? { ...x, rentShare: Number(c.newValue) || 0 } : x);
@@ -190,7 +174,10 @@ export function validateAmendment(
           const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
           blockers.push({
             code: "AMD_END_OVERLAP",
-            message: `Extending the end date overlaps lease ${ref} on unit ${unit?.unitCode ?? hit.unitId} (${hit.otherStage}, ${hit.otherStart} – ${hit.otherEnd ?? "open"})`,
+            message: formatOverlapConflictMessage(hit, {
+              unitLabel: unit?.unitCode ?? hit.unitId,
+              leaseRef: ref,
+            }),
           });
         }
       }
@@ -228,7 +215,10 @@ export function validateAmendment(
             const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
             blockers.push({
               code: "AMD_UNIT_END_OVERLAP",
-              message: `New end date on unit ${unit?.unitCode ?? hit.unitId} overlaps lease ${ref} (${hit.otherStage}, ${hit.otherStart} – ${hit.otherEnd ?? "open"})`,
+              message: formatOverlapConflictMessage(hit, {
+                unitLabel: unit?.unitCode ?? hit.unitId,
+                leaseRef: ref,
+              }),
             });
           }
         }
@@ -243,17 +233,14 @@ export function validateAmendment(
         message: "Active lease must retain at least one unit",
       });
     }
-    const primaries = sim.filter(x => x.isPrimary).length;
-    if (primaries === 0 && sim.length > 0) {
+    const mainUnits = sim.filter(x => {
+      const unit = s.units.find(u => u.id === x.unitId);
+      return !!unit && !isAncillaryUnitType(unit.unitType);
+    }).length;
+    if (mainUnits === 0 && sim.length > 0) {
       blockers.push({
         code: "AMD_NO_PRIMARY_LEFT",
-        message: "Active lease must have exactly one primary unit",
-      });
-    }
-    if (primaries > 1) {
-      blockers.push({
-        code: "AMD_MULTIPLE_PRIMARIES",
-        message: "Amendment would produce two primary units",
+        message: "Active lease must retain at least one residential or main commercial unit",
       });
     }
   }
@@ -283,15 +270,6 @@ export function validateAmendment(
       code: "AMD_WILL_END_PREVIOUS",
       message: `Activating this amendment will end Amendment #${previousActive.amendmentNumber} currently in force`,
       severity: "medium",
-    });
-  }
-
-  // Primary unit change is a soft heads-up for reporting/occupancy.
-  if (changes.some(c => c.fieldName === "primaryUnitId")) {
-    warnings.push({
-      code: "AMD_PRIMARY_CHANGE",
-      message: "Changing the primary unit affects occupancy and reporting",
-      severity: "low",
     });
   }
 

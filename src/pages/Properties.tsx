@@ -28,6 +28,7 @@ import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import { PropertyOwnersPicker } from "@/components/properties/PropertyOwnersPicker";
+import { normalizedCode } from "@/lib/validation";
 
 const EUROPEAN_COUNTRIES = [
   { code: "FR", label: "France" }, { code: "BE", label: "Belgium" }, { code: "NL", label: "Netherlands" },
@@ -63,7 +64,7 @@ const emptyForm: PropertyFormData = {
 
 export default function Properties() {
   const {
-    properties, units, leases, addProperty, updateProperty, deleteProperty, getPropertyStats,
+    properties, units, leases, addPropertyPersisted, updateProperty, deleteProperty, getPropertyStats,
     propertyOwners, getOwnersForProperty, setPropertyOwners,
   } = useAppData();
   const { toast } = useToast();
@@ -74,6 +75,7 @@ export default function Properties() {
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<PropertyFormData>({ ...emptyForm });
   const [formOwnerIds, setFormOwnerIds] = useState<string[]>([]);
+  const [saveAttempted, setSaveAttempted] = useState(false);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string[]>([]);
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
@@ -91,12 +93,22 @@ export default function Properties() {
     return null;
   })();
 
-  const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setFormOwnerIds([]); setOpen(true); };
+  const requiredMissing = {
+    name: !form.name.trim(),
+    referenceCode: !form.referenceCode.trim(),
+    address1: !form.address1.trim(),
+    city: !form.city.trim(),
+    countryCode: !form.countryCode,
+  };
+  const showRequired = (key: keyof typeof requiredMissing) => saveAttempted && requiredMissing[key];
+
+  const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setFormOwnerIds([]); setSaveAttempted(false); setOpen(true); };
   const openEdit = (p: Property) => {
     setEditing(p);
     const { id, createdAt, updatedAt, ...rest } = p;
     setForm(rest);
     setFormOwnerIds(getOwnersForProperty(p.id).map(o => o.id));
+    setSaveAttempted(false);
     setOpen(true);
   };
 
@@ -109,19 +121,51 @@ export default function Properties() {
     }));
   };
 
-  const handleSave = () => {
-    if (!form.name.trim() || !form.referenceCode.trim() || !form.address1.trim() || !form.city.trim() || !form.countryCode) {
-      toast({ title: t("common.validationError"), description: "Please fill in all required fields.", variant: "destructive" });
+  const handleSave = async () => {
+    setSaveAttempted(true);
+    if (Object.values(requiredMissing).some(Boolean)) {
+      const missingLabels = [
+        requiredMissing.name ? t("properties.name") : null,
+        requiredMissing.referenceCode ? t("properties.reference") : null,
+        requiredMissing.address1 ? t("properties.addressLine1") : null,
+        requiredMissing.city ? t("properties.city") : null,
+        requiredMissing.countryCode ? t("properties.country") : null,
+      ].filter(Boolean).join(", ");
+      toast({ title: t("common.validationError"), description: `Missing required fields: ${missingLabels}.`, variant: "destructive" });
       return;
     }
+    const duplicateReference = properties.some(p =>
+      p.id !== editing?.id &&
+      normalizedCode(p.referenceCode) === normalizedCode(form.referenceCode),
+    );
+    if (duplicateReference) {
+      toast({ title: t("common.validationError"), description: "Property reference codes must be unique.", variant: "destructive" });
+      return;
+    }
+    const payload = {
+      ...form,
+      name: form.name.trim(),
+      referenceCode: form.referenceCode.trim(),
+      address1: form.address1.trim(),
+      city: form.city.trim(),
+    };
     if (editing) {
-      updateProperty({ ...editing, ...form });
+      updateProperty({ ...editing, ...payload });
       setPropertyOwners(editing.id, formOwnerIds);
       toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
     } else {
-      const created = addProperty(form);
-      setPropertyOwners(created.id, formOwnerIds);
-      toast({ title: `${t("properties.title")} ${t("common.added").toLowerCase()}` });
+      try {
+        const created = await addPropertyPersisted(payload);
+        setPropertyOwners(created.id, formOwnerIds);
+        toast({ title: `${t("properties.title")} ${t("common.added").toLowerCase()}` });
+      } catch (err) {
+        toast({
+          title: t("common.validationError"),
+          description: err instanceof Error ? err.message : "Property could not be saved.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setOpen(false);
   };
@@ -170,14 +214,14 @@ export default function Properties() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("properties.title")}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative inline-flex">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
           <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("properties.add")}</Button>
         </div>
@@ -274,7 +318,7 @@ export default function Properties() {
                     <TableCell><StatusBadge status={p.status} /></TableCell>
                     <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${p.name}`} title={`Edit ${p.name}`} onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
                         <DeleteDialog entityType="property" entityId={p.id} entityLabel="property" onDelete={handleDelete} />
                       </div>
                     </TableCell>
@@ -297,11 +341,13 @@ export default function Properties() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">{t("properties.name")} *</Label>
-                <Input id="name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Property name" />
+                <Input id="name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Property name" aria-invalid={showRequired("name")} />
+                {showRequired("name") && <p className="text-xs text-destructive mt-1">{t("properties.name")} is required.</p>}
               </div>
               <div>
                 <Label htmlFor="ref">{t("properties.reference")} *</Label>
-                <Input id="ref" value={form.referenceCode} onChange={e => setForm(f => ({ ...f, referenceCode: e.target.value }))} placeholder="e.g. PAR-001" />
+                <Input id="ref" value={form.referenceCode} onChange={e => setForm(f => ({ ...f, referenceCode: e.target.value }))} placeholder="e.g. PAR-001" aria-invalid={showRequired("referenceCode")} />
+                {showRequired("referenceCode") && <p className="text-xs text-destructive mt-1">{t("properties.reference")} is required.</p>}
               </div>
             </div>
             <div>
@@ -310,7 +356,8 @@ export default function Properties() {
             </div>
             <div>
               <Label htmlFor="addr1">{t("properties.addressLine1")} *</Label>
-              <Input id="addr1" value={form.address1} onChange={e => setForm(f => ({ ...f, address1: e.target.value }))} placeholder="Street address" />
+              <Input id="addr1" value={form.address1} onChange={e => setForm(f => ({ ...f, address1: e.target.value }))} placeholder="Street address" aria-invalid={showRequired("address1")} />
+              {showRequired("address1") && <p className="text-xs text-destructive mt-1">{t("properties.addressLine1")} is required.</p>}
             </div>
             <div>
               <Label htmlFor="addr2">{t("properties.addressLine2")}</Label>
@@ -319,7 +366,8 @@ export default function Properties() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="city">{t("properties.city")} *</Label>
-                <Input id="city" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder="City" />
+                <Input id="city" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder="City" aria-invalid={showRequired("city")} />
+                {showRequired("city") && <p className="text-xs text-destructive mt-1">{t("properties.city")} is required.</p>}
               </div>
               <div>
                 <Label htmlFor="postal">{t("properties.postalCode")}</Label>
@@ -334,13 +382,14 @@ export default function Properties() {
               <div>
                 <Label>{t("properties.country")} *</Label>
                 <Select value={form.countryCode} onValueChange={handleCountryChange}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-invalid={showRequired("countryCode")}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {EUROPEAN_COUNTRIES.map(c => (
                       <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {showRequired("countryCode") && <p className="text-xs text-destructive mt-1">{t("properties.country")} is required.</p>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

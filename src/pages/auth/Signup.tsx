@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { isValidEmail } from "@/lib/validation";
 
 export default function Signup() {
   const { signUp } = useAuth();
@@ -20,6 +21,14 @@ export default function Signup() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      toast({ title: "Check your email", description: "Enter a valid email address before creating an account.", variant: "destructive" });
+      return;
+    }
+    if (password.length < 8) {
+      toast({ title: "Password too short", description: "Use at least 8 characters.", variant: "destructive" });
+      return;
+    }
     setBusy(true);
     const { error } = await signUp(email, password, firstName, lastName);
     setBusy(false);

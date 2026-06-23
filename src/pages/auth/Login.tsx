@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { isValidEmail } from "@/lib/validation";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -16,9 +17,15 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const emailValid = email.trim().length > 0 && isValidEmail(email);
+  const canSubmit = emailValid && password.length > 0 && !busy;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!emailValid) {
+      toast({ title: "Check your email", description: "Enter a valid email address.", variant: "destructive" });
+      return;
+    }
     setBusy(true);
     const { error } = await signIn(email, password);
     setBusy(false);
@@ -44,7 +51,7 @@ export default function Login() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={email.length > 0 && !emailValid} />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -53,7 +60,7 @@ export default function Login() {
               </div>
               <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
+            <Button type="submit" className="w-full" disabled={!canSubmit}>{busy ? "Signing in…" : "Sign in"}</Button>
             <p className="text-sm text-center text-muted-foreground">
               No account? <Link to="/signup" className="text-primary hover:underline">Create one</Link>
             </p>

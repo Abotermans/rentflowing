@@ -6,7 +6,6 @@ import { validateAmendment } from "@/lib/integrity/amendmentIntegrity";
 import { getCurrentLeaseTerms, isAmendmentEditable, canSchedule, canActivate } from "@/lib/amendments";
 import { AmendmentConfirmDialog } from "./AmendmentConfirmDialog";
 import type {
-  AmendmentType,
   AmendmentStatus,
   LeaseAmendment,
   LeaseAmendmentChange,
@@ -26,47 +25,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AlertTriangle, Plus, Minus, X, ChevronDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { Lease, LeaseUnitAssignmentType } from "@/types";
-import { deriveAssignmentTypeFromUnit } from "@/lib/leaseAssignments";
+import type { Lease } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
 import { formatCurrency } from "@/lib/formatters";
 import { Info } from "lucide-react";
 
 type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">;
-
-function deriveAmendmentType(changes: ChangeDraft[], lease: Lease): AmendmentType {
-  const cats = new Set<AmendmentType>();
-  for (const c of changes) {
-    switch (c.fieldName) {
-      case "baseMonthlyRentTotal":
-      case "unitRentShare": cats.add("rent-change"); break;
-      case "baseMonthlyChargesTotal":
-      case "unitChargesShare": cats.add("charges-change"); break;
-      case "leaseEndDate":
-        cats.add(String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening"); break;
-      case "unitEndDate": {
-        const nv = String(c.newValue ?? "");
-        cats.add(nv > lease.endDate ? "term-extension" : "term-shortening"); break;
-      }
-      case "depositAmount": cats.add("deposit-change"); break;
-      case "noticePeriodText": cats.add("notice-change"); break;
-      case "clauseSummary": cats.add("clause-change"); break;
-      case "unitAssignments":
-        if (c.changeType === "add") cats.add("unit-addition");
-        else if (c.changeType === "remove") cats.add("unit-removal");
-        break;
-      case "coTenantIds":
-        if (c.changeType === "add") cats.add("tenant-addition");
-        else if (c.changeType === "remove") cats.add("tenant-removal");
-        break;
-      default: break;
-    }
-  }
-  if (cats.size === 0) return "rent-change";
-  if (cats.size === 1) return [...cats][0];
-  return "mixed";
-}
 
 interface Props {
   open: boolean;
@@ -98,7 +63,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const [noticeUnit, setNoticeUnit] = useState<"days" | "weeks" | "months" | "years">("months");
   const [clauseSummary, setClauseSummary] = useState("");
   // Unit-change drafts (multi-row, intuitive add/remove UX)
-  type AddDraft = { unitId: string; assignmentType: LeaseUnitAssignmentType; rentShare: string; chargesShare: string; endDate: string };
+  type AddDraft = { unitId: string; rentShare: string; chargesShare: string; endDate: string };
   const [unitsToAdd, setUnitsToAdd] = useState<AddDraft[]>([]);
   const [unitsToRemove, setUnitsToRemove] = useState<string[]>([]);
   const [editedShares, setEditedShares] = useState<Record<string, { rentShare?: string; chargesShare?: string }>>({});
@@ -159,7 +124,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         const nv = (c.newValue ?? {}) as { rentShare?: number; chargesShare?: number };
         return {
           unitId: c.metadata?.unitId ?? "",
-          assignmentType: c.metadata?.assignmentType ?? "ancillary",
           rentShare: String(nv.rentShare ?? ""),
           chargesShare: String(nv.chargesShare ?? "0"),
           endDate: c.metadata?.endDate ?? "",
@@ -228,11 +192,11 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       if (!a.unitId) continue;
       push("unitAssignments", "add", null,
         { rentShare: Number(a.rentShare || 0), chargesShare: Number(a.chargesShare || 0) },
-        { unitId: a.unitId, assignmentType: a.assignmentType, startDate: effectiveDate, endDate: a.endDate || lease.endDate });
+        { unitId: a.unitId, endDate: a.endDate || lease.endDate });
     }
     for (const uid of unitsToRemove) {
       push("unitAssignments", "remove", { unitId: uid }, null,
-        { unitId: uid, startDate: effectiveDate });
+        { unitId: uid });
     }
     for (const tid of tenantsToAdd) {
       push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, tid], { tenantId: tid });
@@ -261,29 +225,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     return { totalRent, totalCharges };
   }, [currentUnits, unitsToRemove, editedShares, unitsToAdd]);
 
-  const derivedType = useMemo(() => deriveAmendmentType(changesDraft, lease), [changesDraft, lease]);
-  const derivedCategories = useMemo(() => {
-    const cats = new Set<AmendmentType>();
-    for (const c of changesDraft) {
-      switch (c.fieldName) {
-        case "baseMonthlyRentTotal":
-        case "unitRentShare": cats.add("rent-change"); break;
-        case "baseMonthlyChargesTotal":
-        case "unitChargesShare": cats.add("charges-change"); break;
-        case "leaseEndDate":
-          cats.add(String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening"); break;
-        case "depositAmount": cats.add("deposit-change"); break;
-        case "noticePeriodText": cats.add("notice-change"); break;
-        case "clauseSummary": cats.add("clause-change"); break;
-        case "unitAssignments":
-          cats.add(c.changeType === "add" ? "unit-addition" : "unit-removal"); break;
-        case "coTenantIds":
-          cats.add(c.changeType === "add" ? "tenant-addition" : "tenant-removal"); break;
-      }
-    }
-    return [...cats];
-  }, [changesDraft, lease]);
-
   // Live validation (uses a temp amendment record so validateAmendment can run).
   const liveValidation = useMemo(() => {
     if (!effectiveDate) return null;
@@ -291,7 +232,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       id: existing?.id ?? "preview",
       leaseId: lease.id,
       amendmentNumber: existing?.amendmentNumber ?? 0,
-      amendmentType: derivedType,
       title, reason, notes,
       effectiveDate,
       signedDate: signedDate || null,
@@ -302,20 +242,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     return validateAmendment(tempAm, changesDraft.map((c, i) => ({
       ...c, id: `p${i}`, amendmentId: tempAm.id, createdAt: "", updatedAt: "",
     })), integrityState);
-  }, [effectiveDate, derivedType, title, reason, notes, signedDate, changesDraft, integrityState, lease.id, existing]);
+  }, [effectiveDate, title, reason, notes, signedDate, changesDraft, integrityState, lease.id, existing]);
 
   const todayISO = new Date().toISOString().slice(0, 10);
   const draftLike = useMemo(() => ({
     id: existing?.id ?? "preview",
     leaseId: lease.id,
     amendmentNumber: existing?.amendmentNumber ?? 0,
-    amendmentType: derivedType,
     title, reason, notes,
     effectiveDate,
     signedDate: signedDate || null,
     status: (existing?.status ?? "draft") as AmendmentStatus,
     supersedesAmendmentId: existing?.supersedesAmendmentId ?? null,
-  }), [existing, lease.id, derivedType, title, reason, notes, effectiveDate, signedDate]);
+  }), [existing, lease.id, title, reason, notes, effectiveDate, signedDate]);
   const fullChanges = useMemo(() => changesDraft.map((c, i) => ({
     ...c, id: `p${i}`, amendmentId: draftLike.id, createdAt: "", updatedAt: "",
   })), [changesDraft, draftLike.id]);
@@ -363,7 +302,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     if (existing) {
       updateAmendment({
         ...existing,
-        amendmentType: derivedType, title, reason, notes,
+        title, reason, notes,
         effectiveDate, signedDate: signedDate || null,
         status,
       }, changesDraft);
@@ -373,7 +312,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     } else {
       const created = addAmendment({
         leaseId: lease.id,
-        amendmentType: derivedType, title, reason, notes,
+        title, reason, notes,
         effectiveDate, signedDate: signedDate || null,
         supersedesAmendmentId: null,
         status,
@@ -407,31 +346,22 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
         <fieldset disabled={!editable} className="grid grid-cols-2 gap-3 disabled:opacity-70">
           <div className="col-span-2">
-            <Label>{t("amendments.type")}</Label>
-            <div className="rounded border bg-muted/30 px-2 py-1.5 min-h-8 flex flex-wrap items-center gap-1.5">
-              {derivedCategories.length === 0 ? (
-                <span className="text-xs text-muted-foreground">{t("amendments.noChangesYet")}</span>
-              ) : (
-                <>
-                  {derivedCategories.map(c => (
-                    <Badge key={c} variant="secondary" className="text-[10px]">
-                      {t(`amendments.type.${c}` as any)}
-                    </Badge>
-                  ))}
-                  {derivedCategories.length > 1 && (
-                    <span className="text-[11px] text-muted-foreground ml-1">{t("amendments.mixedHint")}</span>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-          <div className="col-span-2">
             <Label>{t("amendments.titleField")} <span className="text-destructive">*</span></Label>
             <Input className="h-8" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
-          <div className="col-span-2 grid grid-cols-2 gap-3">
-            <div>
-              <Label>{t("amendments.effectiveDate")} <span className="text-destructive">*</span></Label>
+          <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            <div className="space-y-1">
+              <div className="flex h-5 items-center gap-1.5">
+                <Label>{t("amendments.effectiveDate")} <span className="text-destructive">*</span></Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="center" sideOffset={6} collisionPadding={24} avoidCollisions className="max-w-[260px]">
+                    <p className="text-xs">{t("amendments.effectiveDateUnitStartHelp")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <div className="flex items-center gap-2">
                 <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
                 {(() => {
@@ -453,8 +383,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                 })()}
               </div>
             </div>
-            <div>
-              <Label>{t("amendments.signedDate")}</Label>
+            <div className="space-y-1">
+              <div className="flex h-5 items-center">
+                <Label>{t("amendments.signedDate")}</Label>
+              </div>
               <Input className="h-8" type="date" value={signedDate} onChange={e => setSignedDate(e.target.value)} />
             </div>
           </div>
@@ -511,7 +443,6 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                             onClick={() => {
                               setUnitsToAdd(arr => [...arr, {
                                 unitId: u.id,
-                                assignmentType: deriveAssignmentTypeFromUnit(u),
                                 rentShare: "",
                                 chargesShare: "0",
                                 endDate: lease.endDate,

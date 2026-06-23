@@ -360,9 +360,9 @@ export default function PropertyDetail() {
                   </TableHeader>
                   <TableBody>
                     {propertyUnits.map(u => {
-                      const activeLease = getActiveLease(u.id);
+                      const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments, u);
+                      const activeLease = occupancy.activeLease ?? getActiveLease(u.id);
                       const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
-                      const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments);
                       return (
                         <TableRow key={u.id}>
                           <TableCell className="font-mono text-xs font-medium text-foreground">
@@ -376,12 +376,7 @@ export default function PropertyDetail() {
                           <TableCell className="text-right text-muted-foreground">{u.baseCharges != null ? formatCurrency(u.baseCharges, property.currencyCode, property.locale) : "—"}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1.5">
-                              <StatusBadge status={u.currentStatus} />
-                              {occupancy.occupancyRole === "ancillary" && (
-                                <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                                  {t("leases.role.ancillary")}
-                                </span>
-                              )}
+                              <StatusBadge status={occupancy.derived} />
                               {occupancy.inconsistent && (
                                 <Tooltip>
                                   <TooltipTrigger>
@@ -402,10 +397,10 @@ export default function PropertyDetail() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" asChild aria-label={`View ${u.unitCode}`} title={`View ${u.unitCode}`}>
                                 <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${u.unitCode}`} title={`Edit ${u.unitCode}`} onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
                               <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDeleteUnit} />
                             </div>
                           </TableCell>

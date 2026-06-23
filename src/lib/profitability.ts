@@ -206,7 +206,7 @@ export function getUnitRevenueSummary(unitId: string, inputs: ProfitabilityInput
   const vacancyLoss = unit ? unitVacancyLoss(unit, inputs, win) : 0;
   const unpaidLoss = round2(Math.max(0, rents.filter(r => r.dueDate < new Date().toISOString().slice(0, 10))
     .reduce((s, r) => s + (r.expectedAmount - r.allocatedAmount), 0)));
-  const egi = round2(billedRent + 0 - vacancyLoss - unpaidLoss);
+  const egi = round2(Math.max(0, billedRent - unpaidLoss));
   return {
     theoreticalRent, billedRent, collectedRent, otherIncome: 0,
     vacancyLoss, unpaidLoss, egi,
@@ -309,7 +309,7 @@ export function getPropertyRevenueSummary(propertyId: string, inputs: Profitabil
   const today = new Date().toISOString().slice(0, 10);
   const unpaidLoss = round2(Math.max(0, rents.filter(r => r.dueDate < today)
     .reduce((s, r) => s + (r.expectedAmount - r.allocatedAmount), 0)));
-  const egi = round2(billedRent + 0 - vacancyLoss - unpaidLoss);
+  const egi = round2(Math.max(0, billedRent - unpaidLoss));
   return {
     theoreticalRent, billedRent, collectedRent, otherIncome: 0,
     vacancyLoss, unpaidLoss, egi,

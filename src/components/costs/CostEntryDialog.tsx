@@ -14,6 +14,7 @@ import {
 } from "@/types/costs";
 import type { TranslationKey } from "@/i18n/translations";
 import { validateDateOrder } from "@/lib/dateValidation";
+import { positiveNumber } from "@/lib/validation";
 
 type FormData = Omit<CostEntry, "id" | "createdAt" | "updatedAt">;
 
@@ -52,7 +53,7 @@ export function CostEntryDialog({
 }: CostEntryDialogProps) {
   const {
     costCategories, properties, units, allocationRules,
-    addCostEntry, updateCostEntry, getCostCategoryById,
+    addCostEntryPersisted, updateCostEntry, getCostCategoryById,
   } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
@@ -87,10 +88,16 @@ export function CostEntryDialog({
     if (!form.propertyId) return [];
     return allocationRules.filter(r => r.propertyId === form.propertyId);
   }, [form.propertyId, allocationRules]);
+  const amountValid = positiveNumber(form.amount);
+  const canSave = !!form.label.trim() && !!form.propertyId && !!form.categoryId && amountValid && !!form.startDate;
 
-  const handleSave = () => {
-    if (!form.label.trim() || !form.propertyId || !form.categoryId || form.amount <= 0) {
+  const handleSave = async () => {
+    if (!form.label.trim() || !form.propertyId || !form.categoryId) {
       toast({ title: t("common.validationError"), description: t("costs.validation.entryRequired"), variant: "destructive" });
+      return;
+    }
+    if (!amountValid) {
+      toast({ title: t("common.validationError"), description: "Amount must be greater than zero.", variant: "destructive" });
       return;
     }
     if (!form.startDate) {
@@ -110,8 +117,17 @@ export function CostEntryDialog({
       updateCostEntry({ ...editing, ...entry });
       toast({ title: t("common.updated"), description: form.label });
     } else {
-      addCostEntry(entry);
-      toast({ title: t("common.added"), description: form.label });
+      try {
+        await addCostEntryPersisted(entry);
+        toast({ title: t("common.added"), description: form.label });
+      } catch (err) {
+        toast({
+          title: t("common.validationError"),
+          description: err instanceof Error ? err.message : "Cost entry could not be saved.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     onOpenChange(false);
   };
@@ -193,7 +209,7 @@ export function CostEntryDialog({
             </div>
             <div className="space-y-2">
               <Label>{t("costs.amount")} *</Label>
-              <Input type="number" min={0} step={0.01} value={form.amount || ""} onChange={e => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })} />
+              <Input type="number" min={0} step={0.01} value={form.amount || ""} onChange={e => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })} aria-invalid={!amountValid} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -259,7 +275,7 @@ export function CostEntryDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
-          <Button onClick={handleSave}>{editing ? t("action.saveChanges") : t("action.create")}</Button>
+          <Button onClick={handleSave} disabled={!canSave}>{editing ? t("action.saveChanges") : t("action.create")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

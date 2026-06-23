@@ -156,46 +156,14 @@ export type LifecycleStage =
 
 // ===== Lease ↔ Unit assignment (multi-unit leases) =====
 // A lease is a contract-level container that can cover several units of the
-// same property. Each row binds one unit to one lease for a date range and
-// records its role (primary residential/commercial vs ancillary parking,
-// cellar, storage, …) plus an optional internal rent / charges split.
-export type LeaseUnitAssignmentType =
-  | "primary"
-  | "ancillary"
-  | "parking"
-  | "cellar"
-  | "storage"
-  | "office-secondary"
-  | "commercial-addon"
-  | "other";
-
-export const ASSIGNMENT_TYPE_LABELS: Record<LeaseUnitAssignmentType, string> = {
-  primary: "Primary",
-  ancillary: "Ancillary",
-  parking: "Parking",
-  cellar: "Cellar",
-  storage: "Storage",
-  "office-secondary": "Secondary office",
-  "commercial-addon": "Commercial add-on",
-  other: "Other",
-};
-
-/**
- * Assignment types that should NOT count toward primary occupancy KPIs
- * (parking spots, cellars, storage rooms are leased but never a "home").
- */
-export const ANCILLARY_ASSIGNMENT_TYPES: ReadonlySet<LeaseUnitAssignmentType> = new Set([
-  "ancillary", "parking", "cellar", "storage", "commercial-addon", "other",
-]);
+// same property. Each row binds one unit to one lease for a date range plus an
+// optional internal rent / charges split. Main-vs-ancillary behavior is derived
+// from the assigned unit's `unitType`.
 
 /** Unit types whose physical nature makes them ancillary by default. */
 export const ANCILLARY_UNIT_TYPES: ReadonlySet<UnitType> = new Set([
   "parking", "storage",
 ]);
-
-export function isAncillaryAssignmentType(t: LeaseUnitAssignmentType): boolean {
-  return ANCILLARY_ASSIGNMENT_TYPES.has(t);
-}
 
 export function isAncillaryUnitType(u: UnitType): boolean {
   return ANCILLARY_UNIT_TYPES.has(u);
@@ -205,7 +173,6 @@ export interface LeaseUnitAssignment {
   id: string;
   leaseId: string;
   unitId: string;
-  assignmentType: LeaseUnitAssignmentType;
   startDate: string;
   endDate: string | null;
   /** Optional internal split — share of lease-level monthly rent for this unit. */
@@ -215,11 +182,6 @@ export interface LeaseUnitAssignment {
   notes: string;
   createdAt: string;
   updatedAt: string;
-  /**
-   * @deprecated Derived from `assignmentType === "primary"` and hydrated at
-   * load time. Kept as a compatibility shim for legacy callers. Do not persist.
-   */
-  isPrimary: boolean;
 }
 
 export type AdvanceAllocationMethod = 'spread-evenly' | 'fixed-monthly-reduction';
@@ -448,16 +410,14 @@ export type LeaseStatus =
   | "terminated";
 
 export function getLeaseStatus(lease: Lease): LeaseStatus {
+  const todayISO = new Date().toISOString().slice(0, 10);
   if (lease.lifecycleStage === "draft") return "draft";
   if (lease.lifecycleStage === "pending-signature") return "pending-signature";
-  if (lease.lifecycleStage === "signed") return "signed";
-  if (lease.lifecycleStage === "ended") return "ended";
   if (lease.lifecycleStage === "terminated") return "terminated";
-  // active lease
+  if (lease.lifecycleStage === "ended" && lease.endDate < todayISO) return "ended";
+  if (lease.lifecycleStage === "signed" && lease.startDate > todayISO) return "signed";
+  if (lease.lifecycleStage === "signed" && lease.startDate <= todayISO && lease.endDate < todayISO) return "ended";
   if (lease.noticeGiven) return "under-notice";
-  // Compare ISO date strings (YYYY-MM-DD) to avoid timezone drift
-  const today = new Date();
-  const todayISO = today.toISOString().slice(0, 10);
   if (lease.endDate < todayISO) return "overdue-end";
   return "active";
 }
@@ -472,6 +432,9 @@ export function getLeaseStatus(lease: Lease): LeaseStatus {
  */
 export function advanceLeaseLifecycle(lease: Lease, todayISO?: string): Lease {
   const today = todayISO ?? new Date().toISOString().slice(0, 10);
+  if (lease.lifecycleStage === "ended" && lease.endDate && lease.endDate >= today) {
+    return { ...lease, lifecycleStage: lease.startDate <= today ? "active" : "signed", endReason: null };
+  }
   if (lease.lifecycleStage === "signed" && lease.startDate && lease.startDate <= today) {
     return { ...lease, lifecycleStage: "active" };
   }
@@ -491,7 +454,10 @@ export function getMoveInStatus(lease: Lease): MoveInStatus {
 }
 
 export function getMoveOutStatus(lease: Lease): MoveOutStatus {
-  if (lease.moveOutActualDate) return "completed";
+  if (lease.moveOutActualDate) {
+    const today = new Date().toISOString().slice(0, 10);
+    return lease.moveOutActualDate <= today ? "completed" : "scheduled";
+  }
   if (lease.moveOutScheduledDate) return "scheduled";
   return "not-scheduled";
 }

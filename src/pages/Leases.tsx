@@ -19,8 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
-import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, TenantStatus, Tenant, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS, ASSIGNMENT_TYPE_LABELS } from "@/types";
-import type { LeaseUnitAssignmentType } from "@/types";
+import { Lease, LifecycleStage, LeaseStatus, RentFormula, GuaranteeStatus, TenantStatus, Tenant, getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS, isAncillaryUnitType } from "@/types";
 import { X as XIcon } from "lucide-react";
 import type { TranslationKey } from "@/i18n/translations";
 import type { LucideIcon } from "lucide-react";
@@ -127,17 +126,20 @@ export default function Leases() {
     chargesBillingMode: "provision-reconciled",
   };
   const [form, setForm] = useState<LeaseFormData>({ ...emptyForm });
-  // Unified rows for every unit attached to this lease. Exactly one row must
-  // carry `assignmentType === "primary"` — its unitId becomes `lease.unitId`.
+  // Unified rows for every unit attached to this lease. The first main unit
+  // (derived from unit type) becomes the legacy `lease.unitId` fallback.
   // Lease totals (`form.monthlyRent` / `monthlyCharges`) are derived from the
   // sum of these rows on save.
   type UnitRow = {
     unitId: string;
-    assignmentType: LeaseUnitAssignmentType;
     rentShare: number;
     chargesShare: number;
   };
   const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
+  const isMainRow = (row: Pick<UnitRow, "unitId">) => {
+    const unit = units.find(u => u.id === row.unitId);
+    return !!unit && !isAncillaryUnitType(unit.unitType);
+  };
 
   const emptyTenantForm: TenantFormData = {
     kind: "individual",
@@ -154,6 +156,16 @@ export default function Leases() {
   const [pendingExistingTenantId, setPendingExistingTenantId] = useState<string>("");
 
   const openAdd = () => {
+    if (properties.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a property before adding leases.", variant: "destructive" });
+      navigate("/properties");
+      return;
+    }
+    if (units.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a unit before adding leases.", variant: "destructive" });
+      navigate("/units");
+      return;
+    }
     setEditingLease(null);
     setForm({ ...emptyForm });
     setTenantForm({ ...emptyTenantForm });
@@ -170,19 +182,17 @@ export default function Leases() {
     const today = new Date().toISOString().slice(0, 10);
     const all = getLeaseAssignments(l.id)
       .filter(a => !a.endDate || a.endDate >= today)
-      .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
+      .sort((a, b) => Number(isMainRow(b)) - Number(isMainRow(a)));
     const rows: UnitRow[] = all.map(a => ({
       unitId: a.unitId,
-      assignmentType: a.isPrimary ? "primary" : a.assignmentType,
       rentShare: a.rentShare ?? 0,
       chargesShare: a.chargesShare ?? 0,
     }));
-    // Fallback: ensure the lease's primary unit is present even if assignments
+    // Fallback: ensure the lease's main unit is present even if assignments
     // weren't migrated yet.
-    if (!rows.some(r => r.assignmentType === "primary") && l.unitId) {
+    if (!rows.some(isMainRow) && l.unitId) {
       rows.unshift({
         unitId: l.unitId,
-        assignmentType: "primary",
         rentShare: l.monthlyRent,
         chargesShare: l.monthlyCharges,
       });
@@ -207,8 +217,6 @@ export default function Leases() {
     const persistAssignments = (leaseId: string) => {
       const draft = unitRows.map(r => ({
         unitId: r.unitId,
-        assignmentType: r.assignmentType,
-        isPrimary: r.assignmentType === "primary",
         rentShare: r.rentShare,
         chargesShare: r.chargesShare,
         startDate: form.startDate,
@@ -216,7 +224,7 @@ export default function Leases() {
       setLeaseUnits(leaseId, form.propertyId, draft);
     };
     // Derive lease-level totals + primary unit id from the rows table.
-    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const primaryRow = unitRows.find(isMainRow);
     const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
     const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
     const formToPersist = {
@@ -239,19 +247,19 @@ export default function Leases() {
 
   const handleSave = () => {
     // Derive primary unit + totals from the rows (single source of truth).
-    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const primaryRow = unitRows.find(isMainRow);
     const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
     const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
     if (unitRows.length === 0 || !primaryRow || !primaryRow.unitId) {
-      toast({ title: "Validation Error", description: "Add at least one unit with role Primary.", variant: "destructive" });
+      toast({ title: "Validation Error", description: "Add at least one residential or main commercial unit.", variant: "destructive" });
       return;
     }
     if (unitRows.some(r => !r.unitId)) {
       toast({ title: "Validation Error", description: "Every row in Units must have a unit selected.", variant: "destructive" });
       return;
     }
-    if (unitRows.filter(r => r.assignmentType === "primary").length !== 1) {
-      toast({ title: "Validation Error", description: "Exactly one unit must be marked as Primary.", variant: "destructive" });
+    if (unitRows.filter(isMainRow).length === 0) {
+      toast({ title: "Validation Error", description: "At least one selected unit must be residential or main commercial.", variant: "destructive" });
       return;
     }
     const dupCheck = new Set(unitRows.map(r => r.unitId));
@@ -310,8 +318,6 @@ export default function Leases() {
     // Build the assignment draft from the unified rows.
     const draft: DraftAssignment[] = unitRows.map(r => ({
       unitId: r.unitId,
-      assignmentType: r.assignmentType,
-      isPrimary: r.assignmentType === "primary",
       startDate: form.startDate,
       endDate: null,
       rentShare: r.rentShare,
@@ -468,24 +474,15 @@ export default function Leases() {
 
   const addUnitRow = () => {
     setUnitRows(prev => {
-      const hasPrimary = prev.some(r => r.assignmentType === "primary");
       return [...prev, {
         unitId: "",
-        assignmentType: hasPrimary ? "parking" : "primary",
         rentShare: 0,
         chargesShare: 0,
       }];
     });
   };
   const removeUnitRow = (idx: number) => {
-    setUnitRows(prev => {
-      const next = prev.filter((_, i) => i !== idx);
-      // Ensure at least one row stays primary.
-      if (next.length > 0 && !next.some(r => r.assignmentType === "primary")) {
-        next[0] = { ...next[0], assignmentType: "primary" };
-      }
-      return next;
-    });
+    setUnitRows(prev => prev.filter((_, i) => i !== idx));
   };
   const updateUnitRow = (idx: number, patch: Partial<UnitRow>) => {
     setUnitRows(prev => prev.map((r, i) => {
@@ -504,25 +501,16 @@ export default function Leases() {
       return next;
     }));
   };
-  const setRoleForRow = (idx: number, role: LeaseUnitAssignmentType) => {
-    setUnitRows(prev => prev.map((r, i) => {
-      if (i === idx) return { ...r, assignmentType: role };
-      // Only one primary allowed: demote others to parking.
-      if (role === "primary" && r.assignmentType === "primary") return { ...r, assignmentType: "parking" };
-      return r;
-    }));
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("leases.title")}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative inline-flex">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
           <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("leases.add")}</Button>
         </div>

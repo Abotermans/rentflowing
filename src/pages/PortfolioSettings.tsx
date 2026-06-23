@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { isValidEmail } from "@/lib/validation";
 
 type Role = "owner" | "admin" | "editor" | "viewer";
 
@@ -54,6 +55,9 @@ export default function PortfolioSettings() {
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<Role>("editor");
   const [addBusy, setAddBusy] = useState(false);
+  const inviteEmailValid = inviteEmail.trim().length > 0 && isValidEmail(inviteEmail);
+  const newEmailValid = newEmail.trim().length > 0 && isValidEmail(newEmail);
+  const canAddMember = newEmailValid && newPassword.length >= 8 && !addBusy;
 
   // Delete portfolio
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -102,6 +106,10 @@ export default function PortfolioSettings() {
   const sendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !currentPortfolioId) return;
+    if (!inviteEmailValid) {
+      toast({ title: "Invalid email", description: "Enter a valid email address before creating an invitation.", variant: "destructive" });
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.from("portfolio_invitations").insert({
       portfolio_id: currentPortfolioId,
@@ -138,6 +146,14 @@ export default function PortfolioSettings() {
   const addMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPortfolioId) return;
+    if (!newEmailValid) {
+      toast({ title: "Invalid email", description: "Enter a valid email address before adding a member.", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast({ title: "Password too short", description: "Member passwords must be at least 8 characters.", variant: "destructive" });
+      return;
+    }
     setAddBusy(true);
     const { data, error } = await supabase.functions.invoke("create-portfolio-user", {
       body: {
@@ -298,7 +314,7 @@ export default function PortfolioSettings() {
               {members.map((m) => (
                 <div key={m.id} className="flex items-center justify-between border rounded-md px-3 py-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-xs truncate">{m.user_id === user?.id ? "You" : m.user_id.slice(0, 8)}</span>
+                    <span className="text-sm truncate">{m.user_id === user?.id ? (user?.email ?? "You") : "Portfolio member"}</span>
                     {m.user_id === user?.id && <Badge variant="outline">You</Badge>}
                   </div>
                   <div className="flex items-center gap-2">
@@ -337,7 +353,7 @@ export default function PortfolioSettings() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2 col-span-2">
                       <Label htmlFor="ne">Email</Label>
-                      <Input id="ne" type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+                      <Input id="ne" type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} aria-invalid={!newEmailValid} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="nf">First name</Label>
@@ -349,7 +365,7 @@ export default function PortfolioSettings() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="np">Password (min 8 chars)</Label>
-                      <Input id="np" type="text" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                      <Input id="np" type="password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label>Role</Label>
@@ -364,7 +380,7 @@ export default function PortfolioSettings() {
                       </Select>
                     </div>
                   </div>
-                  <Button type="submit" disabled={addBusy}>{addBusy ? "Adding…" : "Create & add"}</Button>
+                  <Button type="submit" disabled={!canAddMember}>{addBusy ? "Adding…" : "Create & add"}</Button>
                 </form>
               </CardContent>
             </Card>
@@ -377,7 +393,7 @@ export default function PortfolioSettings() {
               <CardHeader><CardTitle>Invite by email</CardTitle><CardDescription>The invitee opens the link and joins your portfolio.</CardDescription></CardHeader>
               <CardContent>
                 <form onSubmit={sendInvite} className="flex gap-2">
-                  <Input type="email" placeholder="email@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required />
+                  <Input type="email" placeholder="email@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} aria-invalid={!inviteEmailValid} required />
                   <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as Role)}>
                     <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -387,7 +403,7 @@ export default function PortfolioSettings() {
                       <SelectItem value="viewer">Viewer</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button type="submit" disabled={busy}><Mail className="h-4 w-4 mr-2" />Invite</Button>
+                  <Button type="submit" disabled={busy || !inviteEmailValid}><Mail className="h-4 w-4 mr-2" />Invite</Button>
                 </form>
               </CardContent>
             </Card>

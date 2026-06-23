@@ -1,17 +1,16 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
-import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee, getTenantFullName } from "@/types";
-import type { LeaseUnitAssignment, LeaseUnitAssignmentType, PropertyOwner, PropertyOwnerLink, PropertyOwnerType } from "@/types";
+import { Property, Unit, UnitStatus, Tenant, Lease, Guarantee, getTenantFullName, isAncillaryUnitType } from "@/types";
+import type { LeaseUnitAssignment, PropertyOwner, PropertyOwnerLink, PropertyOwnerType } from "@/types";
 import { ReceivableItem, CashReceipt, ReceiptAllocation, computeReceivableStatus, computeReceiptStatus } from "@/types/receivables";
 import { MaintenanceTicket, Vendor } from "@/types/maintenance";
 import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
 import type { ChargesReconciliation, ReconciliationResolution } from "@/types/chargesReconciliation";
 import { computeReconciliation as engineComputeReconciliation, type ReconciliationBreakdown, type ReconciliationWindow } from "@/lib/chargesReconciliation";
-import type { LeaseAmendment, LeaseAmendmentChange, AmendmentType, AmendmentStatus, AmendmentFieldName, AmendmentChangeType, AmendmentChangeMetadata } from "@/types/amendments";
+import type { LeaseAmendment, LeaseAmendmentChange, AmendmentStatus, AmendmentFieldName, AmendmentChangeType, AmendmentChangeMetadata } from "@/types/amendments";
 import { nextAmendmentNumber, getAmendmentChanges } from "@/lib/amendments";
 import { canActivateAmendment } from "@/lib/integrity/amendmentIntegrity";
 import { autoAllocate } from "@/lib/reconciliation";
 import { generateLeaseReceivables } from "@/lib/leaseReceivables";
-import { computeCycles } from "@/lib/leaseCycles";
 import { computeAllocations } from "@/lib/costAllocation";
 import { getEffectiveLeaseTerms as libGetEffectiveLeaseTerms } from "@/lib/amendments";
 import { usePortfolio } from "@/context/PortfolioContext";
@@ -28,20 +27,34 @@ import {
   isUnitAssignedToActiveLease as libIsUnitAssignedToActiveLease,
 } from "@/lib/leaseAssignments";
 
+const isMainUnitId = (unitId: string, units: readonly Unit[]) => {
+  const unit = units.find(u => u.id === unitId);
+  return !!unit && !isAncillaryUnitType(unit.unitType);
+};
+
 function reconcileTenantStatuses(tenantIds: string[], leases: Lease[], tenants: Tenant[]): Tenant[] {
   const affected = new Set(tenantIds.filter(Boolean));
   if (affected.size === 0) return tenants;
   const ts = new Date().toISOString();
+  const today = ts.slice(0, 10);
   return tenants.map(t => {
     if (!affected.has(t.id)) return t;
     const tenantLeases = leases.filter(l => l.primaryTenantId === t.id || l.coTenantIds.includes(t.id));
     if (tenantLeases.length === 0) return t;
-    const hasActive = tenantLeases.some(l => l.lifecycleStage === "active");
-    const target = hasActive ? "active" : "former";
+    const hasCurrentOrFuture = tenantLeases.some(l =>
+      (l.lifecycleStage === "active" || l.lifecycleStage === "signed") &&
+      l.endDate >= today,
+    );
+    const target = hasCurrentOrFuture ? "active" : "former";
     if (target === "former" && t.status !== "active") return t;
     if (target === "active" && t.status === "active") return t;
     return { ...t, status: target, updatedAt: ts };
   });
+}
+
+function scheduledReceivableKey(r: Pick<ReceivableItem, "leaseId" | "itemType" | "cycleIndex" | "periodMonth" | "dueDate">): string {
+  const cycleKey = r.cycleIndex != null ? `cycle:${r.cycleIndex}` : `period:${r.periodMonth ?? ""}:${r.dueDate}`;
+  return `${r.leaseId ?? ""}:${r.itemType}:${cycleKey}`;
 }
 
 interface PropertyStats {
@@ -83,6 +96,7 @@ interface AppState {
 
   // Property CRUD
   addProperty: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => Property;
+  addPropertyPersisted: (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => Promise<Property>;
   updateProperty: (p: Property) => void;
   deleteProperty: (id: string) => void;
 
@@ -93,11 +107,13 @@ interface AppState {
 
   // Unit CRUD
   addUnit: (u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => void;
+  addUnitPersisted: (u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => Promise<Unit>;
   updateUnit: (u: Unit) => void;
   deleteUnit: (id: string) => void;
 
   // Tenant CRUD
   addTenant: (t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => Tenant;
+  addTenantPersisted: (t: Omit<Tenant, "id" | "createdAt" | "updatedAt">) => Promise<Tenant>;
   updateTenant: (t: Tenant) => void;
   deleteTenant: (id: string) => void;
 
@@ -110,11 +126,10 @@ interface AppState {
   // Lease unit assignments
   setLeaseUnits: (leaseId: string, propertyId: string, units: {
     unitId: string;
-    assignmentType: LeaseUnitAssignmentType;
-    isPrimary: boolean;
     rentShare: number | null;
     chargesShare: number | null;
     startDate?: string;
+    endDate?: string | null;
   }[]) => void;
   getLeaseAssignments: (leaseId: string) => LeaseUnitAssignment[];
   getActiveLeaseAssignmentForUnit: (unitId: string) => { lease: Lease; assignment: LeaseUnitAssignment } | undefined;
@@ -156,6 +171,7 @@ interface AppState {
 
   // Cash Receipts
   createCashReceipt: (r: Omit<CashReceipt, "id" | "createdAt" | "updatedAt">, autoAllocateFlag?: boolean) => void;
+  createCashReceiptPersisted: (r: Omit<CashReceipt, "id" | "createdAt" | "updatedAt">, autoAllocateFlag?: boolean) => Promise<CashReceipt>;
   
   // Allocation
   allocateCashReceipt: (receiptId: string, manualAllocations: { receivableItemId: string; amount: number; notes?: string }[]) => void;
@@ -175,26 +191,31 @@ interface AppState {
 
   // Maintenance
   addTicket: (t: Omit<MaintenanceTicket, "id">) => void;
+  addTicketPersisted: (t: Omit<MaintenanceTicket, "id">) => Promise<MaintenanceTicket>;
   updateTicket: (t: MaintenanceTicket) => void;
   deleteTicket: (id: string) => void;
 
   // Vendors
   addVendor: (v: Omit<Vendor, "id">) => void;
+  addVendorPersisted: (v: Omit<Vendor, "id">) => Promise<Vendor>;
   updateVendor: (v: Vendor) => void;
   deleteVendor: (id: string) => void;
 
   // Cost Categories CRUD
   addCostCategory: (c: Omit<CostCategory, "id" | "createdAt" | "updatedAt">) => void;
+  addCostCategoryPersisted: (c: Omit<CostCategory, "id" | "createdAt" | "updatedAt">) => Promise<CostCategory>;
   updateCostCategory: (c: CostCategory) => void;
   deleteCostCategory: (id: string) => void;
 
   // Cost Entries CRUD
   addCostEntry: (e: Omit<CostEntry, "id" | "createdAt" | "updatedAt">) => void;
+  addCostEntryPersisted: (e: Omit<CostEntry, "id" | "createdAt" | "updatedAt">) => Promise<CostEntry>;
   updateCostEntry: (e: CostEntry) => void;
   deleteCostEntry: (id: string) => void;
 
   // Allocation Rules CRUD
   addAllocationRule: (r: Omit<AllocationRule, "id" | "createdAt" | "updatedAt">) => void;
+  addAllocationRulePersisted: (r: Omit<AllocationRule, "id" | "createdAt" | "updatedAt">) => Promise<AllocationRule>;
   updateAllocationRule: (r: AllocationRule) => void;
   deleteAllocationRule: (id: string) => void;
 
@@ -287,6 +308,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [costAllocationResults, setCostAllocationResults] = useState<CostAllocationResult[]>([]);
   const [chargesReconciliations, setChargesReconciliations] = useState<ChargesReconciliation[]>([]);
 
+  const reconcileAndMirrorTenantStatuses = useCallback((tenantIds: string[], nextLeases: Lease[]) => {
+    setTenants(prev => {
+      const next = reconcileTenantStatuses(tenantIds, nextLeases, prev);
+      next.forEach((tenant, index) => {
+        if (tenant !== prev[index]) mirror.update(TABLES.tenants, tenant.id, tenant);
+      });
+      return next;
+    });
+  }, []);
+
   // Hydrate from DB whenever the active portfolio changes.
   useEffect(() => {
     let cancelled = false;
@@ -316,7 +347,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPropertyOwnersState(snap.propertyOwners);
       setPropertyOwnerLinks(snap.propertyOwnerLinks);
       setUnits(snap.units);
-      setTenants(snap.tenants);
+      setTenants(reconcileTenantStatuses(snap.tenants.map(t => t.id), snap.leases, snap.tenants));
       setLeases(snap.leases);
       setGuarantees(snap.guarantees);
       setLeaseUnitAssignments(
@@ -349,85 +380,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // both monthly and advance leases; due dates derive from the lease's
   // `dueDayOfMonth`.
   useEffect(() => {
+    if (!currentPortfolioId) return;
     const today = now();
     const toAdd: ReceivableItem[] = [];
-    const leadDays = Math.max(0, receivableLeadDays ?? 0);
-    const horizon = new Date(Date.UTC(
-      Number(today.slice(0, 4)),
-      Number(today.slice(5, 7)) - 1,
-      Number(today.slice(8, 10)) + leadDays,
-    )).toISOString().slice(0, 10);
-    const cycleDueDate = (cycleStart: string, dueDay: number): string => {
-      const [y, m] = cycleStart.split("-").map(Number);
-      const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-      const day = Math.min(Math.max(Math.floor(dueDay || 1), 1), lastDay);
-      return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    };
+    const existingKeys = new Set(
+      receivableItems
+        .filter(r => r.origin === "lease-schedule")
+        .map(scheduledReceivableKey),
+    );
     for (const lease of leases) {
       if (lease.lifecycleStage === "ended" || lease.lifecycleStage === "terminated") continue;
       const property = properties.find(p => p.id === lease.propertyId);
       const currencyCode = property?.currencyCode ?? "EUR";
-      const cycles = computeCycles(lease);
-      const isAdvance = (lease.rentFormula || 1) > 1;
-      const dueDay = lease.dueDayOfMonth || 1;
-      for (const cycle of cycles) {
-        if (cycle.index > 1 && cycle.startDate > horizon) continue;
-        const periodMonth = cycle.startDate.slice(0, 7);
-        const dueDate = cycleDueDate(cycle.startDate, dueDay);
-        const already = receivableItems.some(
-          r => r.leaseId === lease.id
-            && (
-              (r.cycleIndex != null && r.cycleIndex === cycle.index)
-              || (r.cycleIndex == null && r.periodMonth === periodMonth && r.dueDate === dueDate)
-            ),
-        );
-        if (already) continue;
-        const ts = today;
-        if (cycle.rentTotal > 0) {
-          const rent: ReceivableItem = {
-            id: genId("ri"),
-            leaseId: lease.id, tenantId: lease.primaryTenantId,
-            propertyId: lease.propertyId, unitId: lease.unitId,
-            itemType: "rent",
-            label: isAdvance
-              ? `Rent — ${cycle.months}-month advance (cycle ${cycle.index}, ${cycle.months} mo)`
-              : "Monthly Rent",
-            periodMonth, dueDate,
-            currencyCode,
-            expectedAmount: cycle.rentTotal, allocatedAmount: 0, outstandingAmount: cycle.rentTotal,
-            status: "open", priority: 10, origin: "lease-schedule", notes: "",
-            cycleIndex: cycle.index, cycleEndDate: cycle.endDate,
-            createdAt: ts, updatedAt: ts,
-          };
-          rent.status = computeReceivableStatus(rent);
-          toAdd.push(rent);
-        }
-        if (cycle.chargesTotal > 0) {
-          const charges: ReceivableItem = {
-            id: genId("ri"),
-            leaseId: lease.id, tenantId: lease.primaryTenantId,
-            propertyId: lease.propertyId, unitId: lease.unitId,
-            itemType: "charges",
-            label: isAdvance
-              ? `Charges — ${cycle.months}-month advance (cycle ${cycle.index}, ${cycle.months} mo)`
-              : "Monthly Charges",
-            periodMonth, dueDate,
-            currencyCode,
-            expectedAmount: cycle.chargesTotal, allocatedAmount: 0, outstandingAmount: cycle.chargesTotal,
-            status: "open", priority: 20, origin: "lease-schedule", notes: "",
-            cycleIndex: cycle.index, cycleEndDate: cycle.endDate,
-            createdAt: ts, updatedAt: ts,
-          };
-          charges.status = computeReceivableStatus(charges);
-          toAdd.push(charges);
-        }
+      const { receivables } = generateLeaseReceivables(lease, {
+        currencyCode,
+        genId,
+        today,
+        leadDays: receivableLeadDays,
+        assignments: leaseUnitAssignments.filter(a => a.leaseId === lease.id),
+      });
+      for (const receivable of receivables) {
+        const key = scheduledReceivableKey(receivable);
+        if (existingKeys.has(key)) continue;
+        existingKeys.add(key);
+        toAdd.push(receivable);
       }
     }
     if (toAdd.length > 0) {
-      setReceivableItems(prev => [...prev, ...toAdd]);
+      void (async () => {
+        const error = await mirror.insertManyAsync(TABLES.receivableItems, toAdd, currentPortfolioId);
+        if (!error) {
+          setReceivableItems(prev => [...prev, ...toAdd]);
+        }
+      })();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leases, properties, receivableLeadDays]);
+  }, [leases, properties, leaseUnitAssignments, receivableItems, receivableLeadDays, currentPortfolioId]);
 
   // ===== Property CRUD =====
   const addProperty = useCallback((p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
@@ -441,18 +428,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentPortfolioId) mirror.insert(TABLES.properties, created, currentPortfolioId);
     return created;
   }, [currentPortfolioId]);
+  const addPropertyPersisted = useCallback(async (p: Omit<Property, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    const created: Property = {
+      ...p,
+      portfolioId: p.portfolioId ?? currentPortfolioId ?? undefined,
+      id: genId("p"), createdAt: ts, updatedAt: ts,
+    };
+    if (currentPortfolioId) {
+      const error = await mirror.insertAsync(TABLES.properties, created, currentPortfolioId);
+      if (error) throw error;
+    }
+    setProperties(prev => [...prev, created]);
+    return created;
+  }, [currentPortfolioId]);
   const updateProperty = useCallback((p: Property) => {
     const next = { ...p, updatedAt: now() };
     setProperties(prev => prev.map(x => x.id === p.id ? next : x));
     mirror.update(TABLES.properties, p.id, next);
   }, []);
   const deleteProperty = useCallback((id: string) => {
+    const unitIds = new Set(units.filter(x => x.propertyId === id).map(x => x.id));
+    const propertyLeases = leases.filter(x => x.propertyId === id);
+    const leaseIds = new Set(propertyLeases.map(x => x.id));
+    const affectedTenantIds = propertyLeases.flatMap(l => [l.primaryTenantId, ...l.coTenantIds]);
+    const amendmentIds = new Set(amendments.filter(x => leaseIds.has(x.leaseId)).map(x => x.id));
+    const receivableIds = new Set(receivableItems
+      .filter(x => x.propertyId === id || (x.leaseId != null && leaseIds.has(x.leaseId)))
+      .map(x => x.id));
+    const receiptIds = new Set(cashReceipts
+      .filter(x => x.propertyId === id || (x.leaseId != null && leaseIds.has(x.leaseId)))
+      .map(x => x.id));
+    const costEntryIds = new Set(costEntries.filter(x => x.propertyId === id).map(x => x.id));
+    const allocationRuleIds = new Set(allocationRules.filter(x => x.propertyId === id).map(x => x.id));
     setProperties(prev => prev.filter(x => x.id !== id));
-    setUnits(prev => prev.filter(x => x.propertyId !== id));
+    setUnits(prev => prev.filter(x => !unitIds.has(x.id)));
     setPropertyOwnerLinks(prev => prev.filter(x => x.propertyId !== id));
+    setLeases(prev => {
+      const next = prev.filter(x => !leaseIds.has(x.id));
+      reconcileAndMirrorTenantStatuses(affectedTenantIds, next);
+      return next;
+    });
+    setGuarantees(prev => prev.filter(x => !leaseIds.has(x.leaseId)));
+    setLeaseUnitAssignments(prev => prev.filter(x => !leaseIds.has(x.leaseId) && !unitIds.has(x.unitId)));
+    setAmendments(prev => prev.filter(x => !leaseIds.has(x.leaseId)));
+    setAmendmentChanges(prev => prev.filter(x => !amendmentIds.has(x.amendmentId)));
+    setReceivableItems(prev => prev.filter(x => !receivableIds.has(x.id)));
+    setCashReceipts(prev => prev.filter(x => !receiptIds.has(x.id)));
+    setAllocations(prev => prev.filter(x => !receiptIds.has(x.cashReceiptId) && !receivableIds.has(x.receivableItemId)));
+    setTickets(prev => prev.filter(x => x.propertyId !== id));
+    setCostEntries(prev => prev.filter(x => !costEntryIds.has(x.id)));
+    setAllocationRules(prev => prev.filter(x => !allocationRuleIds.has(x.id)));
+    setAllocationRuleUnitShares(prev => prev.filter(x => !allocationRuleIds.has(x.allocationRuleId)));
+    setCostAllocationResults(prev => prev.filter(x => x.propertyId !== id && !costEntryIds.has(x.costEntryId)));
+    setChargesReconciliations(prev => prev.filter(x => !leaseIds.has(x.leaseId)));
     // FK ON DELETE CASCADE handles units/leases/etc. in the DB.
     mirror.remove(TABLES.properties, id);
-  }, []);
+  }, [units, leases, amendments, receivableItems, cashReceipts, costEntries, allocationRules, reconcileAndMirrorTenantStatuses]);
 
   // ===== Property Owners =====
   const createPropertyOwner = useCallback((data: { name: string; type: PropertyOwnerType }) => {
@@ -509,15 +541,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUnits(prev => [...prev, created]);
     if (currentPortfolioId) mirror.insert(TABLES.units, created, currentPortfolioId);
   }, [currentPortfolioId]);
+  const addUnitPersisted = useCallback(async (u: Omit<Unit, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    const created: Unit = {
+      ...u,
+      portfolioId: u.portfolioId ?? currentPortfolioId ?? undefined,
+      id: genId("u"), createdAt: ts, updatedAt: ts,
+    };
+    if (currentPortfolioId) {
+      const error = await mirror.insertAsync(TABLES.units, created, currentPortfolioId);
+      if (error) throw error;
+    }
+    setUnits(prev => [...prev, created]);
+    return created;
+  }, [currentPortfolioId]);
   const updateUnit = useCallback((u: Unit) => {
     const next = { ...u, updatedAt: now() };
     setUnits(prev => prev.map(x => x.id === u.id ? next : x));
     mirror.update(TABLES.units, u.id, next);
   }, []);
   const deleteUnit = useCallback((id: string) => {
+    const receivableIds = new Set(receivableItems.filter(x => x.unitId === id).map(x => x.id));
     setUnits(prev => prev.filter(x => x.id !== id));
+    setLeaseUnitAssignments(prev => prev.filter(x => x.unitId !== id));
+    setReceivableItems(prev => prev.filter(x => x.unitId !== id));
+    setAllocations(prev => prev.filter(x => !receivableIds.has(x.receivableItemId)));
+    setTickets(prev => prev.filter(x => x.unitId !== id));
+    setCostEntries(prev => prev.filter(x => x.unitId !== id));
+    setCostAllocationResults(prev => prev.filter(x => x.unitId !== id));
     mirror.remove(TABLES.units, id);
-  }, []);
+  }, [receivableItems]);
 
   // ===== Tenant CRUD =====
   const addTenant = useCallback((t: Omit<Tenant, "id" | "createdAt" | "updatedAt">): Tenant => {
@@ -529,6 +582,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setTenants(prev => [...prev, created]);
     if (currentPortfolioId) mirror.insert(TABLES.tenants, created, currentPortfolioId);
+    return created;
+  }, [currentPortfolioId]);
+  const addTenantPersisted = useCallback(async (t: Omit<Tenant, "id" | "createdAt" | "updatedAt">): Promise<Tenant> => {
+    const ts = now();
+    const created: Tenant = {
+      ...t,
+      portfolioId: t.portfolioId ?? currentPortfolioId ?? undefined,
+      id: genId("t"), createdAt: ts, updatedAt: ts,
+    };
+    if (currentPortfolioId) {
+      const error = await mirror.insertAsync(TABLES.tenants, created, currentPortfolioId);
+      if (error) throw error;
+    }
+    setTenants(prev => [...prev, created]);
     return created;
   }, [currentPortfolioId]);
   const updateTenant = useCallback((t: Tenant) => {
@@ -568,20 +635,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
     const created: Lease = { ...l, payerAccounts, id: genId("l"), createdAt: ts, updatedAt: ts };
+    const seededAssignments: LeaseUnitAssignment[] = [];
     setLeases(prev => {
       const next = [...prev, created];
-      setTenants(prevT => reconcileTenantStatuses([created.primaryTenantId, ...created.coTenantIds], next, prevT));
+      reconcileAndMirrorTenantStatuses([created.primaryTenantId, ...created.coTenantIds], next);
       return next;
     });
     if (currentPortfolioId) mirror.insert(TABLES.leases, created, currentPortfolioId);
-    // Always seed a primary assignment from the legacy unitId so a lease is never unit-less.
+    // Seed an assignment from the legacy unitId so a lease is never unit-less.
     if (created.unitId) {
       const lua: LeaseUnitAssignment = {
         id: genId("lua"),
         leaseId: created.id,
         unitId: created.unitId,
-        assignmentType: "primary",
-        isPrimary: true,
         startDate: created.startDate,
         endDate: null,
         rentShare: created.monthlyRent,
@@ -590,6 +656,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         createdAt: ts,
         updatedAt: ts,
       };
+      seededAssignments.push(lua);
       setLeaseUnitAssignments(prev => [...prev, lua]);
       if (currentPortfolioId) mirror.insert(TABLES.leaseUnitAssignments, lua, currentPortfolioId);
     }
@@ -600,14 +667,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const property = properties.find(p => p.id === created.propertyId);
     const currencyCode = property?.currencyCode ?? "EUR";
     const { receivables } = generateLeaseReceivables(created, {
-      currencyCode, genId, today: ts, leadDays: receivableLeadDays,
+      currencyCode,
+      genId,
+      today: ts,
+      leadDays: receivableLeadDays,
+      assignments: seededAssignments,
     });
     if (receivables.length > 0) {
       setReceivableItems(prev => [...prev, ...receivables]);
       if (currentPortfolioId) mirror.insertMany(TABLES.receivableItems, receivables, currentPortfolioId);
     }
     return created;
-  }, [properties, currentPortfolioId, receivableLeadDays]);
+  }, [properties, tenants, currentPortfolioId, receivableLeadDays, reconcileAndMirrorTenantStatuses]);
   const updateLease = useCallback((l: Lease) => {
     const ts = now();
     const patched = { ...l, updatedAt: ts };
@@ -619,7 +690,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...(old ? [old.primaryTenantId, ...old.coTenantIds] : []),
         l.primaryTenantId, ...l.coTenantIds,
       ];
-      setTenants(prevT => reconcileTenantStatuses(affected, next, prevT));
+      reconcileAndMirrorTenantStatuses(affected, next);
 
       // Lifecycle transition cascade: when a lease moves to ended/terminated, close
       // every open assignment and vacate the linked units so ancillary spaces (parking,
@@ -664,12 +735,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-  }, []);
+  }, [reconcileAndMirrorTenantStatuses]);
   const deleteLease = useCallback((id: string) => {
-    setLeases(prev => prev.filter(x => x.id !== id));
+    const amendmentIds = new Set(amendments.filter(a => a.leaseId === id).map(a => a.id));
+    const receivableIds = new Set(receivableItems.filter(r => r.leaseId === id).map(r => r.id));
+    const receiptIds = new Set(cashReceipts.filter(r => r.leaseId === id).map(r => r.id));
+    setLeases(prev => {
+      const old = prev.find(x => x.id === id);
+      const next = prev.filter(x => x.id !== id);
+      if (old) reconcileAndMirrorTenantStatuses([old.primaryTenantId, ...old.coTenantIds], next);
+      return next;
+    });
     setLeaseUnitAssignments(prev => prev.filter(a => a.leaseId !== id));
+    setGuarantees(prev => prev.filter(g => g.leaseId !== id));
+    setAmendments(prev => prev.filter(a => a.leaseId !== id));
+    setAmendmentChanges(prev => prev.filter(c => !amendmentIds.has(c.amendmentId)));
+    setReceivableItems(prev => prev.filter(r => r.leaseId !== id));
+    setCashReceipts(prev => prev.filter(r => r.leaseId !== id));
+    setAllocations(prev => prev.filter(a => !receiptIds.has(a.cashReceiptId) && !receivableIds.has(a.receivableItemId)));
+    setChargesReconciliations(prev => prev.filter(r => r.leaseId !== id));
     mirror.remove(TABLES.leases, id); // ON DELETE CASCADE cleans up children
-  }, []);
+  }, [amendments, receivableItems, cashReceipts, reconcileAndMirrorTenantStatuses]);
 
   const confirmMoveOut = useCallback((lease: Lease) => {
     const ts = now();
@@ -684,7 +770,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     mirror.update(TABLES.leases, lease.id, patched);
     setLeases(prev => {
       const next = prev.map(x => x.id === lease.id ? patched : x);
-      setTenants(prevT => reconcileTenantStatuses([lease.primaryTenantId, ...lease.coTenantIds], next, prevT));
+      reconcileAndMirrorTenantStatuses([lease.primaryTenantId, ...lease.coTenantIds], next);
       return next;
     });
     // Vacate every unit that still had an open assignment on this lease
@@ -719,16 +805,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           })()
         : a,
     ));
-  }, []);
+  }, [reconcileAndMirrorTenantStatuses]);
 
   // ===== Lease Unit Assignments =====
   const setLeaseUnitsFn = useCallback((leaseId: string, propertyId: string, draft: {
     unitId: string;
-    assignmentType: LeaseUnitAssignmentType;
-    isPrimary: boolean;
     rentShare: number | null;
     chargesShare: number | null;
     startDate?: string;
+    endDate?: string | null;
   }[]) => {
     const ts = now();
     setLeaseUnitAssignments(prev => {
@@ -742,11 +827,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           keepIds.add(match.id);
           merged.push({
             ...match,
-            assignmentType: d.assignmentType,
-            isPrimary: d.isPrimary,
             rentShare: d.rentShare,
             chargesShare: d.chargesShare,
             startDate: d.startDate ?? match.startDate,
+            endDate: d.endDate ?? match.endDate,
             updatedAt: ts,
           });
         } else {
@@ -754,10 +838,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             id: genId("lua"),
             leaseId,
             unitId: d.unitId,
-            assignmentType: d.assignmentType,
-            isPrimary: d.isPrimary,
             startDate: d.startDate ?? ts,
-            endDate: null,
+            endDate: d.endDate ?? null,
             rentShare: d.rentShare,
             chargesShare: d.chargesShare,
             notes: "",
@@ -776,10 +858,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return nextAll;
     });
-    // Sync legacy lease.unitId to the new primary AND mirror the sum of shares into
+    // Sync legacy lease.unitId to the first main unit AND mirror the sum of shares into
     // lease.monthlyRent / lease.monthlyCharges so receivables, reports, exports keep
     // working without changes. Lease totals are now derived from per-unit shares.
-    const primary = draft.find(d => d.isPrimary);
+    const primary = draft.find(d => isMainUnitId(d.unitId, units));
     const sums = {
       rent: draft.reduce((s, d) => s + (d.rentShare ?? 0), 0),
       charges: draft.reduce((s, d) => s + (d.chargesShare ?? 0), 0),
@@ -800,7 +882,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           })()
         : l,
     ));
-  }, [currentPortfolioId]);
+  }, [currentPortfolioId, units]);
 
   const getLeaseAssignments = useCallback(
     (leaseId: string) => leaseUnitAssignments.filter(a => a.leaseId === leaseId),
@@ -952,9 +1034,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             id: genId("lua"),
             leaseId: am.leaseId,
             unitId: c.metadata.unitId,
-            assignmentType: c.metadata.assignmentType ?? "ancillary",
-            isPrimary: false,
-            startDate: c.metadata.startDate ?? eff,
+            startDate: eff,
             endDate: c.metadata.endDate ?? null,
             rentShare: Number(v.rentShare ?? 0),
             chargesShare: Number(v.chargesShare ?? 0),
@@ -975,13 +1055,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               ? { ...a, endDate: nv || null, updatedAt: ts }
               : a,
           );
-        } else if (c.fieldName === "primaryUnitId") {
-          const newId = String(c.newValue);
-          next = next.map(a =>
-            a.leaseId === am.leaseId
-              ? { ...a, isPrimary: a.unitId === newId, updatedAt: ts }
-              : a,
-          );
         } else if (c.fieldName === "unitRentShare" && c.metadata?.unitId) {
           next = next.map(a =>
             a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && !a.endDate
@@ -992,12 +1065,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           next = next.map(a =>
             a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && !a.endDate
               ? { ...a, chargesShare: Number(c.newValue) || 0, updatedAt: ts }
-              : a,
-          );
-        } else if (c.fieldName === "unitAssignmentType" && c.metadata?.unitId) {
-          next = next.map(a =>
-            a.leaseId === am.leaseId && a.unitId === c.metadata!.unitId && !a.endDate
-              ? { ...a, assignmentType: (c.newValue as LeaseUnitAssignmentType) ?? a.assignmentType, updatedAt: ts }
               : a,
           );
         }
@@ -1028,7 +1095,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let patched: Lease | null = null;
     if (lease) {
       const eff2 = libGetEffectiveLeaseTerms(am.leaseId, todayISO, {
-        leases, leaseUnitAssignments: nextAssignments,
+        leases, units, leaseUnitAssignments: nextAssignments,
         amendments: nextAmendments, amendmentChanges,
       });
       if (eff2) {
@@ -1068,22 +1135,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const property = properties.find(p => p.id === patched.propertyId);
       const currencyCode = property?.currencyCode ?? "EUR";
       const { receivables: regen } = generateLeaseReceivables(patched, {
-        currencyCode, genId, today: ts, leadDays: receivableLeadDays,
+        currencyCode,
+        genId,
+        today: ts,
+        leadDays: receivableLeadDays,
+        assignments: nextAssignments.filter(a => a.leaseId === patched!.id),
       });
       setReceivableItems(prevRi => {
+        const removed = prevRi.filter(ri =>
+          ri.leaseId === patched!.id &&
+          ri.dueDate >= eff &&
+          ri.allocatedAmount <= 0,
+        );
         const kept = prevRi.filter(ri =>
           ri.leaseId !== patched!.id ||
           ri.dueDate < eff ||
           ri.allocatedAmount > 0,
         );
-        const keptKeys = new Set(kept.map(ri => `${ri.leaseId}|${ri.itemType}|${ri.periodMonth}|${ri.dueDate}`));
+        const keptKeys = new Set(kept.map(scheduledReceivableKey));
         const fresh = regen.filter(ri =>
           ri.dueDate >= eff &&
-          !keptKeys.has(`${ri.leaseId}|${ri.itemType}|${ri.periodMonth}|${ri.dueDate}`),
+          !keptKeys.has(scheduledReceivableKey(ri)),
         );
         if (currentPortfolioId && fresh.length > 0) {
           mirror.insertMany(TABLES.receivableItems, fresh, currentPortfolioId);
         }
+        removed.forEach(ri => mirror.remove(TABLES.receivableItems, ri.id));
         return [...kept, ...fresh];
       });
     }
@@ -1121,8 +1198,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const tick = () => {
       const today = new Date().toISOString().slice(0, 10);
-      const due = amendments.filter(a => a.status === "scheduled" && a.effectiveDate <= today);
-      due.forEach(a => activateAmendment(a.id));
+      const nextDue = amendments
+        .filter(a => a.status === "scheduled" && a.effectiveDate <= today)
+        .sort((x, y) => {
+          if (x.effectiveDate !== y.effectiveDate) return x.effectiveDate.localeCompare(y.effectiveDate);
+          return x.amendmentNumber - y.amendmentNumber;
+        })[0];
+      if (nextDue) activateAmendment(nextDue.id);
     };
     tick();
     const id = setInterval(tick, 60_000);
@@ -1167,6 +1249,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const deleteReceivableItem = useCallback((id: string) => {
     setReceivableItems(prev => prev.filter(x => x.id !== id));
+    setAllocations(prev => prev.filter(x => x.receivableItemId !== id));
     mirror.remove(TABLES.receivableItems, id);
   }, []);
 
@@ -1201,6 +1284,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCashReceipts(prev => [...prev, newReceipt]);
       if (currentPortfolioId) mirror.insert(TABLES.cashReceipts, newReceipt, currentPortfolioId);
     }
+  }, [receivableItems, currentPortfolioId]);
+  const createCashReceiptPersisted = useCallback(async (r: Omit<CashReceipt, "id" | "createdAt" | "updatedAt">, autoAllocateFlag = false) => {
+    const ts = now();
+    const newReceipt: CashReceipt = { ...r, id: genId("cr"), createdAt: ts, updatedAt: ts };
+
+    if (autoAllocateFlag) {
+      const openItems = receivableItems.filter(ri => {
+        if (ri.outstandingAmount <= 0) return false;
+        if (newReceipt.leaseId && ri.leaseId === newReceipt.leaseId) return true;
+        if (newReceipt.tenantId && ri.tenantId === newReceipt.tenantId) return true;
+        if (newReceipt.propertyId && ri.propertyId === newReceipt.propertyId) return true;
+        return false;
+      });
+
+      const result = autoAllocate(newReceipt, openItems);
+      const newAllocs = result.allocations.map(a => ({ ...a, id: genId("al"), createdAt: ts, updatedAt: ts }));
+      if (currentPortfolioId) {
+        let error = await mirror.insertAsync(TABLES.cashReceipts, result.updatedReceipt, currentPortfolioId);
+        if (error) throw error;
+        for (const ri of result.updatedReceivables) {
+          error = await mirror.updateAsync(TABLES.receivableItems, ri.id, ri);
+          if (error) throw error;
+        }
+        error = await mirror.insertManyAsync(TABLES.allocations, newAllocs, currentPortfolioId);
+        if (error) throw error;
+      }
+      setCashReceipts(prev => [...prev, result.updatedReceipt]);
+      setReceivableItems(prev => prev.map(ri => result.updatedReceivables.find(u => u.id === ri.id) ?? ri));
+      setAllocations(prev => [...prev, ...newAllocs]);
+      return result.updatedReceipt;
+    }
+
+    if (currentPortfolioId) {
+      const error = await mirror.insertAsync(TABLES.cashReceipts, newReceipt, currentPortfolioId);
+      if (error) throw error;
+    }
+    setCashReceipts(prev => [...prev, newReceipt]);
+    return newReceipt;
   }, [receivableItems, currentPortfolioId]);
 
   // ===== Manual Allocation =====
@@ -1425,6 +1546,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTickets(prev => [...prev, created]);
     if (currentPortfolioId) mirror.insert(TABLES.tickets, created, currentPortfolioId);
   }, [currentPortfolioId]);
+  const addTicketPersisted = useCallback(async (t: Omit<MaintenanceTicket, "id">) => {
+    const created: MaintenanceTicket = { ...t, id: genId("mt") };
+    if (currentPortfolioId) {
+      const error = await mirror.insertAsync(TABLES.tickets, created, currentPortfolioId);
+      if (error) throw error;
+    }
+    setTickets(prev => [...prev, created]);
+    return created;
+  }, [currentPortfolioId]);
   const updateTicket = useCallback((t: MaintenanceTicket) => {
     setTickets(prev => prev.map(x => x.id === t.id ? t : x));
     mirror.update(TABLES.tickets, t.id, t);
@@ -1443,6 +1573,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setVendors(prev => [...prev, created]);
     if (currentPortfolioId) mirror.insert(TABLES.vendors, created, currentPortfolioId);
+  }, [currentPortfolioId]);
+  const addVendorPersisted = useCallback(async (v: Omit<Vendor, "id">) => {
+    const created: Vendor = {
+      ...v,
+      portfolioId: v.portfolioId ?? currentPortfolioId ?? undefined,
+      id: genId("v"),
+    };
+    if (currentPortfolioId) {
+      const error = await mirror.insertAsync(TABLES.vendors, created, currentPortfolioId);
+      if (error) throw error;
+    }
+    setVendors(prev => [...prev, created]);
+    return created;
   }, [currentPortfolioId]);
   const updateVendor = useCallback((v: Vendor) => {
     setVendors(prev => prev.map(x => x.id === v.id ? v : x));
@@ -1463,6 +1606,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setCostCategories(prev => [...prev, created]);
     if (currentPortfolioId) mirror.insert(TABLES.costCategories, created, currentPortfolioId);
+  }, [currentPortfolioId]);
+  const addCostCategoryPersisted = useCallback(async (c: Omit<CostCategory, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    const created: CostCategory = {
+      ...c,
+      portfolioId: c.portfolioId ?? currentPortfolioId ?? undefined,
+      id: genId("cc"), createdAt: ts, updatedAt: ts,
+    };
+    if (currentPortfolioId) {
+      const error = await mirror.insertAsync(TABLES.costCategories, created, currentPortfolioId);
+      if (error) throw error;
+    }
+    setCostCategories(prev => [...prev, created]);
+    return created;
   }, [currentPortfolioId]);
   const updateCostCategory = useCallback((c: CostCategory) => {
     const next = { ...c, updatedAt: now() };
@@ -1490,6 +1647,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (currentPortfolioId) mirror.insertMany(TABLES.costAllocationResults, stamped, currentPortfolioId);
       }
     }
+  }, [allocationRules, units, allocationRuleUnitShares, currentPortfolioId]);
+  const addCostEntryPersisted = useCallback(async (e: Omit<CostEntry, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    const newEntry: CostEntry = { ...e, id: genId("ce"), createdAt: ts, updatedAt: ts };
+    const allocationRows = (() => {
+      if (newEntry.unitId || !newEntry.allocationRuleId) return [];
+      const rule = allocationRules.find(r => r.id === newEntry.allocationRuleId);
+      if (!rule) return [];
+      return computeAllocations(newEntry, rule, units, allocationRuleUnitShares)
+        .map(r => ({ ...r, id: genId("car"), createdAt: ts, updatedAt: ts }));
+    })();
+    if (currentPortfolioId) {
+      let error = await mirror.insertAsync(TABLES.costEntries, newEntry, currentPortfolioId);
+      if (error) throw error;
+      error = await mirror.insertManyAsync(TABLES.costAllocationResults, allocationRows, currentPortfolioId);
+      if (error) throw error;
+    }
+    setCostEntries(prev => [...prev, newEntry]);
+    if (allocationRows.length > 0) setCostAllocationResults(prev => [...prev, ...allocationRows]);
+    return newEntry;
   }, [allocationRules, units, allocationRuleUnitShares, currentPortfolioId]);
 
   const updateCostEntry = useCallback((e: CostEntry) => {
@@ -1523,6 +1700,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const created: AllocationRule = { ...r, id: genId("ar"), createdAt: ts, updatedAt: ts };
     setAllocationRules(prev => [...prev, created]);
     if (currentPortfolioId) mirror.insert(TABLES.allocationRules, created, currentPortfolioId);
+  }, [currentPortfolioId]);
+  const addAllocationRulePersisted = useCallback(async (r: Omit<AllocationRule, "id" | "createdAt" | "updatedAt">) => {
+    const ts = now();
+    const created: AllocationRule = {
+      ...r,
+      portfolioId: r.portfolioId ?? currentPortfolioId ?? undefined,
+      id: genId("ar"), createdAt: ts, updatedAt: ts,
+    };
+    if (currentPortfolioId) {
+      const error = await mirror.insertAsync(TABLES.allocationRules, created, currentPortfolioId);
+      if (error) throw error;
+    }
+    setAllocationRules(prev => [...prev, created]);
+    return created;
   }, [currentPortfolioId]);
   const updateAllocationRule = useCallback((r: AllocationRule) => {
     const next = { ...r, updatedAt: now() };
@@ -1578,10 +1769,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         assignmentIsActiveOn(a, todayISO) &&
         activeLeaseIds.has(a.leaseId),
       );
-      if (active && active.isPrimary) {
-        counts.occupied++;
-      } else if (active) {
+      if (active && isAncillaryUnitType(u.unitType)) {
         counts.ancillaryLeased++;
+      } else if (active) {
+        counts.occupied++;
       } else if (u.currentStatus === "reserved") {
         counts.reserved++;
       } else if (u.currentStatus === "unavailable") {
@@ -1590,13 +1781,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         counts.vacant++;
       }
     });
-    // Ancillary units are not eligible to be a "home" — exclude them from the denominator
-    // so a 1-bedroom + parking lease doesn't show 50% occupancy.
-    const denominator = total - counts.ancillaryLeased;
     return {
       total,
       ...counts,
-      occupancyRate: denominator > 0 ? Math.round((counts.occupied / denominator) * 100) : 0,
+      occupancyRate: total > 0 ? Math.round((counts.occupied / total) * 100) : 0,
     };
   }, [units, leases, leaseUnitAssignments]);
 
@@ -1770,9 +1958,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const deleteChargesReconciliation = useCallback((id: string) => {
+    const reconciliation = chargesReconciliations.find(r => r.id === id);
     setChargesReconciliations(prev => prev.filter(r => r.id !== id));
+    if (reconciliation?.receivableItemId) {
+      setReceivableItems(prev => prev.filter(r => r.id !== reconciliation.receivableItemId));
+      setAllocations(prev => prev.filter(a => a.receivableItemId !== reconciliation.receivableItemId));
+      mirror.remove(TABLES.receivableItems, reconciliation.receivableItemId);
+    }
     mirror.remove(TABLES.chargesReconciliations, id);
-  }, []);
+  }, [chargesReconciliations]);
 
   // ===== Portfolio scoping ============================================
   // All exposed collections are filtered to the active portfolio. Internal
@@ -1882,10 +2076,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     allocationRuleUnitShares: scoped.allocationRuleUnitShares,
     costAllocationResults: scoped.costAllocationResults,
     chargesReconciliations: scoped.chargesReconciliations,
-    addProperty, updateProperty, deleteProperty,
+    addProperty, addPropertyPersisted, updateProperty, deleteProperty,
     createPropertyOwner, setPropertyOwners, getOwnersForProperty,
-    addUnit, updateUnit, deleteUnit,
-    addTenant, updateTenant, deleteTenant,
+    addUnit, addUnitPersisted, updateUnit, deleteUnit,
+    addTenant, addTenantPersisted, updateTenant, deleteTenant,
     addLease, updateLease, deleteLease, confirmMoveOut,
     setLeaseUnits: setLeaseUnitsFn,
     getLeaseAssignments,
@@ -1901,13 +2095,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getAmendmentChanges: getAmendmentChangesFn,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
-    createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
+    createCashReceipt, createCashReceiptPersisted, allocateCashReceipt, autoAllocateCashReceipt,
     quickPayReceivable,
-    addTicket, updateTicket, deleteTicket,
-    addVendor, updateVendor, deleteVendor,
-    addCostCategory, updateCostCategory, deleteCostCategory,
-    addCostEntry, updateCostEntry, deleteCostEntry,
-    addAllocationRule, updateAllocationRule, deleteAllocationRule,
+    addTicket, addTicketPersisted, updateTicket, deleteTicket,
+    addVendor, addVendorPersisted, updateVendor, deleteVendor,
+    addCostCategory, addCostCategoryPersisted, updateCostCategory, deleteCostCategory,
+    addCostEntry, addCostEntryPersisted, updateCostEntry, deleteCostEntry,
+    addAllocationRule, addAllocationRulePersisted, updateAllocationRule, deleteAllocationRule,
     setAllocationRuleUnitShares: setAllocationRuleUnitSharesFn,
     runAllocation,
     getPropertyStats, getPropertyById, getUnitById, getTenantById,
@@ -1925,10 +2119,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }), [
     loading,
     scoped,
-    addProperty, updateProperty, deleteProperty,
+    addProperty, addPropertyPersisted, updateProperty, deleteProperty,
     createPropertyOwner, setPropertyOwners, getOwnersForProperty,
-    addUnit, updateUnit, deleteUnit,
-    addTenant, updateTenant, deleteTenant,
+    addUnit, addUnitPersisted, updateUnit, deleteUnit,
+    addTenant, addTenantPersisted, updateTenant, deleteTenant,
     addLease, updateLease, deleteLease, confirmMoveOut,
     setLeaseUnitsFn, getLeaseAssignments, getActiveLeaseAssignmentForUnit,
     setLeaseAssignmentsEndDateFn,
@@ -1938,13 +2132,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getLeaseAmendmentsFn, getAmendmentChangesFn,
     addGuarantee, updateGuarantee, deleteGuarantee,
     createReceivableItem, updateReceivableItem, deleteReceivableItem,
-    createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
+    createCashReceipt, createCashReceiptPersisted, allocateCashReceipt, autoAllocateCashReceipt,
     quickPayReceivable,
-    addTicket, updateTicket, deleteTicket,
-    addVendor, updateVendor, deleteVendor,
-    addCostCategory, updateCostCategory, deleteCostCategory,
-    addCostEntry, updateCostEntry, deleteCostEntry,
-    addAllocationRule, updateAllocationRule, deleteAllocationRule,
+    addTicket, addTicketPersisted, updateTicket, deleteTicket,
+    addVendor, addVendorPersisted, updateVendor, deleteVendor,
+    addCostCategory, addCostCategoryPersisted, updateCostCategory, deleteCostCategory,
+    addCostEntry, addCostEntryPersisted, updateCostEntry, deleteCostEntry,
+    addAllocationRule, addAllocationRulePersisted, updateAllocationRule, deleteAllocationRule,
     setAllocationRuleUnitSharesFn,
     runAllocation,
     getPropertyStats, getPropertyById, getUnitById, getTenantById,

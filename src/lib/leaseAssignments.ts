@@ -1,8 +1,13 @@
-import type { Lease, LeaseUnitAssignment, LeaseUnitAssignmentType } from "@/types";
-import { isAncillaryAssignmentType, ANCILLARY_UNIT_TYPES, type Unit } from "@/types";
+import type { Lease, LeaseUnitAssignment } from "@/types";
+import { isAncillaryUnitType, type Unit } from "@/types";
 
-/** True when this assignment role represents a "main" (non-ancillary) unit. */
-export const isMainAssignmentType = (t: LeaseUnitAssignmentType) => !isAncillaryAssignmentType(t);
+/** True when this unit represents an ancillary lease attachment. */
+export const isAncillaryLeaseUnit = (unit: Pick<Unit, "unitType"> | undefined) =>
+  !!unit && isAncillaryUnitType(unit.unitType);
+
+/** True when this unit represents a main rentable unit. */
+export const isMainLeaseUnit = (unit: Pick<Unit, "unitType"> | undefined) =>
+  !!unit && !isAncillaryLeaseUnit(unit);
 
 /** True if assignment row covers the given ISO date. */
 export function assignmentIsActiveOn(a: LeaseUnitAssignment, isoDate: string): boolean {
@@ -30,7 +35,7 @@ export function getActiveAssignmentsForLease(
 
 /**
  * Resolve every Unit attached to a lease (with optional active-only filtering).
- * Returns rows ordered with main (`primary` role) units first, ancillaries last.
+ * Returns rows ordered with main units first, ancillaries last.
  */
 export function getLeaseAssignedUnits(
   leaseId: string,
@@ -51,15 +56,15 @@ export function getLeaseAssignedUnits(
     })
     .filter((r): r is { unit: Unit; assignment: LeaseUnitAssignment } => r !== null)
     .sort((x, y) => {
-      const xm = isMainAssignmentType(x.assignment.assignmentType) ? 1 : 0;
-      const ym = isMainAssignmentType(y.assignment.assignmentType) ? 1 : 0;
+      const xm = isMainLeaseUnit(x.unit) ? 1 : 0;
+      const ym = isMainLeaseUnit(y.unit) ? 1 : 0;
       return ym - xm;
     });
 }
 
 /**
  * First main unit attached to a lease (active or historical). Returns the first
- * assignment whose role is not ancillary. Used purely as a display fallback —
+ * assignment whose unit type is not ancillary. Used purely as a display fallback —
  * leases may now have zero, one, or several main units.
  */
 export function getMainLeaseUnit(
@@ -67,8 +72,7 @@ export function getMainLeaseUnit(
   assignments: readonly LeaseUnitAssignment[],
   units: readonly Unit[],
 ): Unit | undefined {
-  const a = assignments.find(x => x.leaseId === leaseId && isMainAssignmentType(x.assignmentType));
-  return a ? units.find(u => u.id === a.unitId) : undefined;
+  return getLeaseAssignedUnits(leaseId, assignments, units).find(r => isMainLeaseUnit(r.unit))?.unit;
 }
 
 /** @deprecated Alias of {@link getMainLeaseUnit}. Kept for legacy imports. */
@@ -82,7 +86,7 @@ export function getAncillaryLeaseUnits(
   opts: { activeOnly?: boolean; onDate?: string } = {},
 ): { unit: Unit; assignment: LeaseUnitAssignment }[] {
   return getLeaseAssignedUnits(leaseId, assignments, units, opts)
-    .filter(r => isAncillaryRole(r.assignment.assignmentType, r.unit));
+    .filter(r => isAncillaryLeaseUnit(r.unit));
 }
 
 /** True when a unit is currently attached to any active lease (primary OR ancillary). */
@@ -139,7 +143,7 @@ export function sumLeaseShares(
 
 /**
  * Look up the active lease + assignment covering a unit on a given date.
- * Returns the primary assignment first when multiple match.
+ * Returns the earliest active assignment when multiple match.
  */
 export function getActiveLeaseForUnit(
   unitId: string,
@@ -151,13 +155,7 @@ export function getActiveLeaseForUnit(
     a.unitId === unitId && assignmentIsActiveOn(a, onDate),
   );
   if (matches.length === 0) return undefined;
-  // Prefer main role then earliest start.
-  const sorted = [...matches].sort((x, y) => {
-    const xm = isMainAssignmentType(x.assignmentType) ? 1 : 0;
-    const ym = isMainAssignmentType(y.assignmentType) ? 1 : 0;
-    if (xm !== ym) return ym - xm;
-    return x.startDate.localeCompare(y.startDate);
-  });
+  const sorted = [...matches].sort((x, y) => x.startDate.localeCompare(y.startDate));
   for (const a of sorted) {
     const lease = leases.find(l => l.id === a.leaseId && l.lifecycleStage === "active");
     if (lease) return { lease, assignment: a };
@@ -175,39 +173,4 @@ export function migrateLegacyLeaseAssignments(
   existing: readonly LeaseUnitAssignment[],
 ): LeaseUnitAssignment[] {
   return [...existing];
-}
-
-/**
- * Detect whether a unit, when assigned with a given assignmentType, should be
- * considered ancillary for occupancy KPIs.
- */
-export function isAncillaryRole(
-  assignmentType: LeaseUnitAssignmentType,
-  unit: Pick<Unit, "unitType"> | undefined,
-): boolean {
-  if (isAncillaryAssignmentType(assignmentType)) return true;
-  if (unit && ANCILLARY_UNIT_TYPES.has(unit.unitType)) return true;
-  return false;
-}
-
-/**
- * Map a unit's physical type to the LeaseUnitAssignmentType that best
- * describes its role on a lease. Used so the UI doesn't need to expose a
- * separate "Role" choice — the role can always be derived from the unit.
- */
-export function deriveAssignmentTypeFromUnit(
-  unit: Pick<Unit, "unitType"> | undefined,
-): LeaseUnitAssignmentType {
-  switch (unit?.unitType) {
-    case "parking": return "parking";
-    case "storage": return "storage";
-    case "apartment":
-    case "studio":
-    case "house":
-    case "office":
-    case "commercial-unit":
-      return "primary";
-    default:
-      return "ancillary";
-  }
 }

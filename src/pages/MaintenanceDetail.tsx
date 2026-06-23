@@ -70,7 +70,7 @@ export default function MaintenanceDetail() {
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.quickActions")}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex gap-2 flex-wrap">
-            {ticket.status !== "assigned" && ticket.status !== "completed" && ticket.status !== "cancelled" && (
+            {ticket.status === "open" && (
               <Button size="sm" variant="outline" onClick={() => quickStatusChange("assigned")}>{t("detail.markAssigned")}</Button>
             )}
             {ticket.status !== "in-progress" && ticket.status !== "completed" && ticket.status !== "cancelled" && (

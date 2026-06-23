@@ -1,4 +1,5 @@
 import type { Lease } from "@/types";
+import type { LeaseUnitAssignment } from "@/types";
 import type { ReceivableItem, CashReceipt, ReceiptAllocation } from "@/types/receivables";
 import { computeReceivableStatus } from "@/types/receivables";
 import { computeCycles } from "./leaseCycles";
@@ -24,6 +25,8 @@ export interface GenerateOptions {
    * Cycle 1 is always emitted so future-dated leases keep a visible schedule.
    */
   leadDays: number;
+  /** Assignment rows for the lease. Used to stamp the correct unit per cycle. */
+  assignments?: readonly LeaseUnitAssignment[];
 }
 
 /**
@@ -57,16 +60,42 @@ function cycleDueDate(cycleStart: string, dueDay: number): string {
   return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function minDate(...dates: Array<string | null | undefined>): string | null {
+  const valid = dates.filter((d): d is string => !!d);
+  if (valid.length === 0) return null;
+  return valid.sort()[0];
+}
+
+function assignmentForCycle(
+  cycleStart: string,
+  assignments: readonly LeaseUnitAssignment[] | undefined,
+): LeaseUnitAssignment | undefined {
+  return assignments?.find(a =>
+    a.startDate <= cycleStart &&
+    (!a.endDate || a.endDate >= cycleStart),
+  );
+}
+
 export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): GenerateResult {
   const { currencyCode, genId, leadDays } = opts;
   const today = opts.today ?? new Date().toISOString().slice(0, 10);
 
   const receivables: ReceivableItem[] = [];
+  if (lease.lifecycleStage !== "signed" && lease.lifecycleStage !== "active") {
+    return { receivables, prepaymentReceipt: null, allocations: [] };
+  }
   if (!lease.startDate || !lease.endDate) {
     return { receivables, prepaymentReceipt: null, allocations: [] };
   }
 
-  const cycles = computeCycles(lease);
+  const effectiveEndDate = minDate(
+    lease.endDate,
+    lease.moveOutActualDate,
+    lease.moveOutScheduledDate,
+    lease.intendedMoveOutDate,
+  ) ?? lease.endDate;
+  const scheduleLease = { ...lease, endDate: effectiveEndDate };
+  const cycles = computeCycles(scheduleLease);
   const isAdvance = (lease.rentFormula || 1) > 1;
   const allInclusive = isAllInclusive(lease);
   const dueDay = lease.dueDayOfMonth || 1;
@@ -82,6 +111,8 @@ export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): G
 
   for (const cycle of cycles) {
     if (cycle.index > 1 && cycle.startDate > horizonDate) continue;
+    const assignment = assignmentForCycle(cycle.startDate, opts.assignments);
+    const unitId = assignment?.unitId ?? lease.unitId;
     const periodMonth = cycle.startDate.slice(0, 7);
     const dueDate = cycleDueDate(cycle.startDate, dueDay);
     const cycleSuffix = isAdvance
@@ -92,7 +123,7 @@ export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): G
       const rentItem: ReceivableItem = {
         id: genId("ri"),
         leaseId: lease.id, tenantId: lease.primaryTenantId,
-        propertyId: lease.propertyId, unitId: lease.unitId,
+        propertyId: lease.propertyId, unitId,
         itemType: "rent",
         label: allInclusive
           ? (isAdvance ? `All-inclusive rent — ${cycle.months}-month advance${cycleSuffix}` : "Monthly all-inclusive rent")
@@ -118,7 +149,7 @@ export function generateLeaseReceivables(lease: Lease, opts: GenerateOptions): G
       const chargesItem: ReceivableItem = {
         id: genId("ri"),
         leaseId: lease.id, tenantId: lease.primaryTenantId,
-        propertyId: lease.propertyId, unitId: lease.unitId,
+        propertyId: lease.propertyId, unitId,
         itemType: "charges",
         label: isAdvance ? `Charges — ${cycle.months}-month advance${cycleSuffix}` : "Monthly Charges",
         periodMonth, dueDate,

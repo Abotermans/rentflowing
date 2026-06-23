@@ -29,13 +29,16 @@ import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import { QuickPayReceivableDialog } from "@/components/payments/QuickPayReceivableDialog";
+import { useToast } from "@/hooks/use-toast";
+import { positiveNumber } from "@/lib/validation";
 
 export default function Payments() {
   const { t } = useSettings();
+  const { toast } = useToast();
   const {
     receivableItems, cashReceipts, allocations,
     leases, tenants, properties, units,
-    createCashReceipt, allocateCashReceipt, autoAllocateCashReceipt,
+    createCashReceiptPersisted, allocateCashReceipt, autoAllocateCashReceipt,
     getReceivableItemsByLease, getReceivableItemsByTenant,
   } = useAppData();
 
@@ -183,12 +186,16 @@ export default function Payments() {
   const selectedLease = formLeaseId ? leases.find(l => l.id === formLeaseId) : undefined;
   const selectedProp = selectedLease ? properties.find(p => p.id === selectedLease.propertyId) : undefined;
 
-  const handleAddReceipt = () => {
-    if (!formAmount) return;
+  const handleAddReceipt = async () => {
+    if (!positiveNumber(formAmount)) {
+      toast({ title: t("common.validationError"), description: "Receipt amount must be greater than zero.", variant: "destructive" });
+      return;
+    }
     const amt = parseFloat(formAmount);
     const propId = selectedLease ? selectedLease.propertyId : null;
     const unitId = selectedLease ? selectedLease.unitId : null;
-    createCashReceipt({
+    try {
+      await createCashReceiptPersisted({
       tenantId: formTenantId || null,
       leaseId: formLeaseId || null,
       propertyId: propId,
@@ -210,7 +217,15 @@ export default function Payments() {
       notes: formNotes,
       importBatchId: null,
       rawBankTransactionId: null,
-    }, formAutoAllocate);
+      }, formAutoAllocate);
+    } catch (err) {
+      toast({
+        title: t("common.validationError"),
+        description: err instanceof Error ? err.message : "Cash receipt could not be saved.",
+        variant: "destructive",
+      });
+      return;
+    }
     setAddReceiptOpen(false);
     setFormAmount(""); setFormReference(""); setFormNotes(""); setFormPayerName(""); setFormPayerIban(""); setFormRemittance("");
     setFormTenantId(""); setFormLeaseId("");
@@ -220,10 +235,15 @@ export default function Payments() {
   const allocReceipt = allocateReceiptId ? cashReceipts.find(r => r.id === allocateReceiptId) : null;
   const allocOpenItems = allocReceipt ? receivableItems.filter(ri => {
     if (ri.outstandingAmount <= 0) return false;
+    if (ri.currencyCode !== allocReceipt.currencyCode) return false;
     if (allocReceipt.leaseId && ri.leaseId === allocReceipt.leaseId) return true;
     if (allocReceipt.tenantId && ri.tenantId === allocReceipt.tenantId) return true;
     return false;
   }) : [];
+  const positiveAllocTotal = () => Object.values(allocAmounts).reduce((s, v) => {
+    const n = parseFloat(v);
+    return s + (Number.isFinite(n) && n > 0 ? n : 0);
+  }, 0);
 
   const handleManualAllocate = () => {
     if (!allocateReceiptId) return;
@@ -231,6 +251,19 @@ export default function Payments() {
       .filter(([, v]) => parseFloat(v) > 0)
       .map(([riId, v]) => ({ receivableItemId: riId, amount: parseFloat(v) }));
     if (manualAllocs.length === 0) return;
+    const total = manualAllocs.reduce((s, a) => s + a.amount, 0);
+    if (allocReceipt && total > allocReceipt.unmatchedAmount) {
+      toast({ title: t("common.validationError"), description: "Allocation total cannot exceed the receipt unmatched amount.", variant: "destructive" });
+      return;
+    }
+    const invalidLine = manualAllocs.find(a => {
+      const ri = allocOpenItems.find(item => item.id === a.receivableItemId);
+      return !ri || a.amount > ri.outstandingAmount || a.amount <= 0 || ri.currencyCode !== allocReceipt?.currencyCode;
+    });
+    if (invalidLine) {
+      toast({ title: t("common.validationError"), description: "Each allocation must match the receipt currency and stay within the receivable outstanding amount.", variant: "destructive" });
+      return;
+    }
     allocateCashReceipt(allocateReceiptId, manualAllocs);
     setAllocateReceiptId(null);
     setAllocAmounts({});
@@ -318,8 +351,8 @@ export default function Payments() {
                   {rvPg.pageItems.map(ri => (
                     <TableRow key={ri.id}>
                       <TableCell className="text-muted-foreground">{formatDate(ri.dueDate, ri.prop?.locale)}</TableCell>
-                      <TableCell className="text-muted-foreground">{ri.tenant ? <Link to={`/tenants/${ri.tenant.id}`} className="hover:underline">{getTenantFullName(ri.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className="hover:underline">{ri.lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{ri.tenant ? <a href={`/tenants/${ri.tenant.id}`} className="hover:underline">{getTenantFullName(ri.tenant)}</a> : "—"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{ri.lease ? <a href={`/leases/${ri.lease.id}`} className="hover:underline">{ri.lease.leaseReference}</a> : "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{ri.prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                       <TableCell className="text-muted-foreground">{ri.label}</TableCell>
@@ -395,8 +428,8 @@ export default function Payments() {
                     <TableRow key={cr.id}>
                       <TableCell className="text-muted-foreground">{formatDate(cr.paymentDate, cr.prop?.locale)}</TableCell>
                       <TableCell className="text-muted-foreground">{cr.payerName ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{cr.tenant ? <Link to={`/tenants/${cr.tenant.id}`} className="hover:underline">{getTenantFullName(cr.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{cr.lease ? <Link to={`/leases/${cr.lease.id}`} className="hover:underline">{cr.lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{cr.tenant ? <a href={`/tenants/${cr.tenant.id}`} className="hover:underline">{getTenantFullName(cr.tenant)}</a> : "—"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{cr.lease ? <a href={`/leases/${cr.lease.id}`} className="hover:underline">{cr.lease.leaseReference}</a> : "—"}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{formatCurrency(cr.amountReceived, cr.currencyCode, cr.prop?.locale)}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, cr.prop?.locale) : "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
@@ -454,7 +487,7 @@ export default function Payments() {
                               ? `/tenants/${al.ri.tenantId}`
                               : null;
                             return href ? (
-                              <Link to={href} className="hover:underline text-foreground">{al.ri.label}</Link>
+                              <a href={href} className="hover:underline text-foreground">{al.ri.label}</a>
                             ) : (
                               <span className="text-muted-foreground">{al.ri.label}</span>
                             );
@@ -464,8 +497,8 @@ export default function Payments() {
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{al.ri ? getItemTypeLabel(t, al.ri.itemType) : "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{al.tenant ? <Link to={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</Link> : "—"}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatCurrency(al.allocatedAmount)}</TableCell>
+                      <TableCell className="text-muted-foreground">{al.tenant ? <a href={`/tenants/${al.tenant.id}`} className="hover:underline text-foreground">{getTenantFullName(al.tenant)}</a> : "—"}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{formatCurrency(al.allocatedAmount, al.ri?.currencyCode ?? al.receipt?.currencyCode)}</TableCell>
                       <TableCell className="text-muted-foreground">{getAllocationTypeLabel(t, al.allocationType)}</TableCell>
                     </TableRow>
                   ))}
@@ -550,7 +583,7 @@ export default function Payments() {
               <Label>{t("payments.dialog.autoAllocate")}</Label>
               <Switch checked={formAutoAllocate} onCheckedChange={setFormAutoAllocate} />
             </div>
-            <Button onClick={handleAddReceipt} disabled={!formAmount} className="w-full">{t("payments.recordCashReceipt")}</Button>
+            <Button onClick={handleAddReceipt} disabled={!positiveNumber(formAmount)} className="w-full">{t("payments.recordCashReceipt")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -584,7 +617,11 @@ export default function Payments() {
                           max={Math.min(ri.outstandingAmount, allocReceipt.unmatchedAmount)}
                           className="w-24 h-8 text-sm"
                           value={allocAmounts[ri.id] ?? ""}
-                          onChange={e => setAllocAmounts(prev => ({ ...prev, [ri.id]: e.target.value }))}
+                          onChange={e => {
+                            const raw = e.target.value;
+                            const n = parseFloat(raw);
+                            setAllocAmounts(prev => ({ ...prev, [ri.id]: Number.isFinite(n) && n < 0 ? "0" : raw }));
+                          }}
                           placeholder="0.00"
                         />
                       </div>
@@ -593,7 +630,7 @@ export default function Payments() {
 
                   {/* Allocation summary */}
                   {(() => {
-                    const totalAllocating = Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+                    const totalAllocating = positiveAllocTotal();
                     const remaining = Math.round((allocReceipt.unmatchedAmount - totalAllocating) * 100) / 100;
                     return (
                       <div className="p-3 bg-muted/50 rounded-md space-y-1 border">
@@ -613,7 +650,7 @@ export default function Payments() {
               )}
 
               <div className="flex gap-2">
-                <Button onClick={handleManualAllocate} disabled={allocOpenItems.length === 0 || Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0) <= 0 || Object.values(allocAmounts).reduce((s, v) => s + (parseFloat(v) || 0), 0) > allocReceipt.unmatchedAmount} className="flex-1">{t("payments.dialog.applyManual")}</Button>
+                <Button onClick={handleManualAllocate} disabled={allocOpenItems.length === 0 || positiveAllocTotal() <= 0 || positiveAllocTotal() > allocReceipt.unmatchedAmount} className="flex-1">{t("payments.dialog.applyManual")}</Button>
                 <Button variant="outline" onClick={() => { autoAllocateCashReceipt(allocateReceiptId!); setAllocateReceiptId(null); setAllocAmounts({}); }} disabled={allocOpenItems.length === 0}>{t("payments.dialog.autoAllocateBtn")}</Button>
               </div>
             </div>

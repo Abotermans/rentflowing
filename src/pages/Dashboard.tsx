@@ -5,11 +5,12 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { DoorOpen, TrendingUp, CalendarClock, AlertTriangle, Shield, Bell, Truck, Wrench, ArrowRightLeft, Banknote } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDate, formatCurrency } from "@/lib/formatters";
-import { getTenantFullName } from "@/types";
+import { getTenantFullName, isAncillaryUnitType } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
+import { formatMoneyGroups, sumMoneyByCurrency } from "@/lib/money";
 
 export default function Dashboard() {
-  const { properties, units, leases, leaseUnitAssignments, tenants, getPropertyStats, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets, costEntries, costAllocationResults } = useAppData();
+  const { properties, units, leases, leaseUnitAssignments, tenants, receivableItems, cashReceipts, getTenantOutstanding, guarantees, tickets, costEntries, costAllocationResults } = useAppData();
   const { t } = useSettings();
 
   // Maintenance KPIs
@@ -20,8 +21,8 @@ export default function Dashboard() {
 
   const totalUnits = units.length;
   // Mutually exclusive occupancy. Multi-unit lease aware:
-  //   - "occupied" counts only PRIMARY assignments (the actual home / main commercial unit)
-  //   - ancillary assignments (parking, cellar, storage) are tracked separately
+  //   - "occupied" counts non-ancillary unit types
+  //   - ancillary unit types (parking, storage) are tracked separately
   const todayISO = new Date().toISOString().slice(0, 10);
   const activeAssignmentForUnit = (uid: string) => leaseUnitAssignments.find(a =>
     a.unitId === uid &&
@@ -32,15 +33,13 @@ export default function Dashboard() {
   let occupied = 0, ancillaryLeased = 0, unavailable = 0, reserved = 0;
   units.forEach(u => {
     const a = activeAssignmentForUnit(u.id);
-    if (a && a.isPrimary) { occupied++; }
-    else if (a) { ancillaryLeased++; }
+    if (a && isAncillaryUnitType(u.unitType)) { ancillaryLeased++; }
+    else if (a) { occupied++; }
     else if (u.currentStatus === "unavailable") { unavailable++; }
     else if (u.currentStatus === "reserved") { reserved++; }
   });
   const vacant = totalUnits - occupied - ancillaryLeased - reserved - unavailable;
-  // Occupancy rate computed on units that can be a "home" (exclude ancillaries from denominator).
-  const primaryDenominator = totalUnits - ancillaryLeased;
-  const occupancyRate = primaryDenominator > 0 ? Math.round((occupied / primaryDenominator) * 100) : 0;
+  const occupancyRate = totalUnits > 0 ? Math.round((occupied / totalUnits) * 100) : 0;
 
   const now = new Date();
   const today = now.toISOString().split("T")[0];
@@ -53,11 +52,11 @@ export default function Dashboard() {
   const leasesUnderNotice = activeLeases.filter(l => l.noticeGiven);
 
   // Financial KPIs from receivables
-  const totalExpectedMonthlyRent = activeLeases.reduce((s, l) => s + l.monthlyRent + l.monthlyCharges, 0);
-  const totalOverdue = receivableItems.filter(ri => ri.outstandingAmount > 0 && ri.dueDate < today).reduce((s, ri) => s + ri.outstandingAmount, 0);
-  const totalOpenReceivables = receivableItems.filter(ri => ri.outstandingAmount > 0).reduce((s, ri) => s + ri.outstandingAmount, 0);
-  const unmatchedReceiptsCount = cashReceipts.filter(cr => cr.unmatchedAmount > 0).length;
-  const unappliedCreditTotal = cashReceipts.filter(cr => cr.unmatchedAmount > 0 && cr.tenantId).reduce((s, cr) => s + cr.unmatchedAmount, 0);
+  const overdueReceivables = receivableItems.filter(ri => ri.outstandingAmount > 0 && ri.dueDate < today);
+  const openReceivables = receivableItems.filter(ri => ri.outstandingAmount > 0);
+  const totalOverdue = overdueReceivables.reduce((s, ri) => s + ri.outstandingAmount, 0);
+  const overdueGroups = sumMoneyByCurrency(overdueReceivables.map(ri => ({ amount: ri.outstandingAmount, currencyCode: ri.currencyCode })));
+  const openReceivableGroups = sumMoneyByCurrency(openReceivables.map(ri => ({ amount: ri.outstandingAmount, currencyCode: ri.currencyCode })));
 
   // Guarantee KPIs
   const pendingGuarantees = guarantees.filter(g => g.status === "pending");
@@ -66,6 +65,12 @@ export default function Dashboard() {
   // Move-in/out/return KPIs
   const upcomingMoveIns = leases.filter(l => l.moveInScheduledDate && !l.moveInActualDate && l.moveInScheduledDate >= today);
   const upcomingMoveOuts = leases.filter(l => l.moveOutScheduledDate && !l.moveOutActualDate && l.moveOutScheduledDate >= today);
+  const upcomingLeaseStarts = leases.filter(l =>
+    l.lifecycleStage === "signed" &&
+    l.startDate >= today &&
+    l.startDate <= in30Str &&
+    !l.moveInScheduledDate,
+  );
   const returnsPending = leases.filter(l => l.returnStatus === "pending" || l.returnStatus === "in-review");
 
   // Overdue tenants
@@ -82,12 +87,35 @@ export default function Dashboard() {
 
   // Unmatched receipts for dashboard table
   const unmatchedReceipts = cashReceipts.filter(cr => cr.unmatchedAmount > 0).slice(0, 5);
+  const activeCostEntries = costEntries.filter(e => e.status === "active");
+  const propertyCurrency = (propertyId: string) => {
+    const prop = properties.find(p => p.id === propertyId);
+    return { currencyCode: prop?.currencyCode ?? "EUR", locale: prop?.locale };
+  };
+  const ownerBorneRows = [
+    ...activeCostEntries.flatMap(e => {
+      if (!e.unitId) return [];
+      const share = e.recoveryType === "owner-only"
+        ? e.amount
+        : e.recoveryType === "partially-recoverable"
+        ? e.amount / 2
+        : 0;
+      return share > 0 ? [{ amount: share, ...propertyCurrency(e.propertyId) }] : [];
+    }),
+    ...costAllocationResults.flatMap(r => {
+      if (r.ownerBurdenAmount <= 0) return [];
+      const entry = costEntries.find(e => e.id === r.costEntryId);
+      return [{ amount: r.ownerBurdenAmount, ...propertyCurrency(entry?.propertyId ?? r.propertyId) }];
+    }),
+  ];
+  const ownerBorneGroups = sumMoneyByCurrency(ownerBorneRows);
 
   // Compact KPI row — the few numbers that actually drive a decision.
   const kpis = [
-    { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, sub: `${occupied}/${primaryDenominator} ${t("dashboard.occupied").toLowerCase()}`, icon: TrendingUp, tone: occupancyRate >= 80 ? "text-success" : "text-warning" },
+    { label: t("dashboard.occupancyRate"), value: `${occupancyRate}%`, sub: `${occupied}/${totalUnits} ${t("dashboard.occupied").toLowerCase()}`, icon: TrendingUp, tone: occupancyRate >= 80 ? "text-success" : "text-warning" },
     { label: t("dashboard.activeLeases"), value: activeLeases.length, sub: `${vacant} ${t("dashboard.vacantUnits")}`, icon: DoorOpen, tone: "text-foreground" },
-    { label: "Open Receivables", value: formatCurrency(totalOpenReceivables), sub: totalOverdue > 0 ? `${formatCurrency(totalOverdue)} overdue` : "no overdue", icon: Banknote, tone: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
+    { label: "Open Receivables", value: formatMoneyGroups(openReceivableGroups), sub: totalOverdue > 0 ? `${formatMoneyGroups(overdueGroups)} overdue` : "no overdue", icon: Banknote, tone: totalOverdue > 0 ? "text-destructive" : "text-foreground" },
+    { label: t("costs.ownerBorne"), value: formatMoneyGroups(ownerBorneGroups), sub: t("nav.costs"), icon: Shield, tone: "text-foreground" },
     { label: t("dashboard.openTickets"), value: openTicketsCount, sub: urgentTicketsCount > 0 ? `${urgentTicketsCount} urgent` : "—", icon: Wrench, tone: urgentTicketsCount > 0 ? "text-destructive" : "text-foreground" },
   ];
 
@@ -95,6 +123,7 @@ export default function Dashboard() {
   const upcomingOps = [
     ...upcomingMoveIns.filter(l => l.moveInScheduledDate! <= in30Str).map(l => ({ type: "move-in" as const, lease: l, date: l.moveInScheduledDate! })),
     ...upcomingMoveOuts.filter(l => l.moveOutScheduledDate! <= in30Str).map(l => ({ type: "move-out" as const, lease: l, date: l.moveOutScheduledDate! })),
+    ...upcomingLeaseStarts.map(l => ({ type: "lease-start" as const, lease: l, date: l.startDate })),
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   return (

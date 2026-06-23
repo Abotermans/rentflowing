@@ -14,13 +14,14 @@ export function formatCurrency(
   _locale: string = "fr-FR",
 ): string {
   if (amount === null || amount === undefined || Number.isNaN(amount)) return "—";
+  const normalizedCurrency = normalizeCurrencyCode(currencyCode);
   const hasCents = Math.abs(amount - Math.trunc(amount)) > 0.0049;
   const number = new Intl.NumberFormat("fr-FR", {
     minimumFractionDigits: hasCents ? 2 : 0,
     maximumFractionDigits: hasCents ? 2 : 0,
     useGrouping: true,
   }).format(amount);
-  const symbol = getCurrencySymbol(currencyCode);
+  const symbol = getCurrencySymbol(normalizedCurrency);
   // U+00A0 non-breaking space between number and symbol.
   return `${number}\u00A0${symbol}`;
 }
@@ -79,13 +80,38 @@ export function getCountryName(countryCode: string, locale: string = "en"): stri
 }
 
 export function getCurrencySymbol(currencyCode: string): string {
+  const normalizedCurrency = normalizeCurrencyCode(currencyCode);
   try {
-    return new Intl.NumberFormat("en", { style: "currency", currency: currencyCode, minimumFractionDigits: 0 })
+    return new Intl.NumberFormat("en", { style: "currency", currency: normalizedCurrency, minimumFractionDigits: 0 })
       .formatToParts(0)
-      .find(p => p.type === "currency")?.value ?? currencyCode;
+      .find(p => p.type === "currency")?.value ?? normalizedCurrency;
   } catch {
-    return currencyCode;
+    return normalizedCurrency;
   }
+}
+
+const CURRENCY_ALIASES: Record<string, string> = {
+  "€": "EUR",
+  EURO: "EUR",
+  EUR: "EUR",
+  "£": "GBP",
+  "£GB": "GBP",
+  GB: "GBP",
+  UK: "GBP",
+  GBP: "GBP",
+  CHF: "CHF",
+  SEK: "SEK",
+  DKK: "DKK",
+  NOK: "NOK",
+  PLN: "PLN",
+  CZK: "CZK",
+  "$": "USD",
+  USD: "USD",
+};
+
+export function normalizeCurrencyCode(currencyCode: string | null | undefined): string {
+  const raw = (currencyCode || "EUR").trim().toUpperCase().replace(/\s+/g, "");
+  return CURRENCY_ALIASES[raw] ?? raw;
 }
 
 export const UNIT_STATUS_KEYS: Record<string, TranslationKey> = {

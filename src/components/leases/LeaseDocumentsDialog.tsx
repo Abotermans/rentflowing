@@ -36,12 +36,27 @@ interface Props {
 
 const BUCKET = "lease-documents";
 const MAX_BYTES = 20 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/png",
+]);
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"]);
+const FILE_ACCEPT = ".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png";
 
 function formatBytes(n: number | null): string {
   if (!n && n !== 0) return "—";
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function allowedLeaseDocument(file: File): boolean {
+  const dot = file.name.lastIndexOf(".");
+  const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
+  return ALLOWED_EXTENSIONS.has(ext) && (!file.type || ALLOWED_MIME_TYPES.has(file.type));
 }
 
 export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId }: Props) {
@@ -147,6 +162,10 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId 
       toast({ title: t("documents.error.tooLarge"), variant: "destructive" });
       return;
     }
+    if (!allowedLeaseDocument(file)) {
+      toast({ title: t("documents.toast.error"), description: "Only PDF, Word, JPG, and PNG lease documents can be uploaded.", variant: "destructive" });
+      return;
+    }
     const trimmed = title.trim();
     if (!trimmed) {
       toast({ title: t("documents.error.titleRequired"), variant: "destructive" });
@@ -227,9 +246,16 @@ export function LeaseDocumentsDialog({ open, onOpenChange, leaseId, portfolioId 
                 <Input
                   id="doc-file"
                   type="file"
+                  accept={FILE_ACCEPT}
                   className="h-9"
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
+                    if (f && !allowedLeaseDocument(f)) {
+                      toast({ title: t("documents.toast.error"), description: "Only PDF, Word, JPG, and PNG lease documents can be uploaded.", variant: "destructive" });
+                      e.target.value = "";
+                      setFile(null);
+                      return;
+                    }
                     setFile(f);
                     if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ""));
                   }}

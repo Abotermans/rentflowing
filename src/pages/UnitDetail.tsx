@@ -95,7 +95,7 @@ export default function UnitDetail() {
   const { sort: costsSort, toggle: toggleCostsSort } = useTableSort<CostRowKey>();
 
   // Sort state for the per-unit leases table inside the Occupancy section.
-  type UnitLeaseRowKey = "reference" | "tenant" | "role" | "start" | "end" | "rent" | "status";
+  type UnitLeaseRowKey = "reference" | "tenant" | "start" | "end" | "rent" | "status";
   const { sort: unitLeasesSort, toggle: toggleUnitLeasesSort } = useTableSort<UnitLeaseRowKey>("start", "desc");
 
   const unit = units.find(u => u.id === id);
@@ -307,8 +307,8 @@ export default function UnitDetail() {
     );
   }
 
-  const activeLease = getActiveLease(unit.id);
-  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases, leaseUnitAssignments);
+  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases, leaseUnitAssignments, unit);
+  const activeLease = occupancy.activeLease ?? getActiveLease(unit.id);
   const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
   const lifecycle = activeLease ? getLeaseStatus(activeLease) : null;
   const moveIn = activeLease ? getMoveInStatus(activeLease) : null;
@@ -334,7 +334,6 @@ export default function UnitDetail() {
     switch (key) {
       case "reference": return row.lease.leaseReference;
       case "tenant": return row.tenant ? getTenantFullName(row.tenant) : "";
-      case "role": return row.assignment.assignmentType === "primary" ? 0 : 1;
       case "start": return row.lease.startDate;
       case "end": return row.lease.endDate;
       case "rent": return row.lease.monthlyRent + row.lease.monthlyCharges;
@@ -374,7 +373,7 @@ export default function UnitDetail() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{unit.unitCode}</h1>
-              <StatusBadge status={unit.currentStatus} />
+              <StatusBadge status={occupancy.derived} />
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -591,7 +590,6 @@ export default function UnitDetail() {
                 <TableRow>
                   <SortableTableHead sortKey="reference" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.reference")}</SortableTableHead>
                   <SortableTableHead sortKey="tenant" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("table.tenant")}</SortableTableHead>
-                  <SortableTableHead sortKey="role" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.role.primary")}</SortableTableHead>
                   <SortableTableHead sortKey="start" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.startDate")}</SortableTableHead>
                   <SortableTableHead sortKey="end" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.endDate")}</SortableTableHead>
                   <SortableTableHead sortKey="rent" sort={unitLeasesSort} onSort={toggleUnitLeasesSort} align="right">{t("leases.monthlyRent")}</SortableTableHead>
@@ -610,11 +608,6 @@ export default function UnitDetail() {
                         {leaseTenant ? (
                           <Link to={`/tenants/${leaseTenant.id}`} className="text-sm text-primary hover:underline">{getTenantFullName(leaseTenant)}</Link>
                         ) : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {assignment.assignmentType === "primary" ? t("leases.role.primary") : t("leases.role.ancillary")}
-                        </span>
                       </TableCell>
                       <TableCell className="text-sm">{formatDate(lease.startDate, property.locale)}</TableCell>
                       <TableCell className="text-sm">{formatDate(lease.endDate, property.locale)}</TableCell>

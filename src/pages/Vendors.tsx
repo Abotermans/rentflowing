@@ -23,11 +23,12 @@ import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
+import { isValidEmail } from "@/lib/validation";
 
 type VendorFormData = Omit<Vendor, "id">;
 
 export default function Vendors() {
-  const { vendors, addVendor, updateVendor, deleteVendor } = useAppData();
+  const { vendors, addVendorPersisted, updateVendor, deleteVendor } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const navigate = useNavigate();
@@ -48,17 +49,30 @@ export default function Vendors() {
   const openAdd = () => { setEditing(null); setForm({ ...emptyForm }); setSheetOpen(true); };
   const openEdit = (v: Vendor) => { setEditing(v); const { id, ...rest } = v; setForm(rest); setSheetOpen(true); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.vendorName.trim()) {
       toast({ title: "Validation Error", description: "Vendor name is required.", variant: "destructive" });
+      return;
+    }
+    if (form.email.trim() && !isValidEmail(form.email)) {
+      toast({ title: "Validation Error", description: "Enter a valid email address.", variant: "destructive" });
       return;
     }
     if (editing) {
       updateVendor({ ...editing, ...form });
       toast({ title: "Vendor updated" });
     } else {
-      addVendor(form);
-      toast({ title: "Vendor added" });
+      try {
+        await addVendorPersisted(form);
+        toast({ title: "Vendor added" });
+      } catch (err) {
+        toast({
+          title: "Validation Error",
+          description: err instanceof Error ? err.message : "Vendor could not be saved.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setSheetOpen(false);
   };
@@ -87,14 +101,14 @@ export default function Vendors() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("vendors.title")}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative inline-flex">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
+            <Input placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
           <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("vendors.add")}</Button>
         </div>
@@ -147,9 +161,9 @@ export default function Vendors() {
                   <TableCell><StatusBadge status={v.status} /></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openEdit(v); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${v.vendorName}`} title={`Edit ${v.vendorName}`} onClick={e => { e.stopPropagation(); openEdit(v); }}><Pencil className="h-3.5 w-3.5" /></Button>
                       <AlertDialog>
-                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={`Delete ${v.vendorName}`} title={`Delete ${v.vendorName}`} onClick={e => e.stopPropagation()}><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader><AlertDialogTitle>Delete vendor?</AlertDialogTitle><AlertDialogDescription>This will permanently delete "{v.vendorName}".</AlertDialogDescription></AlertDialogHeader>
                           <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(v.id)}>Delete</AlertDialogAction></AlertDialogFooter>

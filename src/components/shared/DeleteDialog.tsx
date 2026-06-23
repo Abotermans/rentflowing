@@ -27,7 +27,7 @@ export function DeleteDialog({ entityType, entityId, entityLabel, onDelete, trig
     <AlertDialog>
       <AlertDialogTrigger asChild>
         {trigger ?? (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={`Delete ${entityName}`} title={`Delete ${entityName}`}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         )}

@@ -1,5 +1,6 @@
-import type { Lease, UnitStatus } from "@/types";
+import type { Lease, Unit, UnitStatus } from "@/types";
 import type { LeaseUnitAssignment } from "@/types";
+import { isAncillaryUnitType } from "@/types";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
 import type { TranslationKey } from "@/i18n/translations";
 
@@ -46,6 +47,7 @@ export function getDerivedOccupancy(
   manualStatus: UnitStatus,
   leases: Lease[],
   assignments?: LeaseUnitAssignment[],
+  unit?: Pick<Unit, "unitType">,
 ): OccupancyInfo {
   // Prefer assignment-aware lookup when assignments are provided.
   let activeLease: Lease | undefined;
@@ -53,7 +55,7 @@ export function getDerivedOccupancy(
   if (assignments && assignments.length > 0) {
     const today = new Date().toISOString().slice(0, 10);
     const matches = assignments.filter(a => a.unitId === unitId && assignmentIsActiveOn(a, today));
-    const sorted = [...matches].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    const sorted = [...matches].sort((a, b) => a.startDate.localeCompare(b.startDate));
     for (const a of sorted) {
       const l = leases.find(x => x.id === a.leaseId && x.lifecycleStage === "active");
       if (l) { activeLease = l; activeAssignment = a; break; }
@@ -63,7 +65,7 @@ export function getDerivedOccupancy(
     activeLease = leases.find((l) => l.unitId === unitId && l.lifecycleStage === "active");
   }
   const occupancyRole: "primary" | "ancillary" | undefined = activeAssignment
-    ? (activeAssignment.isPrimary ? "primary" : "ancillary")
+    ? (unit && isAncillaryUnitType(unit.unitType) ? "ancillary" : "primary")
     : activeLease ? "primary" : undefined;
 
   if (!activeLease) {

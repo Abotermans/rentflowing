@@ -23,10 +23,11 @@ import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { TenantDialog } from "@/components/tenants/TenantDialog";
 import { CashReceiptDialog } from "@/components/payments/CashReceiptDialog";
 import { useToast } from "@/hooks/use-toast";
+import { formatMoneyGroups, sumMoneyByCurrency } from "@/lib/money";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
-  const { tenants, leases, units, properties, deleteTenant, updateTenant, getTenantOutstanding, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
+  const { tenants, leases, units, properties, deleteTenant, updateTenant, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant, getGuaranteeByLease } = useAppData();
   const { t } = useSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -52,19 +53,14 @@ export default function TenantDetail() {
   }
 
   const tenantLeases = leases.filter(l => l.primaryTenantId === tenant.id || l.coTenantIds.includes(tenant.id));
-  const activeLease = tenantLeases.find(l => l.lifecycleStage === "active");
-  const activeUnit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
+  const activeLeases = tenantLeases.filter(l => l.lifecycleStage === "active");
+  const activeLease = activeLeases[0];
   const activeProperty = activeLease ? properties.find(p => p.id === activeLease.propertyId) : null;
-  const { outstanding, overdue } = getTenantOutstanding(tenant.id);
   const unappliedCredit = getTenantUnappliedCredit(tenant.id);
   const recentReceipts = getCashReceiptsByTenant(tenant.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
   const tenantReceivables = getReceivableItemsByTenant(tenant.id);
-  const activeGuarantee = activeLease ? getGuaranteeByLease(activeLease.id) : undefined;
-  const activeLifecycle = activeLease ? getLeaseStatus(activeLease) : undefined;
   const today = new Date().toISOString().split("T")[0];
 
-  // Dominant currency/locale for tenant-level aggregations (fallback to active lease's property)
-  const recvCurrency = tenantReceivables[0]?.currencyCode ?? activeProperty?.currencyCode;
   const recvLocale = activeProperty?.locale;
 
   const enrichedReceivables = tenantReceivables.map(ri => {
@@ -75,11 +71,22 @@ export default function TenantDetail() {
     return { ...ri, effectiveStatus, leaseRef: lease?.leaseReference ?? "", unitCode: unit?.unitCode ?? "", lease, unit };
   });
 
-  const rentCollected = tenantReceivables.filter(ri => ri.itemType === "rent").reduce((s, ri) => s + ri.allocatedAmount, 0);
-  const chargesCollected = tenantReceivables.filter(ri => ri.itemType === "charges" || ri.itemType === "charges-adjustment").reduce((s, ri) => s + ri.allocatedAmount, 0);
-  const totalExpected = tenantReceivables.reduce((s, ri) => s + ri.expectedAmount, 0);
-  const totalAllocated = tenantReceivables.reduce((s, ri) => s + ri.allocatedAmount, 0);
-  const totalOutstanding = tenantReceivables.reduce((s, ri) => s + ri.outstandingAmount, 0);
+  const rentCollectedGroups = sumMoneyByCurrency(tenantReceivables
+    .filter(ri => ri.itemType === "rent")
+    .map(ri => ({ amount: ri.allocatedAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
+  const chargesCollectedGroups = sumMoneyByCurrency(tenantReceivables
+    .filter(ri => ri.itemType === "charges" || ri.itemType === "charges-adjustment")
+    .map(ri => ({ amount: ri.allocatedAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
+  const outstandingGroups = sumMoneyByCurrency(tenantReceivables
+    .filter(ri => ri.outstandingAmount > 0)
+    .map(ri => ({ amount: ri.outstandingAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
+  const overdueGroups = sumMoneyByCurrency(tenantReceivables
+    .filter(ri => ri.outstandingAmount > 0 && ri.dueDate < today)
+    .map(ri => ({ amount: ri.outstandingAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
+  const totalExpectedGroups = sumMoneyByCurrency(tenantReceivables.map(ri => ({ amount: ri.expectedAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
+  const totalAllocatedGroups = sumMoneyByCurrency(tenantReceivables.map(ri => ({ amount: ri.allocatedAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
+  const totalOutstandingGroups = outstandingGroups;
+  const overdueTotal = overdueGroups.reduce((s, g) => s + g.amount, 0);
 
   type RecvSortKey = "period" | "type" | "dueDate" | "lease" | "unit" | "expected" | "allocated" | "outstanding" | "status";
   const { sort: recvSort, toggle: toggleRecvSort } = useTableSort<RecvSortKey>("dueDate", "desc");
@@ -196,7 +203,7 @@ export default function TenantDetail() {
       </Collapsible>
 
       {/* Current Lease Summary */}
-      {activeLease && activeProperty && activeUnit && (
+      {activeLeases.length > 0 && (
         <Collapsible open={currentLeaseOpen} onOpenChange={setCurrentLeaseOpen}>
         <Card>
           <CollapsibleTrigger asChild>
@@ -208,29 +215,37 @@ export default function TenantDetail() {
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${activeLease.id}`} className="text-sm font-medium text-primary hover:underline">{activeLease.leaseReference}</Link></div>
-              <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${activeUnit.id}`} className="text-sm font-medium text-primary hover:underline">{activeUnit.unitCode}</Link></div>
-              <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${activeProperty.id}`} className="text-sm font-medium text-primary hover:underline">{activeProperty.name}</Link></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.period")}</p><p className="text-sm font-medium text-foreground">{formatDate(activeLease.startDate, activeProperty.locale)} — {formatDate(activeLease.endDate, activeProperty.locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyRent, activeProperty.currencyCode, activeProperty.locale)}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(activeLease.monthlyCharges, activeProperty.currencyCode, activeProperty.locale)}</p></div>
-              {activeGuarantee && (
-                <>
-                  <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeType")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[activeGuarantee.type]}</p></div>
-                  <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeStatus")}</p><StatusBadge status={activeGuarantee.status} /></div>
-                </>
-              )}
-              {activeLease.noticeGiven && (
-                <div><p className="text-xs text-muted-foreground">{t("detail.noticeStatus")}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <StatusBadge status="under-notice" />
-                    {activeLease.intendedMoveOutDate && <span className="text-xs text-muted-foreground">{t("detail.moveOutLabel")}: {formatDate(activeLease.intendedMoveOutDate, activeProperty.locale)}</span>}
-                  </div>
+          <CardContent className="space-y-5">
+            {activeLeases.map((lease) => {
+              const leaseUnit = units.find(u => u.id === lease.unitId);
+              const leaseProperty = properties.find(p => p.id === lease.propertyId);
+              const guarantee = getGuaranteeByLease(lease.id);
+              if (!leaseProperty || !leaseUnit) return null;
+              return (
+                <div key={lease.id} className="grid grid-cols-2 md:grid-cols-3 gap-4 border-b pb-4 last:border-b-0 last:pb-0">
+                  <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${lease.id}`} className="text-sm font-medium text-primary hover:underline">{lease.leaseReference}</Link></div>
+                  <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${leaseUnit.id}`} className="text-sm font-medium text-primary hover:underline">{leaseUnit.unitCode}</Link></div>
+                  <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${leaseProperty.id}`} className="text-sm font-medium text-primary hover:underline">{leaseProperty.name}</Link></div>
+                  <div><p className="text-xs text-muted-foreground">{t("leases.period")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, leaseProperty.locale)} — {formatDate(lease.endDate, leaseProperty.locale)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(lease.monthlyRent, leaseProperty.currencyCode, leaseProperty.locale)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(lease.monthlyCharges, leaseProperty.currencyCode, leaseProperty.locale)}</p></div>
+                  {guarantee && (
+                    <>
+                      <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeType")}</p><p className="text-sm font-medium text-foreground">{GUARANTEE_TYPE_LABELS[guarantee.type]}</p></div>
+                      <div><p className="text-xs text-muted-foreground">{t("detail.guaranteeStatus")}</p><StatusBadge status={guarantee.status} /></div>
+                    </>
+                  )}
+                  {lease.noticeGiven && (
+                    <div><p className="text-xs text-muted-foreground">{t("detail.noticeStatus")}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <StatusBadge status="under-notice" />
+                        {lease.intendedMoveOutDate && <span className="text-xs text-muted-foreground">{t("detail.moveOutLabel")}: {formatDate(lease.intendedMoveOutDate, leaseProperty.locale)}</span>}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })}
           </CardContent>
           </CollapsibleContent>
         </Card>
@@ -301,27 +316,27 @@ export default function TenantDetail() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-b pb-4 mb-4">
                 <div>
                   <p className="text-xs text-muted-foreground">{t("leaseDetail.rentCollected")}</p>
-                  <p className="text-lg font-bold text-success">{formatCurrency(rentCollected, recvCurrency, recvLocale)}</p>
+                  <p className="text-lg font-bold text-success">{formatMoneyGroups(rentCollectedGroups)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t("leaseDetail.chargesCollected")}</p>
-                  <p className="text-lg font-bold text-success">{formatCurrency(chargesCollected, recvCurrency, recvLocale)}</p>
+                  <p className="text-lg font-bold text-success">{formatMoneyGroups(chargesCollectedGroups)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t("table.outstanding")}</p>
-                  <p className="text-lg font-bold text-foreground">{formatCurrency(outstanding, recvCurrency, recvLocale)}</p>
+                  <p className="text-lg font-bold text-foreground">{formatMoneyGroups(outstandingGroups)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t("table.overdue")}</p>
-                  <p className={`text-lg font-bold ${overdue > 0 ? "text-destructive" : "text-foreground"}`}>
+                  <p className={`text-lg font-bold ${overdueTotal > 0 ? "text-destructive" : "text-foreground"}`}>
                     
-                    {formatCurrency(overdue, recvCurrency, recvLocale)}
+                    {formatMoneyGroups(overdueGroups)}
                   </p>
                 </div>
                 {unappliedCredit > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground">{t("leaseDetail.unappliedCredit")}</p>
-                    <p className="text-lg font-bold text-primary">{formatCurrency(unappliedCredit, recvCurrency, recvLocale)}</p>
+                    <p className="text-lg font-bold text-primary">{formatCurrency(unappliedCredit, activeProperty?.currencyCode, recvLocale)}</p>
                   </div>
                 )}
               </div>
@@ -365,9 +380,9 @@ export default function TenantDetail() {
                     <TableFooter className="sticky bottom-0">
                       <TableRow>
                         <TableCell className="text-xs font-medium" colSpan={5}>{t("leaseDetail.total")}</TableCell>
-                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalExpected, recvCurrency, recvLocale)}</TableCell>
-                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalAllocated, recvCurrency, recvLocale)}</TableCell>
-                        <TableCell className="text-right text-sm font-semibold">{formatCurrency(totalOutstanding, recvCurrency, recvLocale)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatMoneyGroups(totalExpectedGroups)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatMoneyGroups(totalAllocatedGroups)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{formatMoneyGroups(totalOutstandingGroups)}</TableCell>
                         <TableCell />
                       </TableRow>
                     </TableFooter>

@@ -49,7 +49,22 @@ export default function Maintenance() {
   type MSortKey = "title" | "property" | "unit" | "tenant" | "category" | "priority" | "status" | "vendor" | "created" | "scheduled";
   const { sort, toggle } = useTableSort<MSortKey>();
 
-  const openAdd = () => { setEditing(null); setPrefillPropertyId(undefined); setPrefillUnitId(undefined); setSheetOpen(true); };
+  const openAdd = () => {
+    if (properties.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a property before opening maintenance tickets.", variant: "destructive" });
+      navigate("/properties");
+      return;
+    }
+    if (units.length === 0) {
+      toast({ title: t("common.validationError"), description: "Create a unit before opening maintenance tickets.", variant: "destructive" });
+      navigate("/units");
+      return;
+    }
+    setEditing(null);
+    setPrefillPropertyId(undefined);
+    setPrefillUnitId(undefined);
+    setSheetOpen(true);
+  };
 
   useEffect(() => {
     if (searchParams.get("create") === "1") {
@@ -116,14 +131,14 @@ export default function Maintenance() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("maintenance.title")}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative inline-flex">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
           <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("maintenance.add")}</Button>
         </div>

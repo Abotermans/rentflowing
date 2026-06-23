@@ -24,11 +24,12 @@ import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import type { TranslationKey } from "@/i18n/translations";
+import { normalizedCode } from "@/lib/validation";
 
 type FormData = Omit<CostCategory, "id" | "createdAt" | "updatedAt">;
 
 export default function CostCategories() {
-  const { costCategories, addCostCategory, updateCostCategory, deleteCostCategory } = useAppData();
+  const { costCategories, addCostCategoryPersisted, updateCostCategory, deleteCostCategory } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const natureLabel = (n: CostNature) => t(`costs.nature.${n}` as TranslationKey);
@@ -57,17 +58,35 @@ export default function CostCategories() {
     setSheetOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.code.trim() || !form.name.trim()) {
       toast({ title: t("common.validationError"), description: t("costs.validation.categoryRequired"), variant: "destructive" });
       return;
     }
+    const duplicateCode = costCategories.some(c =>
+      c.id !== editing?.id &&
+      normalizedCode(c.code) === normalizedCode(form.code),
+    );
+    if (duplicateCode) {
+      toast({ title: t("common.validationError"), description: "Cost category codes must be unique.", variant: "destructive" });
+      return;
+    }
+    const payload = { ...form, code: form.code.trim(), name: form.name.trim() };
     if (editing) {
-      updateCostCategory({ ...editing, ...form });
-      toast({ title: t("common.updated"), description: form.name });
+      updateCostCategory({ ...editing, ...payload });
+      toast({ title: t("common.updated"), description: payload.name });
     } else {
-      addCostCategory(form);
-      toast({ title: t("common.added"), description: form.name });
+      try {
+        await addCostCategoryPersisted(payload);
+        toast({ title: t("common.added"), description: payload.name });
+      } catch (err) {
+        toast({
+          title: t("common.validationError"),
+          description: err instanceof Error ? err.message : "Cost category could not be saved.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setSheetOpen(false);
   };
@@ -167,7 +186,7 @@ export default function CostCategories() {
                     <TableCell><StatusBadge status={c.isActive ? "active" : "inactive"} /></TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${c.name}`} title={`Edit ${c.name}`} onClick={() => openEdit(c)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <DeleteDialog

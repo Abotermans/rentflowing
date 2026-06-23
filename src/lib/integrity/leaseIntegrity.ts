@@ -1,7 +1,7 @@
 import { LifecycleStage } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
-import { findOverlappingLeases } from "./leaseDateOverlap";
+import { findOverlappingLeases, formatOverlapConflictMessage } from "./leaseDateOverlap";
 
 export function canDeleteLease(leaseId: string, s: IntegrityState): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
@@ -51,7 +51,6 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   }
 
   // Property consistency: every assigned unit must belong to the lease's property
-  const today = new Date().toISOString().slice(0, 10);
   const myAssignments = s.leaseUnitAssignments.filter(a => a.leaseId === leaseId);
   if (myAssignments.length === 0) {
     blockers.push({ code: "LEASE_NO_UNITS", message: "Lease has no units assigned" });
@@ -63,22 +62,30 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
     }
   }
 
-  // Overlap detection: every assigned unit must be free of any other ACTIVE lease assignment
-  for (const a of myAssignments) {
-    const conflicts = s.leaseUnitAssignments.filter(other =>
-      other.unitId === a.unitId &&
-      other.leaseId !== leaseId &&
-      assignmentIsActiveOn(other, today) &&
-      s.leases.find(l => l.id === other.leaseId)?.lifecycleStage === "active",
-    );
-    if (conflicts.length > 0) {
-      const unit = s.units.find(u => u.id === a.unitId);
-      blockers.push({
-        code: "LEASE_UNIT_ALREADY_ACTIVE",
-        message: `Unit ${unit?.unitCode ?? a.unitId} already has an active lease`,
-        count: conflicts.length,
-      });
-    }
+  const overlaps = findOverlappingLeases(
+    leaseId,
+    myAssignments.map(a => ({
+      unitId: a.unitId,
+      startDate: a.startDate,
+      endDate: a.endDate,
+    })),
+    s,
+  );
+  const seenOverlap = new Set<string>();
+  for (const hit of overlaps) {
+    const key = `${hit.unitId}|${hit.otherLeaseId}`;
+    if (seenOverlap.has(key)) continue;
+    seenOverlap.add(key);
+    const unit = s.units.find(u => u.id === hit.unitId);
+    const otherLease = s.leases.find(l => l.id === hit.otherLeaseId);
+    const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
+    blockers.push({
+      code: "LEASE_UNIT_OVERLAP",
+      message: formatOverlapConflictMessage(hit, {
+        unitLabel: unit?.unitCode ?? hit.unitId,
+        leaseRef: ref,
+      }),
+    });
   }
 
   // Warnings
@@ -212,7 +219,10 @@ export function canRenewLease(
       const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
       blockers.push({
         code: "LEASE_RENEW_OVERLAP",
-        message: `New end date overlaps lease ${ref} on unit ${unit?.unitCode ?? hit.unitId} (${hit.otherStage}, ${hit.otherStart} – ${hit.otherEnd ?? "open"})`,
+        message: formatOverlapConflictMessage(hit, {
+          unitLabel: unit?.unitCode ?? hit.unitId,
+          leaseRef: ref,
+        }),
       });
     }
   }

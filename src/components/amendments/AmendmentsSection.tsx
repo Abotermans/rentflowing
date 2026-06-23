@@ -73,7 +73,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
   const openEdit = (a: LeaseAmendment) => { setEditing(a); setDialogOpen(true); };
 
   const renderTermsAsList = (terms: NonNullable<typeof current>) => {
-    const sortedUnits = terms.units.slice().sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    const sortedUnits = terms.units;
     const coTenants = terms.coTenantIds;
     const sumR = sortedUnits.reduce((s, u) => s + (u.rentShare ?? 0), 0);
     const sumC = sortedUnits.reduce((s, u) => s + (u.chargesShare ?? 0), 0);
@@ -107,7 +107,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                 <TableHeader>
                   <TableRow className="h-8">
                     <TableHead className="h-8 text-sm">{t("leases.col.unit")}</TableHead>
-                    <TableHead className="h-8 text-sm">{t("leases.col.role")}</TableHead>
                     <TableHead className="h-8 text-sm">{t("leases.col.start")}</TableHead>
                     <TableHead className="h-8 text-sm">{t("leases.col.signed")}</TableHead>
                     <TableHead className="h-8 text-sm">{t("leases.col.end")}</TableHead>
@@ -122,11 +121,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                     return (
                       <TableRow key={u.unitId} className="h-9">
                         <TableCell className="py-1 text-sm font-medium text-foreground">{unitLabel(u.unitId)}</TableCell>
-                        <TableCell className="py-1">
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${u.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                            {u.isPrimary ? t("leases.role.primary") : t("leases.role.secondary")}
-                          </span>
-                        </TableCell>
                         <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(lease.startDate, locale)}</TableCell>
                         <TableCell className="py-1 text-sm text-muted-foreground">{lease.signedDate ? formatDate(lease.signedDate, locale) : "—"}</TableCell>
                         <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(terms.endDate, locale)}</TableCell>
@@ -137,11 +131,11 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                     );
                   })}
                   {sortedUnits.length === 0 && (
-                    <TableRow><TableCell colSpan={8} className="py-3 text-center text-xs text-muted-foreground">—</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="py-3 text-center text-xs text-muted-foreground">—</TableCell></TableRow>
                   )}
                   {sortedUnits.length > 0 && (
                     <TableRow className="border-t border-border bg-muted/30 h-9">
-                      <TableCell colSpan={5} className="py-1 text-sm font-medium text-muted-foreground">Total</TableCell>
+                      <TableCell colSpan={4} className="py-1 text-sm font-medium text-muted-foreground">Total</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
                       <TableCell className="py-1 text-right text-sm font-semibold text-primary tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
@@ -192,7 +186,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="h-8">#</TableHead>
-                    <TableHead className="h-8">{t("amendments.type")}</TableHead>
                     <TableHead className="h-8">{t("amendments.titleField")}</TableHead>
                     <TableHead className="h-8">{t("amendments.effectiveDate")}</TableHead>
                     <TableHead className="h-8">{t("amendments.col.changes")}</TableHead>
@@ -211,43 +204,6 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                          onClick={() => openEdit(a)}
                        >
                          <TableCell className="py-1.5">{a.amendmentNumber}</TableCell>
-                         <TableCell className="py-1.5">
-                           {a.amendmentType === "mixed" ? (() => {
-                             const cats = Array.from(new Set(chs.map(c => {
-                               switch (c.fieldName) {
-                                 case "baseMonthlyRentTotal":
-                                 case "unitRentShare": return "rent-change";
-                                 case "baseMonthlyChargesTotal":
-                                 case "unitChargesShare": return "charges-change";
-                                 case "leaseEndDate":
-                                   return String(c.newValue) > lease.endDate ? "term-extension" : "term-shortening";
-                                 case "depositAmount": return "deposit-change";
-                                 case "noticePeriodText": return "notice-change";
-                                 case "clauseSummary": return "clause-change";
-                                 case "unitAssignments":
-                                   return c.changeType === "add" ? "unit-addition" : "unit-removal";
-                                 case "coTenantIds":
-                                   return c.changeType === "add" ? "tenant-addition" : "tenant-removal";
-                                 default: return null;
-                               }
-                             }).filter(Boolean) as string[]));
-                             const list = cats.map(c => t(`amendments.type.${c}` as any)).join(", ");
-                             return (
-                               <Tooltip>
-                                 <TooltipTrigger asChild>
-                                   <span className="underline decoration-dotted underline-offset-2">
-                                     {t("amendments.type.mixed")}
-                                   </span>
-                                 </TooltipTrigger>
-                                 <TooltipContent>
-                                   <span className="text-xs">
-                                     {t("amendments.mixedCategories").replace("{list}", list)}
-                                   </span>
-                                 </TooltipContent>
-                               </Tooltip>
-                             );
-                           })() : t(`amendments.type.${a.amendmentType}` as any)}
-                         </TableCell>
                         <TableCell className="py-1.5">{a.title}</TableCell>
                         <TableCell className="py-1.5">
                           <span className="inline-flex items-center gap-1">

@@ -1,13 +1,9 @@
-import type { LeaseUnitAssignmentType } from "@/types";
-import { isAncillaryAssignmentType } from "@/types";
+import { isAncillaryUnitType } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
-import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
-import { findOverlappingLeases } from "./leaseDateOverlap";
+import { findOverlappingLeases, formatOverlapConflictMessage } from "./leaseDateOverlap";
 
 export interface DraftAssignment {
   unitId: string;
-  assignmentType: LeaseUnitAssignmentType;
-  isPrimary: boolean;
   startDate: string;
   endDate: string | null;
   rentShare: number | null;
@@ -35,12 +31,12 @@ export function validateLeaseUnits(
     return blocked(blockers);
   }
 
-  const primaryCount = draft.filter(d => d.isPrimary).length;
-  if (primaryCount === 0) {
-    blockers.push({ code: "LUA_NO_PRIMARY", message: "Exactly one unit must be marked as primary" });
-  }
-  if (primaryCount > 1) {
-    blockers.push({ code: "LUA_MULTIPLE_PRIMARY", message: "Only one unit can be primary on a lease" });
+  const mainCount = draft.filter(d => {
+    const unit = s.units.find(u => u.id === d.unitId);
+    return !!unit && !isAncillaryUnitType(unit.unitType);
+  }).length;
+  if (mainCount === 0) {
+    blockers.push({ code: "LUA_NO_PRIMARY", message: "A lease must include at least one residential or main commercial unit" });
   }
 
   // Same property
@@ -64,27 +60,7 @@ export function validateLeaseUnits(
     seen.add(d.unitId);
   }
 
-  // Overlap with other active leases on the same unit (today snapshot — kept
-  // for backwards-compat blocker code).
-  const today = new Date().toISOString().slice(0, 10);
-  for (const d of draft) {
-    const conflicts = s.leaseUnitAssignments.filter(other =>
-      other.unitId === d.unitId &&
-      other.leaseId !== leaseId &&
-      assignmentIsActiveOn(other, today) &&
-      s.leases.find(l => l.id === other.leaseId)?.lifecycleStage === "active",
-    );
-    if (conflicts.length > 0) {
-      const u = s.units.find(x => x.id === d.unitId);
-      blockers.push({
-        code: "LUA_UNIT_IN_OTHER_LEASE",
-        message: `Unit ${u?.unitCode ?? d.unitId} already belongs to another active lease`,
-      });
-    }
-  }
-
   // Full date-range overlap against every other non-ended/non-terminated lease.
-  // Catches future overlaps that the today-snapshot check above misses.
   const proposed = draft
     .map(d => ({
       unitId: d.unitId,
@@ -101,15 +77,20 @@ export function validateLeaseUnits(
     const unit = s.units.find(x => x.id === hit.unitId);
     const otherLease = s.leases.find(l => l.id === hit.otherLeaseId);
     const ref = otherLease?.leaseReference ?? hit.otherLeaseId.slice(0, 8);
-    const range = `${hit.otherStart} – ${hit.otherEnd ?? "open"}`;
     blockers.push({
       code: "LUA_UNIT_OVERLAP",
-      message: `Unit ${unit?.unitCode ?? hit.unitId} overlaps lease ${ref} (${hit.otherStage}, ${range})`,
+      message: formatOverlapConflictMessage(hit, {
+        unitLabel: unit?.unitCode ?? hit.unitId,
+        leaseRef: ref,
+      }),
     });
   }
 
   // Warnings: only ancillaries
-  const allAncillary = draft.every(d => isAncillaryAssignmentType(d.assignmentType));
+  const allAncillary = draft.every(d => {
+    const unit = s.units.find(u => u.id === d.unitId);
+    return !!unit && isAncillaryUnitType(unit.unitType);
+  });
   if (allAncillary) {
     warnings.push({
       code: "LUA_ALL_ANCILLARY",

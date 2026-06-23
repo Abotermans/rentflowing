@@ -21,10 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Plus, X as XIcon, Search, Users, ChevronDown } from "lucide-react";
-import { Lease, LifecycleStage, RentFormula, Tenant, TenantStatus, getTenantFullName } from "@/types";
-import type { LeaseUnitAssignmentType } from "@/types";
-import type { TranslationKey } from "@/i18n/translations";
+import { AlertTriangle, Plus, X as XIcon, Search, Users, ChevronDown } from "lucide-react";
+import { Lease, LifecycleStage, RentFormula, Tenant, TenantStatus, getTenantFullName, isAncillaryUnitType } from "@/types";
 import { validateLeaseUnits, type DraftAssignment } from "@/lib/integrity/leaseUnitAssignmentIntegrity";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
@@ -32,13 +30,13 @@ import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
 import { validateDateOrder } from "@/lib/dateValidation";
+import { isValidEmail } from "@/lib/validation";
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
 type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
 
 type UnitRow = {
   unitId: string;
-  assignmentType: LeaseUnitAssignmentType;
   rentShare: number;
   chargesShare: number;
   startDate: string;
@@ -70,11 +68,15 @@ interface LeaseAddDialogProps {
 
 export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillUnitId }: LeaseAddDialogProps) {
   const {
-    tenants, units, properties, addLease, addTenant, getActiveLease, setLeaseUnits,
+    tenants, units, properties, addLease, addTenant, setLeaseUnits,
   } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
+  const isMainRow = (row: Pick<UnitRow, "unitId">) => {
+    const unit = units.find(u => u.id === row.unitId);
+    return !!unit && !isAncillaryUnitType(unit.unitType);
+  };
 
   const buildEmptyForm = (): LeaseFormData => ({
     leaseReference: "",
@@ -126,12 +128,12 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     setTenantSubView("workspace");
     setPendingExistingTenantId("");
 
-    // Pre-add a primary unit row when a unit is prefilled.
+    // Pre-add a unit row when a unit is prefilled. The assignment type is
+    // derived from the unit type, not selected manually.
     if (prefillUnitId) {
       const u = units.find(uu => uu.id === prefillUnitId);
       setUnitRows([{
         unitId: prefillUnitId,
-        assignmentType: "primary",
         rentShare: u?.baseRent ?? 0,
         chargesShare: u?.baseCharges ?? 0,
         startDate: "",
@@ -140,7 +142,6 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     } else {
       setUnitRows([{
         unitId: "",
-        assignmentType: "primary",
         rentShare: 0,
         chargesShare: 0,
         startDate: "",
@@ -187,14 +188,38 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
 
   const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
   const totalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
+  const stepOneReady =
+    !!form.leaseReference.trim() &&
+    !!form.propertyId &&
+    unitRows.length > 0 &&
+    !!unitRows.find(isMainRow)?.unitId &&
+    unitRows.every(r => !!r.unitId && (r.rentShare ?? 0) >= 0 && (r.chargesShare ?? 0) >= 0);
+
+  const unitDateConflictMessages = useMemo(() => {
+    if (!form.propertyId || unitRows.length === 0) return [];
+    const draft: DraftAssignment[] = unitRows.map(r => ({
+      unitId: r.unitId,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      rentShare: r.rentShare,
+      chargesShare: r.chargesShare,
+    }));
+    return validateLeaseUnits(
+      null,
+      form.propertyId,
+      draft,
+      { monthlyRent: totalRent, monthlyCharges: totalCharges },
+      integrityState,
+    ).blockers
+      .filter(b => b.code === "LUA_UNIT_OVERLAP")
+      .map(b => b.message);
+  }, [form.propertyId, unitRows, totalRent, totalCharges, integrityState]);
 
   const addUnitRow = () => {
     setUnitRows(prev => {
-      const hasPrimary = prev.some(r => r.assignmentType === "primary");
       const seed = prev[0];
       return [...prev, {
         unitId: "",
-        assignmentType: hasPrimary ? "parking" : "primary",
         rentShare: 0,
         chargesShare: 0,
         startDate: seed?.startDate ?? "",
@@ -203,13 +228,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     });
   };
   const removeUnitRow = (idx: number) => {
-    setUnitRows(prev => {
-      const next = prev.filter((_, i) => i !== idx);
-      if (next.length > 0 && !next.some(r => r.assignmentType === "primary")) {
-        next[0] = { ...next[0], assignmentType: "primary" };
-      }
-      return next;
-    });
+    setUnitRows(prev => prev.filter((_, i) => i !== idx));
   };
   const updateUnitRow = (idx: number, patch: Partial<UnitRow>) => {
     setUnitRows(prev => prev.map((r, i) => {
@@ -227,28 +246,21 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       return next;
     }));
   };
-  const setRoleForRow = (idx: number, role: LeaseUnitAssignmentType) => {
-    setUnitRows(prev => prev.map((r, i) => {
-      if (i === idx) return { ...r, assignmentType: role };
-      if (role === "primary" && r.assignmentType === "primary") return { ...r, assignmentType: "parking" };
-      return r;
-    }));
-  };
 
   const handleSave = () => {
-    const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+    const primaryRow = unitRows.find(isMainRow);
     const totalR = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
     const totalC = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
     if (unitRows.length === 0 || !primaryRow || !primaryRow.unitId) {
-      toast({ title: "Validation Error", description: "Add at least one unit with role Primary.", variant: "destructive" });
+      toast({ title: "Validation Error", description: "Add at least one residential or main commercial unit.", variant: "destructive" });
       return;
     }
     if (unitRows.some(r => !r.unitId)) {
       toast({ title: "Validation Error", description: "Every row in Units must have a unit selected.", variant: "destructive" });
       return;
     }
-    if (unitRows.filter(r => r.assignmentType === "primary").length !== 1) {
-      toast({ title: "Validation Error", description: "Exactly one unit must be marked as Primary.", variant: "destructive" });
+    if (unitRows.filter(isMainRow).length === 0) {
+      toast({ title: "Validation Error", description: "At least one selected unit must be residential or main commercial.", variant: "destructive" });
       return;
     }
     const dupCheck = new Set(unitRows.map(r => r.unitId));
@@ -258,6 +270,10 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     }
     if (!form.leaseReference.trim() || !form.propertyId) {
       toast({ title: "Validation Error", description: "Reference and property are required.", variant: "destructive" });
+      return;
+    }
+    if (unitRows.some(r => (r.rentShare ?? 0) < 0 || (r.chargesShare ?? 0) < 0)) {
+      toast({ title: "Validation Error", description: "Rent and charges cannot be negative.", variant: "destructive" });
       return;
     }
     if (unitRows.some(r => !r.startDate)) {
@@ -299,17 +315,8 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
       }
     }
     const effectiveUnitId = primaryRow.unitId;
-    if (form.lifecycleStage === "active") {
-      const existing = getActiveLease(effectiveUnitId);
-      if (existing) {
-        toast({ title: "Conflict", description: `Unit already has an active lease: ${existing.leaseReference}`, variant: "destructive" });
-        return;
-      }
-    }
     const draft: DraftAssignment[] = unitRows.map(r => ({
       unitId: r.unitId,
-      assignmentType: r.assignmentType,
-      isPrimary: r.assignmentType === "primary",
       startDate: r.startDate,
       endDate: r.endDate,
       rentShare: r.rentShare,
@@ -352,8 +359,6 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
     const created = addLease({ ...formToPersist });
     setLeaseUnits(created.id, form.propertyId, unitRows.map(r => ({
       unitId: r.unitId,
-      assignmentType: r.assignmentType,
-      isPrimary: r.assignmentType === "primary",
       rentShare: r.rentShare,
       chargesShare: form.pricingMode === "all-inclusive" ? 0 : r.chargesShare,
       startDate: r.startDate,
@@ -419,7 +424,6 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                 <TableHeader>
                   <TableRow>
                     <TableHead className="h-9 w-auto">{t("leases.col.unit")}</TableHead>
-                    <TableHead className="h-9 w-auto">{t("leases.col.role")}</TableHead>
                     <TableHead className="h-9 w-auto">{t("leases.col.start")}</TableHead>
                     <TableHead className="h-9 w-auto">{t("leases.col.end")}</TableHead>
                     <TableHead className="h-9 w-auto text-right">{t("leases.monthlyRent")}</TableHead>
@@ -442,24 +446,12 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                             <SelectTrigger className="h-8 w-full min-w-[140px]"><SelectValue placeholder={t("leases.selectUnit")} /></SelectTrigger>
                             <SelectContent>
                               {options.map(u => {
-                                const existing = getActiveLease(u.id);
-                                const blocked = !!existing;
                                 return (
-                                  <SelectItem key={u.id} value={u.id} disabled={blocked}>
-                                    {u.unitCode} — {u.unitLabel}{blocked ? ` (${t("leases.activeLease")})` : ""}
+                                  <SelectItem key={u.id} value={u.id}>
+                                    {u.unitCode} — {u.unitLabel}
                                   </SelectItem>
                                 );
                               })}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="py-1.5">
-                          <Select value={row.assignmentType} onValueChange={v => setRoleForRow(idx, v as LeaseUnitAssignmentType)}>
-                            <SelectTrigger className="h-8 w-full min-w-[90px]"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {(["primary","parking","cellar","storage","ancillary","office-secondary","commercial-addon","other"] as LeaseUnitAssignmentType[]).map(at => (
-                                <SelectItem key={at} value={at}>{t(`leases.assignmentType.${at}` as TranslationKey)}</SelectItem>
-                              ))}
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -517,7 +509,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                     );
                   })}
                   <TableRow className="bg-muted/30 font-medium">
-                    <TableCell colSpan={4} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    <TableCell colSpan={3} className="py-2 text-xs uppercase tracking-wide text-muted-foreground">
                       {t("leases.units.grandTotal")}
                     </TableCell>
                     <TableCell className="py-2 text-right">{fmtCurrency(totalRent, selectedProperty?.currencyCode, selectedProperty?.locale)}</TableCell>
@@ -529,6 +521,21 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                   </TableRow>
                 </TableBody>
               </Table>
+            )}
+            {unitDateConflictMessages.length > 0 && (
+              <div className="mt-2 rounded border border-destructive/30 bg-destructive/5 p-2">
+                <div className="flex items-start gap-2 text-xs text-destructive">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <div>
+                    <p className="font-medium">Date conflict</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                      {unitDateConflictMessages.map(message => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
           <div className="flex items-start gap-4">
@@ -622,6 +629,7 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                     if (f.primaryTenantId === id || f.coTenantIds.includes(id)) return f;
                     return { ...f, coTenantIds: [...f.coTenantIds, id] };
                   });
+                  setPendingExistingTenantId("");
                 };
                 const removeAttached = (id: string) => {
                   setForm(f => {
@@ -637,12 +645,20 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                   <>
                     {tenantSubView === "workspace" && (
                       <>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <Label className="text-sm">{t("leases.tenant")}</Label>
-                          <Button type="button" size="sm" onClick={() => setTenantSubView("create")}>
-                            <Plus className="h-4 w-4 mr-1" />
-                            {t("leases.wizard.createNewTenant")}
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            {attachedIds.length > 0 && availableExisting.length > 0 && !pendingExistingTenantId && (
+                              <Button type="button" variant="outline" size="sm" onClick={() => setPendingExistingTenantId("__select__")}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add tenant
+                              </Button>
+                            )}
+                            <Button type="button" size="sm" onClick={() => setTenantSubView("create")}>
+                              <Plus className="h-4 w-4 mr-1" />
+                              {t("leases.wizard.createNewTenant")}
+                            </Button>
+                          </div>
                         </div>
                         <div className="rounded-md border">
                           <Table className="w-full">
@@ -677,30 +693,32 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                                   </TableRow>
                                 );
                               })}
-                              <TableRow>
-                                <TableCell>
-                                  <Select
-                                    value=""
-                                    onValueChange={(v) => { if (v) attachAsPrimary(v); }}
-                                    disabled={availableExisting.length === 0}
-                                  >
-                                    <SelectTrigger className="h-8">
-                                      <SelectValue placeholder={t("leases.selectTenant")} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {availableExisting.map(tt => (
-                                        <SelectItem key={tt.id} value={tt.id}>
-                                          {getTenantFullName(tt)}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-xs text-muted-foreground">—</span>
-                                </TableCell>
-                                <TableCell />
-                              </TableRow>
+                              {(attachedIds.length === 0 || !!pendingExistingTenantId) && (
+                                <TableRow>
+                                  <TableCell>
+                                    <Select
+                                      value=""
+                                      onValueChange={(v) => { if (v) attachAsPrimary(v); }}
+                                      disabled={availableExisting.length === 0}
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue placeholder={t("leases.selectTenant")} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {availableExisting.map(tt => (
+                                          <SelectItem key={tt.id} value={tt.id}>
+                                            {getTenantFullName(tt)}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  </TableCell>
+                                  <TableCell />
+                                </TableRow>
+                              )}
                             </TableBody>
                           </Table>
                         </div>
@@ -830,6 +848,10 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
                     toast({ title: "Validation Error", description: "First name, last name, and email are required.", variant: "destructive" });
                     return;
                   }
+                  if (!isValidEmail(tenantForm.email)) {
+                    toast({ title: "Validation Error", description: "Enter a valid email address.", variant: "destructive" });
+                    return;
+                  }
                   if (tenantForm.dateOfBirth) {
                     const today = new Date().toISOString().slice(0, 10);
                     const dateErrors = validateDateOrder([
@@ -863,12 +885,16 @@ export function LeaseAddDialog({ open, onOpenChange, prefillPropertyId, prefillU
               )}
               {step < 3 ? (
                 <Button
-                  disabled={step === 2 && !form.primaryTenantId}
+                  disabled={(step === 1 && !stepOneReady) || (step === 2 && !form.primaryTenantId)}
                   onClick={() => {
                     if (step === 1) {
-                      const primaryRow = unitRows.find(r => r.assignmentType === "primary");
+                      const primaryRow = unitRows.find(isMainRow);
                       if (!form.leaseReference.trim() || !form.propertyId || unitRows.length === 0 || !primaryRow?.unitId || unitRows.some(r => !r.unitId)) {
-                        toast({ title: "Validation Error", description: "Reference, property, and at least one unit (with a Primary role) are required.", variant: "destructive" });
+                        toast({ title: "Validation Error", description: "Reference, property, and at least one residential or main commercial unit are required.", variant: "destructive" });
+                        return;
+                      }
+                      if (unitRows.some(r => (r.rentShare ?? 0) < 0 || (r.chargesShare ?? 0) < 0)) {
+                        toast({ title: "Validation Error", description: "Rent and charges cannot be negative.", variant: "destructive" });
                         return;
                       }
                     }

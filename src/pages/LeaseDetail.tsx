@@ -26,8 +26,7 @@ import type { LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { computeCycles, getCurrentCycle, getNextCycle, getCyclePaidAmount } from "@/lib/leaseCycles";
-import { getTenantFullName, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, type LeaseKeyItem, getLeaseStatus, getMoveInStatus, getMoveOutStatus, computeGuaranteeStatus, type GuaranteeStatus } from "@/types";
-import { ASSIGNMENT_TYPE_LABELS, isAncillaryAssignmentType } from "@/types";
+import { getTenantFullName, isAncillaryUnitType, type GuaranteeType, type Guarantee, type ReturnStatus, type MoveInChecklist, type MoveOutChecklist, type LeaseEndReason, type LeaseKeyItem, getLeaseStatus, getMoveInStatus, getMoveOutStatus, computeGuaranteeStatus, type GuaranteeStatus } from "@/types";
 import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
 import { formatDate, formatCurrency, formatPeriodMonth, formatNumber } from "@/lib/formatters";
@@ -74,6 +73,15 @@ const MOVE_OUT_CHECKLIST_KEY: Record<keyof MoveOutChecklist, TranslationKey> = {
   moveOutMeterReadingCaptured: "checklist.moveOut.moveOutMeterReadingCaptured",
   balanceReviewed: "checklist.moveOut.balanceReviewed",
   guaranteeReviewCompleted: "checklist.moveOut.guaranteeReviewCompleted",
+};
+
+const formatMeterConsumption = (start: string | null | undefined, end: string | null | undefined, unit: string) => {
+  if (!start?.trim() || !end?.trim()) return "—";
+  const startValue = Number(start);
+  const endValue = Number(end);
+  if (!Number.isFinite(startValue) || !Number.isFinite(endValue)) return "—";
+  const consumption = endValue - startValue;
+  return consumption >= 0 ? formatNumber(consumption, { unit }) : "—";
 };
 
 const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: TranslationKey; className: string }> = {
@@ -1254,17 +1262,28 @@ export default function LeaseDetail() {
           {(() => {
             const assignments = getLeaseAssignments(lease.id).filter(a => !a.endDate);
             const sortedAssignments = assignments.length > 0
-              ? assignments.slice().sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+              ? assignments.slice().sort((a, b) => {
+                  const au = units.find(u => u.id === a.unitId);
+                  const bu = units.find(u => u.id === b.unitId);
+                  return Number(!!bu && !isAncillaryUnitType(bu.unitType)) - Number(!!au && !isAncillaryUnitType(au.unitType));
+                })
               : (unit ? [{
                   id: "fallback",
                   unitId: unit.id,
-                  isPrimary: true,
-                  assignmentType: "primary" as const,
                   startDate: lease.startDate,
                   endDate: null as string | null,
                   rentShare: lease.monthlyRent,
                   chargesShare: lease.monthlyCharges,
                 }] : []);
+            const pricingFallbackApplies =
+              sortedAssignments.length === 1 &&
+              (sortedAssignments[0].rentShare ?? 0) === 0 &&
+              (sortedAssignments[0].chargesShare ?? 0) === 0 &&
+              (lease.monthlyRent > 0 || lease.monthlyCharges > 0);
+            const pricingFor = (a: typeof sortedAssignments[number]) => ({
+              rent: pricingFallbackApplies ? lease.monthlyRent : a.rentShare,
+              charges: pricingFallbackApplies ? lease.monthlyCharges : a.chargesShare,
+            });
             return (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
@@ -1314,7 +1333,6 @@ export default function LeaseDetail() {
                       <TableHeader>
                         <TableRow className="h-8">
                           <TableHead className="h-8 text-sm">{t("leases.col.unit")}</TableHead>
-                          <TableHead className="h-8 text-sm">{t("leases.col.role")}</TableHead>
                           <TableHead className="h-8 text-sm">{t("leases.col.start")}</TableHead>
                           <TableHead className="h-8 text-sm">{t("leases.col.signed")}</TableHead>
                           <TableHead className="h-8 text-sm">{t("leases.col.end")}</TableHead>
@@ -1327,8 +1345,8 @@ export default function LeaseDetail() {
                         {sortedAssignments.map(a => {
                           const u = units.find(x => x.id === a.unitId);
                           if (!u) return null;
-                          const isAnc = !a.isPrimary && isAncillaryAssignmentType(a.assignmentType);
-                          const rowTotal = (a.rentShare ?? 0) + (a.chargesShare ?? 0);
+                          const rowPricing = pricingFor(a);
+                          const rowTotal = (rowPricing.rent ?? 0) + (rowPricing.charges ?? 0);
                           // Per-unit signed date: lease.signedDate for inception units;
                           // otherwise the signedDate of the amendment that added this unit.
                           let signedFor: string | null = null;
@@ -1350,27 +1368,22 @@ export default function LeaseDetail() {
                               <TableCell className="py-1 text-sm">
                                 <Link to={`/units/${u.id}`} className="font-medium text-primary hover:underline">{u.unitCode} — {u.unitLabel}</Link>
                               </TableCell>
-                              <TableCell className="py-1">
-                                <span className={`text-xs px-1.5 py-0.5 rounded ${a.isPrimary ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                                  {a.isPrimary ? t("leases.role.primary") : (isAnc ? t(`leases.assignmentType.${a.assignmentType}` as TranslationKey) : t("leases.role.secondary"))}
-                                </span>
-                              </TableCell>
                               <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
                               <TableCell className="py-1 text-sm text-muted-foreground">{signedFor ? formatDate(signedFor, locale) : "—"}</TableCell>
                               <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(effEndDate, locale)}</TableCell>
-                              <TableCell className="py-1 text-right text-sm tabular-nums">{a.rentShare != null ? formatCurrency(a.rentShare, currency, locale) : "—"}</TableCell>
-                              <TableCell className="py-1 text-right text-sm tabular-nums">{a.chargesShare != null ? formatCurrency(a.chargesShare, currency, locale) : "—"}</TableCell>
+                              <TableCell className="py-1 text-right text-sm tabular-nums">{rowPricing.rent != null ? formatCurrency(rowPricing.rent, currency, locale) : "—"}</TableCell>
+                              <TableCell className="py-1 text-right text-sm tabular-nums">{rowPricing.charges != null ? formatCurrency(rowPricing.charges, currency, locale) : "—"}</TableCell>
                               <TableCell className="py-1 text-right text-sm font-medium tabular-nums">{formatCurrency(rowTotal, currency, locale)}</TableCell>
                             </TableRow>
                           );
                         })}
                         {(() => {
-                          const sumR = sortedAssignments.reduce((s, a) => s + (a.rentShare ?? 0), 0);
-                          const sumC = sortedAssignments.reduce((s, a) => s + (a.chargesShare ?? 0), 0);
+                          const sumR = sortedAssignments.reduce((s, a) => s + (pricingFor(a).rent ?? 0), 0);
+                          const sumC = sortedAssignments.reduce((s, a) => s + (pricingFor(a).charges ?? 0), 0);
                           const grand = sumR + sumC;
                           return (
                             <TableRow className="border-t border-border bg-muted/30 h-9">
-                              <TableCell colSpan={5} className="py-1 text-sm font-medium text-muted-foreground">Total</TableCell>
+                              <TableCell colSpan={4} className="py-1 text-sm font-medium text-muted-foreground">Total</TableCell>
                               <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumR, currency, locale)}</TableCell>
                               <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sumC, currency, locale)}</TableCell>
                               <TableCell className="py-1 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(grand, currency, locale)}</TableCell>
@@ -1796,12 +1809,12 @@ export default function LeaseDetail() {
                 <div className="flex items-center gap-1.5 text-foreground"><Zap className="h-3.5 w-3.5 text-warning" />{t("detail.electricity")}</div>
                 <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-10" value={lease.moveInMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span></div>
                 <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-10" value={lease.moveOutMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">kWh</span></div>
-                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInMeterReading && lease.moveOutMeterReading ? formatNumber(parseFloat(lease.moveOutMeterReading) - parseFloat(lease.moveInMeterReading), { unit: "kWh" }) : "—"}</div>
+                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{formatMeterConsumption(lease.moveInMeterReading, lease.moveOutMeterReading, "kWh")}</div>
 
                 <div className="flex items-center gap-1.5 text-foreground"><Droplet className="h-3.5 w-3.5 text-primary" />{t("detail.water")}</div>
                 <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-8" value={lease.moveInWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveInWaterMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span></div>
                 <div className="relative"><Input inputMode="decimal" placeholder="—" className="h-8 text-sm pr-8" value={lease.moveOutWaterMeterReading ?? ""} onChange={e => handleUpdateMeter("moveOutWaterMeterReading", e.target.value)} /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">m³</span></div>
-                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{lease.moveInWaterMeterReading && lease.moveOutWaterMeterReading ? formatNumber(parseFloat(lease.moveOutWaterMeterReading) - parseFloat(lease.moveInWaterMeterReading), { unit: "m³" }) : "—"}</div>
+                <div className="text-sm font-semibold text-foreground text-right tabular-nums">{formatMeterConsumption(lease.moveInWaterMeterReading, lease.moveOutWaterMeterReading, "m³")}</div>
               </div>
             </CardContent>
           </Card>

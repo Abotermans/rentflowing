@@ -1,6 +1,7 @@
-import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3, Settings, Coins, Tags, Settings2, PieChart, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen, Users, FileText, CreditCard, Wrench, HardHat, BarChart3, Settings, Coins, Tags, Settings2, PieChart, ChevronRight, Megaphone } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { useSettings } from "@/context/SettingsContext";
 import type { TranslationKey } from "@/i18n/translations";
 import {
@@ -25,6 +26,8 @@ import { Separator } from "@/components/ui/separator";
 const items: { titleKey: TranslationKey; url: string; icon: typeof LayoutDashboard; moduleKey?: string }[] = [
   { titleKey: "nav.dashboard", url: "/", icon: LayoutDashboard },
   { titleKey: "nav.properties", url: "/properties", icon: Building2 },
+  { titleKey: "nav.owners", url: "/owners", icon: Users },
+  { titleKey: "nav.listings", url: "/listings", icon: Megaphone },
   { titleKey: "nav.units", url: "/units", icon: DoorOpen },
   { titleKey: "nav.tenants", url: "/tenants", icon: Users },
   { titleKey: "nav.leases", url: "/leases", icon: FileText },
@@ -42,7 +45,7 @@ const costsChildren: { titleKey: TranslationKey; url: string; icon: typeof Layou
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const { t, isModuleHidden } = useSettings();
   const { pathname } = useLocation();
   const collapsed = state === "collapsed";
@@ -50,6 +53,10 @@ export function AppSidebar() {
   const visibleItems = items.filter((item) => !item.moduleKey || !isModuleHidden(item.moduleKey));
   const topItems = visibleItems.slice(0, Math.min(8, Math.max(0, visibleItems.length - 1)));
   const bottomItems = visibleItems.slice(topItems.length);
+
+  useEffect(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [isMobile, pathname, setOpenMobile]);
 
   return (
     <Sidebar collapsible="icon">

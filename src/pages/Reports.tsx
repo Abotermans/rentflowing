@@ -10,10 +10,11 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Link } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { exportToCSV } from "@/lib/exportCsv";
-import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS } from "@/types";
+import { getTenantFullName, getLeaseStatus, GUARANTEE_TYPE_LABELS, isAncillaryUnitType } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS, MAINTENANCE_PRIORITY_LABELS, MAINTENANCE_STATUS_LABELS } from "@/types/maintenance";
 import type { MaintenanceCategory, MaintenancePriority, MaintenanceStatus } from "@/types/maintenance";
 import { Download, Printer, BarChart3 } from "lucide-react";
+import { formatMoneyGroups, sumMoneyByCurrency } from "@/lib/money";
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
   return (
@@ -73,11 +74,11 @@ function RentRollReport() {
     });
   }, [leases, properties, units, tenants, getGuaranteeByLease, getAncillaryLeaseUnits, propFilter]);
 
-  const totalRent = data.reduce((s, d) => s + d.l.monthlyRent, 0);
-  const totalCharges = data.reduce((s, d) => s + d.l.monthlyCharges, 0);
-  const totalAll = totalRent + totalCharges;
+  const rentGroups = sumMoneyByCurrency(data.map(d => ({ amount: d.l.monthlyRent, currencyCode: d.prop?.currencyCode ?? "EUR", locale: d.prop?.locale })));
+  const chargesGroups = sumMoneyByCurrency(data.map(d => ({ amount: d.l.monthlyCharges, currencyCode: d.prop?.currencyCode ?? "EUR", locale: d.prop?.locale })));
+  const incomeGroups = sumMoneyByCurrency(data.map(d => ({ amount: d.total, currencyCode: d.prop?.currencyCode ?? "EUR", locale: d.prop?.locale })));
 
-  const doExport = () => exportToCSV("rent-roll", ["Reference", "Property", "Unit", "Tenant", "Rent", "Charges", "Total", "Deposit Status"], data.map(d => [
+  const doExport = () => exportToCSV("rent-roll", ["Reference", "Property", "Unit", "Tenant", "Rent", "Charges", "Total", "Guarantee Status"], data.map(d => [
     d.l.leaseReference, d.prop?.name ?? "", d.unit?.unitCode ?? "", d.tenant ? getTenantFullName(d.tenant) : "",
     formatCurrency(d.l.monthlyRent, d.prop?.currencyCode, d.prop?.locale),
     formatCurrency(d.l.monthlyCharges, d.prop?.currencyCode, d.prop?.locale),
@@ -90,9 +91,9 @@ function RentRollReport() {
       <FilterBar><PropertyFilter value={propFilter} onChange={setPropFilter} properties={properties} /></FilterBar>
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Active Leases" value={String(data.length)} />
-        <KpiCard label="Total Monthly Rent" value={formatCurrency(totalRent)} />
-        <KpiCard label="Total Monthly Charges" value={formatCurrency(totalCharges)} />
-        <KpiCard label="Total Monthly Income" value={formatCurrency(totalAll)} />
+        <KpiCard label="Total Monthly Rent" value={formatMoneyGroups(rentGroups)} />
+        <KpiCard label="Total Monthly Charges" value={formatMoneyGroups(chargesGroups)} />
+        <KpiCard label="Total Monthly Income" value={formatMoneyGroups(incomeGroups)} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="leases" />
       <Card>
@@ -101,7 +102,7 @@ function RentRollReport() {
             <TableHead className="text-xs">Reference</TableHead><TableHead className="text-xs">Property</TableHead>
             <TableHead className="text-xs">Unit</TableHead><TableHead className="text-xs">Tenant</TableHead>
             <TableHead className="text-xs text-right">Rent</TableHead><TableHead className="text-xs text-right">Charges</TableHead>
-            <TableHead className="text-xs text-right">Total</TableHead><TableHead className="text-xs">Deposit</TableHead>
+            <TableHead className="text-xs text-right">Total</TableHead><TableHead className="text-xs">Guarantee Status</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {data.length === 0 ? (
@@ -142,25 +143,25 @@ function OccupancyReport() {
   const data = useMemo(() => {
     let filtered = units;
     if (propFilter !== "all") filtered = filtered.filter(u => u.propertyId === propFilter);
-    if (statusFilter !== "all") filtered = filtered.filter(u => u.currentStatus === statusFilter);
-    return filtered.map(u => {
+    const rows = filtered.map(u => {
       const prop = properties.find(p => p.id === u.propertyId);
-      const lease = getActiveLease(u.id);
-      const tenant = lease ? tenants.find(t => t.id === lease.primaryTenantId) : null;
       const a = getActiveLeaseAssignmentForUnit(u.id);
-      const role: "primary" | "ancillary" | null = a ? (a.assignment.isPrimary ? "primary" : "ancillary") : null;
-      return { u, prop, lease, tenant, role };
+      const lease = a?.lease ?? getActiveLease(u.id);
+      const tenant = lease ? tenants.find(t => t.id === lease.primaryTenantId) : null;
+      const role: "primary" | "ancillary" | null = a ? (isAncillaryUnitType(u.unitType) ? "ancillary" : "primary") : null;
+      const displayStatus = role ? "occupied" : (u.currentStatus === "reserved" || u.currentStatus === "unavailable" || u.currentStatus === "archived" ? u.currentStatus : "vacant");
+      return { u, prop, lease, tenant, role, displayStatus };
     });
+    return statusFilter === "all" ? rows : rows.filter(d => d.displayStatus === statusFilter);
   }, [units, properties, tenants, getActiveLease, getActiveLeaseAssignmentForUnit, propFilter, statusFilter]);
 
   const occupiedPrimary = data.filter(d => d.role === "primary").length;
   const occupiedAncillary = data.filter(d => d.role === "ancillary").length;
-  const vacant = data.filter(d => d.u.currentStatus === "vacant" && !d.role).length;
-  const denom = data.length - occupiedAncillary;
-  const rate = denom > 0 ? Math.round((occupiedPrimary / denom) * 100) : 0;
+  const vacant = data.filter(d => d.displayStatus === "vacant").length;
+  const rate = data.length > 0 ? Math.round((occupiedPrimary / data.length) * 100) : 0;
 
   const doExport = () => exportToCSV("occupancy", ["Unit", "Property", "Type", "Status", "Tenant", "Rent"], data.map(d => [
-    d.u.unitCode, d.prop?.name ?? "", d.u.unitType, d.u.currentStatus,
+    d.u.unitCode, d.prop?.name ?? "", d.u.unitType, d.displayStatus,
     d.tenant ? getTenantFullName(d.tenant) : "",
     d.lease ? formatCurrency(d.lease.monthlyRent, d.prop?.currencyCode, d.prop?.locale) : "",
   ]));
@@ -206,10 +207,7 @@ function OccupancyReport() {
                 <TableCell className="text-xs capitalize text-muted-foreground">{d.u.unitType.replace(/-/g, " ")}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
-                    <StatusBadge status={d.u.currentStatus} />
-                    {d.role === "ancillary" && (
-                      <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{t("leases.role.ancillary")}</span>
-                    )}
+                    <StatusBadge status={d.displayStatus} />
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.tenant ? <Link to={`/tenants/${d.tenant.id}`} className="hover:underline">{getTenantFullName(d.tenant)}</Link> : "—"}</TableCell>
@@ -226,28 +224,37 @@ function OccupancyReport() {
 
 // ─── Overdue ───
 function OverdueReport() {
-  const { leases, properties, tenants, getTenantOutstanding } = useAppData();
+  const { leases, properties, tenants, receivableItems } = useAppData();
   const [propFilter, setPropFilter] = useState("all");
 
   const data = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
     const activeLeases = leases.filter(l => l.lifecycleStage === "active");
-    const tenantIds = [...new Set(activeLeases.map(l => l.primaryTenantId))];
+    const tenantIds = [...new Set(receivableItems.filter(ri => ri.tenantId).map(ri => ri.tenantId as string))];
     return tenantIds.map(tid => {
       const tenant = tenants.find(t => t.id === tid);
-      const { outstanding, overdue } = getTenantOutstanding(tid);
+      const relevant = receivableItems.filter(ri =>
+        ri.tenantId === tid &&
+        ri.outstandingAmount > 0 &&
+        (propFilter === "all" || ri.propertyId === propFilter),
+      );
+      const overdueItems = relevant.filter(ri => ri.dueDate < today);
+      const overdueGroups = sumMoneyByCurrency(overdueItems.map(ri => ({ amount: ri.outstandingAmount, currencyCode: ri.currencyCode })));
+      const outstandingGroups = sumMoneyByCurrency(relevant.map(ri => ({ amount: ri.outstandingAmount, currencyCode: ri.currencyCode })));
+      const overdueSort = overdueItems.reduce((s, ri) => s + ri.outstandingAmount, 0);
       const lease = activeLeases.find(l => l.primaryTenantId === tid);
       const prop = lease ? properties.find(p => p.id === lease.propertyId) : undefined;
-      return { tenant, outstanding, overdue, lease, prop };
-    }).filter(d => d.overdue > 0 && d.tenant && (propFilter === "all" || d.prop?.id === propFilter));
-  }, [leases, properties, tenants, getTenantOutstanding, propFilter]);
+      return { tenant, overdueGroups, outstandingGroups, overdueSort, lease, prop };
+    }).filter(d => d.overdueSort > 0 && d.tenant);
+  }, [leases, properties, tenants, receivableItems, propFilter]);
 
-  const totalOverdue = data.reduce((s, d) => s + d.overdue, 0);
-  const totalOutstanding = data.reduce((s, d) => s + d.outstanding, 0);
+  const totalOverdueGroups = sumMoneyByCurrency(data.flatMap(d => d.overdueGroups.map(g => ({ amount: g.amount, currencyCode: g.currencyCode, locale: g.locale }))));
+  const totalOutstandingGroups = sumMoneyByCurrency(data.flatMap(d => d.outstandingGroups.map(g => ({ amount: g.amount, currencyCode: g.currencyCode, locale: g.locale }))));
 
   const doExport = () => exportToCSV("overdue", ["Tenant", "Lease", "Property", "Overdue", "Outstanding"], data.map(d => [
     d.tenant ? getTenantFullName(d.tenant) : "", d.lease?.leaseReference ?? "", d.prop?.name ?? "",
-    formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale),
-    formatCurrency(d.outstanding, d.prop?.currencyCode, d.prop?.locale),
+    formatMoneyGroups(d.overdueGroups),
+    formatMoneyGroups(d.outstandingGroups),
   ]));
 
   return (
@@ -255,8 +262,8 @@ function OverdueReport() {
       <FilterBar><PropertyFilter value={propFilter} onChange={setPropFilter} properties={properties} /></FilterBar>
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
         <KpiCard label="Overdue Tenants" value={String(data.length)} />
-        <KpiCard label="Total Overdue" value={formatCurrency(totalOverdue)} accent />
-        <KpiCard label="Total Outstanding" value={formatCurrency(totalOutstanding)} />
+        <KpiCard label="Total Overdue" value={formatMoneyGroups(totalOverdueGroups)} accent />
+        <KpiCard label="Total Outstanding" value={formatMoneyGroups(totalOutstandingGroups)} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="tenants" />
       <Card>
@@ -274,8 +281,8 @@ function OverdueReport() {
                 <TableCell className="text-sm text-muted-foreground"><Link to={`/tenants/${d.tenant!.id}`} className="hover:underline">{getTenantFullName(d.tenant!)}</Link></TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">{d.lease ? <Link to={`/leases/${d.lease.id}`} className="hover:underline">{d.lease.leaseReference}</Link> : "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.prop?.name ?? "—"}</TableCell>
-                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.overdue, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
-                <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(d.outstanding, d.prop?.currencyCode, d.prop?.locale)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatMoneyGroups(d.overdueGroups)}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{formatMoneyGroups(d.outstandingGroups)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -382,8 +389,8 @@ function DepositsReport() {
       .filter(d => statusFilter === "all" || d.g.status === statusFilter);
   }, [guarantees, leases, properties, tenants, propFilter, statusFilter]);
 
-  const totalExpected = data.reduce((s, d) => s + d.g.expectedAmount, 0);
-  const totalReceived = data.reduce((s, d) => s + d.g.receivedAmount, 0);
+  const expectedGroups = sumMoneyByCurrency(data.map(d => ({ amount: d.g.expectedAmount, currencyCode: d.prop?.currencyCode ?? "EUR", locale: d.prop?.locale })));
+  const receivedGroups = sumMoneyByCurrency(data.map(d => ({ amount: d.g.receivedAmount, currencyCode: d.prop?.currencyCode ?? "EUR", locale: d.prop?.locale })));
   const pending = data.filter(d => d.g.status === "pending" || d.g.status === "incomplete").length;
 
   const doExport = () => exportToCSV("deposits", ["Lease", "Tenant", "Property", "Type", "Expected", "Received", "Status"], data.map(d => [
@@ -412,8 +419,8 @@ function DepositsReport() {
       </FilterBar>
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Total Guarantees" value={String(data.length)} />
-        <KpiCard label="Expected" value={formatCurrency(totalExpected)} />
-        <KpiCard label="Received" value={formatCurrency(totalReceived)} />
+        <KpiCard label="Expected" value={formatMoneyGroups(expectedGroups)} />
+        <KpiCard label="Received" value={formatMoneyGroups(receivedGroups)} />
         <KpiCard label="Pending / Incomplete" value={String(pending)} accent={pending > 0} />
       </div>
       <ReportToolbar count={data.length} onExport={doExport} label="guarantees" />
@@ -457,7 +464,6 @@ function MaintenanceBacklogReport() {
   const data = useMemo(() => {
     const now = new Date();
     return tickets
-      .filter(t => t.status !== "completed" && t.status !== "cancelled")
       .filter(t => propFilter === "all" || t.propertyId === propFilter)
       .filter(t => catFilter === "all" || t.category === catFilter)
       .filter(t => prioFilter === "all" || t.priority === prioFilter)
@@ -507,7 +513,7 @@ function MaintenanceBacklogReport() {
           <SelectTrigger className="w-[140px] h-9 text-sm"><SelectValue placeholder="All Statuses" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            {(Object.entries(MAINTENANCE_STATUS_LABELS) as [MaintenanceStatus, string][]).filter(([k]) => k !== "completed" && k !== "cancelled").map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            {(Object.entries(MAINTENANCE_STATUS_LABELS) as [MaintenanceStatus, string][]).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
       </FilterBar>
