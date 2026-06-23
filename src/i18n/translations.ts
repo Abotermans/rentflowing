@@ -647,7 +647,7 @@ const en = {
 
   // Detail page sections
   "detail.localSettings": "Local Settings",
-  "detail.financialDefaults": "Rent & Charges defaults",
+  "detail.financialDefaults": "Rent formulas",
   "detail.unitInformation": "Unit Information",
   "detail.occupancySection": "Occupancy",
   "detail.propertyContext": "Property Context",
@@ -2383,7 +2383,7 @@ const fr: TranslationKeys = {
 
   // Detail page sections
   "detail.localSettings": "Paramètres locaux",
-  "detail.financialDefaults": "Valeurs par défaut du loyer et des charges",
+  "detail.financialDefaults": "Formules de loyer",
   "detail.unitInformation": "Informations du lot",
   "detail.occupancySection": "Occupation",
   "detail.propertyContext": "Contexte du bien",
