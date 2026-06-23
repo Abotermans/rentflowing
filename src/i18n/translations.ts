@@ -1083,8 +1083,8 @@ const en = {
   "unit.vacateLeaseEndTitle": "Free Unit & End Lease",
   "unit.vacateLeaseEndDescription": "An active lease is in place. The lease will be marked as ended and the unit set to vacant.",
 
-  // Payments — Receivables & Reconciliation page
-  "payments.pageTitle": "Receivables & Reconciliation",
+  // Payments — Receivables page
+  "payments.pageTitle": "Receivables",
   "payments.pageSubtitle": "\n",
   "payments.recordCashReceipt": "Record Cash Receipt",
   "payments.kpi.openReceivables": "Open Receivables",
@@ -2819,7 +2819,7 @@ const fr: TranslationKeys = {
   "unit.vacateLeaseEndDescription": "Un bail actif est en place. Le bail sera marqué comme terminé et le lot rendu vacant.",
 
   // Payments — Créances & Réconciliation
-  "payments.pageTitle": "Créances & Réconciliation",
+  "payments.pageTitle": "Créances",
   "payments.pageSubtitle": "\n",
   "payments.recordCashReceipt": "Enregistrer un encaissement",
   "payments.kpi.openReceivables": "Créances ouvertes",
