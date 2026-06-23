@@ -20,6 +20,7 @@ import {
 import { ProfitabilityBar } from "./ProfitabilityBar";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
+import { detailLinkClass } from "@/lib/detailLinks";
 
 type PresetKey = "ytd" | "12m" | "all";
 
@@ -212,7 +213,7 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
                   return (
                 <TableRow key={unit.id}>
                       <TableCell className="text-sm">
-                        <Link to={`/units/${unit.id}`} className="hover:underline">{unit.unitCode}</Link>
+                        <Link to={`/units/${unit.id}`} className={detailLinkClass}>{unit.unitCode}</Link>
                       </TableCell>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.revenue.billedRent, cur, locale)}</TableCell>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.revenue.collectedRent, cur, locale)}</TableCell>

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Mail, Phone, MapPin, StickyNote, HardHat } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
+import { detailLinkClass } from "@/lib/detailLinks";
 
 export default function VendorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -126,7 +127,7 @@ export default function VendorDetail() {
                   const unit = units.find(u => u.id === t.unitId);
                   return (
                     <TableRow key={t.id}>
-                      <TableCell className="font-medium"><Link to={`/maintenance/${t.id}`} className="hover:underline text-foreground">{t.title}</Link></TableCell>
+                      <TableCell className="font-medium"><Link to={`/maintenance/${t.id}`} className={detailLinkClass}>{t.title}</Link></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{unit?.unitCode ?? "—"}</TableCell>
                       <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[t.category]}</TableCell>

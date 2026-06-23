@@ -51,6 +51,7 @@ import { newId } from "@/lib/repo";
 import type { LeasePayerAccount } from "@/types";
 import { validateDateOrder } from "@/lib/dateValidation";
 import { parseNoticeText, addNoticePeriod } from "@/lib/noticePeriod";
+import { detailLinkClass } from "@/lib/detailLinks";
 
 const GUARANTEE_TYPE_KEY: Record<GuaranteeType, TranslationKey> = {
   "cash-deposit": "guarantee.type.cashDeposit",
@@ -1294,7 +1295,7 @@ export default function LeaseDetail() {
                       <div className="flex items-center gap-2 text-sm">
                         <HoverCard openDelay={150}>
                           <HoverCardTrigger asChild>
-                            <Link to={`/tenants/${tenant.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{getTenantFullName(tenant)}</Link>
+                            <Link to={`/tenants/${tenant.id}`} className={`font-medium ${detailLinkClass}`}>{getTenantFullName(tenant)}</Link>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-auto p-3 space-y-1.5">
                             <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{tenant.email}</span></div>
@@ -1307,7 +1308,7 @@ export default function LeaseDetail() {
                       <div key={ct.id} className="flex items-center gap-2 text-sm">
                         <HoverCard openDelay={150}>
                           <HoverCardTrigger asChild>
-                            <Link to={`/tenants/${ct.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{getTenantFullName(ct)}</Link>
+                            <Link to={`/tenants/${ct.id}`} className={`font-medium ${detailLinkClass}`}>{getTenantFullName(ct)}</Link>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-auto p-3 space-y-1.5">
                             <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-foreground">{ct.email}</span></div>
@@ -1366,7 +1367,7 @@ export default function LeaseDetail() {
                           return (
                             <TableRow key={a.id} className="h-9">
                               <TableCell className="py-1 text-sm">
-                                <Link to={`/units/${u.id}`} className="font-medium text-primary hover:underline">{u.unitCode} — {u.unitLabel}</Link>
+                                <Link to={`/units/${u.id}`} className={`font-medium ${detailLinkClass}`}>{u.unitCode} — {u.unitLabel}</Link>
                               </TableCell>
                               <TableCell className="py-1 text-sm text-muted-foreground">{formatDate(a.startDate, locale)}</TableCell>
                               <TableCell className="py-1 text-sm text-muted-foreground">{signedFor ? formatDate(signedFor, locale) : "—"}</TableCell>

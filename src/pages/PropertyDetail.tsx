@@ -33,6 +33,7 @@ import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { PropertyProfitabilitySection } from "@/components/profitability/PropertyProfitabilitySection";
 import { PropertyOwnersPicker } from "@/components/properties/PropertyOwnersPicker";
+import { detailLinkClass } from "@/lib/detailLinks";
 
 const UNIT_TYPE_VALUES: UnitType[] = ["apartment", "studio", "office", "parking", "storage", "house", "commercial-unit"];
 const UNIT_STATUS_VALUES: UnitStatus[] = ["vacant", "occupied", "reserved", "unavailable", "archived"];
@@ -366,7 +367,7 @@ export default function PropertyDetail() {
                       return (
                         <TableRow key={u.id}>
                           <TableCell className="font-mono text-xs font-medium text-foreground">
-                            <Link to={`/units/${u.id}`} className="hover:underline">{u.unitCode}</Link>
+                            <Link to={`/units/${u.id}`} className={detailLinkClass}>{u.unitCode}</Link>
                           </TableCell>
                           <TableCell className="text-muted-foreground">{u.unitLabel}</TableCell>
                           <TableCell className="text-muted-foreground">{t(UNIT_TYPE_KEYS[u.unitType])}</TableCell>
@@ -390,10 +391,10 @@ export default function PropertyDetail() {
                             </div>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
-                            {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline">{getTenantFullName(tenant)}</Link> : "—"}
+                            {tenant ? <Link to={`/tenants/${tenant.id}`} className={detailLinkClass}>{getTenantFullName(tenant)}</Link> : "—"}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-xs">
-                            {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline">{activeLease.leaseReference}</Link> : "—"}
+                            {activeLease ? <Link to={`/leases/${activeLease.id}`} className={detailLinkClass}>{activeLease.leaseReference}</Link> : "—"}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
@@ -486,7 +487,7 @@ export default function PropertyDetail() {
                     <TableBody>
                       {unitBurden.map(({ unit: u, directTotal, allocTotal, total }) => (
                         <TableRow key={u.id}>
-                          <TableCell className="font-medium text-sm"><Link to={`/units/${u.id}`} className="hover:underline text-foreground">{u.unitCode}</Link></TableCell>
+                          <TableCell className="font-medium text-sm"><Link to={`/units/${u.id}`} className={detailLinkClass}>{u.unitCode}</Link></TableCell>
                           <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(directTotal, property.currencyCode, property.locale)}</TableCell>
                           <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(allocTotal, property.currencyCode, property.locale)}</TableCell>
                           <TableCell className="text-right text-sm font-bold text-foreground">{formatCurrency(total, property.currencyCode, property.locale)}</TableCell>

@@ -24,6 +24,7 @@ import { TenantDialog } from "@/components/tenants/TenantDialog";
 import { CashReceiptDialog } from "@/components/payments/CashReceiptDialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoneyGroups, sumMoneyByCurrency } from "@/lib/money";
+import { detailLinkClass } from "@/lib/detailLinks";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
@@ -223,9 +224,9 @@ export default function TenantDetail() {
               if (!leaseProperty || !leaseUnit) return null;
               return (
                 <div key={lease.id} className="grid grid-cols-2 md:grid-cols-3 gap-4 border-b pb-4 last:border-b-0 last:pb-0">
-                  <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${lease.id}`} className="text-sm font-medium text-primary hover:underline">{lease.leaseReference}</Link></div>
-                  <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${leaseUnit.id}`} className="text-sm font-medium text-primary hover:underline">{leaseUnit.unitCode}</Link></div>
-                  <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${leaseProperty.id}`} className="text-sm font-medium text-primary hover:underline">{leaseProperty.name}</Link></div>
+                  <div><p className="text-xs text-muted-foreground">{t("leases.reference")}</p><Link to={`/leases/${lease.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{lease.leaseReference}</Link></div>
+                  <div><p className="text-xs text-muted-foreground">{t("table.unit")}</p><Link to={`/units/${leaseUnit.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{leaseUnit.unitCode}</Link></div>
+                  <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${leaseProperty.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{leaseProperty.name}</Link></div>
                   <div><p className="text-xs text-muted-foreground">{t("leases.period")}</p><p className="text-sm font-medium text-foreground">{formatDate(lease.startDate, leaseProperty.locale)} — {formatDate(lease.endDate, leaseProperty.locale)}</p></div>
                   <div><p className="text-xs text-muted-foreground">{t("leases.monthlyRent")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(lease.monthlyRent, leaseProperty.currencyCode, leaseProperty.locale)}</p></div>
                   <div><p className="text-xs text-muted-foreground">{t("leases.monthlyCharges")}</p><p className="text-sm font-medium text-foreground">{formatCurrency(lease.monthlyCharges, leaseProperty.currencyCode, leaseProperty.locale)}</p></div>
@@ -284,7 +285,7 @@ export default function TenantDetail() {
                   const unit = units.find(u => u.id === l.unitId);
                   return (
                     <TableRow key={l.id}>
-                      <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className="hover:underline text-foreground">{l.leaseReference}</Link></TableCell>
+                      <TableCell className="font-mono text-xs"><Link to={`/leases/${l.id}`} className={detailLinkClass}>{l.leaseReference}</Link></TableCell>
                       <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{unit?.unitCode ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)} — {formatDate(l.endDate, prop?.locale)}</TableCell>
@@ -368,8 +369,8 @@ export default function TenantDetail() {
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{formatDate(ri.dueDate, recvLocale)}</TableCell>
-                          <TableCell className="font-mono text-xs">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className="hover:underline text-foreground">{ri.lease.leaseReference}</Link> : "—"}</TableCell>
-                          <TableCell className="font-mono text-xs">{ri.unit ? <Link to={`/units/${ri.unit.id}`} className="hover:underline text-foreground">{ri.unit.unitCode}</Link> : "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{ri.lease ? <Link to={`/leases/${ri.lease.id}`} className={detailLinkClass}>{ri.lease.leaseReference}</Link> : "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{ri.unit ? <Link to={`/units/${ri.unit.id}`} className={detailLinkClass}>{ri.unit.unitCode}</Link> : "—"}</TableCell>
                           <TableCell className="text-right text-sm font-medium">{formatCurrency(ri.expectedAmount, ri.currencyCode, recvLocale)}</TableCell>
                           <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ri.allocatedAmount, ri.currencyCode, recvLocale)}</TableCell>
                           <TableCell className="text-right text-sm font-medium">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, ri.currencyCode, recvLocale) : "—"}</TableCell>
@@ -434,7 +435,7 @@ export default function TenantDetail() {
                   return (
                     <TableRow key={cr.id}>
                       <TableCell className="text-xs text-muted-foreground">{formatDate(cr.paymentDate, prop?.locale)}</TableCell>
-                      <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className="hover:underline text-foreground">{lease.leaseReference}</Link> : "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{lease ? <Link to={`/leases/${lease.id}`} className={detailLinkClass}>{lease.leaseReference}</Link> : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatCurrency(cr.amountReceived, cr.currencyCode, prop?.locale)}</TableCell>
                       <TableCell className="text-right text-sm">{cr.unmatchedAmount > 0 ? formatCurrency(cr.unmatchedAmount, cr.currencyCode, prop?.locale) : "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>

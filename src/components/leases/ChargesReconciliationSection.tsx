@@ -21,6 +21,7 @@ import type { Lease } from "@/types";
 import type { ReconciliationResolution } from "@/types/chargesReconciliation";
 import { suggestResolution, computeLeaseCostOverview, type ReconciliationWindow } from "@/lib/chargesReconciliation";
 import { isAllInclusive } from "@/lib/leasePricing";
+import { detailLinkClass } from "@/lib/detailLinks";
 
 interface Props { lease: Lease; currency: string; locale: string; }
 
@@ -95,7 +96,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
             ) : overview.lines.map((l, idx) => (
               <TableRow key={`${l.costEntryId}-${l.unitId}-${idx}`} className="h-8">
                 <TableCell className="text-xs">
-                  <Link to={`/costs/entries?edit=${l.costEntryId}`} className="text-foreground hover:text-primary hover:underline">
+                  <Link to={`/costs/entries?edit=${l.costEntryId}`} className={detailLinkClass}>
                     {l.costLabel}
                   </Link>
                 </TableCell>
@@ -439,7 +440,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                         ) : breakdown.lines.map(l => (
                           <TableRow key={l.costEntryId} className="h-8">
                             <TableCell className="text-xs">
-                              <Link to={`/costs/entries?edit=${l.costEntryId}`} className="hover:underline text-primary">
+                              <Link to={`/costs/entries?edit=${l.costEntryId}`} className={detailLinkClass}>
                                 {l.label}
                               </Link>
                             </TableCell>

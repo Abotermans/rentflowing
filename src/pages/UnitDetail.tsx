@@ -39,6 +39,7 @@ import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
 import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTicketDialog";
 import { CostEntryDialog } from "@/components/costs/CostEntryDialog";
 import { UnitProfitabilitySection } from "@/components/profitability/UnitProfitabilitySection";
+import { detailLinkClass } from "@/lib/detailLinks";
 
 import type { TranslationKey } from "@/i18n/translations";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -497,7 +498,7 @@ export default function UnitDetail() {
               <Building2 className="h-3.5 w-3.5" />{t("detail.propertyContext")}
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link></div>
+              <div><p className="text-xs text-muted-foreground">{t("table.property")}</p><Link to={`/properties/${property.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{property.name}</Link></div>
               <div><p className="text-xs text-muted-foreground">{t("properties.city")}</p><p className="text-sm font-medium text-foreground">{property.city}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("properties.country")}</p><p className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("properties.currency")}</p><p className="text-sm font-medium text-foreground font-mono">{property.currencyCode}</p></div>
@@ -602,11 +603,11 @@ export default function UnitDetail() {
                   return (
                     <TableRow key={assignment.id}>
                       <TableCell>
-                        <Link to={`/leases/${lease.id}`} className="text-sm font-medium text-primary hover:underline">{lease.leaseReference}</Link>
+                        <Link to={`/leases/${lease.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{lease.leaseReference}</Link>
                       </TableCell>
                       <TableCell>
                         {leaseTenant ? (
-                          <Link to={`/tenants/${leaseTenant.id}`} className="text-sm text-primary hover:underline">{getTenantFullName(leaseTenant)}</Link>
+                          <Link to={`/tenants/${leaseTenant.id}`} className={`text-sm ${detailLinkClass}`}>{getTenantFullName(leaseTenant)}</Link>
                         ) : "—"}
                       </TableCell>
                       <TableCell className="text-sm">{formatDate(lease.startDate, property.locale)}</TableCell>
@@ -676,7 +677,7 @@ export default function UnitDetail() {
                   <TableBody>
                     {unitTickets.map(tk => (
                       <TableRow key={tk.id}>
-                        <TableCell className="font-medium"><Link to={`/maintenance/${tk.id}`} className="hover:underline text-foreground">{tk.title}</Link></TableCell>
+                        <TableCell className="font-medium"><Link to={`/maintenance/${tk.id}`} className={detailLinkClass}>{tk.title}</Link></TableCell>
                         <TableCell className="text-xs">{MAINTENANCE_CATEGORY_LABELS[tk.category]}</TableCell>
                         <TableCell><PriorityLabel priority={tk.priority} /></TableCell>
                         <TableCell><StatusBadge status={tk.status} /></TableCell>

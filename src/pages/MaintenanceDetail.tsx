@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { detailLinkClass } from "@/lib/detailLinks";
 
 export default function MaintenanceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -95,28 +96,28 @@ export default function MaintenanceDetail() {
               <Building2 className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-xs text-muted-foreground">{t("table.property")}</p>
-                {property ? <Link to={`/properties/${property.id}`} className="text-sm font-medium text-primary hover:underline">{property.name}</Link> : <p className="text-sm text-foreground">—</p>}
+                {property ? <Link to={`/properties/${property.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{property.name}</Link> : <p className="text-sm text-foreground">—</p>}
               </div>
             </div>
             <div className="flex items-start gap-2">
               <DoorOpen className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-xs text-muted-foreground">{t("table.unit")}</p>
-                {unit ? <Link to={`/units/${unit.id}`} className="text-sm font-medium text-primary hover:underline">{unit.unitCode}</Link> : <p className="text-sm text-foreground">—</p>}
+                {unit ? <Link to={`/units/${unit.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{unit.unitCode}</Link> : <p className="text-sm text-foreground">—</p>}
               </div>
             </div>
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-xs text-muted-foreground">{t("table.tenant")}</p>
-                {tenant ? <Link to={`/tenants/${tenant.id}`} className="text-sm font-medium text-primary hover:underline">{getTenantFullName(tenant)}</Link> : <p className="text-sm text-muted-foreground">—</p>}
+                {tenant ? <Link to={`/tenants/${tenant.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{getTenantFullName(tenant)}</Link> : <p className="text-sm text-muted-foreground">—</p>}
               </div>
             </div>
             <div className="flex items-start gap-2">
               <HardHat className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-xs text-muted-foreground">{t("maintenance.vendor")}</p>
-                {vendor ? <Link to={`/vendors/${vendor.id}`} className="text-sm font-medium text-primary hover:underline">{vendor.vendorName}</Link> : <p className="text-sm text-muted-foreground">{t("maintenance.unassigned")}</p>}
+                {vendor ? <Link to={`/vendors/${vendor.id}`} className={`text-sm font-medium ${detailLinkClass}`}>{vendor.vendorName}</Link> : <p className="text-sm text-muted-foreground">{t("maintenance.unassigned")}</p>}
               </div>
             </div>
           </div>
