@@ -1,9 +1,52 @@
 # Lease and receivable scheduler deployment
 
+## Managed Lovable authentication (prepared, not deployed)
+
+The platform's `rebind_secrets` capability with `credential: cron_auth` has
+provisioned managed scheduler authentication. It supplies `LOVABLE_CRON_SECRET`
+and optionally `LOVABLE_CRON_SECRET_PREVIOUS` during rotation. No credential
+value needs to pass through a person, application source, or a SQL query.
+The generated `_shared/cron-auth.ts` helper is copied unchanged from Lovable.
+The local handlers now authenticate its `Authorization: Bearer` credential
+before accessing application data. A wrapper also rejects short server-side
+credentials. Neither public API keys nor user JWTs authorize these jobs.
+
+Managed callbacks can send `{}`. Billing captures the server clock once when
+`businessInstant` is absent; an explicit timestamp is still subject to the
+existing strict UTC format and fifteen-minute freshness guard. Null and
+malformed bodies/timestamps are rejected, not silently replaced. Each
+property's stored time zone still determines its business date.
+
+These changes do not introduce runtime AI. Contract dates, applied amendments,
+rent formulas, assignment windows, lead time, and duplicate guards determine
+the output. Document deletion queues an exact storage path transactionally;
+the cleanup worker retries those queued operations. Cron supplies the known
+time event so processing does not depend on an open browser.
+
+**Deployment is blocked:** the Lovable workspace ran out of credits after
+provisioning authentication. The deployed functions and two paused jobs still
+use the earlier `X-Cron-Secret` configuration described below. No dispatch has
+run. Do not enable them before deploying the new handlers and converting
+their schedules using Lovable's managed scheduling tools. If those tools
+cannot edit paused unmanaged jobs, create replacements with a non-due future
+schedule, pause them, then change to the hourly schedule while paused. Never
+briefly create active hourly jobs. The read-only backend checker still expects
+the old Vault command and intentionally cannot attest managed schedules yet;
+update it against the actual managed metadata contract before acceptance.
+
+## Earlier manual deployment procedure
+
 This is a deployment procedure, not evidence that a production job exists.
 Follow `RELEASE.md` first: verify a restorable database-and-storage backup,
 reconcile migrations, and settle the portfolio/property business time-zone
 policy before enabling automatic writes.
+
+On the current Lovable target, the two hourly jobs already exist but are
+paused. `SCHEDULED_JOB_SECRET` is configured for Edge Functions only. The
+matching `scheduled_job_secret` is not yet in Postgres Vault; the two stores
+are independent. Do not enable either job merely because its Edge secret is
+present. Lovable's Jobs screen can confirm the paused state and run history;
+the jobs were created through SQL. See `RELEASE.md` for the current gate.
 
 The Edge Function `advance-receivables` activates due amendments first, calls
 the service-only lease lifecycle routine, then generates rent and charge cycles

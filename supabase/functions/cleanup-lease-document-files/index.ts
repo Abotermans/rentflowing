@@ -1,10 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateScheduledRequest } from "../_shared/scheduled-auth.ts";
 // @deno-types="../_shared/server-jobs.d.ts"
 import {
   removeStorageFileIfPresent,
   runDocumentFileCleanup,
-  hasScheduledJobSecret,
-  isConfiguredScheduledJobSecret,
 } from "../_shared/server-jobs.js";
 
 const JOB_NAME = "cleanup-lease-document-files";
@@ -18,11 +17,8 @@ function json(status: number, body: unknown): Response {
 
 Deno.serve(async (request) => {
   if (request.method !== "POST") return json(405, { error: "Method not allowed" });
-  const secret = Deno.env.get("SCHEDULED_JOB_SECRET");
-  if (!isConfiguredScheduledJobSecret(secret)) return json(503, { error: "Scheduled job secret is not configured securely" });
-  if (!hasScheduledJobSecret(request, secret)) {
-    return json(401, { error: "Unauthorized" });
-  }
+  const authError = authenticateScheduledRequest(request);
+  if (authError) return authError;
   const url = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceKey) return json(503, { error: "Backend credentials unavailable" });

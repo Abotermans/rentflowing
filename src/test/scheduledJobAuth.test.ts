@@ -37,10 +37,11 @@ describe("scheduled Edge Function routes", () => {
       expect(source).toContain('Deno.serve(async (request) => {\n  if (request.method !== "POST") return json(405');
       expect(source).not.toContain('request.method === "GET"');
       expect(source.indexOf('if (request.method !== "POST")')).toBeLessThan(source.indexOf('createClient(url, serviceKey'));
-      expect(source.indexOf("if (!isConfiguredScheduledJobSecret(secret))"))
-        .toBeLessThan(source.indexOf('createClient(url, serviceKey'));
-      expect(source.indexOf("if (!hasScheduledJobSecret(request, secret))"))
-        .toBeLessThan(source.indexOf('createClient(url, serviceKey'));
+      const auth = source.indexOf("const authError = authenticateScheduledRequest(request)");
+      const reject = source.indexOf("if (authError) return authError");
+      expect(auth).toBeGreaterThan(source.indexOf('if (request.method !== "POST")'));
+      expect(reject).toBeGreaterThan(auth);
+      expect(reject).toBeLessThan(source.indexOf('createClient(url, serviceKey'));
     },
   );
 

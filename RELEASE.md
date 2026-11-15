@@ -10,8 +10,10 @@ supersede this section or the more recent entries immediately following it.
 
 The clean candidate is PR #1, branch `codex/release-20261115`. Its current CI
 run passed 924 tests in 164 files, lint, TypeScript, build, migration checks,
-and Deno checks. Lovable preview followed that branch, but the published site
-was not updated. An initial Lovable deployment found a real packaging bug:
+and Deno checks. The owner subsequently published revision `50904f9`; its
+`/release.json` now returns HTTP 200 with that revision and `dirty: false`.
+The final managed-handler integration below is newer and not deployed.
+An initial Lovable deployment found a real packaging bug:
 the two scheduled Edge functions imported application modules outside
 `supabase/functions`, which Lovable's deploy bundler could not resolve. The
 candidate now contains a reproducibly generated, self-contained shared Edge
@@ -20,22 +22,57 @@ CI and Lovable deployed both scheduled functions from commit `1cd2410`; the
 Lovable function list shows both as Active. Deployment does not prove that a
 scheduled invocation succeeds.
 
-The target now has `pg_cron` and `pg_net` installed, but has zero Cron jobs and
-zero `scheduled_job_health` successes. Its `SCHEDULED_JOB_SECRET` is absent.
-Do not enable scheduled billing until the authenticated job setup and the
-remaining release gates have been checked. The Lovable agent's separate
-backend-connection edit commit was merged into the release branch without
-overwriting application changes. The public Lovable host still lacks required security headers and
-`/release.json`. The release decision remains **NO-GO**.
+The target has `pg_cron` and `pg_net` installed. Two hourly Cron jobs are
+registered but paused, and `scheduled_job_health` has no successes. The owner
+provisioned Lovable's managed scheduler credential without exposing its value.
+The deployed handlers and paused jobs still use the old, incomplete manual
+secret configuration. Do not enable scheduled billing until managed handler
+deployment, schedule conversion, and the remaining release gates have
+been checked. The Lovable agent's separate backend-connection edit commit was
+merged into the release branch without overwriting application changes. The
+public Lovable host still lacks required security headers, although the
+release marker is now present.
+The release decision remains **NO-GO**.
 
 | Gate | Current evidence | Release action |
 | --- | --- | --- |
-| Local source | 920 tests across 162 files plus the new focused trigger-privilege test pass; lint, TypeScript, build, and diff check pass; `dist/release.json` remains dirty at `b30c4095` | Review the mixed worktree and build a clean reviewed release commit |
-| Backend | Lovable has all 126 local migrations with matching SQL hashes; all 56 schema-capability checks pass, including indexation and protected writes | Exercise authenticated workflows; deploy and observe scheduled jobs |
+| Local source | The release-branch CI passed 924 tests across 164 files, lint, TypeScript, build, migration checks, and Deno checks | Review PR #1 before merge |
+| Backend | Lovable has all 126 local migrations with matching SQL hashes; all 56 schema-capability checks pass; managed credential provisioned and two hourly jobs paused | Deploy managed handlers, convert schedules, then test and observe authenticated dispatch |
 | Security | The 56-check target attestation passes after revoking explicit client grants on trigger functions | Verify policies through real owner/editor/viewer sessions and retest the published host |
 | Data | The full 51-check financial audit and all 22 historical-data preflights have zero nonzero findings | Run end-to-end billing and amendment tests on the release candidate |
-| Host | The Lovable host has not served this working-tree revision with required headers or a release marker; no alternate Pages site is selected or deployed | Choose hosting, publish a clean revision, and verify HTTPS headers, provenance, assets, and Auth redirects on the actual site |
+| Host | Lovable serves revision `50904f9` and its release marker, but required CSP, frame, robots, and permissions headers still fail verification | Keep Lovable as requested; resolve host header support and verify the final published revision |
 | User journeys | Authenticated Demo/QA read-only browsing and the indexation amendment form load locally; automated tests pass | Run creation, amendment activation, payment, document, role, mobile, and deletion smoke tests on the published release candidate |
+
+## Paused Lovable jobs (2026-11-15)
+
+Follow-up: Lovable's managed `cron_auth` credential was provisioned without
+revealing its value. The generated helper is now present locally, and local
+handlers have been adapted to managed Bearer authentication and a single
+server-clock instant for static scheduler callbacks. This does not change
+business rules or introduce runtime AI. Lovable then reported the workspace
+out of credits: handler redeployment and schedule conversion have NOT happened.
+The deployed jobs remain paused on their old authentication configuration.
+The backend schedule attestation still needs the actual managed metadata
+contract; it must not be weakened to accept an unverified new command.
+Local verification after this change passed 945 tests in 165 files,
+TypeScript, ESLint, production build, Edge bundle consistency, both scheduled
+handlers' Deno checks, and the whitespace check. Read-only target inspection
+confirmed both original Cron jobs remain inactive. These are local checks,
+not evidence of deployed managed callbacks or a successful scheduled run.
+
+Lovable Cloud now contains `rentflowing-advance-receivables` at five minutes
+past each hour and `rentflowing-cleanup-lease-document-files` at fifteen
+minutes past each hour. Both were registered and paused in the same database
+transaction, so neither has run or changed application data. Lovable's Jobs
+screen confirms both as Paused. `cron.job_run_details` and
+`scheduled_job_health` still contain no rows for these jobs. Vault contains
+the public routing key as `scheduler_publishable_key`, but no
+`scheduled_job_secret`; the Edge-only secret cannot be read by Postgres.
+The old jobs reference an absent Vault secret by name. They must remain paused
+until converted to managed authentication, authenticated dispatch is tested,
+and the remaining release gates are met. Manual secret copying is no longer
+the proposed setup. A fresh MCP deployment request after the owner's website
+publication was again refused because the Lovable workspace is out of credits.
 
 ## Target reconciliation (2026-11-15)
 
@@ -54,7 +91,8 @@ currency labels were guarded and retained as private before-images in
 to active and one expired lease to ended; its prior lease/tenant values were
 also retained there. Paid receivables and receipt allocations were not removed.
 
-**Still NO-GO:** `cron.job` is absent and `scheduled_job_health` has no runs.
+**At this earlier checkpoint, still NO-GO:** `cron.job` was absent and
+`scheduled_job_health` had no runs.
 The current Lovable host still lacks release provenance and required headers,
 and no authenticated release-candidate journey has been observed. These are
 independent of the now-clean database schema and test-data audit.

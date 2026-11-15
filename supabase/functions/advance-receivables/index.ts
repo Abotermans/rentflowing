@@ -1,4 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateScheduledRequest } from "../_shared/scheduled-auth.ts";
+import { resolveBusinessInstant } from "./business-instant.ts";
 // @deno-types="../_shared/server-jobs.d.ts"
 import {
   collectRowsById,
@@ -10,9 +12,6 @@ import {
   type ServerAmendmentRows,
   calendarDateISO,
   DEFAULT_BUSINESS_TIME_ZONE,
-  parseScheduledBusinessInstant,
-  hasScheduledJobSecret,
-  isConfiguredScheduledJobSecret,
 } from "../_shared/server-jobs.js";
 
 const JOB_NAME = "advance-receivables";
@@ -26,11 +25,8 @@ function json(status: number, body: unknown): Response {
 
 Deno.serve(async (request) => {
   if (request.method !== "POST") return json(405, { error: "Method not allowed" });
-  const secret = Deno.env.get("SCHEDULED_JOB_SECRET");
-  if (!isConfiguredScheduledJobSecret(secret)) return json(503, { error: "Scheduled job secret is not configured securely" });
-  if (!hasScheduledJobSecret(request, secret)) {
-    return json(401, { error: "Unauthorized" });
-  }
+  const authError = authenticateScheduledRequest(request);
+  if (authError) return authError;
   const url = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceKey) return json(503, { error: "Backend credentials unavailable" });
@@ -43,11 +39,7 @@ Deno.serve(async (request) => {
   }
   let businessInstant: Date;
   try {
-    businessInstant = parseScheduledBusinessInstant(
-      typeof body === "object" && body !== null && "businessInstant" in body
-        ? body.businessInstant
-        : null,
-    );
+    businessInstant = resolveBusinessInstant(body, new Date());
   } catch (error) {
     return json(400, { error: error instanceof Error ? error.message : "Invalid businessInstant" });
   }
