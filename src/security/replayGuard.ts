@@ -29,19 +29,30 @@ function neutralizeReplayScript(node: Node | null) {
 function scrubTree(node: Node | null) {
   if (!node) return false;
   const blocked = neutralizeReplayScript(node);
-  if (node instanceof Element) {
+  if (node instanceof Element || node instanceof DocumentFragment || node instanceof Document) {
     node.querySelectorAll("script").forEach(neutralizeReplayScript);
   }
   return blocked;
 }
 
-function wrapNodeInsertion(methodName: "appendChild" | "insertBefore" | "replaceChild") {
-  const original = Node.prototype[methodName];
-  Node.prototype[methodName] = function (...args: Parameters<typeof original>) {
-    const node = args[0] as Node | null;
+function wrapNodeInsertions() {
+  const originalAppendChild = Node.prototype.appendChild;
+  Node.prototype.appendChild = function <T extends Node>(node: T): T {
     if (scrubTree(node)) return node;
-    return original.apply(this, args);
-  } as typeof original;
+    return originalAppendChild.call(this, node) as T;
+  };
+
+  const originalInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function <T extends Node>(node: T, child: Node | null): T {
+    if (scrubTree(node)) return node;
+    return originalInsertBefore.call(this, node, child) as T;
+  };
+
+  const originalReplaceChild = Node.prototype.replaceChild;
+  Node.prototype.replaceChild = function <T extends Node>(node: Node, child: T): T {
+    if (scrubTree(node)) return child;
+    return originalReplaceChild.call(this, node, child) as T;
+  };
 }
 
 export function installReplayGuard() {
@@ -61,9 +72,7 @@ export function installReplayGuard() {
     return originalSetAttribute.apply(this, [name, value]);
   };
 
-  wrapNodeInsertion("appendChild");
-  wrapNodeInsertion("insertBefore");
-  wrapNodeInsertion("replaceChild");
+  wrapNodeInsertions();
 
   scrubTree(document);
   new MutationObserver((mutations) => {

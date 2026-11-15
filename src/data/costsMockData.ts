@@ -32,12 +32,12 @@ export const initialAllocationRules: AllocationRule[] = [
   {
     id: "ar1", propertyId: "p1", name: "Surface Area – Résidence du Parc", method: "surface-area",
     applyOnlyToOccupiedUnits: false, includeUnavailableUnits: false,
-    notes: "Allocate by m² for all available units.", createdAt: "2024-01-20", updatedAt: "2024-01-20",
+    notes: "Allocate by m² for all available units.", shareKey: null, milliemeAllocationMode: "normalized", createdAt: "2024-01-20", updatedAt: "2024-01-20",
   },
   {
     id: "ar2", propertyId: "p2", name: "Manual Split – Les Terrasses", method: "manual-percentage",
     applyOnlyToOccupiedUnits: false, includeUnavailableUnits: false,
-    notes: "Custom percentage split for mixed-use building.", createdAt: "2024-03-25", updatedAt: "2024-03-25",
+    notes: "Custom percentage split for mixed-use building.", shareKey: null, milliemeAllocationMode: "normalized", createdAt: "2024-03-25", updatedAt: "2024-03-25",
   },
 ];
 

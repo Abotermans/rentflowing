@@ -50,6 +50,8 @@ export const UNIT_OCCUPANCY_ICONS: Record<string, LucideIcon> = {
 // ---------- Lease ----------
 export const LEASE_STATUS_ICONS: Record<string, LucideIcon> = {
   draft: FileEdit,
+  "pending-signature": CalendarClock,
+  signed: ShieldCheck,
   active: FileCheck,
   "under-notice": Bell,
   "overdue-end": Clock,

@@ -7,6 +7,7 @@ import { useAppData } from "@/context/AppContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getEffectiveLeaseTerms } from "@/lib/amendments";
+import type { Lease } from "@/types";
 import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
 
 interface Props {
@@ -20,7 +21,6 @@ export function AmendmentChangesDialog({ open, onOpenChange, amendment, changes 
   const { t, locale } = useSettings();
   const { units, tenants } = useAppData();
   const s = useIntegrityState();
-  const currency = "EUR";
 
   const before = useMemo(() => {
     if (!amendment) return null;
@@ -38,14 +38,19 @@ export function AmendmentChangesDialog({ open, onOpenChange, amendment, changes 
     () => amendment ? s.leases.find(l => l.id === amendment.leaseId) ?? null : null,
     [amendment, s.leases],
   );
+  const currency = s.properties.find(property => property.id === lease?.propertyId)?.currencyCode ?? "EUR";
 
   const unitLabel = (id: string) => units.find(u => u.id === id)?.unitCode ?? id;
   const tenantLabel = (id: string) => {
     const tn = tenants.find(x => x.id === id);
     return tn ? `${tn.firstName} ${tn.lastName}` : id;
   };
+  const formulaLabel = (months: unknown) => {
+    const value = Math.max(1, Number(months) || 1);
+    return value === 1 ? t("leases.formula.monthly") : `${value} ${t("rentPrepayment.monthsSuffix")}`;
+  };
 
-  const rows = useMemo(() => {
+  const rows = (() => {
     if (!amendment) return [];
     const out: { label: string; before: string; after: string }[] = [];
     const fmt = (n: number) => formatCurrency(n, currency, locale);
@@ -60,6 +65,23 @@ export function AmendmentChangesDialog({ open, onOpenChange, amendment, changes 
         case "noticePeriodText":
           out.push({ label: t("leases.noticePeriod"), before: before?.noticePeriodText || "—", after: String(c.newValue || "—") });
           break;
+        case "rentFormula":
+          out.push({ label: t("amendments.rentFormula"), before: formulaLabel(c.oldValue), after: formulaLabel(c.newValue) });
+          break;
+        case "indexationSettings": {
+          const label = (value: unknown) => {
+            const v = value as Partial<Lease> | null;
+            if (!v?.indexationEnabled) return t("common.no");
+            const indices = `${v.indexationBaseIndex ?? "—"} → ${v.indexationCurrentIndex ?? "—"}`;
+            const baseDate = v.indexationBaseDate ? ` · ${formatDate(v.indexationBaseDate, locale)}` : "";
+            const cap = v.indexationCapPercent != null
+              ? ` · ${t("leaseDetail.indexationCap").replace("{percent}", String(v.indexationCapPercent))}`
+              : "";
+            return `${indices}${baseDate}${cap}`;
+          };
+          out.push({ label: t("leaseDetail.rentIndexation"), before: label(c.oldValue), after: label(c.newValue) });
+          break;
+        }
         case "baseMonthlyRentTotal":
           out.push({ label: t("amendments.newRent"), before: fmt(before?.monthlyRent ?? 0), after: fmt(Number(c.newValue) || 0) });
           break;
@@ -107,7 +129,7 @@ export function AmendmentChangesDialog({ open, onOpenChange, amendment, changes 
       }
     }
     return out;
-  }, [amendment, changes, before, lease, locale, t, units, tenants]);
+  })();
 
   if (!amendment) return null;
 

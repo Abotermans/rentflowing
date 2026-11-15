@@ -43,7 +43,7 @@
     if (!original) return;
     Node.prototype[methodName] = function () {
       var node = arguments[0];
-      if (scrubTree(node)) return node;
+      if (scrubTree(node)) return methodName === "replaceChild" ? arguments[1] : node;
       return original.apply(this, arguments);
     };
   }

@@ -18,7 +18,7 @@ import {
 } from "@/lib/filterIcons";
 import { CircleDot, Tag, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTicketDialog";
 import { useToast } from "@/hooks/use-toast";
 import { getTenantFullName } from "@/types";
@@ -28,11 +28,15 @@ import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
+import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Maintenance() {
   const { tickets, properties, units, tenants, vendors, deleteTicket } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
+  const { loading: portfolioLoading } = usePortfolio();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
@@ -50,6 +54,7 @@ export default function Maintenance() {
   const { sort, toggle } = useTableSort<MSortKey>();
 
   const openAdd = () => {
+    if (!canWrite) return;
     if (properties.length === 0) {
       toast({ title: t("common.validationError"), description: "Create a property before opening maintenance tickets.", variant: "destructive" });
       navigate("/properties");
@@ -67,30 +72,33 @@ export default function Maintenance() {
   };
 
   useEffect(() => {
+    if (portfolioLoading) return;
     if (searchParams.get("create") === "1") {
       const propertyId = searchParams.get("propertyId") ?? undefined;
       const unitId = searchParams.get("unitId") ?? undefined;
-      setEditing(null);
-      setPrefillPropertyId(propertyId);
-      setPrefillUnitId(unitId);
-      setSheetOpen(true);
+      if (canWrite) {
+        setEditing(null);
+        setPrefillPropertyId(propertyId);
+        setPrefillUnitId(unitId);
+        setSheetOpen(true);
+      }
       const next = new URLSearchParams(searchParams);
       next.delete("create");
       next.delete("propertyId");
       next.delete("unitId");
       setSearchParams(next, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [canWrite, portfolioLoading, searchParams, setSearchParams]);
   const openEdit = (ticket: MaintenanceTicket) => {
+    if (!canWrite) return;
     setEditing(ticket);
     setPrefillPropertyId(undefined);
     setPrefillUnitId(undefined);
     setSheetOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    deleteTicket(id);
+  const handleDelete = async (id: string) => {
+    await deleteTicket(id);
     toast({ title: t("maintenance.toastDeleted") });
   };
 
@@ -130,17 +138,17 @@ export default function Maintenance() {
   const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
 
   return (
-    <div className="space-y-6">
+    <div className="page-shell">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("maintenance.title")}</h1>
+          <h1 className="page-title">{t("maintenance.title")}</h1>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
-          <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("maintenance.add")}</Button>
+          {canWrite && <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("maintenance.add")}</Button>}
         </div>
       </div>
 
@@ -194,7 +202,7 @@ export default function Maintenance() {
       </div>
 
       {tickets.length === 0 ? (
-        <EmptyState icon={Wrench} title={t("maintenance.empty")} description={t("maintenance.emptyDesc")} actionLabel={t("maintenance.add")} onAction={openAdd} />
+        <EmptyState icon={Wrench} title={t("maintenance.empty")} description={t("maintenance.emptyDesc")} actionLabel={canWrite ? t("maintenance.add") : undefined} onAction={canWrite ? openAdd : undefined} />
       ) : filtered.length === 0 ? (
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
@@ -212,7 +220,7 @@ export default function Maintenance() {
                 <SortableTableHead sortKey="vendor" sort={sort} onSort={toggle}>{t("maintenance.vendor")}</SortableTableHead>
                 <SortableTableHead sortKey="created" sort={sort} onSort={toggle}>{t("maintenance.created")}</SortableTableHead>
                 <SortableTableHead sortKey="scheduled" sort={sort} onSort={toggle}>{t("maintenance.scheduled")}</SortableTableHead>
-                <TableHead className="text-right">{t("maintenance.actions")}</TableHead>
+                {canWrite && <TableHead className="text-right">{t("maintenance.actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -235,18 +243,23 @@ export default function Maintenance() {
                     <TableCell className="text-muted-foreground">{vendor ? <Link to={`/vendors/${vendor.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{vendor.vendorName}</Link> : "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(ticket.createdDate)}</TableCell>
                     <TableCell className="text-muted-foreground">{ticket.scheduledDate ? formatDate(ticket.scheduledDate) : "—"}</TableCell>
-                    <TableCell className="text-right">
+                    {canWrite && <TableCell className="text-right">
                       <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(ticket)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>{t("maintenance.deleteTitle")}</AlertDialogTitle><AlertDialogDescription>{t("maintenance.deleteItemDesc")}</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(ticket.id)}>{t("action.delete")}</AlertDialogAction></AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <DeleteDialog
+                          entityType="ticket"
+                          entityId={ticket.id}
+                          entityLabel={ticket.title}
+                          onDelete={handleDelete}
+                          title={t("maintenance.deleteTitle")}
+                          description={t("maintenance.deleteItemDesc")}
+                          cancelLabel={t("action.cancel")}
+                          confirmLabel={t("action.delete")}
+                          pendingLabel={t("action.deleting")}
+                          trigger={<Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={`${t("action.delete")} ${ticket.title}`} title={`${t("action.delete")} ${ticket.title}`}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                        />
                       </div>
-                    </TableCell>
+                    </TableCell>}
                   </TableRow>
                 );
               })}
@@ -257,7 +270,7 @@ export default function Maintenance() {
       )}
 
       <MaintenanceTicketDialog
-        open={sheetOpen}
+        open={canWrite && sheetOpen}
         onOpenChange={setSheetOpen}
         editing={editing}
         prefillPropertyId={prefillPropertyId}

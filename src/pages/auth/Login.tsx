@@ -8,12 +8,17 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { isValidEmail } from "@/lib/validation";
+import { safeReturnPath } from "@/lib/safeReturnPath";
+import { useSignupAvailability } from "@/hooks/useSignupAvailability";
 
 export default function Login() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const nextParam = new URLSearchParams(location.search).get("next");
+  const nextPath = nextParam ? safeReturnPath(nextParam) : "/";
   const { toast } = useToast();
+  const signupAvailability = useSignupAvailability();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -33,7 +38,7 @@ export default function Login() {
       toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
       return;
     }
-    const from = (location.state as any)?.from?.pathname ?? "/";
+    const from = safeReturnPath((location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? nextPath);
     navigate(from, { replace: true });
   };
 
@@ -61,8 +66,10 @@ export default function Login() {
               <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
             <Button type="submit" className="w-full" disabled={!canSubmit}>{busy ? "Signing in…" : "Sign in"}</Button>
-            <p className="text-sm text-center text-muted-foreground">
-              No account? <Link to="/signup" className="text-primary hover:underline">Create one</Link>
+            <p className="min-h-5 text-sm text-center text-muted-foreground">
+              {signupAvailability !== "disabled" && signupAvailability !== "checking" && (
+                <>No account? <Link to={nextPath === "/" ? "/signup" : `/signup?next=${encodeURIComponent(nextPath)}`} className="text-primary hover:underline">Create one</Link></>
+              )}
             </p>
           </form>
         </CardContent>

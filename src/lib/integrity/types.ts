@@ -1,9 +1,9 @@
-import { Property, Unit, Tenant, Lease, Guarantee } from "@/types";
-import type { LeaseUnitAssignment } from "@/types";
-import { ReceivableItem, CashReceipt, ReceiptAllocation } from "@/types/receivables";
-import { MaintenanceTicket } from "@/types/maintenance";
-import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "@/types/costs";
-import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
+import { Property, Unit, Tenant, Lease, Guarantee } from "../../types/index.ts";
+import type { LeaseUnitAssignment } from "../../types/index.ts";
+import { ReceivableItem, CashReceipt, ReceiptAllocation } from "../../types/receivables.ts";
+import { MaintenanceTicket } from "../../types/maintenance.ts";
+import { CostCategory, CostEntry, AllocationRule, AllocationRuleUnitShare, CostAllocationResult } from "../../types/costs.ts";
+import type { LeaseAmendment, LeaseAmendmentChange } from "../../types/amendments.ts";
 
 // ===== Validation Result Types =====
 
@@ -66,7 +66,8 @@ export type IntegrityEntityType =
   | "allocation-rule"
   | "cost-category"
   | "cost-allocation-result"
-  | "ticket";
+  | "ticket"
+  | "vendor";
 
 // ===== Helpers =====
 

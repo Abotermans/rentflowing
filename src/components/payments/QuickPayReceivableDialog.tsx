@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
+import { localTodayISO } from "@/lib/calendarToday";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
+import { DateInput } from "@/components/shared/DateInput";
 import { getTenantFullName } from "@/types";
 import { getSourceTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
+import { parsePositiveMoney, positiveMoneyIssue } from "@/lib/validation";
 import { toast as sonnerToast } from "sonner";
 
 interface QuickPayReceivableDialogProps {
@@ -35,7 +39,8 @@ export function QuickPayReceivableDialog({ receivableItemId, onOpenChange }: Qui
   const isOrphan = !ri?.leaseId && !ri?.tenantId;
 
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [amountTouched, setAmountTouched] = useState(false);
+  const [date, setDate] = useState(localTodayISO());
   const [sourceType, setSourceType] = useState<CashReceiptSourceType>("bank-transfer");
   const [payerName, setPayerName] = useState("");
   const [reference, setReference] = useState("");
@@ -46,7 +51,8 @@ export function QuickPayReceivableDialog({ receivableItemId, onOpenChange }: Qui
   useEffect(() => {
     if (!ri) return;
     setAmount(ri.outstandingAmount.toFixed(2));
-    setDate(new Date().toISOString().split("T")[0]);
+    setAmountTouched(false);
+    setDate(localTodayISO());
     setSourceType("bank-transfer");
     setPayerName(tenant ? getTenantFullName(tenant) : "");
     setReference("");
@@ -62,24 +68,29 @@ export function QuickPayReceivableDialog({ receivableItemId, onOpenChange }: Qui
 
   if (!ri) return null;
 
-  const amt = parseFloat(amount || "0");
+  const amt = parsePositiveMoney(amount);
+  const amountIssue = positiveMoneyIssue(amount);
+  const amountError = amountTouched && amountIssue
+    ? t(amountIssue === "required" ? "common.mandatoryField"
+      : amountIssue === "positive" ? "common.positiveAmount" : "payments.dialog.invalidAmount")
+    : null;
   const outstanding = ri.outstandingAmount;
   const currency = ri.currencyCode;
   const locale = prop?.locale;
 
   const hint =
-    amt <= 0 ? null :
+    amt === null ? null :
     amt < outstanding ? t("payments.quickPay.hintPartial") :
     amt > outstanding ? t("payments.quickPay.hintSurplus") :
     t("payments.quickPay.hintFull");
 
-  const canSave = amt > 0 && !!date && (!isOrphan || !!pickedTenantId) && !saving;
+  const canSave = amt !== null && !!date && (!isOrphan || !!pickedTenantId) && !saving;
 
-  const handleConfirm = () => {
-    if (!canSave) return;
+  const handleConfirm = async () => {
+    if (!canSave || amt === null) return;
     setSaving(true);
     try {
-      quickPayReceivable({
+      await quickPayReceivable({
         receivableItemId: ri.id,
         amountReceived: amt,
         paymentDate: date,
@@ -91,14 +102,18 @@ export function QuickPayReceivableDialog({ receivableItemId, onOpenChange }: Qui
       });
       sonnerToast.success(t("payments.quickPay.toastSuccess"));
       onOpenChange(false);
-    } catch (e) {
+    } catch (error) {
+      sonnerToast.error(t("settings.saveFailed"), {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
       setSaving(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader><DialogTitle>{t("payments.quickPay.title")}</DialogTitle></DialogHeader>
 
         <div className="mt-4 space-y-4">
@@ -135,14 +150,18 @@ export function QuickPayReceivableDialog({ receivableItemId, onOpenChange }: Qui
           )}
 
           <div>
-            <Label>{t("payments.quickPay.amount")} ({currency})</Label>
-            <Input type="number" step="0.01" min="0" value={amount} onChange={e => setAmount(e.target.value)} />
+            <Label htmlFor="quick-pay-amount">{t("payments.quickPay.amount")} ({currency}) *</Label>
+            <Input id="quick-pay-amount" type="text" inputMode="decimal" value={amount}
+              onChange={e => { setAmount(e.target.value); setAmountTouched(true); }}
+              aria-invalid={!!amountError} aria-describedby={amountError ? "quick-pay-amount-error" : undefined}
+              className={amountError ? "border-destructive" : undefined} />
+            {amountError && <p id="quick-pay-amount-error" className="text-xs text-destructive mt-1">{amountError}</p>}
             {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
           </div>
 
           <div>
             <Label>{t("payments.quickPay.paymentDate")}</Label>
-            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <DateInput value={date} onChange={setDate} />
           </div>
 
           <div>
@@ -167,10 +186,13 @@ export function QuickPayReceivableDialog({ receivableItemId, onOpenChange }: Qui
             <Input value={reference} onChange={e => setReference(e.target.value)} placeholder={t("payments.dialog.referencePh")} />
           </div>
 
-          <Button onClick={handleConfirm} disabled={!canSave} className="w-full">
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
+          <Button onClick={handleConfirm} disabled={!canSave}>
             {t("payments.quickPay.confirm")}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

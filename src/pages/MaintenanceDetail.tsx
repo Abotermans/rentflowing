@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { localTodayISO } from "@/lib/calendarToday";
 import { useParams, Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -15,14 +16,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DateInput } from "@/components/shared/DateInput";
 import { useToast } from "@/hooks/use-toast";
 import { detailLinkClass } from "@/lib/detailLinks";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
 
 export default function MaintenanceDetail() {
   const { id } = useParams<{ id: string }>();
   const { tickets, properties, units, tenants, vendors, updateTicket } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
   const [editOpen, setEditOpen] = useState(false);
 
   const ticket = tickets.find(x => x.id === id);
@@ -40,9 +44,14 @@ export default function MaintenanceDetail() {
   const tenant = ticket.tenantId ? tenants.find(tn => tn.id === ticket.tenantId) : null;
   const vendor = ticket.assignedVendorId ? vendors.find(v => v.id === ticket.assignedVendorId) : null;
 
-  const quickStatusChange = (status: MaintenanceStatus) => {
-    updateTicket({ ...ticket, status, completedDate: status === "completed" ? new Date().toISOString().split("T")[0] : ticket.completedDate });
-    toast({ title: t("maintenance.statusChangedTo").replace("{status}", t(MAINTENANCE_STATUS_KEYS[status])) });
+  const quickStatusChange = async (status: MaintenanceStatus) => {
+    if (!canWrite) return;
+    try {
+      await updateTicket({ ...ticket, status, completedDate: status === "completed" ? localTodayISO() : ticket.completedDate });
+      toast({ title: t("maintenance.statusChangedTo").replace("{status}", t(MAINTENANCE_STATUS_KEYS[status])) });
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Maintenance ticket could not be saved.", variant: "destructive" });
+    }
   };
 
   return (
@@ -60,14 +69,14 @@ export default function MaintenanceDetail() {
             </div>
             <p className="text-sm text-muted-foreground mt-1">{t(MAINTENANCE_CATEGORY_KEYS[ticket.category])} · {formatDate(ticket.createdDate, property?.locale)}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+          {canWrite && <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             <Pencil className="h-3.5 w-3.5 mr-1.5" />{t("action.edit")}
-          </Button>
+          </Button>}
         </div>
       </div>
 
       {/* Quick Actions */}
-      <Card>
+      {canWrite && <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">{t("detail.quickActions")}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex gap-2 flex-wrap">
@@ -85,7 +94,7 @@ export default function MaintenanceDetail() {
             )}
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Context */}
       <Card>
@@ -195,7 +204,7 @@ export default function MaintenanceDetail() {
       </div>
 
       {/* Edit Sheet */}
-      <EditTicketSheet ticket={ticket} open={editOpen} onOpenChange={setEditOpen} />
+      <EditTicketSheet ticket={ticket} open={canWrite && editOpen} onOpenChange={setEditOpen} />
     </div>
   );
 }
@@ -209,10 +218,14 @@ function EditTicketSheet({ ticket, open, onOpenChange }: { ticket: MaintenanceTi
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
 
-  const handleSave = () => {
-    updateTicket({ ...ticket, ...form });
-    toast({ title: t("maintenance.toastUpdated") });
-    onOpenChange(false);
+  const handleSave = async () => {
+    try {
+      await updateTicket({ ...ticket, ...form });
+      toast({ title: t("maintenance.toastUpdated") });
+      onOpenChange(false);
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Maintenance ticket could not be saved.", variant: "destructive" });
+    }
   };
 
   return (
@@ -268,8 +281,8 @@ function EditTicketSheet({ ticket, open, onOpenChange }: { ticket: MaintenanceTi
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>{t("maintenance.scheduledDate")}</Label><Input type="date" value={form.scheduledDate ?? ""} onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value || null }))} /></div>
-            <div><Label>{t("maintenance.completedDate")}</Label><Input type="date" value={form.completedDate ?? ""} onChange={e => setForm(f => ({ ...f, completedDate: e.target.value || null }))} /></div>
+            <div><Label>{t("maintenance.scheduledDate")}</Label><DateInput value={form.scheduledDate ?? ""} onChange={value => setForm(f => ({ ...f, scheduledDate: value || null }))} /></div>
+            <div><Label>{t("maintenance.completedDate")}</Label><DateInput value={form.completedDate ?? ""} onChange={value => setForm(f => ({ ...f, completedDate: value || null }))} /></div>
           </div>
           <div><Label>{t("maintenance.internalNotes")}</Label><Textarea value={form.internalNotes} onChange={e => setForm(f => ({ ...f, internalNotes: e.target.value }))} rows={3} /></div>
         </div>

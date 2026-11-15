@@ -1,7 +1,7 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/context/AppContext";
 import { OverrideProvider } from "@/context/OverrideContext";
@@ -10,49 +10,54 @@ import { AuthProvider } from "@/context/AuthContext";
 import { PortfolioProvider } from "@/context/PortfolioContext";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
-import Dashboard from "./pages/Dashboard";
-import Properties from "./pages/Properties";
-import PropertyDetail from "./pages/PropertyDetail";
-import Units from "./pages/Units";
-import UnitDetail from "./pages/UnitDetail";
-import Tenants from "./pages/Tenants";
-import TenantDetail from "./pages/TenantDetail";
-import Leases from "./pages/Leases";
-import LeaseDetail from "./pages/LeaseDetail";
-import Payments from "./pages/Payments";
-import Maintenance from "./pages/Maintenance";
-import MaintenanceDetail from "./pages/MaintenanceDetail";
-import Vendors from "./pages/Vendors";
-import VendorDetail from "./pages/VendorDetail";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
-import CostCategories from "./pages/CostCategories";
-import CostEntries from "./pages/CostEntries";
-import AllocationRules from "./pages/AllocationRules";
-import CostsAllocations from "./pages/CostsAllocations";
-import Profile from "./pages/Profile";
-import PortfolioSettings from "./pages/PortfolioSettings";
-import Login from "./pages/auth/Login";
-import Signup from "./pages/auth/Signup";
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
-import AcceptInvite from "./pages/auth/AcceptInvite";
-import NotFound from "./pages/NotFound";
+import { useSettings } from "@/context/SettingsContext";
 
-const queryClient = new QueryClient(); // force HMR refresh
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Properties = lazy(() => import("./pages/Properties"));
+const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const Units = lazy(() => import("./pages/Units"));
+const UnitDetail = lazy(() => import("./pages/UnitDetail"));
+const Tenants = lazy(() => import("./pages/Tenants"));
+const TenantDetail = lazy(() => import("./pages/TenantDetail"));
+const Leases = lazy(() => import("./pages/Leases"));
+const LeaseDetail = lazy(() => import("./pages/LeaseDetail"));
+const Payments = lazy(() => import("./pages/Payments"));
+const Maintenance = lazy(() => import("./pages/Maintenance"));
+const MaintenanceDetail = lazy(() => import("./pages/MaintenanceDetail"));
+const Vendors = lazy(() => import("./pages/Vendors"));
+const VendorDetail = lazy(() => import("./pages/VendorDetail"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Settings = lazy(() => import("./pages/Settings"));
+const CostCategories = lazy(() => import("./pages/CostCategories"));
+const CostEntries = lazy(() => import("./pages/CostEntries"));
+const AllocationRules = lazy(() => import("./pages/AllocationRules"));
+const CostsAllocations = lazy(() => import("./pages/CostsAllocations"));
+const Profile = lazy(() => import("./pages/Profile"));
+const PortfolioSettings = lazy(() => import("./pages/PortfolioSettings"));
+const Login = lazy(() => import("./pages/auth/Login"));
+const Signup = lazy(() => import("./pages/auth/Signup"));
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
+const AcceptInvite = lazy(() => import("./pages/auth/AcceptInvite"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+function RouteFallback() {
+  const { t } = useSettings();
+  return <div role="status" className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{t("common.loading")}</div>;
+}
 
 const App = () => (
-  <SettingsProvider>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+  <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
             <PortfolioProvider>
+              <SettingsProvider>
               <AppProvider>
                 <OverrideProvider>
-                  <Routes>
+                  <Suspense fallback={<RouteFallback />}>
+                    <Routes>
                     {/* Public auth routes */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
@@ -87,15 +92,15 @@ const App = () => (
                       <Route path="/portfolio/settings" element={<PortfolioSettings />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
-                  </Routes>
+                    </Routes>
+                  </Suspense>
                 </OverrideProvider>
               </AppProvider>
+              </SettingsProvider>
             </PortfolioProvider>
           </AuthProvider>
         </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </SettingsProvider>
+  </TooltipProvider>
 );
 
 export default App;

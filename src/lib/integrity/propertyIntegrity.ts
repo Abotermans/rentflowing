@@ -1,4 +1,5 @@
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
+import { isReceivableOutstanding, isReceiptAllocatable } from "@/types/receivables";
 
 export function canDeleteProperty(propertyId: string, s: IntegrityState): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
@@ -37,10 +38,10 @@ export function canArchiveProperty(propertyId: string, s: IntegrityState): Valid
   const activeLeases = s.leases.filter(l => l.propertyId === propertyId && l.lifecycleStage === "active");
   if (activeLeases.length > 0) warnings.push({ code: "PROP_ACTIVE_LEASES", message: `${activeLeases.length} active lease(s) exist on this property`, severity: "high" });
 
-  const openReceivables = s.receivableItems.filter(r => r.propertyId === propertyId && r.outstandingAmount > 0);
+  const openReceivables = s.receivableItems.filter(r => r.propertyId === propertyId && isReceivableOutstanding(r));
   if (openReceivables.length > 0) warnings.push({ code: "PROP_OPEN_BALANCES", message: `${openReceivables.length} open receivable(s) with outstanding balance`, severity: "high" });
 
-  const unmatchedReceipts = s.cashReceipts.filter(r => r.propertyId === propertyId && r.unmatchedAmount > 0);
+  const unmatchedReceipts = s.cashReceipts.filter(r => r.propertyId === propertyId && isReceiptAllocatable(r));
   if (unmatchedReceipts.length > 0) warnings.push({ code: "PROP_UNMATCHED_RECEIPTS", message: `${unmatchedReceipts.length} unmatched cash receipt(s)`, severity: "medium" });
 
   if (warnings.length > 0) return allowedWithWarnings(warnings, true, "Resolve active leases and open balances before archiving");

@@ -25,6 +25,13 @@ export const COST_FREQUENCY_LABELS: Record<CostFrequency, string> = {
   custom: "Custom",
 };
 
+// ===== Cost Recognition =====
+export type CostRecognitionMode = "immediate" | "amortized";
+export const COST_RECOGNITION_MODE_LABELS: Record<CostRecognitionMode, string> = {
+  immediate: "Immediate",
+  amortized: "Amortized",
+};
+
 // ===== Cost Entry Status =====
 export type CostEntryStatus = "draft" | "active" | "cancelled" | "closed";
 export const COST_ENTRY_STATUS_LABELS: Record<CostEntryStatus, string> = {
@@ -36,6 +43,7 @@ export const COST_ENTRY_STATUS_LABELS: Record<CostEntryStatus, string> = {
 
 // ===== Allocation Method =====
 export type AllocationMethod = "equal" | "surface-area" | "manual-percentage" | "millieme";
+export type MilliemeAllocationMode = "normalized" | "absolute";
 export const ALLOCATION_METHOD_LABELS: Record<AllocationMethod, string> = {
   equal: "Equal",
   "surface-area": "Surface Area (m²)",
@@ -51,6 +59,7 @@ export interface CostCategory {
   nature: CostNature;
   scope: CostScope;
   recoveryTypeDefault: RecoveryType;
+  recognitionModeDefault?: CostRecognitionMode;
   description: string;
   isActive: boolean;
   createdAt: string;
@@ -72,8 +81,13 @@ export interface CostEntry {
   endDate: string | null;
   amount: number;
   currencyCode: string;
+  recognitionMode?: CostRecognitionMode;
+  amortizationStartDate?: string | null;
+  amortizationEndDate?: string | null;
   isTax: boolean;
   recoveryType: RecoveryType;
+  /** Tenant-recoverable share (strictly between 0 and 100 for partial recovery). */
+  recoverablePercentage?: number | null;
   allocationRuleId: string | null;
   vendorName: string;
   invoiceReference: string;
@@ -97,6 +111,11 @@ export interface AllocationRule {
    * Defaults to "general" when null/undefined.
    */
   shareKey?: string | null;
+  /**
+   * Normalized redistributes the allocated cost over managed shares.
+   * Absolute uses each unit's actual millième share over the property base.
+   */
+  milliemeAllocationMode?: MilliemeAllocationMode;
   createdAt: string;
   updatedAt: string;
 }

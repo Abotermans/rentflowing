@@ -1,0 +1,50 @@
+name: Verify production backend before publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      supabase_publishable_key:
+        description: Public Supabase key used by the planned application build
+        required: true
+        type: string
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SUPABASE_ORIGIN: ${{ vars.PRODUCTION_SUPABASE_ORIGIN }}
+      SUPABASE_MANAGEMENT_READ_TOKEN: ${{ secrets.SUPABASE_MANAGEMENT_READ_TOKEN }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ inputs.supabase_publishable_key }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Require the intended release branch and backend
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Run this backend preflight from main"
+            exit 1
+          fi
+          if [ -z "$SUPABASE_ORIGIN" ]; then
+            echo "::error::Set PRODUCTION_SUPABASE_ORIGIN before backend preflight"
+            exit 1
+          fi
+          if [ -z "$SUPABASE_MANAGEMENT_READ_TOKEN" ]; then
+            echo "::error::Set a scoped SUPABASE_MANAGEMENT_READ_TOKEN before backend preflight"
+            exit 1
+          fi
+      - name: Verify email confirmation is required
+        run: npm run check:auth-settings -- "$SUPABASE_ORIGIN"
+      - name: Verify exact migration content
+        run: npm run check:target-migrations -- "$SUPABASE_ORIGIN"
+      - name: Verify required backend schema capabilities
+        run: npm run check:target-schema -- "$SUPABASE_ORIGIN"
+      - name: Verify scheduled backend functions without invoking them
+        run: npm run check:backend-functions -- "$SUPABASE_ORIGIN"
+      - name: Verify target financial data without modifying it
+        run: npm run check:target-data -- "$SUPABASE_ORIGIN"
+      - name: Verify document files against database records
+        run: npm run check:target-documents -- "$SUPABASE_ORIGIN"

@@ -1,7 +1,18 @@
-import { LifecycleStage } from "@/types";
+import { isAncillaryUnitType, LifecycleStage } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
 import { findOverlappingLeases, formatOverlapConflictMessage } from "./leaseDateOverlap";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+
+function hasMainUnitOn(leaseId: string, date: string, s: IntegrityState): boolean {
+  const lease = s.leases.find(candidate => candidate.id === leaseId);
+  if (!lease) return false;
+  return s.leaseUnitAssignments.some(assignment => {
+    if (assignment.leaseId !== leaseId || !assignmentIsActiveOn(assignment, date)) return false;
+    const unit = s.units.find(candidate => candidate.id === assignment.unitId);
+    return !!unit && unit.propertyId === lease.propertyId && !isAncillaryUnitType(unit.unitType);
+  });
+}
 
 export function canDeleteLease(leaseId: string, s: IntegrityState): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
@@ -54,6 +65,16 @@ export function canActivateLease(leaseId: string, s: IntegrityState): Validation
   const myAssignments = s.leaseUnitAssignments.filter(a => a.leaseId === leaseId);
   if (myAssignments.length === 0) {
     blockers.push({ code: "LEASE_NO_UNITS", message: "Lease has no units assigned" });
+  } else {
+    const property = s.properties.find(item => item.id === lease.propertyId);
+    const today = propertyBusinessDateISO(property);
+    const asOf = lease.startDate > today ? lease.startDate : today;
+    if (!hasMainUnitOn(leaseId, asOf, s)) {
+      blockers.push({
+        code: "LEASE_NO_MAIN_UNIT",
+        message: "Lease needs a residential or main commercial unit on its activation date",
+      });
+    }
   }
   for (const a of myAssignments) {
     const unit = s.units.find(u => u.id === a.unitId);
@@ -116,6 +137,12 @@ export function canMarkSigned(leaseId: string, s: IntegrityState): ValidationRes
   if (!lease) return blocked([{ code: "LEASE_NOT_FOUND", message: "Lease not found" }]);
   if (!lease.signedDate) {
     return blocked([{ code: "LEASE_SIGNED_DATE_REQUIRED", message: "A signed date is required" }]);
+  }
+  if (!hasMainUnitOn(leaseId, lease.startDate, s)) {
+    return blocked([{
+      code: "LEASE_NO_MAIN_UNIT",
+      message: "Lease needs a residential or main commercial unit on its start date",
+    }]);
   }
   return ok();
 }
@@ -187,10 +214,18 @@ export function canRenewLease(
   if (lease.lifecycleStage !== "active") {
     blockers.push({ code: "LEASE_NOT_ACTIVE", message: "Only active leases can be renewed" });
   }
+  if (!lease.endDate) {
+    blockers.push({ code: "LEASE_RENEW_NO_CURRENT_END", message: "An open-ended lease has no end date to renew" });
+  }
+  if (lease.moveOutActualDate) {
+    blockers.push({ code: "LEASE_RENEW_ALREADY_MOVED_OUT", message: "A lease cannot be renewed after move-out" });
+  }
+  const currentContractEnd = lease.preNoticeEndDate && lease.preNoticeEndDate > lease.endDate
+    ? lease.preNoticeEndDate : lease.endDate;
   if (!newEndDate) {
     blockers.push({ code: "LEASE_RENEW_NO_DATE", message: "A new end date is required" });
-  } else if (newEndDate <= lease.endDate) {
-    blockers.push({ code: "LEASE_RENEW_DATE_NOT_AFTER", message: "New end date must be after the current end date" });
+  } else if (newEndDate <= currentContractEnd) {
+    blockers.push({ code: "LEASE_RENEW_DATE_NOT_AFTER", message: "New end date must be after the current contractual end date" });
   }
   if (lease.noticeGiven) {
     warnings.push({ code: "LEASE_RENEW_HAS_NOTICE", message: "Notice is currently active; renewing will cancel the notice", severity: "high" });
@@ -198,14 +233,16 @@ export function canRenewLease(
 
   // Renewal cannot push end date into another lease's range on any of this
   // lease's currently-assigned units.
-  if (newEndDate) {
-    const today = new Date().toISOString().slice(0, 10);
+  if (newEndDate && lease.endDate) {
     const myAssignments = s.leaseUnitAssignments.filter(
-      a => a.leaseId === leaseId && assignmentIsActiveOn(a, today),
+      a => a.leaseId === leaseId && assignmentIsActiveOn(a, lease.endDate),
     );
+    if (myAssignments.length === 0) {
+      blockers.push({ code: "LEASE_RENEW_NO_UNIT_AT_END", message: "No unit is assigned at the current lease end date" });
+    }
     const probe = myAssignments.map(a => ({
       unitId: a.unitId,
-      startDate: a.startDate,
+      startDate: lease.endDate,
       endDate: newEndDate,
     }));
     const hits = findOverlappingLeases(leaseId, probe, s);

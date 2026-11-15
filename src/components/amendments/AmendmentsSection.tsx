@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { useBusinessNow } from "@/hooks/use-business-now";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
+import type { TranslationKey } from "@/i18n/translations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -18,6 +21,8 @@ import { AmendmentDialog } from "./AmendmentDialog";
 import { AmendmentChangesDialog } from "./AmendmentChangesDialog";
 import type { LeaseAmendment, AmendmentStatus } from "@/types/amendments";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
+import { useToast } from "@/hooks/use-toast";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
 
 interface Props {
   leaseId: string;
@@ -33,7 +38,10 @@ const STATUS_CLS: Record<AmendmentStatus, string> = {
 };
 
 export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
+  const businessNow = useBusinessNow();
   const { t, locale } = useSettings();
+  const { toast } = useToast();
+  const canWrite = usePortfolioWriteAccess();
   const {
     leases, units, tenants,
     deleteAmendment,
@@ -47,21 +55,23 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
   const [changesDialog, setChangesDialog] = useState<LeaseAmendment | null>(null);
 
   useEffect(() => {
-    if (newAmendmentSignal && newAmendmentSignal > 0) {
+    if (canWrite && newAmendmentSignal && newAmendmentSignal > 0) {
       setEditing(null);
       setDialogOpen(true);
     }
-  }, [newAmendmentSignal]);
+  }, [canWrite, newAmendmentSignal]);
 
   const ams = useMemo(() => getLeaseAmendments(leaseId, s.amendments), [leaseId, s.amendments]);
+  const property = s.properties.find(candidate => candidate.id === lease?.propertyId);
+  const today = propertyBusinessDateISO(property, businessNow);
   const current = useMemo(
-    () => lease ? getEffectiveLeaseTerms(leaseId, new Date().toISOString().slice(0, 10), s) : null,
-    [lease, leaseId, s],
+    () => lease ? getEffectiveLeaseTerms(leaseId, today, s) : null,
+    [lease, leaseId, s, today],
   );
   const original = useMemo(() => lease ? getOriginalLeaseTerms(leaseId, s) : null, [lease, leaseId, s]);
 
   if (!lease) return null;
-  const currency = "EUR";
+  const currency = property?.currencyCode ?? "EUR";
   const currentEndDate = current?.endDate ?? lease.endDate;
 
   const unitLabel = (id: string) => units.find(u => u.id === id)?.unitCode ?? id;
@@ -159,7 +169,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
             {t("amendments.title")} <span className="text-muted-foreground">({ams.length})</span>
           </CardTitle>
           <div className="flex items-center gap-2">
-            {lease.lifecycleStage !== "draft" && (
+            {canWrite && lease.lifecycleStage !== "draft" && (
               <Button size="sm" className="h-8" onClick={(e) => { e.stopPropagation(); setEditing(null); setDialogOpen(true); }}>
                 <Plus className="h-4 w-4 mr-1" />{t("amendments.add")}
               </Button>
@@ -232,35 +242,48 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
                         </TableCell>
                         <TableCell className="py-1.5">
                           <Badge className={STATUS_CLS[a.status]} variant="outline">
-                            {a.status === "active" ? t("amendments.badge.current") : t(`amendments.statusLabel.${a.status}` as any)}
+                            {a.status === "active" ? t("amendments.badge.current") : t(`amendments.statusLabel.${a.status}` as TranslationKey)}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-1.5">
                           <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label={t("amendments.tooltip.edit")}>
-                                  {(a.status === "draft" || a.status === "scheduled")
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)} aria-label={canWrite && (a.status === "draft" || a.status === "scheduled") ? t("amendments.tooltip.edit") : t("action.view")}>
+                                  {canWrite && (a.status === "draft" || a.status === "scheduled")
                                     ? <FileEdit className="h-3.5 w-3.5" />
                                     : <Eye className="h-3.5 w-3.5" />}
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>{t("amendments.tooltip.edit")}</TooltipContent>
+                              <TooltipContent>{canWrite && (a.status === "draft" || a.status === "scheduled") ? t("amendments.tooltip.edit") : t("action.view")}</TooltipContent>
                             </Tooltip>
-                            {a.status === "scheduled" && (
+                            {canWrite && a.status === "scheduled" && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => revertAmendmentToDraft(a.id)} aria-label={t("amendments.tooltip.revertDraft")}>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={async () => {
+                                    try {
+                                      await revertAmendmentToDraft(a.id);
+                                    } catch (error) {
+                                      toast({ title: t("settings.saveFailed"), description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+                                    }
+                                  }} aria-label={t("amendments.tooltip.revertDraft")}>
                                     <Undo2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{t("amendments.tooltip.revertDraft")}</TooltipContent>
                               </Tooltip>
                             )}
-                            {a.status === "draft" && (
+                            {canWrite && a.status === "draft" && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => { if (confirm(t("amendments.confirmDelete"))) deleteAmendment(a.id); }} aria-label={t("amendments.tooltip.delete")}>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={async () => {
+                                    if (!confirm(t("amendments.confirmDelete"))) return;
+                                    try {
+                                      await deleteAmendment(a.id);
+                                    } catch (error) {
+                                      toast({ title: "Amendment could not be deleted", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+                                    }
+                                  }} aria-label={t("amendments.tooltip.delete")}>
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </TooltipTrigger>
@@ -286,7 +309,7 @@ export function AmendmentsSection({ leaseId, newAmendmentSignal }: Props) {
       </CardContent>
       </CollapsibleContent>
       <AmendmentDialog
-        open={dialogOpen}
+        open={dialogOpen && (canWrite || !!editing)}
         onOpenChange={setDialogOpen}
         lease={lease}
         existing={editing}

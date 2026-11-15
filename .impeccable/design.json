@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-04T19:20:21Z",
+  "title": "Design System: OneRent",
+  "extensions": {
+    "colorMeta": {
+      "canvas-white": {
+        "role": "neutral",
+        "displayName": "Blanc de travail",
+        "canonical": "hsl(0 0% 100%)",
+        "tonalRamp": ["#262626", "#525252", "#737373", "#a3a3a3", "#d4d4d4", "#e5e5e5", "#f5f5f5", "#ffffff"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Encre profonde",
+        "canonical": "hsl(222.2 84% 4.9%)",
+        "tonalRamp": ["#020817", "#0f172a", "#1e293b", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#f1f5f9"]
+      },
+      "trust-blue": {
+        "role": "primary",
+        "displayName": "Bleu de confiance",
+        "canonical": "hsl(221 83% 53%)",
+        "tonalRamp": ["#0b1f55", "#12347f", "#1949aa", "#2463eb", "#4f7ff0", "#7c9ff5", "#b5c9fa", "#eef4ff"]
+      },
+      "trust-blue-on": {
+        "role": "neutral",
+        "displayName": "Bleu sur fond",
+        "canonical": "hsl(210 40% 98%)",
+        "tonalRamp": ["#172033", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc"]
+      },
+      "cool-surface": {
+        "role": "neutral",
+        "displayName": "Surface froide",
+        "canonical": "hsl(210 40% 96.1%)",
+        "tonalRamp": ["#172033", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc"]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Encre secondaire",
+        "canonical": "hsl(215.4 16.3% 46.9%)",
+        "tonalRamp": ["#172033", "#334155", "#475569", "#64748b", "#94a3b8", "#b8c3d1", "#dbe3ec", "#f3f6f9"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Trait froid",
+        "canonical": "hsl(214.3 31.8% 91.4%)",
+        "tonalRamp": ["#1e293b", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc"]
+      },
+      "sidebar-surface": {
+        "role": "neutral",
+        "displayName": "Panneau latéral",
+        "canonical": "hsl(220 14% 96%)",
+        "tonalRamp": ["#272a31", "#3c4048", "#60656f", "#8a8f99", "#b8bbc2", "#d4d6da", "#e5e7eb", "#f3f4f6"]
+      },
+      "sidebar-active": {
+        "role": "neutral",
+        "displayName": "Sélection latérale",
+        "canonical": "hsl(220 13% 91%)",
+        "tonalRamp": ["#272a31", "#3c4048", "#60656f", "#8a8f99", "#b8bbc2", "#d4d6da", "#e5e7eb", "#f3f4f6"]
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Vert de confirmation",
+        "canonical": "hsl(142 76% 36%)",
+        "tonalRamp": ["#063d1d", "#08602c", "#0c853d", "#16a249", "#42bd6c", "#78d695", "#b8ebc9", "#effcf3"]
+      },
+      "warning": {
+        "role": "semantic",
+        "displayName": "Ambre d'attention",
+        "canonical": "hsl(38 92% 50%)",
+        "tonalRamp": ["#4a2b02", "#774703", "#aa6705", "#f59f0a", "#f9ba45", "#fbd17d", "#fde7b5", "#fff8e8"]
+      },
+      "destructive": {
+        "role": "semantic",
+        "displayName": "Rouge d'intervention",
+        "canonical": "hsl(0 84.2% 60.2%)",
+        "tonalRamp": ["#4c0808", "#7f1010", "#b51e1e", "#ef4444", "#f26b6b", "#f69b9b", "#facaca", "#fff1f1"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Page title", "purpose": "Page titles and primary record references." },
+      "headline": { "displayName": "Section headline", "purpose": "Major internal section breaks." },
+      "title": { "displayName": "Dialog title", "purpose": "Dialogs and compact prominent sections." },
+      "body": { "displayName": "Application body", "purpose": "Default copy and table content." },
+      "label": { "displayName": "Control label", "purpose": "Field labels, buttons, tabs, and table headings." },
+      "meta": { "displayName": "Operational metadata", "purpose": "Badges, helper text, and dense supporting values." }
+    },
+    "shadows": [
+      { "name": "surface-low", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "Low separation for bordered cards." },
+      { "name": "floating-control", "value": "0 4px 6px -1px rgb(0 0 0 / 0.10), 0 2px 4px -2px rgb(0 0 0 / 0.10)", "purpose": "Menus, selects, and tooltips." },
+      { "name": "modal", "value": "0 10px 15px -3px rgb(0 0 0 / 0.10), 0 4px 6px -4px rgb(0 0 0 / 0.10)", "purpose": "Dialogs, sheets, and priority overlays." }
+    ],
+    "motion": [
+      { "name": "state-color", "value": "color 150ms ease, background-color 150ms ease, border-color 150ms ease", "purpose": "Hover, focus, and selected-state changes." },
+      { "name": "panel", "value": "200ms linear", "purpose": "Sidebar width and position transitions." },
+      { "name": "disclosure", "value": "200ms ease-out", "purpose": "Accordion and collapsible section transitions." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main command for a page or dialog.",
+      "html": "<button class=\"ds-btn-primary\">Enregistrer</button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:8px 16px; border:0; border-radius:6px; background:hsl(var(--primary, 221 83% 53%)); color:hsl(var(--primary-foreground, 210 40% 98%)); font:500 14px/20px ui-sans-serif,system-ui,sans-serif; transition:background-color 150ms ease; } .ds-btn-primary:hover { background:hsl(221 83% 48%); } .ds-btn-primary:focus-visible { outline:2px solid hsl(var(--ring, 221 83% 53%)); outline-offset:2px; } .ds-btn-primary:active { background:hsl(221 83% 44%); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Supporting command with equal control height and quieter emphasis.",
+      "html": "<button class=\"ds-btn-outline\">Annuler</button>",
+      "css": ".ds-btn-outline { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:8px 16px; border:1px solid hsl(var(--input, 214.3 31.8% 91.4%)); border-radius:6px; background:hsl(var(--background, 0 0% 100%)); color:hsl(var(--foreground, 222.2 84% 4.9%)); font:500 14px/20px ui-sans-serif,system-ui,sans-serif; transition:background-color 150ms ease; } .ds-btn-outline:hover { background:hsl(var(--accent, 210 40% 96.1%)); } .ds-btn-outline:focus-visible { outline:2px solid hsl(var(--ring, 221 83% 53%)); outline-offset:2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard form field with visible focus and error treatment.",
+      "html": "<label class=\"ds-field\"><span>Référence *</span><input class=\"ds-input\" placeholder=\"Ex. BXL-001\"></label>",
+      "css": ".ds-field { display:grid; gap:8px; color:hsl(var(--foreground, 222.2 84% 4.9%)); font:500 14px/20px ui-sans-serif,system-ui,sans-serif; } .ds-input { height:40px; width:100%; padding:8px 12px; border:1px solid hsl(var(--input, 214.3 31.8% 91.4%)); border-radius:6px; background:hsl(var(--background, 0 0% 100%)); color:hsl(var(--foreground, 222.2 84% 4.9%)); font:400 14px/20px ui-sans-serif,system-ui,sans-serif; } .ds-input::placeholder { color:hsl(var(--muted-foreground, 215.4 16.3% 46.9%)); } .ds-input:focus-visible { outline:2px solid hsl(var(--ring, 221 83% 53%)); outline-offset:2px; } .ds-input[aria-invalid=true] { border-color:hsl(var(--destructive, 0 84.2% 60.2%)); }"
+    },
+    {
+      "name": "Active Status Badge",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "Positive lifecycle or completion state.",
+      "html": "<span class=\"ds-status-active\">Actif</span>",
+      "css": ".ds-status-active { display:inline-flex; align-items:center; padding:2px 10px; border:1px solid hsl(var(--success, 142 76% 36%) / .30); border-radius:9999px; background:hsl(var(--success, 142 76% 36%) / .15); color:hsl(var(--success, 142 76% 36%)); font:500 12px/16px ui-sans-serif,system-ui,sans-serif; }"
+    },
+    {
+      "name": "Attention Status Badge",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "Pending, transitional, or attention-required state.",
+      "html": "<span class=\"ds-status-warning\">En attente</span>",
+      "css": ".ds-status-warning { display:inline-flex; align-items:center; padding:2px 10px; border:1px solid hsl(var(--warning, 38 92% 50%) / .30); border-radius:9999px; background:hsl(var(--warning, 38 92% 50%) / .15); color:hsl(var(--warning, 38 92% 50%)); font:500 12px/16px ui-sans-serif,system-ui,sans-serif; }"
+    },
+    {
+      "name": "Operational Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Bounded information group with low elevation.",
+      "html": "<section class=\"ds-card\"><h3>Informations du bien</h3><p>Données principales et contexte opérationnel.</p></section>",
+      "css": ".ds-card { padding:24px; border:1px solid hsl(var(--border, 214.3 31.8% 91.4%)); border-radius:8px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--card-foreground, 222.2 84% 4.9%)); box-shadow:0 1px 2px 0 rgb(0 0 0 / .05); font-family:ui-sans-serif,system-ui,sans-serif; } .ds-card h3 { margin:0 0 8px; font-size:16px; line-height:24px; font-weight:600; } .ds-card p { margin:0; color:hsl(var(--muted-foreground, 215.4 16.3% 46.9%)); font-size:14px; line-height:20px; }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "description": "Selected destination in the persistent sidebar.",
+      "html": "<a class=\"ds-nav-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg><span>Biens</span></a>",
+      "css": ".ds-nav-active { display:flex; align-items:center; gap:8px; min-height:32px; padding:6px 8px; border-radius:6px; background:hsl(var(--sidebar-accent, 220 13% 91%)); color:hsl(var(--sidebar-accent-foreground, 220 9% 15%)); font:500 14px/20px ui-sans-serif,system-ui,sans-serif; text-decoration:none; transition:background-color 150ms ease; } .ds-nav-active svg { width:16px; height:16px; flex:none; } .ds-nav-active:hover { background:hsl(var(--sidebar-accent, 220 13% 87%)); } .ds-nav-active:focus-visible { outline:2px solid hsl(var(--sidebar-ring, 221 83% 53%)); outline-offset:2px; }"
+    },
+    {
+      "name": "Data Table Row",
+      "kind": "custom",
+      "description": "Compact, scan-friendly row for operational records.",
+      "html": "<table class=\"ds-table\"><tbody><tr><td><strong>PAR-001</strong></td><td>Résidence du Parc</td><td><span class=\"ds-table-state\">Actif</span></td></tr></tbody></table>",
+      "css": ".ds-table { width:100%; border-collapse:collapse; color:hsl(var(--foreground, 222.2 84% 4.9%)); font:400 14px/20px ui-sans-serif,system-ui,sans-serif; } .ds-table tr { border-bottom:1px solid hsl(var(--border, 214.3 31.8% 91.4%)); transition:background-color 150ms ease; } .ds-table tr:hover { background:hsl(var(--muted, 210 40% 96.1%) / .5); } .ds-table td { padding:16px; } .ds-table td:nth-child(2) { color:hsl(var(--muted-foreground, 215.4 16.3% 46.9%)); } .ds-table-state { display:inline-flex; padding:2px 10px; border:1px solid hsl(var(--success, 142 76% 36%) / .3); border-radius:9999px; background:hsl(var(--success, 142 76% 36%) / .15); color:hsl(var(--success, 142 76% 36%)); font-size:12px; font-weight:500; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le poste de contrôle immobilier",
+    "overview": "OneRent is a sober, precise, and professional operational interface. It behaves like a dependable control surface: information is organized for scanning, comparison, and repeated action, while consequential states remain explicit. The visual system stays quiet enough for dense property-management work without becoming technical or austere.\n\nThe design relies on a restrained light palette, a single blue accent, crisp borders, compact controls, and predictable page structure. It favors clarity over decoration and reassurance over spectacle. Dense business information is softened through consistent spacing, muted secondary text, rounded but restrained forms, and semantic status colors.",
+    "keyCharacteristics": [
+      "Operational, calm, and information-led.",
+      "White working surfaces framed by cool gray borders and navigation.",
+      "Trust blue reserved for primary actions, focus, selection, and signed or scheduled states.",
+      "Compact tables and forms balanced by clear grouping and generous section spacing.",
+      "Semantic success, warning, and destructive colors used consistently for business state."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Trust blue is the only general-purpose accent. Green, amber, and red communicate state or consequence rather than decoration.", "section": "colors" },
+      { "name": "The Operational Scale Rule", "body": "Type remains compact inside tools, cards, tables, and dialogs. Hero-scale typography does not belong in the authenticated application shell.", "section": "typography" },
+      { "name": "The Flat Workspace Rule", "body": "Borders establish the everyday information architecture. Elevation appears only when a surface physically overlays or temporarily commands the workspace.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do optimize every authenticated screen for scanning, comparison, and repeated action.",
+      "Do use trust blue for primary action and interactive emphasis, while preserving semantic colors for status.",
+      "Do prefer borders, spacing, and typography over decorative surfaces to organize information.",
+      "Do keep forms responsive, validation adjacent to the field, and consequential effects explicit.",
+      "Do preserve 40px default control height and visible keyboard focus across desktop, tablet, and mobile."
+    ],
+    "donts": [
+      "Don't make the application look like a marketing page with oversized headings, ornamental gradients, or promotional composition.",
+      "Don't push density until the interface feels technical or austere; secondary text, spacing, and clear grouping must keep it approachable.",
+      "Don't introduce new accent hues when an existing semantic or trust-blue role already expresses the meaning.",
+      "Don't nest decorative cards or use shadows as a substitute for information hierarchy.",
+      "Don't rely on color alone for status, validation, or selection; pair it with text, icons, borders, or labels."
+    ]
+  }
+}

@@ -1,97 +1,87 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PieChart, Building2, DoorOpen } from "lucide-react";
+import { PieChart, Building2, DoorOpen, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
+import { formatMoneyGroups, type MoneyGroup } from "@/lib/money";
+import { buildCostOverview } from "@/lib/costOverview";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
+import type { Property } from "@/types";
 
 export default function CostsAllocations() {
   const {
-    costEntries, costAllocationResults, costCategories, properties, units,
-    getPropertyById, getUnitById, getCostCategoryById,
+    costEntries, costAllocationResults, properties, units,
+    getPropertyById, getUnitById,
   } = useAppData();
   const { t } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
 
-  type PBKey = "property" | "totalCosts" | "totalTaxes" | "total";
+  type PBKey = "property";
   const { sort: pbSort, toggle: pbToggle } = useTableSort<PBKey>();
-  type UBKey = "unit" | "property" | "directCosts" | "allocatedCosts" | "ownerBorne" | "recoverable" | "total";
+  type UBKey = "unit" | "property";
   const { sort: ubSort, toggle: ubToggle } = useTableSort<UBKey>();
 
-  const activeEntries = costEntries.filter(e => e.status === "active");
+  const overview = useMemo(
+    () => buildCostOverview(costEntries, costAllocationResults, properties, units),
+    [costEntries, costAllocationResults, properties, units],
+  );
+  const propertyBreakdown = overview.properties;
+  const unitBurden = overview.units;
+  const display = (groups: MoneyGroup[], property?: Property) =>
+    formatMoneyGroups(groups, formatCurrency(0, property?.currencyCode, property?.locale));
 
-
-  // Property-level breakdown
-  const propertyBreakdown = useMemo(() => {
-    const map = new Map<string, { totalCosts: number; totalTaxes: number; ownerBorne: number; recoverable: number }>();
-    for (const e of activeEntries) {
-      const prev = map.get(e.propertyId) ?? { totalCosts: 0, totalTaxes: 0, ownerBorne: 0, recoverable: 0 };
-      if (e.isTax) prev.totalTaxes += e.amount; else prev.totalCosts += e.amount;
-      map.set(e.propertyId, prev);
-    }
-    return Array.from(map.entries()).map(([propertyId, data]) => ({ propertyId, ...data }));
-  }, [activeEntries]);
-
-  // Unit burden summary
-  const unitBurden = useMemo(() => {
-    const map = new Map<string, { directCosts: number; allocatedCosts: number; ownerBorne: number; recoverable: number; propertyId: string }>();
-    // Direct unit costs
-    for (const e of activeEntries) {
-      if (e.unitId) {
-        const prev = map.get(e.unitId) ?? { directCosts: 0, allocatedCosts: 0, ownerBorne: 0, recoverable: 0, propertyId: e.propertyId };
-        prev.directCosts += e.amount;
-        if (e.recoveryType === "owner-only") prev.ownerBorne += e.amount;
-        else if (e.recoveryType === "tenant-recoverable") prev.recoverable += e.amount;
-        else if (e.recoveryType === "partially-recoverable") { prev.ownerBorne += e.amount / 2; prev.recoverable += e.amount / 2; }
-        map.set(e.unitId, prev);
-      }
-    }
-    // Allocated costs
-    for (const r of costAllocationResults) {
-      const prev = map.get(r.unitId) ?? { directCosts: 0, allocatedCosts: 0, ownerBorne: 0, recoverable: 0, propertyId: r.propertyId };
-      prev.allocatedCosts += r.allocatedAmount;
-      prev.ownerBorne += r.ownerBurdenAmount;
-      prev.recoverable += r.recoverableAmount;
-      prev.propertyId = r.propertyId;
-      map.set(r.unitId, prev);
-    }
-    return Array.from(map.entries()).map(([unitId, data]) => ({ unitId, ...data }));
-  }, [activeEntries, costAllocationResults]);
-
-  const sortedPropertyBreakdown = sortRows(propertyBreakdown, pbSort, (pb, key) => {
-    switch (key) {
-      case "property": return getPropertyById(pb.propertyId)?.name ?? "";
-      case "totalCosts": return pb.totalCosts;
-      case "totalTaxes": return pb.totalTaxes;
-      case "total": return pb.totalCosts + pb.totalTaxes;
-    }
-  });
+  const sortedPropertyBreakdown = sortRows(propertyBreakdown, pbSort, pb => getPropertyById(pb.propertyId)?.name ?? "");
   const sortedUnitBurden = sortRows(unitBurden, ubSort, (ub, key) => {
     switch (key) {
       case "unit": return getUnitById(ub.unitId)?.unitLabel ?? "";
       case "property": return getPropertyById(ub.propertyId)?.name ?? "";
-      case "directCosts": return ub.directCosts;
-      case "allocatedCosts": return ub.allocatedCosts;
-      case "ownerBorne": return ub.ownerBorne;
-      case "recoverable": return ub.recoverable;
-      case "total": return ub.directCosts + ub.allocatedCosts;
     }
   });
   const pbPg = usePagination(sortedPropertyBreakdown);
   const ubPg = usePagination(sortedUnitBurden);
 
   return (
-    <div className="space-y-6">
+    <div className="page-shell">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("costs.allocations")}</h1>
-        <p className="text-sm text-muted-foreground">{t("costs.allocationsSubtitle")}</p>
+        <h1 className="page-title">{t("costs.allocations")}</h1>
+        <p className="page-description">{t("costs.allocationsSubtitle")}</p>
       </div>
+
+      {overview.allocationExcesses.length > 0 && (
+        <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <p>{t("costs.allocationExcessWarning")}</p>
+            <ul className="mt-2 space-y-1">
+              {overview.allocationExcesses.map(excess => {
+                const entry = costEntries.find(item => item.id === excess.costEntryId);
+                const property = getPropertyById(excess.propertyId);
+                return (
+                  <li key={excess.costEntryId} className="flex flex-wrap items-baseline gap-x-2">
+                    {canWrite ? (
+                      <Link className="font-medium underline underline-offset-2 hover:text-primary" to={`/costs/entries?edit=${encodeURIComponent(excess.costEntryId)}`}>
+                        {entry?.label || excess.costEntryId}
+                      </Link>
+                    ) : <span className="font-medium">{entry?.label || excess.costEntryId}</span>}
+                    <span>{property?.name ?? "—"}</span>
+                    <span>{t("costs.allocationExcessAmount")}: {formatCurrency(excess.excessAmount, excess.currencyCode, property?.locale)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
 
       {/* Property Allocation Table */}
@@ -110,9 +100,9 @@ export default function CostsAllocations() {
               <TableHeader>
                 <TableRow>
                   <SortableTableHead sortKey="property" sort={pbSort} onSort={pbToggle}>{t("table.property")}</SortableTableHead>
-                  <SortableTableHead sortKey="totalCosts" sort={pbSort} onSort={pbToggle} align="right">{t("costs.totalCharges")}</SortableTableHead>
-                  <SortableTableHead sortKey="totalTaxes" sort={pbSort} onSort={pbToggle} align="right">{t("costs.totalTaxes")}</SortableTableHead>
-                  <SortableTableHead sortKey="total" sort={pbSort} onSort={pbToggle} align="right">{t("common.total")}</SortableTableHead>
+                  <TableHead className="text-right">{t("costs.totalCharges")}</TableHead>
+                  <TableHead className="text-right">{t("costs.totalTaxes")}</TableHead>
+                  <TableHead className="text-right">{t("common.total")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -121,9 +111,9 @@ export default function CostsAllocations() {
                   return (
                     <TableRow key={pb.propertyId}>
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(pb.totalCosts)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(pb.totalTaxes)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(pb.totalCosts + pb.totalTaxes)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{display(pb.charges, prop)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{display(pb.taxes, prop)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{display(pb.total, prop)}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -153,27 +143,26 @@ export default function CostsAllocations() {
                 <TableRow>
                   <SortableTableHead sortKey="unit" sort={ubSort} onSort={ubToggle}>{t("table.unit")}</SortableTableHead>
                   <SortableTableHead sortKey="property" sort={ubSort} onSort={ubToggle}>{t("table.property")}</SortableTableHead>
-                  <SortableTableHead sortKey="directCosts" sort={ubSort} onSort={ubToggle} align="right">{t("costs.directCosts")}</SortableTableHead>
-                  <SortableTableHead sortKey="allocatedCosts" sort={ubSort} onSort={ubToggle} align="right">{t("costs.allocatedCosts")}</SortableTableHead>
-                  <SortableTableHead sortKey="ownerBorne" sort={ubSort} onSort={ubToggle} align="right">{t("costs.ownerBorne")}</SortableTableHead>
-                  <SortableTableHead sortKey="recoverable" sort={ubSort} onSort={ubToggle} align="right">{t("costs.recoverable")}</SortableTableHead>
-                  <SortableTableHead sortKey="total" sort={ubSort} onSort={ubToggle} align="right">{t("common.total")}</SortableTableHead>
+                  <TableHead className="text-right">{t("costs.directCosts")}</TableHead>
+                  <TableHead className="text-right">{t("costs.allocatedCosts")}</TableHead>
+                  <TableHead className="text-right">{t("costs.ownerBorne")}</TableHead>
+                  <TableHead className="text-right">{t("costs.recoverable")}</TableHead>
+                  <TableHead className="text-right">{t("common.total")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {ubPg.pageItems.map(ub => {
                   const unit = getUnitById(ub.unitId);
                   const prop = getPropertyById(ub.propertyId);
-                  const total = ub.directCosts + ub.allocatedCosts;
                   return (
                     <TableRow key={ub.unitId}>
                       <TableCell className="text-sm text-muted-foreground">{unit?.unitLabel ?? "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{prop?.name ?? "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(ub.directCosts)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(ub.allocatedCosts)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(ub.ownerBorne)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(ub.recoverable)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(total)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{display(ub.directCosts, prop)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{display(ub.allocatedCosts, prop)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{display(ub.ownerBorne, prop)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{display(ub.recoverable, prop)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{display(ub.total, prop)}</TableCell>
                     </TableRow>
                   );
                 })}

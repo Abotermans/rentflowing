@@ -1,16 +1,19 @@
-export function exportToCSV(filename: string, headers: string[], rows: string[][]) {
-  const escape = (val: string) => {
-    if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-      return `"${val.replace(/"/g, '""')}"`;
-    }
-    return val;
-  };
+export function escapeCSVCell(value: string): string {
+  // Spreadsheet applications can execute formulas even inside quoted CSV cells.
+  const safeValue = /^[\s\uFEFF\u200B]*[=+\-@]/u.test(value) ? `'${value}` : value;
+  if (/[",\r\n]/.test(safeValue)) return `"${safeValue.replace(/"/g, '""')}"`;
+  return safeValue;
+}
 
-  const csvContent = [
-    headers.map(escape).join(","),
-    ...rows.map(row => row.map(escape).join(",")),
+export function serializeCSV(headers: string[], rows: string[][]): string {
+  return [
+    headers.map(escapeCSVCell).join(","),
+    ...rows.map(row => row.map(escapeCSVCell).join(",")),
   ].join("\n");
+}
 
+export function exportToCSV(filename: string, headers: string[], rows: string[][]) {
+  const csvContent = serializeCSV(headers, rows);
   const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

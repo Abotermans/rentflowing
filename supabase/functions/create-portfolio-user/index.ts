@@ -16,10 +16,15 @@ function json(status: number, body: unknown) {
   });
 }
 
-function errMsg(e: any, fallback = "Unknown error"): string {
+function errMsg(e: unknown, fallback = "Unknown error"): string {
   if (!e) return fallback;
   if (typeof e === "string") return e;
-  return e.message || e.error_description || e.msg || e.details || e.hint || e.code || fallback;
+  if (typeof e !== "object") return fallback;
+  const error = e as Record<string, unknown>;
+  for (const key of ["message", "error_description", "msg", "details", "hint", "code"]) {
+    if (typeof error[key] === "string" && error[key]) return error[key];
+  }
+  return fallback;
 }
 
 Deno.serve(async (req) => {
@@ -45,21 +50,20 @@ Deno.serve(async (req) => {
   if (claimsErr || !claims?.claims?.sub) return json(401, { error: "Unauthorized" });
   const callerId = claims.claims.sub as string;
 
-  let body: any;
-  try { body = await req.json(); } catch { return json(400, { error: "Invalid JSON" }); }
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return json(400, { error: "Invalid JSON" });
+    body = parsed as Record<string, unknown>;
+  } catch { return json(400, { error: "Invalid JSON" }); }
 
   const portfolio_id = String(body.portfolio_id ?? "").trim();
   const email = String(body.email ?? "").trim().toLowerCase();
-  const password = String(body.password ?? "");
   const role = String(body.role ?? "") as Role;
-  const first_name = body.first_name ? String(body.first_name).trim().slice(0, 100) : null;
-  const last_name = body.last_name ? String(body.last_name).trim().slice(0, 100) : null;
 
   if (!portfolio_id) return json(400, { error: "portfolio_id required" });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
     return json(400, { error: "Invalid email" });
-  if (password.length < 8 || password.length > 128)
-    return json(400, { error: "Password must be 8-128 characters" });
   if (!ROLES.includes(role)) return json(400, { error: "Invalid role" });
 
   const { data: callerMember, error: cmErr } = await admin
@@ -77,7 +81,7 @@ Deno.serve(async (req) => {
     return json(403, { error: "Only owners can add another owner" });
 
   let userId: string | null = null;
-  let created = false;
+  let emailConfirmed = false;
 
   // Find existing auth user by email (paginate)
   let page = 1;
@@ -85,39 +89,34 @@ Deno.serve(async (req) => {
     const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page, perPage: 200 });
     if (listErr) return json(500, { error: errMsg(listErr, "User lookup failed") });
     const hit = list.users.find((u) => (u.email ?? "").toLowerCase() === email);
-    if (hit) { userId = hit.id; break; }
+    if (hit) { userId = hit.id; emailConfirmed = !!hit.email_confirmed_at; break; }
     if (list.users.length < 200) break;
     page++;
     if (page > 25) break; // safety
   }
 
-  if (!userId) {
-    const { data: createdUser, error: createErr } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { first_name: first_name ?? "", last_name: last_name ?? "" },
+  if (!userId) return json(404, { error: "No existing account found. Send a portfolio invitation instead." });
+  if (!emailConfirmed) return json(403, { error: "This account has not confirmed its email. Send an invitation instead." });
+
+  // Insertion cannot change an existing member's role; that has a separate UI.
+  const { data: membership, error: memErr } = await userClient
+    .from("portfolio_members")
+    .insert({ portfolio_id, user_id: userId, role })
+    .select("user_id");
+  if (memErr?.code === "23505") {
+    return json(409, { error: "This account is already a member. Change its role in the member list." });
+  }
+  if (memErr?.code === "42501") {
+    return json(403, { error: "You do not have permission to add this member with the selected role." });
+  }
+  if (memErr || membership?.length !== 1) {
+    console.error("create-portfolio-user membership failed", memErr);
+    return json(500, {
+      error: "Portfolio access could not be saved. Check role permissions and try again.",
     });
-    if (createErr || !createdUser.user)
-      return json(400, { error: errMsg(createErr, "Failed to create user") });
-    userId = createdUser.user.id;
-    created = true;
   }
 
-  await admin.from("profiles").upsert(
-    { id: userId, first_name, last_name },
-    { onConflict: "id" },
-  );
-
-  const { error: memErr } = await admin
-    .from("portfolio_members")
-    .upsert(
-      { portfolio_id, user_id: userId, role },
-      { onConflict: "portfolio_id,user_id" },
-    );
-  if (memErr) return json(400, { error: errMsg(memErr, "Failed to add member") });
-
-  return json(200, { user_id: userId, created, email });
+  return json(200, { user_id: userId, email });
   } catch (e) {
     console.error("create-portfolio-user fatal", e);
     return json(500, { error: errMsg(e, "Internal error") });

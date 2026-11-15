@@ -1,5 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { useBusinessNow } from "@/hooks/use-business-now";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +15,8 @@ import { ArrowLeft, Mail, Phone, Calendar, CreditCard, MapPin, Clock, MoreVertic
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { getTenantFullName, getLeaseStatus } from "@/types";
-import { getItemTypeLabel, getSourceTypeLabel } from "@/types/receivables";
+import { getTenantFullName, getLeaseStatus, type Tenant } from "@/types";
+import { getItemTypeLabel, getSourceTypeLabel, isReceivableOutstanding, isReceiptAllocatable, type ReceivableItem } from "@/types/receivables";
 import { formatDate, formatCurrency, formatPeriodMonth } from "@/lib/formatters";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { useTableSort, useSortedRows } from "@/hooks/use-table-sort";
@@ -25,11 +27,29 @@ import { CashReceiptDialog } from "@/components/payments/CashReceiptDialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoneyGroups, sumMoneyByCurrency } from "@/lib/money";
 import { detailLinkClass } from "@/lib/detailLinks";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>();
-  const { tenants, leases, units, properties, deleteTenant, updateTenant, getTenantUnappliedCredit, getCashReceiptsByTenant, getReceivableItemsByTenant } = useAppData();
+  const { tenants } = useAppData();
   const { t } = useSettings();
+  const tenant = tenants.find(tn => tn.id === id);
+  if (!tenant) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">{t("detail.tenantNotFound")}</p>
+        <Button variant="link" asChild className="mt-2"><Link to="/tenants">← {t("nav.tenants")}</Link></Button>
+      </div>
+    );
+  }
+  return <TenantDetailContent tenant={tenant} />;
+}
+
+function TenantDetailContent({ tenant }: { tenant: Tenant }) {
+  const { leases, units, properties, deleteTenantPersisted, updateTenantPersisted, getCashReceiptsByTenant, getReceivableItemsByTenant } = useAppData();
+  const { t } = useSettings();
+  const businessNow = useBusinessNow();
+  const canWrite = usePortfolioWriteAccess();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [contactOpen, setContactOpen] = useState(true);
@@ -42,29 +62,25 @@ export default function TenantDetail() {
   const [editNotesOpen, setEditNotesOpen] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
 
-  const tenant = tenants.find(tn => tn.id === id);
-  if (!tenant) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">{t("detail.tenantNotFound")}</p>
-        <Button variant="link" asChild className="mt-2"><Link to="/tenants">← {t("nav.tenants")}</Link></Button>
-      </div>
-    );
-  }
-
   const tenantLeases = leases.filter(l => l.primaryTenantId === tenant.id || l.coTenantIds.includes(tenant.id));
   const activeLease = tenantLeases.find(l => l.lifecycleStage === "active");
   const activeProperty = activeLease ? properties.find(p => p.id === activeLease.propertyId) : null;
-  const unappliedCredit = getTenantUnappliedCredit(tenant.id);
-  const recentReceipts = getCashReceiptsByTenant(tenant.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
+  const tenantReceipts = getCashReceiptsByTenant(tenant.id);
+  const unappliedCreditGroups = sumMoneyByCurrency(tenantReceipts
+    .filter(isReceiptAllocatable)
+    .map(receipt => ({ amount: receipt.unmatchedAmount, currencyCode: receipt.currencyCode, locale: activeProperty?.locale })));
+  const recentReceipts = [...tenantReceipts].sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 10);
   const tenantReceivables = getReceivableItemsByTenant(tenant.id);
-  const today = new Date().toISOString().split("T")[0];
+  const dateForReceivable = (item: ReceivableItem) => propertyBusinessDateISO(
+    properties.find(property => property.id === item.propertyId),
+    businessNow,
+  );
 
   const recvLocale = activeProperty?.locale;
 
   const enrichedReceivables = tenantReceivables.map(ri => {
     let effectiveStatus = ri.status;
-    if (ri.outstandingAmount > 0 && ri.dueDate < today && (ri.status === "open" || ri.status === "partially-paid")) effectiveStatus = "overdue";
+    if (ri.outstandingAmount > 0 && ri.dueDate < dateForReceivable(ri) && (ri.status === "open" || ri.status === "partially-paid")) effectiveStatus = "overdue";
     const lease = ri.leaseId ? leases.find(l => l.id === ri.leaseId) : undefined;
     const unit = ri.unitId ? units.find(u => u.id === ri.unitId) : undefined;
     return { ...ri, effectiveStatus, leaseRef: lease?.leaseReference ?? "", unitCode: unit?.unitCode ?? "", lease, unit };
@@ -77,10 +93,10 @@ export default function TenantDetail() {
     .filter(ri => ri.itemType === "charges" || ri.itemType === "charges-adjustment")
     .map(ri => ({ amount: ri.allocatedAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
   const outstandingGroups = sumMoneyByCurrency(tenantReceivables
-    .filter(ri => ri.outstandingAmount > 0)
+    .filter(isReceivableOutstanding)
     .map(ri => ({ amount: ri.outstandingAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
   const overdueGroups = sumMoneyByCurrency(tenantReceivables
-    .filter(ri => ri.outstandingAmount > 0 && ri.dueDate < today)
+    .filter(ri => isReceivableOutstanding(ri) && ri.dueDate < dateForReceivable(ri))
     .map(ri => ({ amount: ri.outstandingAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
   const totalExpectedGroups = sumMoneyByCurrency(tenantReceivables.map(ri => ({ amount: ri.expectedAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
   const totalAllocatedGroups = sumMoneyByCurrency(tenantReceivables.map(ri => ({ amount: ri.allocatedAmount, currencyCode: ri.currencyCode, locale: recvLocale })));
@@ -103,10 +119,26 @@ export default function TenantDetail() {
     }
   });
 
-  const handleDeleteTenant = (tid: string) => {
-    deleteTenant(tid);
-    toast({ title: t("tenantDetail.toastDeleted") });
-    navigate("/tenants");
+  const handleDeleteTenant = async (tid: string) => {
+    if (!canWrite) return;
+    try {
+      await deleteTenantPersisted(tid);
+      toast({ title: t("tenantDetail.toastDeleted") });
+      navigate("/tenants");
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Tenant could not be deleted.", variant: "destructive" });
+      throw err;
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!canWrite) return;
+    try {
+      await updateTenantPersisted({ ...tenant, notes: notesDraft, updatedAt: new Date().toISOString() });
+      setEditNotesOpen(false);
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Notes could not be saved.", variant: "destructive" });
+    }
   };
 
   return (
@@ -125,7 +157,7 @@ export default function TenantDetail() {
             </Badge>
             <StatusBadge status={tenant.status} />
           </div>
-          <DropdownMenu>
+          {canWrite && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("tenantDetail.moreActions")}>
                 <MoreVertical className="h-4 w-4" />
@@ -144,7 +176,7 @@ export default function TenantDetail() {
                 }
               />
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu>}
         </div>
       </div>
 
@@ -155,9 +187,9 @@ export default function TenantDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.contactInfo")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setEditTenantOpen(true); }}>
+              {canWrite && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setEditTenantOpen(true); }}>
                 <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
-              </Button>
+              </Button>}
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", contactOpen && "rotate-180")} />
               </span>
@@ -237,7 +269,9 @@ export default function TenantDetail() {
                       <TableCell className="text-muted-foreground text-sm">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{unit?.unitCode ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{formatDate(l.startDate, prop?.locale)} — {formatDate(l.endDate, prop?.locale)}</TableCell>
-                      <TableCell><StatusBadge status={getLeaseStatus(l)} /></TableCell>
+                      <TableCell><StatusBadge status={getLeaseStatus(l, propertyBusinessDateISO(
+                        properties.find(property => property.id === l.propertyId), businessNow,
+                      ))} /></TableCell>
                     </TableRow>
                   );
                 })}
@@ -282,10 +316,10 @@ export default function TenantDetail() {
                     {formatMoneyGroups(overdueGroups)}
                   </p>
                 </div>
-                {unappliedCredit > 0 && (
+                {unappliedCreditGroups.length > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground">{t("leaseDetail.unappliedCredit")}</p>
-                    <p className="text-lg font-bold text-primary">{formatCurrency(unappliedCredit, activeProperty?.currencyCode, recvLocale)}</p>
+                    <p className="min-w-0 break-words text-lg font-bold text-primary">{formatMoneyGroups(unappliedCreditGroups)}</p>
                   </div>
                 )}
               </div>
@@ -311,7 +345,7 @@ export default function TenantDetail() {
                       {sortedReceivables.map(ri => (
                         <TableRow key={ri.id}>
                           <TableCell className="text-xs text-muted-foreground">
-                            {ri.cycleEndDate && (ri.itemType === "rent" || ri.itemType === "charges") && ri.periodMonth
+                            {ri.cycleEndDate && (ri.itemType === "rent" || ri.itemType === "charges") && ri.periodMonth && ri.cycleEndDate.slice(0, 7) !== ri.periodMonth
                               ? `${formatPeriodMonth(ri.periodMonth)} → ${formatPeriodMonth(ri.cycleEndDate.slice(0, 7))}`
                               : formatPeriodMonth(ri.periodMonth)}
                           </TableCell>
@@ -350,9 +384,9 @@ export default function TenantDetail() {
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 justify-start">{t("tenantDetail.recentCashReceipts")}</CardTitle>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setRecordReceiptOpen(true); }}>
+                {canWrite && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setRecordReceiptOpen(true); }}>
                   <Plus className="h-4 w-4" />{t("payments.recordCashReceipt")}
-                </Button>
+                </Button>}
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", receiptsOpen && "rotate-180")} />
                 </span>
@@ -407,9 +441,9 @@ export default function TenantDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("common.notes")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setNotesDraft(tenant.notes ?? ""); setEditNotesOpen(true); }}>
+              {canWrite && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); setNotesDraft(tenant.notes ?? ""); setEditNotesOpen(true); }}>
                 <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
-              </Button>
+              </Button>}
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
               </span>
@@ -426,16 +460,16 @@ export default function TenantDetail() {
       </Card>
       </Collapsible>
 
-      <TenantDialog open={editTenantOpen} onOpenChange={setEditTenantOpen} editingTenant={tenant} />
+      <TenantDialog open={canWrite && editTenantOpen} onOpenChange={setEditTenantOpen} editingTenant={tenant} />
       <CashReceiptDialog
-        open={recordReceiptOpen}
+        open={canWrite && recordReceiptOpen}
         onOpenChange={setRecordReceiptOpen}
         prefillTenantId={tenant.id}
         prefillLeaseId={activeLease?.id}
         lockTenant
       />
 
-      <Dialog open={editNotesOpen} onOpenChange={setEditNotesOpen}>
+      <Dialog open={canWrite && editNotesOpen} onOpenChange={setEditNotesOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("common.notes")}</DialogTitle>
@@ -446,7 +480,7 @@ export default function TenantDetail() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditNotesOpen(false)}>{t("action.cancel")}</Button>
-            <Button onClick={() => { updateTenant({ ...tenant, notes: notesDraft, updatedAt: new Date().toISOString() }); setEditNotesOpen(false); }}>{t("action.save")}</Button>
+            <Button onClick={saveNotes}>{t("action.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

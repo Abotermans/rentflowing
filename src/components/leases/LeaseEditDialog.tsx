@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
 import { useAppData } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,47 +10,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+  Dialog, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Lease, LifecycleStage, RentFormula, getTenantFullName, isAncillaryUnitType } from "@/types";
+import { Lease, RentFormula, getTenantFullName, isAncillaryUnitType } from "@/types";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
-import { canChangeLeaseStatus } from "@/lib/integrity/leaseIntegrity";
 import { validateLeaseUnits, type DraftAssignment } from "@/lib/integrity/leaseUnitAssignmentIntegrity";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert";
-import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
-import { useOverrideHistory } from "@/context/OverrideContext";
-import { logLeaseStatusChange } from "@/hooks/useLeaseStatusHistory";
-import type { ValidationResult } from "@/lib/integrity/types";
+import { DateInput } from "@/components/shared/DateInput";
+import { Switch } from "@/components/ui/switch";
 import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
 import { formatCurrency as fmtCurrency, getCurrencySymbol } from "@/lib/formatters";
 import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
 import { validateDateOrder } from "@/lib/dateValidation";
 
 type LeaseFormData = Omit<Lease, "id" | "createdAt" | "updatedAt">;
-
-const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "pending-signature", label: "Pending Signature" },
-  { value: "signed", label: "Signed" },
-  { value: "active", label: "Active" },
-  { value: "ended", label: "Ended" },
-  { value: "terminated", label: "Terminated" },
-];
-
-const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
-  draft: ["draft", "pending-signature"],
-  "pending-signature": ["pending-signature", "draft", "signed"],
-  signed: ["signed", "active", "terminated"],
-  active: ["active", "ended", "terminated"],
-  ended: ["ended", "terminated"],
-  terminated: ["terminated"],
-};
 
 type UnitRow = {
   unitId: string;
@@ -70,30 +49,27 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
   const {
     units, properties, tenants,
     getLeaseAssignments,
-    updateLease, setLeaseUnits,
+    updateLeaseWithAssignmentsPersisted,
   } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
-  const { addOverride } = useOverrideHistory();
-  const isMainRow = (row: Pick<UnitRow, "unitId">) => {
+  const isMainRow = useCallback((row: Pick<UnitRow, "unitId">) => {
     const unit = units.find(u => u.id === row.unitId);
     return !!unit && !isAncillaryUnitType(unit.unitType);
-  };
-
+  }, [units]);
   const [form, setForm] = useState<LeaseFormData>(() => {
     const { id, createdAt, updatedAt, ...rest } = lease;
     return rest;
   });
   const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
-  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
-  const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       const { id, createdAt, updatedAt, ...rest } = lease;
       setForm(rest);
-      const today = new Date().toISOString().slice(0, 10);
+      const today = propertyBusinessDateISO(properties.find(property => property.id === lease.propertyId));
       const all = getLeaseAssignments(lease.id)
         .filter(a => !a.endDate || a.endDate >= today)
         .sort((a, b) => Number(isMainRow(b)) - Number(isMainRow(a)));
@@ -117,7 +93,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       }
       setUnitRows(rows);
     }
-  }, [open, lease.id, getLeaseAssignments, units]);
+  }, [open, lease, properties, getLeaseAssignments, isMainRow]);
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
   const selectedProperty = useMemo(
@@ -177,19 +153,9 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       { monthlyRent: totalRent, monthlyCharges: totalCharges },
       integrityState,
     ).blockers
-      .filter(b => b.code === "LUA_UNIT_OVERLAP")
+      .filter(b => b.code === "LUA_UNIT_OVERLAP" || b.code === "LUA_BILLING_WINDOW_MISMATCH")
       .map(b => b.message);
   }, [lease.id, form.propertyId, unitRows, totalRent, totalCharges, integrityState]);
-
-  const availableStatuses = useMemo(() => {
-    const allowed = ALLOWED_TRANSITIONS[lease.lifecycleStage] || [lease.lifecycleStage];
-    return LEASE_STAGES.filter(s => allowed.includes(s.value));
-  }, [lease.lifecycleStage]);
-
-  const statusValidation = useMemo(() => {
-    if (form.lifecycleStage === lease.lifecycleStage) return null;
-    return canChangeLeaseStatus(lease.id, form.lifecycleStage, integrityState);
-  }, [form.lifecycleStage, lease.id, lease.lifecycleStage, integrityState]);
 
   const addUnitRow = () => {
     setUnitRows(prev => {
@@ -228,17 +194,10 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
     }));
   };
 
-  const executeLeaseSave = () => {
-    const persistAssignments = (leaseId: string) => {
-      const draft = unitRows.map(r => ({
-        unitId: r.unitId,
-        rentShare: r.rentShare,
-        chargesShare: form.pricingMode === "all-inclusive" ? 0 : r.chargesShare,
-        startDate: r.startDate,
-        endDate: r.endDate,
-      }));
-      setLeaseUnits(leaseId, form.propertyId, draft);
-    };
+  const executeLeaseSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
     const primaryRow = unitRows.find(isMainRow);
     const computedTotalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
     const computedTotalCharges = unitRows.reduce((s, r) => s + (r.chargesShare ?? 0), 0);
@@ -264,24 +223,28 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
           ? (form.chargesBillingMode ?? "provision-reconciled")
           : "flat-rate",
     };
-    updateLease({ ...lease, ...formToPersist });
-    persistAssignments(lease.id);
-    const property = properties.find(p => p.id === formToPersist.propertyId);
-    if (formToPersist.lifecycleStage !== lease.lifecycleStage) {
-      void logLeaseStatusChange({
-        leaseId: lease.id,
-        portfolioId: property?.portfolioId ?? "",
-        fromStage: lease.lifecycleStage,
-        toStage: formToPersist.lifecycleStage,
-        reason: "edited",
-      });
-    }
+    await updateLeaseWithAssignmentsPersisted({ ...lease, ...formToPersist }, unitRows.map(row => ({
+      unitId: row.unitId,
+      rentShare: row.rentShare,
+      chargesShare: form.pricingMode === "all-inclusive" ? 0 : row.chargesShare,
+      startDate: row.startDate,
+      endDate: row.endDate,
+    })));
     toast({ title: "Lease updated" });
     onOpenChange(false);
     onSaved?.();
+    } catch (error) {
+      toast({ title: t("settings.saveFailed"), description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = () => {
+    if (form.lifecycleStage !== lease.lifecycleStage) {
+      toast({ title: t("common.validationError"), description: "Change lease status using the dedicated action on the lease page.", variant: "destructive" });
+      return;
+    }
     const primaryRow = unitRows.find(isMainRow);
     if (unitRows.length === 0 || !primaryRow || !primaryRow.unitId) {
       toast({ title: "Validation Error", description: "Add at least one residential or main commercial unit.", variant: "destructive" });
@@ -336,21 +299,6 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
       toast({ title: "Validation Error", description: t("leases.dueDayRequired"), variant: "destructive" });
       return;
     }
-    if (form.lifecycleStage !== lease.lifecycleStage) {
-      const validation = canChangeLeaseStatus(lease.id, form.lifecycleStage, integrityState);
-      if (!validation.allowed) {
-        if (validation.overrideAllowed) {
-          setPendingOverrideValidation(validation);
-          setOverrideDialogOpen(true);
-          return;
-        }
-        toast({ title: "Status change blocked", description: validation.blockers.map(b => b.message).join(". "), variant: "destructive" });
-        return;
-      }
-      if (validation.warnings.length > 0) {
-        toast({ title: "Lease saved with warnings", description: validation.warnings.map(w => w.message).join(". ") });
-      }
-    }
     const draft: DraftAssignment[] = unitRows.map(r => ({
       unitId: r.unitId,
       startDate: r.startDate,
@@ -380,26 +328,13 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
         description: unitsValidation.warnings.map(w => w.message).join(". "),
       });
     }
-    executeLeaseSave();
-  };
-
-  const handleOverrideConfirm = (reason: string) => {
-    if (!pendingOverrideValidation) return;
-    addOverride({
-      entityType: "lease",
-      entityId: lease.id,
-      action: `status_change:${form.lifecycleStage}`,
-      blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
-      reason,
-    });
-    executeLeaseSave();
-    setPendingOverrideValidation(null);
+    void executeLeaseSave();
   };
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[1080px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <DialogContent size="wide">
           <DialogHeader>
             <DialogTitle>{t("leases.edit")}</DialogTitle>
           </DialogHeader>
@@ -417,10 +352,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                 <Label>{t("leases.property")} *</Label>
                 <Select
                   value={form.propertyId}
-                  onValueChange={v => {
-                    setForm(f => ({ ...f, propertyId: v, unitId: "" }));
-                    setUnitRows([]);
-                  }}
+                  disabled
                 >
                   <SelectTrigger><SelectValue placeholder={t("leases.selectProperty")} /></SelectTrigger>
                   <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
@@ -479,20 +411,18 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                             </Select>
                           </TableCell>
                           <TableCell className="py-1.5">
-                            <Input
-                              type="date"
+                            <DateInput
                               value={row.startDate}
                               max={row.endDate ?? undefined}
-                              onChange={ev => updateUnitRow(idx, { startDate: ev.target.value })}
+                              onChange={value => updateUnitRow(idx, { startDate: value })}
                               className="h-8 w-[140px]"
                             />
                           </TableCell>
                           <TableCell className="py-1.5">
-                            <Input
-                              type="date"
+                            <DateInput
                               value={row.endDate ?? ""}
                               min={row.startDate || undefined}
-                              onChange={ev => updateUnitRow(idx, { endDate: ev.target.value || null })}
+                              onChange={value => updateUnitRow(idx, { endDate: value || null })}
                               className="h-8 w-[140px]"
                             />
                           </TableCell>
@@ -550,7 +480,7 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                   <div className="flex items-start gap-2 text-xs text-destructive">
                     <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     <div>
-                      <p className="font-medium">Date conflict</p>
+                      <p className="font-medium">Unit dates and pricing</p>
                       <ul className="mt-1 list-disc space-y-0.5 pl-4">
                         {unitDateConflictMessages.map(message => (
                           <li key={message}>{message}</li>
@@ -696,19 +626,12 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                 })()}
               </div>
               <div>
-                <Label>{t("leases.status")} *</Label>
-                <Select
-                  value={form.lifecycleStage}
-                  onValueChange={v => setForm(f => ({ ...f, lifecycleStage: v as LifecycleStage }))}
-                >
-                  <SelectTrigger><StatusBadge status={form.lifecycleStage} /></SelectTrigger>
-                  <SelectContent>{availableStatuses.map(s => <SelectItem key={s.value} value={s.value} textValue={s.label}><StatusBadge status={s.value} /></SelectItem>)}</SelectContent>
-                </Select>
-                <StatusTransitionAlert validation={statusValidation} />
+                <Label>{t("leases.status")}</Label>
+                <div className="flex h-10 items-center"><StatusBadge status={lease.lifecycleStage} /></div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t("leases.signedDate")}</Label><Input type="date" value={form.signedDate ?? ""} onChange={e => setForm(f => ({ ...f, signedDate: e.target.value || null }))} /></div>
+              <div><Label>{t("leases.signedDate")}</Label><DateInput value={form.signedDate ?? ""} onChange={value => setForm(f => ({ ...f, signedDate: value || null }))} /></div>
             </div>
             <div>
               <Label>{t("leases.dueDay")} *</Label>
@@ -794,24 +717,68 @@ export function LeaseEditDialog({ lease, open, onOpenChange, onSaved }: LeaseEdi
                 <p className="text-xs text-warning mt-1">{t("leases.allInclusive.chargesForced")}</p>
               )}
             </div>
+            <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Label className="text-sm font-medium">{t("leaseDetail.rentIndexation")}</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("leaseIndexation.leaseHelp")}</p>
+                </div>
+                <Switch
+                  checked={!!form.indexationEnabled}
+                  onCheckedChange={checked => setForm(f => ({
+                    ...f,
+                    indexationEnabled: checked,
+                    indexationFrequency: "yearly",
+                    indexationBaseDate: checked ? (f.indexationBaseDate || f.startDate || null) : f.indexationBaseDate,
+                  }))}
+                />
+              </div>
+              {form.indexationEnabled && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div>
+                    <Label>{t("leaseIndexation.baseDate")}</Label>
+                    <DateInput value={form.indexationBaseDate ?? ""} onChange={value => setForm(f => ({ ...f, indexationBaseDate: value || null }))} />
+                  </div>
+                  <div>
+                    <Label>{t("leaseIndexation.baseIndex")}</Label>
+                    <Input type="number" min={0} step="0.0001" value={form.indexationBaseIndex ?? ""} onChange={e => setForm(f => ({ ...f, indexationBaseIndex: e.target.value ? Number(e.target.value) : null }))} />
+                  </div>
+                  <div>
+                    <Label>{t("leaseIndexation.currentIndex")}</Label>
+                    <Input type="number" min={0} step="0.0001" value={form.indexationCurrentIndex ?? ""} onChange={e => setForm(f => ({ ...f, indexationCurrentIndex: e.target.value ? Number(e.target.value) : null }))} />
+                  </div>
+                  <div>
+                    <Label>{t("leaseIndexation.cap")}</Label>
+                    <Input type="number" min={0} step="0.01" value={form.indexationCapPercent ?? ""} onChange={e => setForm(f => ({ ...f, indexationCapPercent: e.target.value ? Number(e.target.value) : null }))} />
+                  </div>
+                  <div>
+                    <Label>{t("leaseIndexation.rounding")}</Label>
+                    <Select value={form.indexationRoundingMode ?? "nearest-cent"} onValueChange={value => setForm(f => ({ ...f, indexationRoundingMode: value as Lease["indexationRoundingMode"] }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nearest-cent">{t("leaseIndexation.nearestCent")}</SelectItem>
+                        <SelectItem value="nearest-euro">{t("leaseIndexation.nearestEuro")}</SelectItem>
+                        <SelectItem value="none">{t("leaseIndexation.noMonthlyRounding")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="md:col-span-3">
+                    <Label>{t("leaseIndexation.regulatoryNotes")}</Label>
+                    <Textarea value={form.indexationNotes ?? ""} onChange={e => setForm(f => ({ ...f, indexationNotes: e.target.value }))} rows={2} />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
-          <DialogFooter className="mt-6">
+          <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
-            <Button onClick={handleSave}>{t("action.save")}</Button>
+            <Button onClick={handleSave} disabled={saving}>{t("action.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {pendingOverrideValidation && (
-        <OverrideConfirmDialog
-          open={overrideDialogOpen}
-          onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) setPendingOverrideValidation(null); }}
-          validation={pendingOverrideValidation}
-          actionLabel="Override and Save"
-          onOverride={handleOverrideConfirm}
-        />
-      )}
     </>
   );
 }

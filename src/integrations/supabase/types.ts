@@ -83,6 +83,7 @@ export type Database = {
           include_unavailable_units: boolean
           legacy_id: string | null
           method: string
+          millieme_allocation_mode: string
           name: string
           notes: string
           portfolio_id: string
@@ -97,6 +98,7 @@ export type Database = {
           include_unavailable_units?: boolean
           legacy_id?: string | null
           method?: string
+          millieme_allocation_mode?: string
           name?: string
           notes?: string
           portfolio_id: string
@@ -111,6 +113,7 @@ export type Database = {
           include_unavailable_units?: boolean
           legacy_id?: string | null
           method?: string
+          millieme_allocation_mode?: string
           name?: string
           notes?: string
           portfolio_id?: string
@@ -406,6 +409,20 @@ export type Database = {
             referencedRelation: "units"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cost_results_entry_property_fk"
+            columns: ["cost_entry_id", "property_id"]
+            isOneToOne: false
+            referencedRelation: "cost_entries"
+            referencedColumns: ["id", "property_id"]
+          },
+          {
+            foreignKeyName: "cost_results_unit_property_fk"
+            columns: ["unit_id", "property_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id", "property_id"]
+          },
         ]
       }
       cost_categories: {
@@ -419,6 +436,7 @@ export type Database = {
           name: string
           nature: string
           portfolio_id: string
+          recognition_mode_default: string
           recovery_type_default: string
           scope: string
           updated_at: string
@@ -433,6 +451,7 @@ export type Database = {
           name?: string
           nature?: string
           portfolio_id: string
+          recognition_mode_default?: string
           recovery_type_default?: string
           scope?: string
           updated_at?: string
@@ -447,6 +466,7 @@ export type Database = {
           name?: string
           nature?: string
           portfolio_id?: string
+          recognition_mode_default?: string
           recovery_type_default?: string
           scope?: string
           updated_at?: string
@@ -464,6 +484,8 @@ export type Database = {
       cost_entries: {
         Row: {
           allocation_rule_id: string | null
+          amortization_end_date: string | null
+          amortization_start_date: string | null
           amount: number
           category_id: string
           created_at: string
@@ -479,6 +501,8 @@ export type Database = {
           notes: string
           portfolio_id: string
           property_id: string
+          recognition_mode: string
+          recoverable_percentage: number | null
           recovery_type: string
           start_date: string
           status: string
@@ -488,6 +512,8 @@ export type Database = {
         }
         Insert: {
           allocation_rule_id?: string | null
+          amortization_end_date?: string | null
+          amortization_start_date?: string | null
           amount?: number
           category_id: string
           created_at?: string
@@ -503,6 +529,8 @@ export type Database = {
           notes?: string
           portfolio_id: string
           property_id: string
+          recognition_mode?: string
+          recoverable_percentage?: number | null
           recovery_type?: string
           start_date: string
           status?: string
@@ -512,6 +540,8 @@ export type Database = {
         }
         Update: {
           allocation_rule_id?: string | null
+          amortization_end_date?: string | null
+          amortization_start_date?: string | null
           amount?: number
           category_id?: string
           created_at?: string
@@ -527,6 +557,8 @@ export type Database = {
           notes?: string
           portfolio_id?: string
           property_id?: string
+          recognition_mode?: string
+          recoverable_percentage?: number | null
           recovery_type?: string
           start_date?: string
           status?: string
@@ -564,11 +596,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cost_entries_rule_property_fk"
+            columns: ["allocation_rule_id", "property_id"]
+            isOneToOne: false
+            referencedRelation: "allocation_rules"
+            referencedColumns: ["id", "property_id"]
+          },
+          {
             foreignKeyName: "cost_entries_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cost_entries_unit_property_fk"
+            columns: ["unit_id", "property_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id", "property_id"]
           },
         ]
       }
@@ -768,17 +814,88 @@ export type Database = {
           },
         ]
       }
+      lease_document_file_deletions: {
+        Row: {
+          attempts: number
+          created_at: string
+          document_id: string
+          id: string
+          last_error: string | null
+          lease_id: string
+          portfolio_id: string
+          storage_path: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          document_id: string
+          id?: string
+          last_error?: string | null
+          lease_id: string
+          portfolio_id: string
+          storage_path: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          document_id?: string
+          id?: string
+          last_error?: string | null
+          lease_id?: string
+          portfolio_id?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
+      lease_document_types: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          portfolio_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          portfolio_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          portfolio_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lease_document_types_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lease_documents: {
         Row: {
           created_at: string
           document_date: string
+          document_type: string
           id: string
           lease_id: string
           mime_type: string | null
           notes: string | null
           original_filename: string
           portfolio_id: string
+          signed_date: string | null
           size_bytes: number | null
+          status: string | null
           storage_path: string
           title: string
           updated_at: string
@@ -787,13 +904,16 @@ export type Database = {
         Insert: {
           created_at?: string
           document_date: string
+          document_type?: string
           id?: string
           lease_id: string
           mime_type?: string | null
           notes?: string | null
           original_filename: string
           portfolio_id: string
+          signed_date?: string | null
           size_bytes?: number | null
+          status?: string | null
           storage_path: string
           title: string
           updated_at?: string
@@ -802,13 +922,16 @@ export type Database = {
         Update: {
           created_at?: string
           document_date?: string
+          document_type?: string
           id?: string
           lease_id?: string
           mime_type?: string | null
           notes?: string | null
           original_filename?: string
           portfolio_id?: string
+          signed_date?: string | null
           size_bytes?: number | null
+          status?: string | null
           storage_path?: string
           title?: string
           updated_at?: string
@@ -966,11 +1089,19 @@ export type Database = {
           created_at: string
           deposit_or_guarantee_amount: number | null
           due_day_of_month: number
-          end_date: string
+          end_date: string | null
           end_reason: string | null
           fixed_monthly_reduction_amount: number | null
           has_advance_payment: boolean
           id: string
+          indexation_base_date: string | null
+          indexation_base_index: number | null
+          indexation_cap_percent: number | null
+          indexation_current_index: number | null
+          indexation_enabled: boolean
+          indexation_frequency: string
+          indexation_notes: string
+          indexation_rounding_mode: string
           intended_move_out_date: string | null
           key_handover_count: number
           key_return_count: number
@@ -1022,11 +1153,19 @@ export type Database = {
           created_at?: string
           deposit_or_guarantee_amount?: number | null
           due_day_of_month?: number
-          end_date: string
+          end_date?: string | null
           end_reason?: string | null
           fixed_monthly_reduction_amount?: number | null
           has_advance_payment?: boolean
           id?: string
+          indexation_base_date?: string | null
+          indexation_base_index?: number | null
+          indexation_cap_percent?: number | null
+          indexation_current_index?: number | null
+          indexation_enabled?: boolean
+          indexation_frequency?: string
+          indexation_notes?: string
+          indexation_rounding_mode?: string
           intended_move_out_date?: string | null
           key_handover_count?: number
           key_return_count?: number
@@ -1078,11 +1217,19 @@ export type Database = {
           created_at?: string
           deposit_or_guarantee_amount?: number | null
           due_day_of_month?: number
-          end_date?: string
+          end_date?: string | null
           end_reason?: string | null
           fixed_monthly_reduction_amount?: number | null
           has_advance_payment?: boolean
           id?: string
+          indexation_base_date?: string | null
+          indexation_base_index?: number | null
+          indexation_cap_percent?: number | null
+          indexation_current_index?: number | null
+          indexation_enabled?: boolean
+          indexation_frequency?: string
+          indexation_notes?: string
+          indexation_rounding_mode?: string
           intended_move_out_date?: string | null
           key_handover_count?: number
           key_return_count?: number
@@ -1331,6 +1478,7 @@ export type Database = {
           default_locale: string
           id: string
           name: string
+          receivable_lead_days: number
           show_occupancy_operations: boolean
           slug: string | null
           updated_at: string
@@ -1342,6 +1490,7 @@ export type Database = {
           default_locale?: string
           id?: string
           name: string
+          receivable_lead_days?: number
           show_occupancy_operations?: boolean
           slug?: string | null
           updated_at?: string
@@ -1353,6 +1502,7 @@ export type Database = {
           default_locale?: string
           id?: string
           name?: string
+          receivable_lead_days?: number
           show_occupancy_operations?: boolean
           slug?: string | null
           updated_at?: string
@@ -1405,6 +1555,7 @@ export type Database = {
           currency_code: string
           description: string
           id: string
+          is_partially_owned: boolean
           legacy_id: string | null
           locale: string
           measurement_system: string
@@ -1418,6 +1569,7 @@ export type Database = {
           reference_code: string
           region_or_state: string
           status: string
+          time_zone: string
           updated_at: string
         }
         Insert: {
@@ -1429,6 +1581,7 @@ export type Database = {
           currency_code?: string
           description?: string
           id?: string
+          is_partially_owned?: boolean
           legacy_id?: string | null
           locale?: string
           measurement_system?: string
@@ -1442,6 +1595,7 @@ export type Database = {
           reference_code?: string
           region_or_state?: string
           status?: string
+          time_zone: string
           updated_at?: string
         }
         Update: {
@@ -1453,6 +1607,7 @@ export type Database = {
           currency_code?: string
           description?: string
           id?: string
+          is_partially_owned?: boolean
           legacy_id?: string | null
           locale?: string
           measurement_system?: string
@@ -1466,6 +1621,7 @@ export type Database = {
           reference_code?: string
           region_or_state?: string
           status?: string
+          time_zone?: string
           updated_at?: string
         }
         Relationships: [
@@ -1740,6 +1896,21 @@ export type Database = {
           },
         ]
       }
+      scheduled_job_health: {
+        Row: {
+          job_name: string
+          last_succeeded_at: string
+        }
+        Insert: {
+          job_name: string
+          last_succeeded_at: string
+        }
+        Update: {
+          job_name?: string
+          last_succeeded_at?: string
+        }
+        Relationships: []
+      }
       tenants: {
         Row: {
           company_name: string | null
@@ -1977,6 +2148,244 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_portfolio_invitation: { Args: { _token: string }; Returns: string }
+      activate_amendment_with_schedule: {
+        Args: {
+          p_amendments: Json
+          p_assignments: Json
+          p_expected_lease_updated_at: string
+          p_lease: Json
+          p_new_receivables: Json
+          p_removed_receivables: Json
+          p_target_amendment_id: string
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      advance_due_lease_lifecycle: {
+        Args: { p_business_date: string }
+        Returns: {
+          leases_advanced: number
+          tenants_updated: number
+        }[]
+      }
+      advance_due_lease_lifecycle_for_zone: {
+        Args: { p_business_date: string; p_time_zone: string }
+        Returns: {
+          leases_advanced: number
+          tenants_updated: number
+        }[]
+      }
+      apply_initial_contract_lease_transition: {
+        Args: {
+          p_is_signed: boolean
+          p_keep_lease_signed: boolean
+          p_lease_id: string
+          p_signed_date: string
+          p_was_signed: boolean
+        }
+        Returns: Json
+      }
+      can_delete_lease_document_file: {
+        Args: { p_storage_path: string }
+        Returns: boolean
+      }
+      change_amendment_status: {
+        Args: {
+          p_amendment_id: string
+          p_expected_updated_at: string
+          p_portfolio_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      change_contract_document_status: {
+        Args: {
+          p_document_id: string
+          p_expected_updated_at: string
+          p_keep_lease_signed?: boolean
+          p_portfolio_id: string
+          p_signed_date: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      check_unit_cross_lease_overlap: {
+        Args: { p_unit_id: string }
+        Returns: undefined
+      }
+      client_activate_amendment_with_schedule: {
+        Args: {
+          p_amendments: Json
+          p_assignments: Json
+          p_expected_lease_updated_at: string
+          p_lease: Json
+          p_new_receivables: Json
+          p_removed_receivables: Json
+          p_target_amendment_id: string
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      client_close_lease_atomically: {
+        Args: {
+          p_expected_updated_at: string
+          p_free_units?: boolean
+          p_lease: Json
+          p_notes?: string
+          p_reason?: string
+          p_vacancy_date: string
+        }
+        Returns: Json
+      }
+      client_create_charges_reconciliation: {
+        Args: { p_receivable?: Json; p_reconciliation: Json }
+        Returns: Json
+      }
+      client_create_lease_with_schedule: {
+        Args: {
+          p_assignments: Json
+          p_lease: Json
+          p_receivables: Json
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      client_delete_charges_reconciliation: {
+        Args: {
+          p_expected_updated_at: string
+          p_id: string
+          p_portfolio_id: string
+        }
+        Returns: Json
+      }
+      client_save_allocation_rule_with_shares: {
+        Args: { p_expected_updated_at?: string; p_rule: Json; p_shares: Json }
+        Returns: Json
+      }
+      client_save_amendment_with_changes: {
+        Args: {
+          p_amendment: Json
+          p_changes: Json
+          p_expected_updated_at?: string
+        }
+        Returns: Json
+      }
+      client_save_cost_entry_with_allocations: {
+        Args: {
+          p_allocations: Json
+          p_entry: Json
+          p_expected_updated_at?: string
+        }
+        Returns: Json
+      }
+      client_save_lease_metadata: {
+        Args: {
+          p_expected_updated_at: string
+          p_lease: Json
+          p_status_notes?: string
+          p_status_reason?: string
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      client_save_lease_with_assignments: {
+        Args: {
+          p_assignments: Json
+          p_expected_assignments: Json
+          p_expected_receivables: Json
+          p_expected_updated_at: string
+          p_lease: Json
+          p_new_receivables: Json
+          p_removed_receivables: Json
+          p_schedule_from: string
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      client_save_receipt_allocations: {
+        Args: {
+          p_allocations: Json
+          p_expected_receipt_updated_at?: string
+          p_receipt: Json
+          p_receivables: Json
+        }
+        Returns: Json
+      }
+      close_lease_atomically: {
+        Args: {
+          p_expected_updated_at: string
+          p_free_units?: boolean
+          p_lease: Json
+          p_notes?: string
+          p_reason?: string
+          p_vacancy_date: string
+        }
+        Returns: Json
+      }
+      create_charges_reconciliation: {
+        Args: { p_receivable?: Json; p_reconciliation: Json }
+        Returns: Json
+      }
+      create_contract_document: { Args: { p_document: Json }; Returns: Json }
+      create_lease_with_schedule: {
+        Args: {
+          p_assignments: Json
+          p_lease: Json
+          p_receivables: Json
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      delete_charges_reconciliation: {
+        Args: {
+          p_expected_updated_at: string
+          p_id: string
+          p_portfolio_id: string
+        }
+        Returns: Json
+      }
+      delete_contract_document: {
+        Args: {
+          p_document_id: string
+          p_expected_updated_at: string
+          p_keep_lease_signed?: boolean
+          p_portfolio_id: string
+        }
+        Returns: Json
+      }
+      delete_draft_amendment: {
+        Args: {
+          p_amendment_id: string
+          p_expected_updated_at: string
+          p_portfolio_id: string
+        }
+        Returns: Json
+      }
+      delete_duplicate_lease_receivables: {
+        Args: { p_items: Json; p_portfolio_id: string }
+        Returns: Json
+      }
+      delete_lease_atomically: {
+        Args: {
+          p_expected_updated_at: string
+          p_lease_id: string
+          p_portfolio_id: string
+        }
+        Returns: Json
+      }
+      get_portfolio_invitation: {
+        Args: { _token: string }
+        Returns: {
+          accepted_at: string
+          email: string
+          expires_at: string
+          id: string
+          portfolio_id: string
+          portfolio_name: string
+          role: Database["public"]["Enums"]["portfolio_role"]
+        }[]
+      }
       has_portfolio_role: {
         Args: {
           _portfolio_id: string
@@ -1985,9 +2394,97 @@ export type Database = {
         }
         Returns: boolean
       }
+      insert_due_lease_receivables: {
+        Args: { p_portfolio_id: string; p_rows: Json }
+        Returns: number
+      }
       is_portfolio_member: {
         Args: { _portfolio_id: string; _user_id: string }
         Returns: boolean
+      }
+      list_portfolio_members_for_management: {
+        Args: { _portfolio_id: string }
+        Returns: {
+          email: string
+          id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["portfolio_role"]
+          user_id: string
+        }[]
+      }
+      save_allocation_rule_with_shares: {
+        Args: { p_expected_updated_at?: string; p_rule: Json; p_shares: Json }
+        Returns: Json
+      }
+      save_amendment_with_changes: {
+        Args: {
+          p_amendment: Json
+          p_changes: Json
+          p_expected_updated_at?: string
+        }
+        Returns: Json
+      }
+      save_cost_entry_with_allocations: {
+        Args: {
+          p_allocations: Json
+          p_entry: Json
+          p_expected_updated_at?: string
+        }
+        Returns: Json
+      }
+      save_lease_with_assignments: {
+        Args: {
+          p_assignments: Json
+          p_expected_assignments: Json
+          p_expected_receivables: Json
+          p_expected_updated_at: string
+          p_lease: Json
+          p_new_receivables: Json
+          p_removed_receivables: Json
+          p_schedule_from: string
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      save_lease_with_tenant_statuses: {
+        Args: {
+          p_expected_updated_at: string
+          p_lease: Json
+          p_status_notes?: string
+          p_status_reason?: string
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      save_property_with_owners: {
+        Args: {
+          p_expected_links: Json
+          p_expected_updated_at: string
+          p_owner_ids: string[]
+          p_property: Json
+        }
+        Returns: Json
+      }
+      save_receipt_allocations: {
+        Args: {
+          p_allocations: Json
+          p_expected_receipt_updated_at?: string
+          p_receipt: Json
+          p_receivables: Json
+        }
+        Returns: Json
+      }
+      set_property_owner_links: {
+        Args: {
+          p_desired_owner_ids: string[]
+          p_expected_links: Json
+          p_property_id: string
+        }
+        Returns: Json
+      }
+      validate_receipt_cent_payload: {
+        Args: { p_allocations: Json; p_receipt: Json; p_receivables: Json }
+        Returns: undefined
       }
     }
     Enums: {
@@ -2008,12 +2505,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2037,11 +2534,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2062,11 +2559,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2087,11 +2584,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2104,11 +2601,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

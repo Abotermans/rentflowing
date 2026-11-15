@@ -17,6 +17,7 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarHeader,
+  SidebarTrigger,
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -46,7 +47,7 @@ export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const { t, isModuleHidden } = useSettings();
   const { pathname } = useLocation();
-  const collapsed = state === "collapsed";
+  const collapsed = !isMobile && state === "collapsed";
   const costsActive = pathname.startsWith("/costs");
   const visibleItems = items.filter((item) => !item.moduleKey || !isModuleHidden(item.moduleKey));
   const topItems = visibleItems.slice(0, Math.min(8, Math.max(0, visibleItems.length - 1)));
@@ -58,14 +59,16 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg text-sidebar-foreground">{t("common.appName")}</span>
-          </div>
-        )}
-        {collapsed && <Building2 className="h-6 w-6 text-primary mx-auto" />}
+      <SidebarHeader className="h-14 shrink-0 justify-center border-b border-sidebar-border px-4 group-data-[collapsible=icon]:px-2">
+        <div className="flex w-full items-center gap-2">
+          {!collapsed && (
+            <div className="flex min-w-0 items-center gap-2">
+              <Building2 className="h-6 w-6 shrink-0 text-primary" />
+              <span className="truncate font-bold text-lg text-sidebar-foreground">{t("common.appName")}</span>
+            </div>
+          )}
+          <SidebarTrigger label={t("sidebar.toggle")} title={t("sidebar.toggle")} className="ml-auto shrink-0" />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

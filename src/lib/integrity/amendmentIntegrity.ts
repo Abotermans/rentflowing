@@ -1,9 +1,12 @@
-import type { LeaseAmendment, LeaseAmendmentChange } from "@/types/amendments";
-import type { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning } from "./types";
-import { ok, blocked, allowedWithWarnings } from "./types";
-import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
-import { findOverlappingLeases, formatOverlapConflictMessage } from "./leaseDateOverlap";
-import { isAncillaryUnitType } from "@/types";
+import type { LeaseAmendment, LeaseAmendmentChange } from "../../types/amendments.ts";
+import type { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning } from "./types.ts";
+import { ok, blocked, allowedWithWarnings } from "./types.ts";
+import { assignmentIsActiveOn } from "../leaseAssignments.ts";
+import { findOverlappingLeases, formatOverlapConflictMessage } from "./leaseDateOverlap.ts";
+import { isAncillaryUnitType } from "../../types/index.ts";
+import { isReceivableOutstanding } from "../../types/receivables.ts";
+import { propertyBusinessDateISO } from "../businessTimeZone.ts";
+import { isISOCalendarDate } from "../dateValidation.ts";
 
 /**
  * Validate an amendment before activation. Simulates the resulting lease state and
@@ -13,18 +16,20 @@ import { isAncillaryUnitType } from "@/types";
 export function canActivateAmendment(
   amendmentId: string,
   s: IntegrityState,
+  businessDate?: string,
 ): ValidationResult {
   const am = s.amendments.find(a => a.id === amendmentId);
   if (!am) {
     return blocked([{ code: "AMD_NOT_FOUND", message: "Amendment not found" }]);
   }
-  return validateAmendment(am, s.amendmentChanges.filter(c => c.amendmentId === amendmentId), s);
+  return validateAmendment(am, s.amendmentChanges.filter(c => c.amendmentId === amendmentId), s, businessDate);
 }
 
 export function validateAmendment(
   amendment: LeaseAmendment,
   changes: readonly LeaseAmendmentChange[],
   s: IntegrityState,
+  businessDate?: string,
 ): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
@@ -42,9 +47,17 @@ export function validateAmendment(
   }
   if (!amendment.effectiveDate) {
     blockers.push({ code: "AMD_NO_EFFECTIVE_DATE", message: "Effective date is required" });
+  } else if (!isISOCalendarDate(amendment.effectiveDate)) {
+    blockers.push({ code: "AMD_INVALID_EFFECTIVE_DATE", message: "Effective date must be a valid calendar date" });
+    return blocked(blockers);
+  }
+  if (amendment.signedDate && !isISOCalendarDate(amendment.signedDate)) {
+    blockers.push({ code: "AMD_INVALID_SIGNED_DATE", message: "Signed date must be a valid calendar date" });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = businessDate ?? propertyBusinessDateISO(
+    s.properties?.find(candidate => candidate.id === lease.propertyId),
+  );
   if (amendment.effectiveDate && amendment.effectiveDate < today) {
     warnings.push({
       code: "AMD_EFFECTIVE_IN_PAST",
@@ -73,9 +86,50 @@ export function validateAmendment(
     rentShare: a.rentShare ?? 0,
     chargesShare: a.chargesShare ?? 0,
   }));
+  const validAmount = (value: unknown) => (typeof value === "number"
+    || (typeof value === "string" && value.trim().length > 0))
+    && Number.isFinite(Number(value)) && Number(value) >= 0;
 
   for (const c of changes) {
+    const targetsUnit = ["unitAssignments", "unitRentShare", "unitChargesShare", "unitEndDate"].includes(c.fieldName);
+    const unitId = c.metadata?.unitId;
+    if (targetsUnit && (!unitId || typeof unitId !== "string")) {
+      blockers.push({ code: "AMD_UNIT_REFERENCE_MISSING", message: "Unit change is missing its unit reference" });
+      continue;
+    }
+    if (targetsUnit && c.fieldName !== "unitAssignments" && !sim.some(unit => unit.unitId === unitId)) {
+      blockers.push({ code: "AMD_UNIT_NOT_ASSIGNED", message: "Unit to change is not assigned to this lease on the effective date" });
+      continue;
+    }
+    if ((c.fieldName === "unitRentShare" || c.fieldName === "unitChargesShare")
+      && !validAmount(c.newValue)) {
+      blockers.push({ code: "AMD_INVALID_UNIT_AMOUNT", message: "Unit rent and charges must be non-negative amounts" });
+      continue;
+    }
     if (c.fieldName === "unitAssignments" && c.changeType === "add" && c.metadata?.unitId) {
+      const amounts = c.newValue as { rentShare?: unknown; chargesShare?: unknown } | null;
+      if (!amounts || typeof amounts !== "object" || Array.isArray(amounts)
+        || !validAmount(amounts.rentShare) || !validAmount(amounts.chargesShare)) {
+        blockers.push({
+          code: "AMD_INVALID_UNIT_AMOUNT",
+          message: "Added unit needs finite, non-negative rent and charges amounts",
+        });
+        continue;
+      }
+      if (c.metadata.endDate && !isISOCalendarDate(c.metadata.endDate)) {
+        blockers.push({
+          code: "AMD_INVALID_UNIT_END_DATE",
+          message: "Added unit end date must be a valid calendar date",
+        });
+        continue;
+      }
+      if (c.metadata.endDate && c.metadata.endDate < eff) {
+        blockers.push({
+          code: "AMD_UNIT_END_BEFORE_EFFECTIVE",
+          message: "Added unit end date must be on or after the amendment effective date",
+        });
+        continue;
+      }
       const unit = s.units.find(u => u.id === c.metadata!.unitId);
       if (!unit) {
         blockers.push({ code: "AMD_UNIT_MISSING", message: "Unit to add no longer exists" });
@@ -116,30 +170,63 @@ export function validateAmendment(
       } else {
         sim.push({
           unitId: unit.id,
-          rentShare: Number((c.newValue as { rentShare?: number })?.rentShare ?? 0) || 0,
-          chargesShare: Number((c.newValue as { chargesShare?: number })?.chargesShare ?? 0) || 0,
+          rentShare: Number(amounts.rentShare),
+          chargesShare: Number(amounts.chargesShare),
         });
       }
     } else if (c.fieldName === "unitAssignments" && c.changeType === "remove" && c.metadata?.unitId) {
+      if (!sim.some(unit => unit.unitId === unitId)) {
+        blockers.push({ code: "AMD_UNIT_NOT_ASSIGNED", message: "Unit to remove is not assigned to this lease on the effective date" });
+        continue;
+      }
       sim = sim.filter(x => x.unitId !== c.metadata!.unitId);
+    } else if (c.fieldName === "unitAssignments") {
+      blockers.push({ code: "AMD_UNIT_CHANGE_INVALID", message: "Unit assignment change must add or remove a unit" });
     } else if (c.fieldName === "unitRentShare" && c.metadata?.unitId) {
       sim = sim.map(x => x.unitId === c.metadata!.unitId
         ? { ...x, rentShare: Number(c.newValue) || 0 } : x);
     } else if (c.fieldName === "unitChargesShare" && c.metadata?.unitId) {
       sim = sim.map(x => x.unitId === c.metadata!.unitId
         ? { ...x, chargesShare: Number(c.newValue) || 0 } : x);
-    } else if (c.fieldName === "baseMonthlyRentTotal") {
+    } else if (c.fieldName === "rentFormula") {
       const v = Number(c.newValue);
-      if (Number.isFinite(v) && v < 0) {
-        blockers.push({ code: "AMD_NEGATIVE_RENT", message: "Rent cannot be negative" });
+      if (!Number.isInteger(v) || v < 1) {
+        blockers.push({ code: "AMD_INVALID_RENT_FORMULA", message: "Rent formula must be a period of at least 1 month" });
+      }
+    } else if (c.fieldName === "indexationSettings") {
+      const v = c.newValue as {
+        indexationEnabled?: boolean;
+        indexationBaseIndex?: number | null;
+        indexationCurrentIndex?: number | null;
+        indexationCapPercent?: number | null;
+      } | null;
+      if (!v || typeof v !== "object" || Array.isArray(v) || typeof v.indexationEnabled !== "boolean") {
+        blockers.push({ code: "AMD_INVALID_INDEXATION", message: "Indexation settings are incomplete" });
+      } else if (v.indexationEnabled) {
+        if (v.indexationBaseIndex != null && (!validAmount(v.indexationBaseIndex) || Number(v.indexationBaseIndex) === 0)) {
+          blockers.push({ code: "AMD_INVALID_INDEXATION", message: "Indexation base index must be greater than 0" });
+        }
+        if (v.indexationCurrentIndex != null && (!validAmount(v.indexationCurrentIndex) || Number(v.indexationCurrentIndex) === 0)) {
+          blockers.push({ code: "AMD_INVALID_INDEXATION", message: "Indexation current index must be greater than 0" });
+        }
+        if (v.indexationCapPercent != null && !validAmount(v.indexationCapPercent)) {
+          blockers.push({ code: "AMD_INVALID_INDEXATION", message: "Indexation cap cannot be negative" });
+        }
+      }
+    } else if (c.fieldName === "baseMonthlyRentTotal") {
+      if (!validAmount(c.newValue)) {
+        blockers.push({ code: "AMD_INVALID_RENT", message: "Rent must be a non-negative amount" });
       }
     } else if (c.fieldName === "baseMonthlyChargesTotal") {
-      const v = Number(c.newValue);
-      if (Number.isFinite(v) && v < 0) {
-        blockers.push({ code: "AMD_NEGATIVE_CHARGES", message: "Charges cannot be negative" });
+      if (!validAmount(c.newValue)) {
+        blockers.push({ code: "AMD_INVALID_CHARGES", message: "Charges must be a non-negative amount" });
       }
     } else if (c.fieldName === "leaseEndDate") {
-      const nv = String(c.newValue);
+      const nv = String(c.newValue ?? "");
+      if (nv && !isISOCalendarDate(nv)) {
+        blockers.push({ code: "AMD_INVALID_LEASE_END_DATE", message: "Lease end date must be a valid calendar date" });
+        continue;
+      }
       if (nv && nv < lease.startDate) {
         blockers.push({
           code: "AMD_END_BEFORE_START",
@@ -183,6 +270,10 @@ export function validateAmendment(
       }
     } else if (c.fieldName === "unitEndDate" && c.metadata?.unitId) {
       const nv = String(c.newValue ?? "");
+      if (nv && !isISOCalendarDate(nv)) {
+        blockers.push({ code: "AMD_INVALID_UNIT_END_DATE", message: "Unit end date must be a valid calendar date" });
+        continue;
+      }
       if (nv && nv < lease.startDate) {
         blockers.push({
           code: "AMD_UNIT_END_BEFORE_START",
@@ -245,16 +336,48 @@ export function validateAmendment(
     }
   }
 
-  // Receivable impact warning: any open ReceivableItem on or after effectiveDate.
+  // Advance cycles can cross the effective date even when billed earlier.
   const overlappingUnpaid = s.receivableItems.filter(
     ri => ri.leaseId === lease.id &&
-          ri.outstandingAmount > 0 &&
-          ri.periodMonth >= eff.slice(0, 7),
+          isReceivableOutstanding(ri) &&
+          (ri.cycleEndDate
+            ? ri.cycleEndDate >= eff
+            : (ri.periodMonth ?? ri.dueDate.slice(0, 7)) >= eff.slice(0, 7)),
   );
   if (overlappingUnpaid.length > 0) {
     warnings.push({
       code: "AMD_UNPAID_OVERLAP",
       message: `${overlappingUnpaid.length} unpaid receivable(s) overlap the effective date — review before activation`,
+      severity: "high",
+    });
+  }
+
+  if (changes.some(change => change.fieldName === "rentFormula")) {
+    const crossingCycles = s.receivableItems.filter(ri =>
+      ri.leaseId === lease.id &&
+      ri.origin === "lease-schedule" &&
+      (ri.itemType === "rent" || ri.itemType === "charges") &&
+      ri.dueDate < eff &&
+      !!ri.cycleEndDate && ri.cycleEndDate >= eff &&
+      ri.status !== "cancelled" && ri.status !== "written-off",
+    );
+    if (crossingCycles.length > 0) {
+      blockers.push({
+        code: "AMD_FORMULA_CROSSES_BILLED_CYCLE",
+        message: `${crossingCycles.length} existing billed receivable(s) cover the new formula's effective date. Move the effective date after the billed cycle or reconcile those receivables before changing the formula`,
+      });
+    }
+  }
+
+  const allocatedFuture = s.receivableItems.filter(
+    ri => ri.leaseId === lease.id &&
+          ri.dueDate >= eff &&
+          ri.allocatedAmount > 0,
+  );
+  if (allocatedFuture.length > 0) {
+    warnings.push({
+      code: "AMD_ALLOCATED_FUTURE_RECEIVABLES",
+      message: `${allocatedFuture.length} future allocated receivable(s) will be preserved and must be reviewed manually`,
       severity: "high",
     });
   }

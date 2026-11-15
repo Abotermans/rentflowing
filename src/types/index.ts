@@ -1,3 +1,5 @@
+import { localTodayISO } from "../lib/calendarToday.ts";
+
 export interface Property {
   id: string;
   name: string;
@@ -8,6 +10,8 @@ export interface Property {
   postalCode: string;
   regionOrState: string;
   countryCode: string;
+  /** IANA zone used for this property's lease and billing calendar day. */
+  timeZone?: string;
   locale: string;
   currencyCode: string;
   measurementSystem: "metric" | "imperial";
@@ -25,6 +29,11 @@ export interface Property {
    * (e.g. "general", "lift", "heating"). Defaults to `["general"]`.
    */
   milliemeKeys?: string[];
+  /**
+   * True when this portfolio manages only part of the co-ownership property.
+   * Owner share is derived from managed units' general millièmes.
+   */
+  isPartiallyOwned?: boolean;
   createdAt: string;
   updatedAt: string;
   /** Workspace this property belongs to. Stamped at create-time. */
@@ -326,6 +335,20 @@ export interface Lease {
   // Rent formula
   rentFormula: RentFormula;
 
+  /**
+   * Lease rent indexation. These fields model the contract mechanics without
+   * hardcoding jurisdiction-specific regulations: users must enter the legally
+   * applicable index values, caps, and notes for the lease.
+   */
+  indexationEnabled?: boolean;
+  indexationFrequency?: "yearly";
+  indexationBaseDate?: string | null;
+  indexationBaseIndex?: number | null;
+  indexationCurrentIndex?: number | null;
+  indexationCapPercent?: number | null;
+  indexationRoundingMode?: "nearest-cent" | "nearest-euro" | "none";
+  indexationNotes?: string;
+
   // End-of-lease metadata (set when lease is marked ended or terminated)
   endReason?: LeaseEndReason | null;
 
@@ -340,7 +363,7 @@ export interface Lease {
   fixedMonthlyReductionAmount: number | null;
 
   /**
-   * Lead time (in days) before a cycle's start date at which the cycle's
+   * Lead time (in days) before a cycle's due date at which the cycle's
    * rent + charges receivables are generated. Only used when
    * `rentFormula > 1`. Defaults to 15 when null/undefined.
    */
@@ -409,21 +432,21 @@ export type LeaseStatus =
   | "ended"
   | "terminated";
 
-export function getLeaseStatus(lease: Lease): LeaseStatus {
-  const todayISO = new Date().toISOString().slice(0, 10);
+export function getLeaseStatus(lease: Lease, todayISO: string = localTodayISO()): LeaseStatus {
   if (lease.lifecycleStage === "draft") return "draft";
   if (lease.lifecycleStage === "pending-signature") return "pending-signature";
   if (lease.lifecycleStage === "terminated") return "terminated";
-  if (lease.lifecycleStage === "ended" && lease.endDate < todayISO) return "ended";
+  if (lease.lifecycleStage === "ended") return "ended";
   if (lease.lifecycleStage === "signed" && lease.startDate > todayISO) return "signed";
-  if (lease.lifecycleStage === "signed" && lease.startDate <= todayISO && lease.endDate < todayISO) return "ended";
+  if (lease.lifecycleStage === "signed" && lease.startDate <= todayISO && lease.endDate && lease.endDate < todayISO) return "ended";
+  if (lease.endDate && lease.endDate < todayISO) return "overdue-end";
   if (lease.noticeGiven) return "under-notice";
-  if (lease.endDate < todayISO) return "overdue-end";
   return "active";
 }
 
 /**
  * Auto-advance a lease's lifecycle based on dates:
+ *   signed + endDate   < today  → ended
  *   signed + startDate ≤ today  → active
  *   active + endDate   < today  → ended
  * Operational data (notice, move-out, guarantees, …) is left untouched.
@@ -431,9 +454,9 @@ export function getLeaseStatus(lease: Lease): LeaseStatus {
  * returns the original reference.
  */
 export function advanceLeaseLifecycle(lease: Lease, todayISO?: string): Lease {
-  const today = todayISO ?? new Date().toISOString().slice(0, 10);
-  if (lease.lifecycleStage === "ended" && lease.endDate && lease.endDate >= today) {
-    return { ...lease, lifecycleStage: lease.startDate <= today ? "active" : "signed", endReason: null };
+  const today = todayISO ?? localTodayISO();
+  if (lease.lifecycleStage === "signed" && lease.endDate && lease.endDate < today) {
+    return { ...lease, lifecycleStage: "ended", endReason: lease.endReason ?? "natural-expiry" };
   }
   if (lease.lifecycleStage === "signed" && lease.startDate && lease.startDate <= today) {
     return { ...lease, lifecycleStage: "active" };
@@ -453,10 +476,9 @@ export function getMoveInStatus(lease: Lease): MoveInStatus {
   return "not-scheduled";
 }
 
-export function getMoveOutStatus(lease: Lease): MoveOutStatus {
+export function getMoveOutStatus(lease: Lease, todayISO: string = localTodayISO()): MoveOutStatus {
   if (lease.moveOutActualDate) {
-    const today = new Date().toISOString().slice(0, 10);
-    return lease.moveOutActualDate <= today ? "completed" : "scheduled";
+    return lease.moveOutActualDate <= todayISO ? "completed" : "scheduled";
   }
   if (lease.moveOutScheduledDate) return "scheduled";
   return "not-scheduled";

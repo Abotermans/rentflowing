@@ -10,33 +10,38 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Scale, Plus, Search, Pencil, Trash2 } from "lucide-react";
-import { AllocationRule, AllocationMethod, ALLOCATION_METHOD_LABELS, AllocationRuleUnitShare } from "@/types/costs";
+import { AllocationRule, AllocationMethod, ALLOCATION_METHOD_LABELS, AllocationRuleUnitShare, MilliemeAllocationMode } from "@/types/costs";
 import { DEFAULT_MILLIEME_KEY, getUnitMillieme } from "@/types";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import type { TranslationKey } from "@/i18n/translations";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
+import { isUnitOccupiedOn } from "@/lib/occupancy";
+import { useLocalTodayISO } from "@/hooks/use-local-today";
 
 type FormData = Omit<AllocationRule, "id" | "createdAt" | "updatedAt">;
 
 const emptyForm: FormData = {
   propertyId: "", name: "", method: "equal",
   applyOnlyToOccupiedUnits: false, includeUnavailableUnits: false, notes: "",
-  shareKey: null,
+  shareKey: null, milliemeAllocationMode: "normalized",
 };
 
 export default function AllocationRules() {
   const {
-    allocationRules, allocationRuleUnitShares, properties, units,
-    addAllocationRulePersisted, updateAllocationRule, deleteAllocationRule,
-    setAllocationRuleUnitShares, getPropertyById,
+    allocationRules, allocationRuleUnitShares, properties, units, leases, leaseUnitAssignments,
+    saveAllocationRuleWithSharesPersisted, deleteAllocationRule, getPropertyById,
   } = useAppData();
   const { t } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
+  const today = useLocalTodayISO();
   const { toast } = useToast();
   const methodLabel = (m: AllocationMethod) => t(`costs.methodOpt.${m}` as TranslationKey);
 
@@ -50,12 +55,14 @@ export default function AllocationRules() {
   const { sort, toggle } = useTableSort<RSortKey>();
 
   const openAdd = () => {
+    if (!canWrite) return;
     setEditing(null); setForm({ ...emptyForm }); setUnitSharesLocal({}); setSheetOpen(true);
   };
   const openEdit = (r: AllocationRule) => {
+    if (!canWrite) return;
     setEditing(r);
     const { id, createdAt, updatedAt, ...rest } = r;
-    setForm(rest);
+    setForm({ ...rest, milliemeAllocationMode: rest.milliemeAllocationMode ?? "normalized" });
     // Load existing shares
     const shares: Record<string, number> = {};
     allocationRuleUnitShares.filter(s => s.allocationRuleId === r.id).forEach(s => {
@@ -83,7 +90,9 @@ export default function AllocationRules() {
     if (form.method !== "millieme" || !form.propertyId) return null;
     const key = form.shareKey || DEFAULT_MILLIEME_KEY;
     let pool = propertyUnits;
-    if (form.applyOnlyToOccupiedUnits) pool = pool.filter(u => u.currentStatus === "occupied");
+    if (form.applyOnlyToOccupiedUnits) {
+      pool = pool.filter(u => isUnitOccupiedOn(u.id, today, leases, leaseUnitAssignments));
+    }
     if (!form.includeUnavailableUnits) pool = pool.filter(u => u.currentStatus !== "unavailable");
     const rows = pool.map(u => ({ unit: u, share: getUnitMillieme(u, key) }));
     const includedSum = rows.filter(r => r.share > 0).reduce((s, r) => s + r.share, 0);
@@ -91,13 +100,14 @@ export default function AllocationRules() {
     const zeroCount = rows.filter(r => r.share === 0).length;
     const excludedShares = allUnitsSum - includedSum;
     return { key, rows, includedSum, allUnitsSum, zeroCount, excludedShares };
-  }, [form.method, form.propertyId, form.shareKey, form.applyOnlyToOccupiedUnits, form.includeUnavailableUnits, propertyUnits]);
+  }, [form.method, form.propertyId, form.shareKey, form.applyOnlyToOccupiedUnits, form.includeUnavailableUnits, propertyUnits, leases, leaseUnitAssignments, today]);
 
   const totalPct = useMemo(() => {
     return Object.values(unitShares).reduce((sum, v) => sum + (v || 0), 0);
   }, [unitShares]);
 
   const handleSave = async () => {
+    if (!canWrite) return;
     if (!form.name.trim() || !form.propertyId) {
       toast({ title: t("common.validationError"), description: t("costs.validation.ruleRequired"), variant: "destructive" });
       return;
@@ -112,45 +122,33 @@ export default function AllocationRules() {
         toast({ title: t("common.validationError"), description: t("costs.milliemeKeyMissing"), variant: "destructive" });
         return;
       }
-      if (!milliemePreview || milliemePreview.includedSum <= 0) {
+      if (!milliemePreview || (form.applyOnlyToOccupiedUnits
+        ? milliemePreview.allUnitsSum <= 0
+        : milliemePreview.includedSum <= 0)) {
         toast({ title: t("common.validationError"), description: t("costs.milliemeNoShares"), variant: "destructive" });
         return;
       }
     }
 
-    if (editing) {
-      updateAllocationRule({ ...editing, ...form });
-      if (form.method === "manual-percentage") {
-        const shares: Omit<AllocationRuleUnitShare, "id">[] = Object.entries(unitShares).map(([unitId, pct]) => ({
-          allocationRuleId: editing.id, unitId, percentageShare: pct, fixedAmountShare: null, coefficient: null,
-        }));
-        setAllocationRuleUnitShares(editing.id, shares);
-      }
-      toast({ title: t("common.updated"), description: form.name });
-    } else {
-      try {
-        const created = await addAllocationRulePersisted(form);
-        if (form.method === "manual-percentage") {
-          const shares: Omit<AllocationRuleUnitShare, "id">[] = Object.entries(unitShares).map(([unitId, pct]) => ({
-            allocationRuleId: created.id, unitId, percentageShare: pct, fixedAmountShare: null, coefficient: null,
-          }));
-          setAllocationRuleUnitShares(created.id, shares);
-        }
-        toast({ title: t("common.added"), description: form.name });
-      } catch (err) {
-        toast({
-          title: t("common.validationError"),
-          description: err instanceof Error ? err.message : "Allocation rule could not be saved.",
-          variant: "destructive",
-        });
-        return;
-      }
+    try {
+      const shares: Omit<AllocationRuleUnitShare, "id">[] = form.method === "manual-percentage"
+        ? Object.entries(unitShares).map(([unitId, pct]) => ({
+            allocationRuleId: editing?.id ?? "", unitId, percentageShare: pct,
+            fixedAmountShare: null, coefficient: null,
+          }))
+        : [];
+      const saved = await saveAllocationRuleWithSharesPersisted(editing ? { ...editing, ...form } : form, shares);
+      toast({ title: editing ? t("common.updated") : t("common.added"), description: saved.name });
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Allocation rule could not be saved.", variant: "destructive" });
+      return;
     }
     setSheetOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteAllocationRule(id);
+  const handleDelete = async (id: string) => {
+    if (!canWrite) return;
+    await deleteAllocationRule(id);
     toast({ title: t("common.deleted") });
   };
 
@@ -176,18 +174,18 @@ export default function AllocationRules() {
   const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-shell">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("costs.allocationRules")}</h1>
-          <p className="text-sm text-muted-foreground">{t("costs.allocationRulesSubtitle")}</p>
+          <h1 className="page-title">{t("costs.allocationRules")}</h1>
+          <p className="page-description">{t("costs.allocationRulesSubtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative inline-flex">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="h-9 min-w-[180px] max-w-[400px] pl-9 sm:w-auto" />
           </div>
-          <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />{t("costs.addRule")}</Button>
+          {canWrite && <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />{t("costs.addRule")}</Button>}
         </div>
       </div>
 
@@ -204,7 +202,7 @@ export default function AllocationRules() {
                   <SortableTableHead sortKey="method" sort={sort} onSort={toggle}>{t("costs.method")}</SortableTableHead>
                   <SortableTableHead sortKey="occupied" sort={sort} onSort={toggle}>{t("costs.occupiedOnly")}</SortableTableHead>
                   <SortableTableHead sortKey="unavailable" sort={sort} onSort={toggle}>{t("costs.includeUnavailable")}</SortableTableHead>
-                  <TableHead className="w-[80px]" />
+                  {canWrite && <TableHead className="w-[80px]" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -217,7 +215,7 @@ export default function AllocationRules() {
                      <TableCell className="text-muted-foreground">{methodLabel(r.method)}</TableCell>
                      <TableCell className="text-muted-foreground">{r.applyOnlyToOccupiedUnits ? t("common.yes") : t("common.no")}</TableCell>
                      <TableCell className="text-muted-foreground">{r.includeUnavailableUnits ? t("common.yes") : t("common.no")}</TableCell>
-                      <TableCell>
+                      {canWrite && <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}>
                             <Pencil className="h-3.5 w-3.5" />
@@ -229,7 +227,7 @@ export default function AllocationRules() {
                             onDelete={handleDelete}
                           />
                         </div>
-                      </TableCell>
+                      </TableCell>}
                     </TableRow>
                   );
                 })}
@@ -243,8 +241,8 @@ export default function AllocationRules() {
       </Card>
 
       {/* Sheet */}
-      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={canWrite && sheetOpen} onOpenChange={setSheetOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? t("costs.editRule") : t("costs.addRule")}</DialogTitle>
           </DialogHeader>
@@ -277,20 +275,38 @@ export default function AllocationRules() {
             </div>
 
             {form.method === "millieme" && form.propertyId && (
-              <div className="space-y-2">
-                <Label>{t("costs.shareKey")}</Label>
-                <Select
-                  value={form.shareKey || DEFAULT_MILLIEME_KEY}
-                  onValueChange={v => setForm({ ...form, shareKey: v })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {propertyKeys.map(k => (
-                      <SelectItem key={k} value={k}>{k}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">{t("costs.shareKeyHelp")}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>{t("costs.shareKey")}</Label>
+                  <Select
+                    value={form.shareKey || DEFAULT_MILLIEME_KEY}
+                    onValueChange={v => setForm({ ...form, shareKey: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {propertyKeys.map(k => (
+                        <SelectItem key={k} value={k}>{k}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">{t("costs.shareKeyHelp")}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("costs.milliemeAllocationMode")}</Label>
+                  <Select
+                    value={form.milliemeAllocationMode ?? "normalized"}
+                    onValueChange={v => setForm({ ...form, milliemeAllocationMode: v as MilliemeAllocationMode })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normalized">{t("costs.milliemeMode.normalized")}</SelectItem>
+                      <SelectItem value="absolute">{t("costs.milliemeMode.absolute")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t((form.milliemeAllocationMode === "absolute" ? "costs.milliemeMode.absoluteHelp" : "costs.milliemeMode.normalizedHelp") as TranslationKey)}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -312,7 +328,9 @@ export default function AllocationRules() {
               <div className="space-y-3 border-t border-border pt-4">
                 <Label className="text-base font-semibold">{t("costs.unitShares")}</Label>
                 {propertyUnits.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t("costs.noUnitsForProperty")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {form.applyOnlyToOccupiedUnits ? t("costs.noOccupiedUnitsToday") : t("costs.noUnitsForProperty")}
+                  </p>
                 ) : (
                   <>
                     {propertyUnits.map(u => (
@@ -340,6 +358,9 @@ export default function AllocationRules() {
             {form.method === "millieme" && form.propertyId && milliemePreview && (
               <div className="space-y-2 border-t border-border pt-4">
                 <Label className="text-base font-semibold">{t("costs.milliemePreview")}</Label>
+                {form.applyOnlyToOccupiedUnits && (
+                  <p className="text-xs text-muted-foreground">{t("costs.occupiedPreviewDate")}</p>
+                )}
                 {milliemePreview.rows.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("costs.noUnitsForProperty")}</p>
                 ) : (
@@ -350,7 +371,8 @@ export default function AllocationRules() {
                           <TableRow>
                             <TableHead className="text-xs h-8">{t("common.name")}</TableHead>
                             <TableHead className="text-xs h-8 text-right">{t("units.millieme")}</TableHead>
-                            <TableHead className="text-xs h-8 text-right">%</TableHead>
+                            <TableHead className="text-xs h-8 text-right">{t("costs.normalizedShare")}</TableHead>
+                            <TableHead className="text-xs h-8 text-right">{t("costs.invoiceShare")}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -362,6 +384,9 @@ export default function AllocationRules() {
                                 {milliemePreview.includedSum > 0 && share > 0
                                   ? `${((share / milliemePreview.includedSum) * 100).toFixed(2)}%`
                                   : "—"}
+                              </TableCell>
+                              <TableCell className="py-1.5 text-xs text-right text-muted-foreground">
+                                {share > 0 ? `${((share / milliemeBase) * 100).toFixed(2)}%` : "—"}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -375,6 +400,14 @@ export default function AllocationRules() {
                       {Math.abs(milliemePreview.includedSum - milliemeBase) > 1 && (
                         <p className="text-warning">
                           {t("costs.milliemeBaseMismatch").replace("{sum}", String(milliemePreview.includedSum)).replace("{base}", String(milliemeBase))}
+                        </p>
+                      )}
+                      {form.milliemeAllocationMode === "absolute" && (
+                        <p className="text-muted-foreground">
+                          {t("costs.milliemeAbsolutePreview")
+                            .replace("{sum}", String(milliemePreview.includedSum))
+                            .replace("{base}", String(milliemeBase))
+                            .replace("{percent}", ((milliemePreview.includedSum / milliemeBase) * 100).toFixed(2))}
                         </p>
                       )}
                       {milliemePreview.excludedShares > 0 && (

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
@@ -13,25 +14,61 @@ import type {
   AmendmentChangeType,
   AmendmentChangeMetadata,
 } from "@/types/amendments";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertTriangle, Plus, Minus, X, ChevronDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { Lease } from "@/types";
+import { DateInput } from "@/components/shared/DateInput";
+import type { Lease, RentFormula } from "@/types";
 import type { TranslationKey } from "@/i18n/translations";
 import { parseNoticeText, serializeNotice, type NoticeUnit } from "@/lib/noticePeriod";
 import { formatCurrency } from "@/lib/formatters";
+import { getAllRentTiers, getMonthlyRentForMonths } from "@/lib/rentTiers";
+import { useToast } from "@/hooks/use-toast";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
 import { Info } from "lucide-react";
 
 type ChangeDraft = Omit<LeaseAmendmentChange, "id" | "amendmentId" | "createdAt" | "updatedAt">;
+type IndexationDraft = {
+  enabled: boolean;
+  baseDate: string;
+  baseIndex: string;
+  currentIndex: string;
+  capPercent: string;
+  roundingMode: NonNullable<Lease["indexationRoundingMode"]>;
+  notes: string;
+};
+
+const buildIndexationDraft = (lease: Lease): IndexationDraft => ({
+  enabled: !!lease.indexationEnabled,
+  baseDate: lease.indexationBaseDate ?? lease.startDate ?? "",
+  baseIndex: lease.indexationBaseIndex == null ? "" : String(lease.indexationBaseIndex),
+  currentIndex: lease.indexationCurrentIndex == null ? "" : String(lease.indexationCurrentIndex),
+  capPercent: lease.indexationCapPercent == null ? "" : String(lease.indexationCapPercent),
+  roundingMode: lease.indexationRoundingMode ?? "nearest-cent",
+  notes: lease.indexationNotes ?? "",
+});
+
+const serializeIndexationDraft = (draft: IndexationDraft) => ({
+  indexationEnabled: draft.enabled,
+  indexationFrequency: "yearly" as const,
+  indexationBaseDate: draft.enabled ? (draft.baseDate || null) : null,
+  indexationBaseIndex: draft.enabled && draft.baseIndex !== "" ? Number(draft.baseIndex) : null,
+  indexationCurrentIndex: draft.enabled && draft.currentIndex !== "" ? Number(draft.currentIndex) : null,
+  indexationCapPercent: draft.enabled && draft.capPercent !== "" ? Number(draft.capPercent) : null,
+  indexationRoundingMode: draft.roundingMode,
+  indexationNotes: draft.notes,
+});
 
 interface Props {
   open: boolean;
@@ -42,13 +79,17 @@ interface Props {
 
 export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) {
   const { t } = useSettings();
+  const { toast } = useToast();
+  const canWrite = usePortfolioWriteAccess();
   const {
-    units, tenants, getLeaseAssignedUnits,
-    addAmendment, updateAmendment, activateAmendment, scheduleAmendment, updateUnit,
+    properties, units, tenants, getLeaseAssignedUnits,
+    addAmendment, updateAmendment, activateAmendment, scheduleAmendment, updateUnitPersisted,
     getAmendmentChanges,
   } = useAppData();
   const integrityState = useIntegrityState();
-  const editable = isAmendmentEditable(existing);
+  const property = properties.find(candidate => candidate.id === lease.propertyId);
+  const currency = property?.currencyCode ?? "EUR";
+  const editable = canWrite && isAmendmentEditable(existing);
   const [confirmAction, setConfirmAction] = useState<"schedule" | "activate" | null>(null);
 
   const [title, setTitle] = useState("");
@@ -62,6 +103,10 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
   const [noticeValue, setNoticeValue] = useState("");
   const [noticeUnit, setNoticeUnit] = useState<"days" | "weeks" | "months" | "years">("months");
   const [clauseSummary, setClauseSummary] = useState("");
+  const [amendmentRentFormula, setAmendmentRentFormula] = useState<RentFormula>(lease.rentFormula || 1);
+  const [indexationDraft, setIndexationDraft] = useState<IndexationDraft>(() => buildIndexationDraft(lease));
+  const [formulaDraftOpen, setFormulaDraftOpen] = useState(false);
+  const [formulaDraft, setFormulaDraft] = useState({ durationMonths: "", monthlyRent: "" });
   // Unit-change drafts (multi-row, intuitive add/remove UX)
   type AddDraft = { unitId: string; rentShare: string; chargesShare: string; endDate: string };
   const [unitsToAdd, setUnitsToAdd] = useState<AddDraft[]>([]);
@@ -88,6 +133,104 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     [units, lease.propertyId, currentUnits, unitsToAdd],
   );
 
+  const formulaUnits = useMemo(() => {
+    const active = currentUnits
+      .filter(r => !unitsToRemove.includes(r.unit.id))
+      .map(r => r.unit);
+    const added = unitsToAdd
+      .map(row => units.find(unit => unit.id === row.unitId))
+      .filter((unit): unit is NonNullable<typeof unit> => !!unit);
+    return [...active, ...added];
+  }, [currentUnits, unitsToRemove, unitsToAdd, units]);
+
+  const commonRentFormulas = useMemo(() => {
+    if (formulaUnits.length === 0) return [];
+    const perUnit = formulaUnits.map(unit => new Map(getAllRentTiers(unit).map(tier => [tier.durationMonths, tier.monthlyRent])));
+    const [first, ...rest] = perUnit;
+    return [...first.entries()]
+      .filter(([months]) => rest.every(map => map.has(months)))
+      .map(([durationMonths]) => ({ durationMonths }))
+      .sort((a, b) => a.durationMonths - b.durationMonths);
+  }, [formulaUnits]);
+
+  const formulaCreationUnit = formulaUnits.length === 1 ? formulaUnits[0] : null;
+  const formulaDraftMonths = Number(formulaDraft.durationMonths);
+  const formulaDraftRent = Number(formulaDraft.monthlyRent);
+  const formulaDraftTotal = Number.isFinite(formulaDraftMonths) && Number.isFinite(formulaDraftRent) && formulaDraftMonths > 0 && formulaDraftRent >= 0
+    ? formulaDraftMonths * formulaDraftRent
+    : null;
+  const rentFormulaChanged = amendmentRentFormula !== (lease.rentFormula || 1);
+  const indexationChanged = JSON.stringify(serializeIndexationDraft(indexationDraft)) !== JSON.stringify(serializeIndexationDraft(buildIndexationDraft(lease)));
+
+  const applyRentFormula = (months: RentFormula) => {
+    setAmendmentRentFormula(months);
+    setEditedShares(prev => {
+      const next = { ...prev };
+      for (const r of currentUnits) {
+        if (unitsToRemove.includes(r.unit.id)) continue;
+        const rent = getMonthlyRentForMonths(r.unit, months);
+        if (rent != null) next[r.unit.id] = { ...next[r.unit.id], rentShare: String(rent) };
+      }
+      return next;
+    });
+    setUnitsToAdd(prev => prev.map(row => {
+      const unit = units.find(u => u.id === row.unitId);
+      const rent = unit ? getMonthlyRentForMonths(unit, months) : null;
+      return rent == null ? row : { ...row, rentShare: String(rent) };
+    }));
+  };
+
+  const openFormulaDraft = () => {
+    if (!formulaCreationUnit) return;
+    const currentRent = getMonthlyRentForMonths(formulaCreationUnit, amendmentRentFormula) ?? formulaCreationUnit.baseRent ?? 0;
+    setFormulaDraft({ durationMonths: "", monthlyRent: currentRent ? String(currentRent) : "" });
+    setFormulaDraftOpen(true);
+  };
+
+  const saveFormulaDraft = async () => {
+    if (!canWrite) return;
+    if (!formulaCreationUnit) {
+      toast({ title: "Validation Error", description: t("leases.formula.selectSingleUnit"), variant: "destructive" });
+      return;
+    }
+    const durationMonths = Math.floor(Number(formulaDraft.durationMonths));
+    const monthlyRent = Number(formulaDraft.monthlyRent);
+    if (!Number.isInteger(durationMonths) || durationMonths < 1) {
+      toast({ title: "Validation Error", description: "Enter a period of at least 1 month.", variant: "destructive" });
+      return;
+    }
+    if (!Number.isFinite(monthlyRent) || monthlyRent < 0) {
+      toast({ title: "Validation Error", description: "Enter a valid monthly rent.", variant: "destructive" });
+      return;
+    }
+    const nextUnit = durationMonths === 1
+      ? { ...formulaCreationUnit, baseRent: monthlyRent }
+      : {
+          ...formulaCreationUnit,
+          rentTiers: [
+            ...(formulaCreationUnit.rentTiers ?? []).filter(tier => tier.durationMonths !== durationMonths),
+            { durationMonths, monthlyRent },
+          ].sort((a, b) => a.durationMonths - b.durationMonths),
+        };
+    try {
+      await updateUnitPersisted(nextUnit);
+    } catch (error) {
+      toast({ title: t("settings.saveFailed"), description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      return;
+    }
+    applyRentFormula(durationMonths as RentFormula);
+    setEditedShares(prev => ({
+      ...prev,
+      [formulaCreationUnit.id]: { ...prev[formulaCreationUnit.id], rentShare: String(monthlyRent) },
+    }));
+    setUnitsToAdd(prev => prev.map(row => (
+      row.unitId === formulaCreationUnit.id ? { ...row, rentShare: String(monthlyRent) } : row
+    )));
+    setFormulaDraftOpen(false);
+    setFormulaDraft({ durationMonths: "", monthlyRent: "" });
+    toast({ title: t("leases.formula.saved"), description: formulaCreationUnit.unitCode });
+  };
+
   useEffect(() => {
     if (existing) {
       setTitle(existing.title);
@@ -104,6 +247,13 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         setNoticeUnit(parsed.unit);
       }
       setClauseSummary(String(find("clauseSummary")?.newValue ?? ""));
+      setAmendmentRentFormula(Math.max(1, Number(find("rentFormula")?.newValue ?? lease.rentFormula ?? 1)) as RentFormula);
+      {
+        const stored = find("indexationSettings")?.newValue as Partial<Lease> | undefined;
+        setIndexationDraft(stored ? buildIndexationDraft({ ...lease, ...stored }) : buildIndexationDraft(lease));
+      }
+      setFormulaDraftOpen(false);
+      setFormulaDraft({ durationMonths: "", monthlyRent: "" });
       const edits: Record<string, { rentShare?: string; chargesShare?: string }> = {};
       for (const c of chs) {
         const uid = c.metadata?.unitId;
@@ -144,7 +294,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         setNoticeValue(parsed.value);
         setNoticeUnit(parsed.unit);
       }
-      setClauseSummary(""); setUnitsToAdd([]); setUnitsToRemove([]); setEditedShares({}); setEditedEndDates({});
+      setClauseSummary(""); setAmendmentRentFormula(lease.rentFormula || 1); setIndexationDraft(buildIndexationDraft(lease)); setFormulaDraftOpen(false); setFormulaDraft({ durationMonths: "", monthlyRent: "" }); setUnitsToAdd([]); setUnitsToRemove([]); setEditedShares({}); setEditedEndDates({});
       setTenantsToAdd([]); setTenantsToRemove([]);
     }
   }, [existing, open, lease, getAmendmentChanges]);
@@ -166,6 +316,12 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     if (noticeSerialized && noticeSerialized !== lease.noticePeriodText) {
       push("noticePeriodText", "set", lease.noticePeriodText, noticeSerialized);
     }
+    if (amendmentRentFormula !== (lease.rentFormula || 1)) {
+      push("rentFormula", "set", lease.rentFormula || 1, amendmentRentFormula);
+    }
+    if (indexationChanged) {
+      push("indexationSettings", "set", serializeIndexationDraft(buildIndexationDraft(lease)), serializeIndexationDraft(indexationDraft));
+    }
     if (clauseSummary) {
       push("clauseSummary", "set", "", clauseSummary);
     }
@@ -185,18 +341,18 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
       const oldEnd = r.assignment.endDate ?? lease.endDate;
       const newEnd = editedEndDates[r.unit.id];
       if (newEnd !== undefined && newEnd !== "" && newEnd !== oldEnd) {
-        push("unitEndDate", "set", oldEnd, newEnd, { unitId: r.unit.id });
+        push("unitEndDate", "set", oldEnd, newEnd, { unitId: r.unit.id, originalLeaseEndDate: lease.endDate });
       }
     }
     for (const a of unitsToAdd) {
       if (!a.unitId) continue;
       push("unitAssignments", "add", null,
         { rentShare: Number(a.rentShare || 0), chargesShare: Number(a.chargesShare || 0) },
-        { unitId: a.unitId, endDate: a.endDate || lease.endDate });
+        { unitId: a.unitId, endDate: a.endDate || lease.endDate, originalLeaseEndDate: lease.endDate });
     }
     for (const uid of unitsToRemove) {
       push("unitAssignments", "remove", { unitId: uid }, null,
-        { unitId: uid });
+        { unitId: uid, originalLeaseEndDate: lease.endDate });
     }
     for (const tid of tenantsToAdd) {
       push("coTenantIds", "add", lease.coTenantIds, [...lease.coTenantIds, tid], { tenantId: tid });
@@ -207,7 +363,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     return out;
   }, [newDeposit, noticeValue, noticeUnit, clauseSummary,
       unitsToAdd, unitsToRemove, editedShares, editedEndDates, currentUnits, tenantsToAdd, tenantsToRemove,
-      lease, effectiveDate]);
+      lease, amendmentRentFormula, indexationChanged, indexationDraft]);
 
   const { totalRent, totalCharges } = useMemo(() => {
     let totalRent = 0;
@@ -244,7 +400,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     })), integrityState);
   }, [effectiveDate, title, reason, notes, signedDate, changesDraft, integrityState, lease.id, existing]);
 
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = propertyBusinessDateISO(property);
   const draftLike = useMemo(() => ({
     id: existing?.id ?? "preview",
     leaseId: lease.id,
@@ -277,49 +433,56 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
     return true;
   }, [effectiveDate, editedEndDates, lease, integrityState]);
 
-  const save = (status: AmendmentStatus) => {
-    if (!canSubmit) return;
+  const save = async (status: AmendmentStatus) => {
+    if (!canWrite || !canSubmit) return;
     // Date-driven: never persist active when date is future; never persist scheduled when date is past.
     if (status === "active" && effectiveDate > todayISO) status = "scheduled";
     if (status === "scheduled" && effectiveDate <= todayISO) status = "active";
-    // Sync edited per-unit rent back to the Unit record on activation
-    // (charges live on assignments, not units, so only rent is mirrored).
-    if (status === "active") {
+    try {
+    let activation: { ok: boolean; reason?: string } | null = null;
+    if (existing) {
+      const patched = {
+        ...existing,
+        title, reason, notes,
+        effectiveDate, signedDate: signedDate || null,
+        status: status === "active" ? "draft" : status,
+      };
+      const persisted = await updateAmendment(patched, changesDraft);
+      if (status === "active" && existing.status !== "active") {
+        activation = await activateAmendment(existing.id, persisted);
+      }
+    } else {
+      const created = await addAmendment({
+        leaseId: lease.id,
+        title, reason, notes,
+        effectiveDate, signedDate: signedDate || null,
+        supersedesAmendmentId: null,
+        status: status === "active" ? "draft" : status,
+      }, changesDraft);
+      if (status === "active") activation = await activateAmendment(created.amendment.id, created);
+    }
+    if (activation && !activation.ok) throw new Error(activation.reason || "Amendment activation failed");
+    // Sync edited per-unit rent back to the Unit record on activation only for
+    // monthly formulas. Advance formulas store their rent in unit rent tiers.
+    if (status === "active" && amendmentRentFormula === 1) {
       for (const r of currentUnits) {
         if (unitsToRemove.includes(r.unit.id)) continue;
         const e = editedShares[r.unit.id];
         if (e?.rentShare !== undefined && e.rentShare !== "" && Number(e.rentShare) !== (r.assignment.rentShare ?? 0)) {
-          updateUnit({ ...r.unit, baseRent: Number(e.rentShare) });
+          await updateUnitPersisted({ ...r.unit, baseRent: Number(e.rentShare) });
         }
       }
       for (const a of unitsToAdd) {
         const u = units.find(x => x.id === a.unitId);
         if (u && a.rentShare !== "" && Number(a.rentShare) !== (u.baseRent ?? 0)) {
-          updateUnit({ ...u, baseRent: Number(a.rentShare) });
+          await updateUnitPersisted({ ...u, baseRent: Number(a.rentShare) });
         }
       }
     }
-    if (existing) {
-      updateAmendment({
-        ...existing,
-        title, reason, notes,
-        effectiveDate, signedDate: signedDate || null,
-        status,
-      }, changesDraft);
-      if (status === "active" && existing.status !== "active") {
-        activateAmendment(existing.id);
-      }
-    } else {
-      const created = addAmendment({
-        leaseId: lease.id,
-        title, reason, notes,
-        effectiveDate, signedDate: signedDate || null,
-        supersedesAmendmentId: null,
-        status,
-      }, changesDraft);
-      if (status === "active") activateAmendment(created.id);
-    }
     onOpenChange(false);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Amendment could not be saved", description: error instanceof Error ? error.message : String(error) });
+    }
   };
 
   const requestSchedule = () => { if (scheduleGate.ok) setConfirmAction("schedule"); };
@@ -332,7 +495,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent size="large">
         <DialogHeader>
           <DialogTitle>{existing ? t("amendments.edit") : t("amendments.add")}</DialogTitle>
         </DialogHeader>
@@ -340,19 +503,19 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
         {!editable && (
           <Alert className="border-primary/30 bg-primary/5">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">{t("amendments.readOnlyNotice")}</AlertDescription>
+            <AlertDescription className="text-xs">{canWrite ? t("amendments.readOnlyNotice") : t("amendments.viewerReadOnlyNotice")}</AlertDescription>
           </Alert>
         )}
 
         <fieldset disabled={!editable} className="grid grid-cols-2 gap-3 disabled:opacity-70">
           <div className="col-span-2">
-            <Label>{t("amendments.titleField")} <span className="text-destructive">*</span></Label>
+            <Label>{t("amendments.titleField")} *</Label>
             <Input className="h-8" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
           <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             <div className="space-y-1">
               <div className="flex h-5 items-center gap-1.5">
-                <Label>{t("amendments.effectiveDate")} <span className="text-destructive">*</span></Label>
+                <Label>{t("amendments.effectiveDate")} *</Label>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
@@ -363,13 +526,9 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                 </Tooltip>
               </div>
               <div className="flex items-center gap-2">
-                <Input className="h-8" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
+                <DateInput className="h-8" value={effectiveDate} onChange={setEffectiveDate} />
                 {(() => {
-                  if (!effectiveDate) return null;
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const eff = new Date(effectiveDate);
-                  if (eff >= today) return null;
+                  if (!effectiveDate || effectiveDate >= todayISO) return null;
                   return (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -387,7 +546,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
               <div className="flex h-5 items-center">
                 <Label>{t("amendments.signedDate")}</Label>
               </div>
-              <Input className="h-8" type="date" value={signedDate} onChange={e => setSignedDate(e.target.value)} />
+              <DateInput className="h-8" value={signedDate} onChange={setSignedDate} />
             </div>
           </div>
           <div className="col-span-2">
@@ -415,6 +574,151 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                 </Select>
               </div>
           </div>
+          <div className="col-span-2 space-y-2 rounded-md border p-3">
+            <div className={rentFormulaChanged ? "grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" : "grid grid-cols-1 gap-3"}>
+              <div>
+                <Label className="mb-1 flex h-5 items-center">{t("leases.formula")} *</Label>
+                <Select
+                  value={String(amendmentRentFormula)}
+                  disabled={commonRentFormulas.length === 0 && !formulaCreationUnit}
+                  onValueChange={(raw) => {
+                    if (raw === "__new_formula__") {
+                      openFormulaDraft();
+                      return;
+                    }
+                    applyRentFormula(Number(raw) as RentFormula);
+                  }}
+                >
+                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {commonRentFormulas.length === 0 && (
+                      <SelectItem value="1" disabled>{t("leases.formula.notAvailable")}</SelectItem>
+                    )}
+                    {commonRentFormulas.map(tier => (
+                      <SelectItem key={tier.durationMonths} value={String(tier.durationMonths)}>
+                        {tier.durationMonths === 1 ? t("leases.formula.monthly") : `${tier.durationMonths} ${t("rentPrepayment.monthsSuffix")}`}
+                      </SelectItem>
+                    ))}
+                    <SelectSeparator />
+                    <SelectItem value="__new_formula__" disabled={!formulaCreationUnit}>
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-3.5 w-3.5" />
+                        {t("leases.formula.new")}
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {commonRentFormulas.length === 0 && !formulaCreationUnit && (
+                  <p className="mt-1 text-xs text-muted-foreground">{t("leases.formula.requiresCommonTiers")}</p>
+                )}
+              </div>
+              {rentFormulaChanged && (
+                <Alert className="border-warning/40 bg-warning/10 text-warning [&>svg]:text-warning">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    {t("amendments.rentFormulaEffectiveDateWarning")}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+            <div className="space-y-3 rounded-md border bg-background/70 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Label className="text-sm font-medium">{t("leaseDetail.rentIndexation")}</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("leaseIndexation.amendmentHelp")}</p>
+                </div>
+                <Switch
+                  checked={indexationDraft.enabled}
+                  onCheckedChange={checked => setIndexationDraft(draft => ({ ...draft, enabled: checked, baseDate: checked ? (draft.baseDate || effectiveDate || lease.startDate) : draft.baseDate }))}
+                />
+              </div>
+              {indexationDraft.enabled && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div>
+                    <Label>{t("leaseIndexation.baseDate")}</Label>
+                    <DateInput value={indexationDraft.baseDate} onChange={value => setIndexationDraft(draft => ({ ...draft, baseDate: value }))} />
+                  </div>
+                  <div>
+                    <Label>{t("leaseIndexation.baseIndex")}</Label>
+                    <Input className="h-8" type="number" min={0} step="0.0001" value={indexationDraft.baseIndex} onChange={e => setIndexationDraft(draft => ({ ...draft, baseIndex: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>{t("leaseIndexation.currentIndex")}</Label>
+                    <Input className="h-8" type="number" min={0} step="0.0001" value={indexationDraft.currentIndex} onChange={e => setIndexationDraft(draft => ({ ...draft, currentIndex: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>{t("leaseIndexation.cap")}</Label>
+                    <Input className="h-8" type="number" min={0} step="0.01" value={indexationDraft.capPercent} onChange={e => setIndexationDraft(draft => ({ ...draft, capPercent: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>{t("leaseIndexation.rounding")}</Label>
+                    <Select value={indexationDraft.roundingMode} onValueChange={value => setIndexationDraft(draft => ({ ...draft, roundingMode: value as IndexationDraft["roundingMode"] }))}>
+                      <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nearest-cent">{t("leaseIndexation.nearestCent")}</SelectItem>
+                        <SelectItem value="nearest-euro">{t("leaseIndexation.nearestEuro")}</SelectItem>
+                        <SelectItem value="none">{t("leaseIndexation.noMonthlyRounding")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="md:col-span-3">
+                    <Label>{t("leaseIndexation.regulatoryNotes")}</Label>
+                    <Textarea value={indexationDraft.notes} onChange={e => setIndexationDraft(draft => ({ ...draft, notes: e.target.value }))} rows={2} />
+                  </div>
+                </div>
+              )}
+              {indexationChanged && (
+                <Alert className="border-warning/40 bg-warning/10 text-warning [&>svg]:text-warning">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    When this amendment becomes active, future unpaid rent receivables due on or after the effective date will be recalculated using the updated indexation settings. Allocated future receivables are kept for manual review.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            {formulaDraftOpen && (
+              <div className="rounded-md border bg-background/70 p-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_minmax(0,1fr)_160px_auto]">
+                  <div>
+                    <Label className="text-xs">{t("units.rentTiers.period")}</Label>
+                    <Input
+                      className="h-8"
+                      type="number"
+                      min={1}
+                      value={formulaDraft.durationMonths}
+                      onChange={event => setFormulaDraft(draft => ({ ...draft, durationMonths: event.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">{t("units.rentTiers.monthlyRent")}</Label>
+                    <Input
+                      className="h-8"
+                      type="number"
+                      min={0}
+                      value={formulaDraft.monthlyRent}
+                      onChange={event => setFormulaDraft(draft => ({ ...draft, monthlyRent: event.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">{t("units.rentTiers.total")}</Label>
+                    <div className="flex h-8 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium">
+                      {formulaDraftTotal == null ? "—" : formatCurrency(formulaDraftTotal, currency, property?.locale)}
+                    </div>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => setFormulaDraftOpen(false)}>
+                      {t("action.cancel")}
+                    </Button>
+                    <Button type="button" size="sm" className="h-8" onClick={saveFormulaDraft}>
+                      {t("documents.save")}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="col-span-2">
               <Label>{t("amendments.clauseSummary")}</Label>
               <Textarea value={clauseSummary} onChange={e => setClauseSummary(e.target.value)} />
@@ -510,14 +814,14 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                               onChange={(e) => setEditedShares(m => ({ ...m, [r.unit.id]: { ...m[r.unit.id], chargesShare: e.target.value } }))} />
                           </TableCell>
                           <TableCell className="py-1">
-                            <Input className="h-7 text-xs" type="date" disabled={marked}
+                            <DateInput className="h-7 text-xs" disabled={marked}
                               value={endVal}
-                              onChange={(e) => setEditedEndDates(m => ({ ...m, [r.unit.id]: e.target.value }))} />
+                              onChange={(value) => setEditedEndDates(m => ({ ...m, [r.unit.id]: value }))} />
                           </TableCell>
                           <TableCell className="py-1 text-xs">
                             {marked
-                              ? <Badge variant="destructive" className="text-[10px]">{t("amendments.toRemove")}</Badge>
-                              : <Badge variant="secondary" className="text-[10px]">{t("amendments.statusCurrent")}</Badge>}
+                              ? <Badge variant="destructive" className="text-xs">{t("amendments.toRemove")}</Badge>
+                              : <Badge variant="secondary" className="text-xs">{t("amendments.statusCurrent")}</Badge>}
                           </TableCell>
                           <TableCell className="py-1 text-right">
                             {canRemove && (marked ? (
@@ -555,12 +859,12 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                               onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, chargesShare: e.target.value } : x))} />
                           </TableCell>
                           <TableCell className="py-1">
-                            <Input className="h-7 text-xs" type="date"
+                            <DateInput className="h-7 text-xs"
                               value={a.endDate}
-                              onChange={(e) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, endDate: e.target.value } : x))} />
+                              onChange={(value) => setUnitsToAdd(arr => arr.map((x, i) => i === idx ? { ...x, endDate: value } : x))} />
                           </TableCell>
                           <TableCell className="py-1 text-xs">
-                            <Badge className="text-[10px] bg-success text-success-foreground hover:bg-success">{t("amendments.toAdd")}</Badge>
+                            <Badge className="text-xs bg-success text-success-foreground hover:bg-success">{t("amendments.toAdd")}</Badge>
                           </TableCell>
                           <TableCell className="py-1 text-right">
                             <Button size="icon" variant="ghost" className="h-7 w-7"
@@ -575,8 +879,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                     {(currentUnits.length > 0 || unitsToAdd.length > 0) && (
                       <TableRow className="h-9 border-t-2 border-t-border font-medium bg-muted/30">
                         <TableCell className="py-1 text-xs">{t("common.total")}</TableCell>
-                        <TableCell className="py-1 text-xs text-right tabular-nums">{formatCurrency(totalRent, "EUR")}</TableCell>
-                        <TableCell className="py-1 text-xs text-right tabular-nums">{formatCurrency(totalCharges, "EUR")}</TableCell>
+                        <TableCell className="py-1 text-xs text-right tabular-nums">{formatCurrency(totalRent, currency, property?.locale)}</TableCell>
+                        <TableCell className="py-1 text-xs text-right tabular-nums">{formatCurrency(totalCharges, currency, property?.locale)}</TableCell>
                         <TableCell className="py-1" />
                         <TableCell className="py-1" />
                         <TableCell className="py-1" />
@@ -660,8 +964,8 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                         <TableCell className="py-1 text-xs text-muted-foreground">{tn?.phone ?? "—"}</TableCell>
                         <TableCell className="py-1 text-xs">
                           {marked
-                            ? <Badge variant="destructive" className="text-[10px]">{t("amendments.toRemove")}</Badge>
-                            : <Badge variant="secondary" className="text-[10px]">{t("amendments.statusCurrent")}</Badge>}
+                            ? <Badge variant="destructive" className="text-xs">{t("amendments.toRemove")}</Badge>
+                            : <Badge variant="secondary" className="text-xs">{t("amendments.statusCurrent")}</Badge>}
                         </TableCell>
                         <TableCell className="py-1 text-right">
                           {marked ? (
@@ -691,7 +995,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
                         <TableCell className="py-1 text-xs text-muted-foreground">{tn?.email ?? "—"}</TableCell>
                         <TableCell className="py-1 text-xs text-muted-foreground">{tn?.phone ?? "—"}</TableCell>
                         <TableCell className="py-1 text-xs">
-                          <Badge className="text-[10px] bg-success text-success-foreground hover:bg-success">{t("amendments.toAdd")}</Badge>
+                          <Badge className="text-xs bg-success text-success-foreground hover:bg-success">{t("amendments.toAdd")}</Badge>
                         </TableCell>
                         <TableCell className="py-1 text-right">
                           <Button size="icon" variant="ghost" className="h-7 w-7"
@@ -748,7 +1052,7 @@ export function AmendmentDialog({ open, onOpenChange, lease, existing }: Props) 
           );
         })()}
 
-        <DialogFooter className="gap-2 sm:gap-2 sm:justify-between">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {editable ? t("action.cancel") : t("action.close")}
           </Button>

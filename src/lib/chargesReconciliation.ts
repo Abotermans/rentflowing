@@ -1,7 +1,11 @@
 import type { Lease, LeaseUnitAssignment, Unit } from "@/types";
 import type { ReceivableItem } from "@/types/receivables";
 import type { CostAllocationResult, CostEntry, RecoveryType } from "@/types/costs";
+import { getCostRecognitionWindow, recognizeAmountForPeriod } from "@/lib/costRecognition";
+import { splitCostRecovery } from "@/lib/costRecovery";
 import type { ChargesReconciliation } from "@/types/chargesReconciliation";
+import { localTodayISO } from "@/lib/calendarToday";
+import { getLeaseOccupancyEndDate } from "@/lib/occupancy";
 
 // ===== Date helpers (UTC, day granularity) =====
 function parseISO(d: string): Date {
@@ -18,32 +22,22 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-// Local copy of the recovery split used by the allocation engine — kept here
-// to avoid a cross-module import cycle. Mirrors computeRecoverySplit() in
-// src/lib/costAllocation.ts.
-function splitRecovery(amount: number, recoveryType: RecoveryType): { recoverableAmount: number; ownerBurdenAmount: number } {
-  switch (recoveryType) {
-    case "owner-only":
-      return { recoverableAmount: 0, ownerBurdenAmount: amount };
-    case "tenant-recoverable":
-      return { recoverableAmount: amount, ownerBurdenAmount: 0 };
-    case "partially-recoverable": {
-      const half = round2(amount / 2);
-      return { recoverableAmount: half, ownerBurdenAmount: round2(amount - half) };
-    }
-    case "informational":
-    default:
-      return { recoverableAmount: 0, ownerBurdenAmount: 0 };
-  }
-}
-
 export interface ReconciliationWindow {
   start: string; // YYYY-MM-DD inclusive
   end: string;   // YYYY-MM-DD inclusive
 }
 
+export function findOverlappingReconciliation<T extends { periodStart: string; periodEnd: string }>(
+  window: ReconciliationWindow,
+  history: readonly T[],
+): T | undefined {
+  return history.find(row => row.periodStart <= window.end && row.periodEnd >= window.start);
+}
+
 export interface ReconciliationCostLine {
   costEntryId: string;
+  unitId?: string;
+  unitLabel?: string;
   label: string;
   costPeriodStart: string;
   costPeriodEnd: string;
@@ -69,6 +63,7 @@ export interface LeaseCostOverviewLine {
   costEntryId: string;
   costLabel: string;
   recoveryType: RecoveryType;
+  recoverablePercentage: number | null;
   /** Full cost amount (before any unit split). */
   costFullAmount: number;
   unitId: string;
@@ -100,6 +95,12 @@ export interface LeaseCostOverview {
 function maxISO(a: string, b: string) { return a > b ? a : b; }
 function minISO(a: string, b: string) { return a < b ? a : b; }
 
+function allocationWindow(alloc: CostAllocationResult, cost: CostEntry): { start: string; end: string } {
+  const recognitionWindow = getCostRecognitionWindow(cost);
+  const start = alloc.periodStart ?? recognitionWindow.start;
+  return { start, end: alloc.periodEnd ?? recognitionWindow.end ?? start };
+}
+
 /**
  * Compute every cost allocated to the units assigned to a lease (primary +
  * ancillary, including units added or removed via amendments), pro-rated by:
@@ -117,9 +118,9 @@ export function computeLeaseCostOverview(
   costEntries: readonly CostEntry[],
   opts: { windowOverride?: ReconciliationWindow; todayISO?: string } = {},
 ): LeaseCostOverview {
-  const today = opts.todayISO ?? new Date().toISOString().slice(0, 10);
+  const today = opts.todayISO ?? localTodayISO();
   const leaseStart = lease.startDate;
-  const leaseEnd = lease.moveOutActualDate ?? lease.endDate ?? today;
+  const leaseEnd = getLeaseOccupancyEndDate(lease) ?? today;
   const winStart = opts.windowOverride ? maxISO(opts.windowOverride.start, leaseStart) : leaseStart;
   const winEnd = opts.windowOverride ? minISO(opts.windowOverride.end, leaseEnd) : leaseEnd;
 
@@ -133,14 +134,13 @@ export function computeLeaseCostOverview(
     const unit = units.find(u => u.id === a.unitId);
     const unitLabel = unit ? (unit.unitLabel || unit.unitCode || unit.id) : a.unitId;
     const addedByAmendment = a.startDate > leaseStart;
-    const removedByAmendment = !!a.endDate && a.endDate < (lease.endDate ?? today);
+    const removedByAmendment = !!a.endDate && a.endDate < leaseEnd;
 
     for (const alloc of allocations) {
       if (alloc.unitId !== a.unitId) continue;
       const cost = costEntries.find(c => c.id === alloc.costEntryId);
-      if (!cost) continue;
-      const costStart = alloc.periodStart ?? cost.startDate;
-      const costEnd = alloc.periodEnd ?? cost.endDate ?? cost.startDate;
+      if (!cost || cost.status !== "active" || cost.recoveryType === "informational" || cost.unitId !== null) continue;
+      const { start: costStart, end: costEnd } = allocationWindow(alloc, cost);
       if (!costStart || !costEnd) continue;
       const totalDays = diffDaysInclusive(costStart, costEnd);
       if (totalDays <= 0) continue;
@@ -154,6 +154,7 @@ export function computeLeaseCostOverview(
         costEntryId: cost.id,
         costLabel: cost.label || cost.invoiceReference || "—",
         recoveryType: alloc.recoveryType,
+        recoverablePercentage: cost.recoveryType === "partially-recoverable" ? cost.recoverablePercentage ?? 50 : null,
         costFullAmount: cost.amount,
         unitId: a.unitId,
         unitLabel,
@@ -167,25 +168,21 @@ export function computeLeaseCostOverview(
         allocatedAmount: alloc.allocatedAmount,
         recoverableAmount: alloc.recoverableAmount,
         ownerBurdenAmount: alloc.ownerBurdenAmount,
-        proRatedAllocated: round2(alloc.allocatedAmount * factor),
-        proRatedRecoverable: round2(alloc.recoverableAmount * factor),
-        proRatedOwnerBurden: round2(alloc.ownerBurdenAmount * factor),
+        proRatedAllocated: recognizeAmountForPeriod(alloc.allocatedAmount, costStart, costEnd, { start: oStart, end: oEnd }),
+        proRatedRecoverable: recognizeAmountForPeriod(alloc.recoverableAmount, costStart, costEnd, { start: oStart, end: oEnd }),
+        proRatedOwnerBurden: recognizeAmountForPeriod(alloc.ownerBurdenAmount, costStart, costEnd, { start: oStart, end: oEnd }),
         addedByAmendment,
         removedByAmendment,
       });
     }
 
-    // Unit-scoped cost entries (no allocation rule — the unit bears 100%).
-    // These never appear in costAllocationResults, so include them here so
-    // they show up on the lease's charges reconciliation overview.
+    // Unit-scoped costs bear 100% on their unit, even if stale allocation rows exist.
     for (const cost of costEntries) {
       if (cost.unitId !== a.unitId) continue;
-      if (cost.status !== "active") continue;
-      // Skip if an allocation result already covers this (cost, unit) pair
-      // to avoid double-counting.
-      if (allocations.some(r => r.costEntryId === cost.id && r.unitId === a.unitId)) continue;
-      const costStart = cost.startDate;
-      const costEnd = cost.endDate ?? cost.startDate;
+      if (cost.status !== "active" || cost.recoveryType === "informational") continue;
+      const recognitionWindow = getCostRecognitionWindow(cost);
+      const costStart = recognitionWindow.start;
+      const costEnd = recognitionWindow.end ?? recognitionWindow.start;
       if (!costStart || !costEnd) continue;
       const totalDays = diffDaysInclusive(costStart, costEnd);
       if (totalDays <= 0) continue;
@@ -195,11 +192,12 @@ export function computeLeaseCostOverview(
       const overlapDays = diffDaysInclusive(oStart, oEnd);
       if (overlapDays <= 0) continue;
       const factor = overlapDays / totalDays;
-      const split = splitRecovery(cost.amount, cost.recoveryType);
+      const split = splitCostRecovery(cost.amount, cost.recoveryType, cost.recoverablePercentage);
       lines.push({
         costEntryId: cost.id,
         costLabel: cost.label || cost.invoiceReference || "—",
         recoveryType: cost.recoveryType,
+        recoverablePercentage: cost.recoveryType === "partially-recoverable" ? cost.recoverablePercentage ?? 50 : null,
         costFullAmount: cost.amount,
         unitId: a.unitId,
         unitLabel,
@@ -213,9 +211,9 @@ export function computeLeaseCostOverview(
         allocatedAmount: cost.amount,
         recoverableAmount: split.recoverableAmount,
         ownerBurdenAmount: split.ownerBurdenAmount,
-        proRatedAllocated: round2(cost.amount * factor),
-        proRatedRecoverable: round2(split.recoverableAmount * factor),
-        proRatedOwnerBurden: round2(split.ownerBurdenAmount * factor),
+        proRatedAllocated: recognizeAmountForPeriod(cost.amount, costStart, costEnd, { start: oStart, end: oEnd }),
+        proRatedRecoverable: recognizeAmountForPeriod(split.recoverableAmount, costStart, costEnd, { start: oStart, end: oEnd }),
+        proRatedOwnerBurden: recognizeAmountForPeriod(split.ownerBurdenAmount, costStart, costEnd, { start: oStart, end: oEnd }),
         addedByAmendment,
         removedByAmendment,
       });
@@ -262,8 +260,18 @@ export function proRateAllocation(
   cost: CostEntry,
   window: ReconciliationWindow,
 ): ReconciliationCostLine | null {
-  const costStart = alloc.periodStart ?? cost.startDate;
-  const costEnd = alloc.periodEnd ?? cost.endDate ?? cost.startDate;
+  if (cost.status !== "active" || cost.recoveryType === "informational") return null;
+  const { start: costStart, end: costEnd } = allocationWindow(alloc, cost);
+  return proRateRecoverable(cost, alloc.recoverableAmount, costStart, costEnd, window);
+}
+
+function proRateRecoverable(
+  cost: CostEntry,
+  recoverableAmount: number,
+  costStart: string,
+  costEnd: string,
+  window: ReconciliationWindow,
+): ReconciliationCostLine | null {
   if (!costStart || !costEnd) return null;
   const totalDays = diffDaysInclusive(costStart, costEnd);
   if (totalDays <= 0) return null;
@@ -274,14 +282,14 @@ export function proRateAllocation(
   if (overlapDays <= 0) return null;
 
   const factor = overlapDays / totalDays;
-  const proRated = round2(alloc.recoverableAmount * factor);
+  const proRated = recognizeAmountForPeriod(recoverableAmount, costStart, costEnd, { start: overlapStart, end: overlapEnd });
 
   return {
-    costEntryId: alloc.costEntryId,
+    costEntryId: cost.id,
     label: cost.label || cost.invoiceReference || "—",
     costPeriodStart: costStart,
     costPeriodEnd: costEnd,
-    fullRecoverable: alloc.recoverableAmount,
+    fullRecoverable: recoverableAmount,
     overlapDays,
     totalDays,
     proRataFactor: factor,
@@ -295,8 +303,8 @@ export function proRateAllocation(
  *
  *  - `provisionsCollected` = sum of `charges` receivables actually paid
  *    (allocatedAmount) whose dueDate falls inside the window for the lease.
- *  - `actualRecoverable` = sum of pro-rated recoverable amounts for the lease's
- *    primary unit across the window.
+ *  - `actualRecoverable` = sum of pro-rated recoverable amounts for every unit
+ *    assigned to the lease across the window.
  *  - `delta` = provisionsCollected − actualRecoverable. Positive => surplus.
  */
 export function computeReconciliation(
@@ -305,29 +313,57 @@ export function computeReconciliation(
   receivables: ReceivableItem[],
   allocations: CostAllocationResult[],
   costEntries: CostEntry[],
+  context?: { assignments: readonly LeaseUnitAssignment[]; units: readonly Unit[] },
 ): ReconciliationBreakdown {
   const provisionsCollected = round2(
     receivables
       .filter(r =>
         r.leaseId === lease.id
-        && (r.itemType === "charges" || r.itemType === "charges-adjustment")
+        && r.itemType === "charges"
         && r.dueDate >= window.start
         && r.dueDate <= window.end,
       )
-      .reduce((sum, r) => sum + (r.itemType === "charges-adjustment"
-        // adjustment can be negative (carry-forward / refund); count signed.
-        ? r.allocatedAmount
-        : r.allocatedAmount), 0),
+      .reduce((sum, r) => sum + r.allocatedAmount, 0),
   );
 
   const lines: ReconciliationCostLine[] = [];
-  for (const alloc of allocations) {
-    if (alloc.unitId !== lease.unitId) continue;
-    if (alloc.recoverableAmount <= 0) continue;
-    const cost = costEntries.find(c => c.id === alloc.costEntryId);
-    if (!cost) continue;
-    const line = proRateAllocation(alloc, cost, window);
-    if (line && line.proRatedRecoverable > 0) lines.push(line);
+  if (context?.assignments.some(assignment => assignment.leaseId === lease.id)) {
+    const overview = computeLeaseCostOverview(lease, context.assignments, context.units, allocations, costEntries, {
+      windowOverride: window, todayISO: window.end,
+    });
+    for (const row of overview.lines) {
+      if (row.proRatedRecoverable === 0) continue;
+      lines.push({
+        costEntryId: row.costEntryId,
+        unitId: row.unitId,
+        unitLabel: row.unitLabel,
+        label: row.costLabel,
+        costPeriodStart: row.costPeriodStart,
+        costPeriodEnd: row.costPeriodEnd,
+        fullRecoverable: row.recoverableAmount,
+        overlapDays: row.overlapDays,
+        totalDays: row.totalDays,
+        proRataFactor: row.proRataFactor,
+        proRatedRecoverable: row.proRatedRecoverable,
+      });
+    }
+  } else {
+    for (const alloc of allocations) {
+      if (alloc.unitId !== lease.unitId) continue;
+      if (alloc.recoverableAmount <= 0) continue;
+      const cost = costEntries.find(c => c.id === alloc.costEntryId);
+      if (!cost || cost.unitId !== null) continue;
+      const line = proRateAllocation(alloc, cost, window);
+      if (line && line.proRatedRecoverable > 0) lines.push(line);
+    }
+    for (const cost of costEntries) {
+      if (cost.unitId !== lease.unitId || cost.status !== "active") continue;
+      const recoverable = splitCostRecovery(cost.amount, cost.recoveryType, cost.recoverablePercentage).recoverableAmount;
+      if (recoverable <= 0) continue;
+      const recognitionWindow = getCostRecognitionWindow(cost);
+      const line = proRateRecoverable(cost, recoverable, recognitionWindow.start, recognitionWindow.end ?? recognitionWindow.start, window);
+      if (line && line.proRatedRecoverable > 0) lines.push(line);
+    }
   }
 
   const actualRecoverable = round2(lines.reduce((s, l) => s + l.proRatedRecoverable, 0));

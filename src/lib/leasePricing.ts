@@ -1,4 +1,4 @@
-import type { Lease } from "@/types";
+import type { Lease } from "../types/index.ts";
 
 export type PricingMode = "separated" | "flat-charges" | "all-inclusive";
 
