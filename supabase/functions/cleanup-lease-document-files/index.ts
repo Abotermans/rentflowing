@@ -1,6 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { removeStorageFileIfPresent, runDocumentFileCleanup } from "../../../src/lib/serverDocumentCleanup.ts";
-import { hasScheduledJobSecret, isConfiguredScheduledJobSecret } from "../../../src/lib/scheduledJobAuth.ts";
+// @deno-types="../_shared/server-jobs.d.ts"
+import {
+  removeStorageFileIfPresent,
+  runDocumentFileCleanup,
+  hasScheduledJobSecret,
+  isConfiguredScheduledJobSecret,
+} from "../_shared/server-jobs.js";
 
 const JOB_NAME = "cleanup-lease-document-files";
 

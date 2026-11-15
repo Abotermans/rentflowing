@@ -1,16 +1,19 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+// @deno-types="../_shared/server-jobs.d.ts"
 import {
   collectRowsById,
   isValidBusinessDate,
   runDueReceivableJob,
   type DatabaseRow,
-} from "../../../src/lib/serverReceivableJob.ts";
-import { runDueAmendmentJob } from "../../../src/lib/serverAmendmentJob.ts";
-import { isCompleteAmendmentActivationResponse, type ServerAmendmentRows } from "../../../src/lib/serverAmendmentActivation.ts";
-import { calendarDateISO } from "../../../src/lib/calendarToday.ts";
-import { DEFAULT_BUSINESS_TIME_ZONE } from "../../../src/lib/businessTimeZone.ts";
-import { parseScheduledBusinessInstant } from "../../../src/lib/scheduledBusinessInstant.ts";
-import { hasScheduledJobSecret, isConfiguredScheduledJobSecret } from "../../../src/lib/scheduledJobAuth.ts";
+  runDueAmendmentJob,
+  isCompleteAmendmentActivationResponse,
+  type ServerAmendmentRows,
+  calendarDateISO,
+  DEFAULT_BUSINESS_TIME_ZONE,
+  parseScheduledBusinessInstant,
+  hasScheduledJobSecret,
+  isConfiguredScheduledJobSecret,
+} from "../_shared/server-jobs.js";
 
 const JOB_NAME = "advance-receivables";
 

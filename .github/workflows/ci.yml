@@ -24,6 +24,7 @@ jobs:
       - run: npm run check:migrations
       - run: npm run lint
       - run: npx tsc --noEmit -p tsconfig.app.json
+      - run: npm run check:edge-shared
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.6

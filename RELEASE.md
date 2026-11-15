@@ -6,6 +6,26 @@
 instructions below describe the state at their recorded time and do not
 supersede this section or the more recent entries immediately following it.
 
+## Release branch and Edge deployment check (2026-11-15)
+
+The clean candidate is PR #1, branch `codex/release-20261115`. Its first CI
+run passed 921 tests in 163 files, lint, TypeScript, build, migration checks,
+and Deno checks. Lovable preview followed that branch, but the published site
+was not updated. An attempted Lovable deployment found a real packaging bug:
+the two scheduled Edge functions imported application modules outside
+`supabase/functions`, which Lovable's deploy bundler could not resolve. The
+candidate now contains a reproducibly generated, self-contained shared Edge
+module and CI checks that it matches its source. This fix still needs a green
+CI run and a successful Lovable deployment to count as verified.
+
+The target currently has neither scheduled function deployed nor any Cron jobs
+or `scheduled_job_health` successes. Its `SCHEDULED_JOB_SECRET` is also absent.
+Do not enable scheduled billing until the authenticated job setup and the
+remaining release gates have been checked. The Lovable agent created a separate
+backend-connection edit commit; reconcile that branch before publishing or
+merging. The public Lovable host still lacks required security headers and
+`/release.json`. The release decision remains **NO-GO**.
+
 | Gate | Current evidence | Release action |
 | --- | --- | --- |
 | Local source | 920 tests across 162 files plus the new focused trigger-privilege test pass; lint, TypeScript, build, and diff check pass; `dist/release.json` remains dirty at `b30c4095` | Review the mixed worktree and build a clean reviewed release commit |
