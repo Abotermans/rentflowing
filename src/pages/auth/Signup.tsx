@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,19 +8,31 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { isValidEmail } from "@/lib/validation";
+import { safeReturnPath } from "@/lib/safeReturnPath";
+import { useSignupAvailability } from "@/hooks/useSignupAvailability";
 
 export default function Signup() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const inviteToken = params.get("invite");
+  const returnPath = inviteToken && /^[a-z0-9-]{1,128}$/i.test(inviteToken)
+    ? `/accept-invite/${inviteToken}`
+    : safeReturnPath(params.get("next"));
   const { toast } = useToast();
+  const signupAvailability = useSignupAvailability();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmationPending, setConfirmationPending] = useState(false);
+  const loginPath = returnPath === "/" ? "/login" : `/login?next=${encodeURIComponent(returnPath)}`;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signupAvailability === "disabled" || signupAvailability === "checking") return;
     if (!isValidEmail(email)) {
       toast({ title: "Check your email", description: "Enter a valid email address before creating an account.", variant: "destructive" });
       return;
@@ -30,15 +42,57 @@ export default function Signup() {
       return;
     }
     setBusy(true);
-    const { error } = await signUp(email, password, firstName, lastName);
+    const { error, session } = await signUp(email, password, firstName, lastName, returnPath);
     setBusy(false);
     if (error) {
+      if ("code" in error && error.code === "signup_disabled") {
+        toast({
+          title: "Registration is temporarily closed",
+          description: "New accounts cannot be created right now. Existing users can still sign in.",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Welcome!", description: "Your account and portfolio are ready." });
-    navigate("/", { replace: true });
+    if (!session) {
+      setConfirmationPending(true);
+      return;
+    }
+    toast({ title: "Welcome!", description: "Your account is ready." });
+    navigate(returnPath, { replace: true });
   };
+
+  if (confirmationPending) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Check your email</CardTitle>
+            <CardDescription>Confirm your account using the link sent to {email}. Your invitation will be available after confirmation.</CardDescription>
+          </CardHeader>
+          <CardContent><Button asChild className="w-full"><Link to={loginPath}>Sign in after confirmation</Link></Button></CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (signupAvailability === "checking" || signupAvailability === "disabled") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>{signupAvailability === "disabled" ? "Registration is temporarily closed" : "Checking registration"}</CardTitle>
+            <CardDescription>{signupAvailability === "disabled"
+              ? "New accounts cannot be created right now. Existing users can still sign in."
+              : "Checking whether new accounts can be created."}</CardDescription>
+          </CardHeader>
+          <CardContent><Button asChild className="w-full"><Link to={loginPath}>Sign in</Link></Button></CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
@@ -48,7 +102,7 @@ export default function Signup() {
             <Building2 className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-2xl">Create your account</CardTitle>
-          <CardDescription>We'll set up your first portfolio automatically</CardDescription>
+          <CardDescription>{inviteToken ? "Create an account to accept your invitation" : "We'll set up your first portfolio automatically"}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -73,7 +127,7 @@ export default function Signup() {
             </div>
             <Button type="submit" className="w-full" disabled={busy}>{busy ? "Creating…" : "Create account"}</Button>
             <p className="text-sm text-center text-muted-foreground">
-              Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
+              Already have an account? <Link to={loginPath} className="text-primary hover:underline">Sign in</Link>
             </p>
           </form>
         </CardContent>

@@ -1,0 +1,77 @@
+name: Verify deployed release
+
+on:
+  workflow_dispatch:
+    inputs:
+      site_url:
+        description: Published HTTPS application origin, without a path
+        required: true
+        type: string
+      supabase_publishable_key:
+        description: Public Supabase key used by the deployed application
+        required: true
+        type: string
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ORIGIN: ${{ vars.PRODUCTION_SUPABASE_ORIGIN }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Require an approved production backend
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Run production verification from main"
+            exit 1
+          fi
+          if [ -z "$SUPABASE_ORIGIN" ]; then
+            echo "::error::Set the PRODUCTION_SUPABASE_ORIGIN repository variable before verifying a release"
+            exit 1
+          fi
+      - run: npm ci
+      - name: Independently build the intended release
+        env:
+          VITE_SUPABASE_URL: ${{ vars.PRODUCTION_SUPABASE_ORIGIN }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ inputs.supabase_publishable_key }}
+          PUBLIC_APP_ORIGIN: ${{ inputs.site_url }}
+        run: npm run build
+      - name: Verify published revision
+        env:
+          SITE_URL: ${{ inputs.site_url }}
+          EXPECTED_SHA: ${{ github.sha }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ inputs.supabase_publishable_key }}
+        run: npm run check:deployment -- "$SITE_URL" "$EXPECTED_SHA" "$SUPABASE_ORIGIN"
+      - name: Verify production security headers
+        env:
+          SITE_URL: ${{ inputs.site_url }}
+        run: npm run check:production-headers -- "$SITE_URL" "$SUPABASE_ORIGIN"
+      - name: Verify email confirmation is required
+        env:
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ inputs.supabase_publishable_key }}
+        run: npm run check:auth-settings -- "$SUPABASE_ORIGIN"
+      - name: Verify target migration history without modifying it
+        env:
+          SUPABASE_MANAGEMENT_READ_TOKEN: ${{ secrets.SUPABASE_MANAGEMENT_READ_TOKEN }}
+        run: npm run check:target-migrations -- "$SUPABASE_ORIGIN"
+      - name: Verify required backend schema capabilities
+        env:
+          SUPABASE_MANAGEMENT_READ_TOKEN: ${{ secrets.SUPABASE_MANAGEMENT_READ_TOKEN }}
+        run: npm run check:target-schema -- "$SUPABASE_ORIGIN"
+      - name: Verify scheduled backend functions without invoking them
+        env:
+          SUPABASE_MANAGEMENT_READ_TOKEN: ${{ secrets.SUPABASE_MANAGEMENT_READ_TOKEN }}
+        run: npm run check:backend-functions -- "$SUPABASE_ORIGIN"
+      - name: Verify target financial data without modifying it
+        env:
+          SUPABASE_MANAGEMENT_READ_TOKEN: ${{ secrets.SUPABASE_MANAGEMENT_READ_TOKEN }}
+        run: npm run check:target-data -- "$SUPABASE_ORIGIN"
+      - name: Verify document files against database records
+        env:
+          SUPABASE_MANAGEMENT_READ_TOKEN: ${{ secrets.SUPABASE_MANAGEMENT_READ_TOKEN }}
+        run: npm run check:target-documents -- "$SUPABASE_ORIGIN"

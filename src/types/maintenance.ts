@@ -60,7 +60,7 @@ export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
   cancelled: "Cancelled",
 };
 
-import type { TranslationKey } from "@/i18n/translations";
+import type { TranslationKey } from "../i18n/translations.ts";
 
 export const MAINTENANCE_CATEGORY_KEYS: Record<MaintenanceCategory, TranslationKey> = {
   plumbing: "maintenance.cat.plumbing",

@@ -41,6 +41,10 @@ export function validateCostEntry(entry: Partial<CostEntry>, s: IntegrityState):
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
 
+  if (entry.unitId && entry.allocationRuleId) {
+    blockers.push({ code: "COST_MIXED_SCOPE", message: "A unit-specific cost cannot also use a property allocation rule" });
+  }
+
   // Unit-level cost must have a valid unit
   if (entry.unitId) {
     const unit = s.units.find(u => u.id === entry.unitId);

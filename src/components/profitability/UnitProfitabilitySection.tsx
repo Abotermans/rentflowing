@@ -12,6 +12,8 @@ import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useUnitProfitability } from "@/hooks/use-profitability";
 import { defaultPeriod, ytdPeriod, allTimePeriod, type Period } from "@/lib/profitability";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { useBusinessNow } from "@/hooks/use-business-now";
 import { ProfitabilityBar } from "./ProfitabilityBar";
 import { isAllInclusive, getContractualMonthlyAmount } from "@/lib/leasePricing";
 
@@ -50,6 +52,7 @@ function Row({ label, value, strong, tone }: { label: string; value: string; str
 }
 
 export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
+  const businessNow = useBusinessNow();
   const { t } = useSettings();
   const { units, properties, getActiveLease } = useAppData();
   const unit = units.find(u => u.id === unitId);
@@ -60,11 +63,12 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
 
   const [preset, setPreset] = useState<PresetKey>("12m");
   const [open, setOpen] = useState(true);
+  const today = propertyBusinessDateISO(property, businessNow);
   const period: Period = useMemo(() => {
-    if (preset === "ytd") return ytdPeriod();
-    if (preset === "all") return allTimePeriod();
-    return defaultPeriod();
-  }, [preset]);
+    if (preset === "ytd") return ytdPeriod(today);
+    if (preset === "all") return allTimePeriod(today);
+    return defaultPeriod(today);
+  }, [preset, today]);
 
   const p = useUnitProfitability(unitId, period);
   const cur = p.currencyCode;
@@ -110,6 +114,19 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <CardContent className="space-y-4">
+          {p.currencyMismatches.length > 0 || p.assignmentMismatchCount > 0 || p.unitAttributionIssueCount > 0 ? (
+            <div className="space-y-2">
+              {p.currencyMismatches.length > 0 && <Alert variant="destructive"><AlertDescription>
+                {t("prof.currencyMismatch").replace("{expected}", cur).replace("{found}", p.currencyMismatches.join(", "))}
+              </AlertDescription></Alert>}
+              {p.assignmentMismatchCount > 0 && <Alert variant="destructive"><AlertDescription>
+                {t("prof.assignmentMismatch").replace("{count}", String(p.assignmentMismatchCount))}
+              </AlertDescription></Alert>}
+              {p.unitAttributionIssueCount > 0 && <Alert variant="destructive"><AlertDescription>
+                {t("prof.unitAttributionIssue").replace("{count}", String(p.unitAttributionIssueCount))}
+              </AlertDescription></Alert>}
+            </div>
+          ) : (<>
 
           <ProfitabilityBar revenue={p.revenue.egi} ownerBorne={p.recovery.ownerBorne} noi={p.noi}
             currencyCode={cur} locale={locale} />
@@ -202,6 +219,7 @@ export function UnitProfitabilitySection({ unitId }: { unitId: string }) {
           </div>
 
           <p className="text-[11px] text-muted-foreground">{t("prof.operationalOnlyFooter")}</p>
+          </>)}
         </CardContent>
       </CollapsibleContent>
     </Card>

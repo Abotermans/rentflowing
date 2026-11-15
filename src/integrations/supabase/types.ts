@@ -83,6 +83,7 @@ export type Database = {
           include_unavailable_units: boolean
           legacy_id: string | null
           method: string
+          millieme_allocation_mode: string
           name: string
           notes: string
           portfolio_id: string
@@ -97,6 +98,7 @@ export type Database = {
           include_unavailable_units?: boolean
           legacy_id?: string | null
           method?: string
+          millieme_allocation_mode?: string
           name?: string
           notes?: string
           portfolio_id: string
@@ -111,6 +113,7 @@ export type Database = {
           include_unavailable_units?: boolean
           legacy_id?: string | null
           method?: string
+          millieme_allocation_mode?: string
           name?: string
           notes?: string
           portfolio_id?: string
@@ -420,6 +423,7 @@ export type Database = {
           nature: string
           portfolio_id: string
           recovery_type_default: string
+          recognition_mode_default: string
           scope: string
           updated_at: string
         }
@@ -434,6 +438,7 @@ export type Database = {
           nature?: string
           portfolio_id: string
           recovery_type_default?: string
+          recognition_mode_default?: string
           scope?: string
           updated_at?: string
         }
@@ -448,6 +453,7 @@ export type Database = {
           nature?: string
           portfolio_id?: string
           recovery_type_default?: string
+          recognition_mode_default?: string
           scope?: string
           updated_at?: string
         }
@@ -465,6 +471,8 @@ export type Database = {
         Row: {
           allocation_rule_id: string | null
           amount: number
+          amortization_end_date: string | null
+          amortization_start_date: string | null
           category_id: string
           created_at: string
           currency_code: string
@@ -479,7 +487,9 @@ export type Database = {
           notes: string
           portfolio_id: string
           property_id: string
+          recoverable_percentage: number | null
           recovery_type: string
+          recognition_mode: string
           start_date: string
           status: string
           unit_id: string | null
@@ -489,6 +499,8 @@ export type Database = {
         Insert: {
           allocation_rule_id?: string | null
           amount?: number
+          amortization_end_date?: string | null
+          amortization_start_date?: string | null
           category_id: string
           created_at?: string
           currency_code?: string
@@ -503,7 +515,9 @@ export type Database = {
           notes?: string
           portfolio_id: string
           property_id: string
+          recoverable_percentage?: number | null
           recovery_type?: string
+          recognition_mode?: string
           start_date: string
           status?: string
           unit_id?: string | null
@@ -513,6 +527,8 @@ export type Database = {
         Update: {
           allocation_rule_id?: string | null
           amount?: number
+          amortization_end_date?: string | null
+          amortization_start_date?: string | null
           category_id?: string
           created_at?: string
           currency_code?: string
@@ -527,7 +543,9 @@ export type Database = {
           notes?: string
           portfolio_id?: string
           property_id?: string
+          recoverable_percentage?: number | null
           recovery_type?: string
+          recognition_mode?: string
           start_date?: string
           status?: string
           unit_id?: string | null
@@ -768,17 +786,88 @@ export type Database = {
           },
         ]
       }
+      lease_document_file_deletions: {
+        Row: {
+          attempts: number
+          created_at: string
+          document_id: string
+          id: string
+          last_error: string | null
+          lease_id: string
+          portfolio_id: string
+          storage_path: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          document_id: string
+          id?: string
+          last_error?: string | null
+          lease_id: string
+          portfolio_id: string
+          storage_path: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          document_id?: string
+          id?: string
+          last_error?: string | null
+          lease_id?: string
+          portfolio_id?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
+      lease_document_types: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          portfolio_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          portfolio_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          portfolio_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lease_document_types_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lease_documents: {
         Row: {
           created_at: string
           document_date: string
+          document_type: string
           id: string
           lease_id: string
           mime_type: string | null
           notes: string | null
           original_filename: string
           portfolio_id: string
+          signed_date: string | null
           size_bytes: number | null
+          status: string | null
           storage_path: string
           title: string
           updated_at: string
@@ -787,13 +876,16 @@ export type Database = {
         Insert: {
           created_at?: string
           document_date: string
+          document_type?: string
           id?: string
           lease_id: string
           mime_type?: string | null
           notes?: string | null
           original_filename: string
           portfolio_id: string
+          signed_date?: string | null
           size_bytes?: number | null
+          status?: string | null
           storage_path: string
           title: string
           updated_at?: string
@@ -802,13 +894,16 @@ export type Database = {
         Update: {
           created_at?: string
           document_date?: string
+          document_type?: string
           id?: string
           lease_id?: string
           mime_type?: string | null
           notes?: string | null
           original_filename?: string
           portfolio_id?: string
+          signed_date?: string | null
           size_bytes?: number | null
+          status?: string | null
           storage_path?: string
           title?: string
           updated_at?: string
@@ -971,6 +1066,14 @@ export type Database = {
           fixed_monthly_reduction_amount: number | null
           has_advance_payment: boolean
           id: string
+          indexation_base_date: string | null
+          indexation_base_index: number | null
+          indexation_cap_percent: number | null
+          indexation_current_index: number | null
+          indexation_enabled: boolean
+          indexation_frequency: string
+          indexation_notes: string
+          indexation_rounding_mode: string
           intended_move_out_date: string | null
           key_handover_count: number
           key_return_count: number
@@ -1027,6 +1130,14 @@ export type Database = {
           fixed_monthly_reduction_amount?: number | null
           has_advance_payment?: boolean
           id?: string
+          indexation_base_date?: string | null
+          indexation_base_index?: number | null
+          indexation_cap_percent?: number | null
+          indexation_current_index?: number | null
+          indexation_enabled?: boolean
+          indexation_frequency?: string
+          indexation_notes?: string
+          indexation_rounding_mode?: string
           intended_move_out_date?: string | null
           key_handover_count?: number
           key_return_count?: number
@@ -1083,6 +1194,14 @@ export type Database = {
           fixed_monthly_reduction_amount?: number | null
           has_advance_payment?: boolean
           id?: string
+          indexation_base_date?: string | null
+          indexation_base_index?: number | null
+          indexation_cap_percent?: number | null
+          indexation_current_index?: number | null
+          indexation_enabled?: boolean
+          indexation_frequency?: string
+          indexation_notes?: string
+          indexation_rounding_mode?: string
           intended_move_out_date?: string | null
           key_handover_count?: number
           key_return_count?: number
@@ -1331,6 +1450,7 @@ export type Database = {
           default_locale: string
           id: string
           name: string
+          receivable_lead_days: number
           show_occupancy_operations: boolean
           slug: string | null
           updated_at: string
@@ -1342,6 +1462,7 @@ export type Database = {
           default_locale?: string
           id?: string
           name: string
+          receivable_lead_days?: number
           show_occupancy_operations?: boolean
           slug?: string | null
           updated_at?: string
@@ -1353,6 +1474,7 @@ export type Database = {
           default_locale?: string
           id?: string
           name?: string
+          receivable_lead_days?: number
           show_occupancy_operations?: boolean
           slug?: string | null
           updated_at?: string
@@ -1405,6 +1527,7 @@ export type Database = {
           currency_code: string
           description: string
           id: string
+          is_partially_owned: boolean
           legacy_id: string | null
           locale: string
           measurement_system: string
@@ -1418,6 +1541,7 @@ export type Database = {
           reference_code: string
           region_or_state: string
           status: string
+          time_zone: string
           updated_at: string
         }
         Insert: {
@@ -1429,6 +1553,7 @@ export type Database = {
           currency_code?: string
           description?: string
           id?: string
+          is_partially_owned?: boolean
           legacy_id?: string | null
           locale?: string
           measurement_system?: string
@@ -1442,6 +1567,7 @@ export type Database = {
           reference_code?: string
           region_or_state?: string
           status?: string
+          time_zone?: string
           updated_at?: string
         }
         Update: {
@@ -1453,6 +1579,7 @@ export type Database = {
           currency_code?: string
           description?: string
           id?: string
+          is_partially_owned?: boolean
           legacy_id?: string | null
           locale?: string
           measurement_system?: string
@@ -1466,6 +1593,7 @@ export type Database = {
           reference_code?: string
           region_or_state?: string
           status?: string
+          time_zone?: string
           updated_at?: string
         }
         Relationships: [
@@ -1977,6 +2105,312 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_duplicate_lease_receivables: {
+        Args: { p_portfolio_id: string; p_items: Json }
+        Returns: Json
+      }
+      create_contract_document: {
+        Args: { p_document: Json }
+        Returns: Json
+      }
+      change_contract_document_status: {
+        Args: {
+          p_document_id: string
+          p_portfolio_id: string
+          p_expected_updated_at: string
+          p_status: string
+          p_signed_date: string | null
+          p_keep_lease_signed?: boolean | null
+        }
+        Returns: Json
+      }
+      delete_contract_document: {
+        Args: {
+          p_document_id: string
+          p_portfolio_id: string
+          p_expected_updated_at: string
+          p_keep_lease_signed?: boolean | null
+        }
+        Returns: Json
+      }
+      delete_lease_atomically: {
+        Args: {
+          p_lease_id: string
+          p_portfolio_id: string
+          p_expected_updated_at: string
+        }
+        Returns: Json
+      }
+      delete_draft_amendment: {
+        Args: {
+          p_amendment_id: string
+          p_portfolio_id: string
+          p_expected_updated_at: string
+        }
+        Returns: Json
+      }
+      close_lease_atomically: {
+        Args: {
+          p_lease: Json
+          p_expected_updated_at: string
+          p_vacancy_date: string
+          p_free_units?: boolean
+          p_reason?: string | null
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      client_close_lease_atomically: {
+        Args: {
+          p_lease: Json
+          p_expected_updated_at: string
+          p_vacancy_date: string
+          p_free_units?: boolean
+          p_reason?: string | null
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      change_amendment_status: {
+        Args: {
+          p_amendment_id: string
+          p_portfolio_id: string
+          p_expected_updated_at: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      save_lease_with_tenant_statuses: {
+        Args: {
+          p_lease: Json
+          p_tenants: Json
+          p_expected_updated_at: string
+          p_status_reason?: string | null
+          p_status_notes?: string | null
+        }
+        Returns: Json
+      }
+      client_save_lease_metadata: {
+        Args: {
+          p_lease: Json
+          p_tenants: Json
+          p_expected_updated_at: string
+          p_status_reason?: string | null
+          p_status_notes?: string | null
+        }
+        Returns: Json
+      }
+      save_lease_with_assignments: {
+        Args: {
+          p_lease: Json
+          p_tenants: Json
+          p_expected_updated_at: string
+          p_expected_assignments: Json
+          p_assignments: Json
+          p_schedule_from: string | null
+          p_expected_receivables: Json
+          p_removed_receivables: Json
+          p_new_receivables: Json
+        }
+        Returns: Json
+      }
+      client_save_lease_with_assignments: {
+        Args: {
+          p_lease: Json
+          p_tenants: Json
+          p_expected_updated_at: string
+          p_expected_assignments: Json
+          p_assignments: Json
+          p_schedule_from: string | null
+          p_expected_receivables: Json
+          p_removed_receivables: Json
+          p_new_receivables: Json
+        }
+        Returns: Json
+      }
+      activate_amendment_with_schedule: {
+        Args: {
+          p_target_amendment_id: string
+          p_lease: Json
+          p_assignments: Json
+          p_amendments: Json
+          p_removed_receivables: Json
+          p_new_receivables: Json
+          p_tenants: Json
+          p_expected_lease_updated_at: string
+        }
+        Returns: Json
+      }
+      client_activate_amendment_with_schedule: {
+        Args: {
+          p_target_amendment_id: string
+          p_lease: Json
+          p_assignments: Json
+          p_amendments: Json
+          p_removed_receivables: Json
+          p_new_receivables: Json
+          p_tenants: Json
+          p_expected_lease_updated_at: string
+        }
+        Returns: Json
+      }
+      save_amendment_with_changes: {
+        Args: {
+          p_amendment: Json
+          p_changes: Json
+          p_expected_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      client_save_amendment_with_changes: {
+        Args: {
+          p_amendment: Json
+          p_changes: Json
+          p_expected_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      set_property_owner_links: {
+        Args: {
+          p_property_id: string
+          p_expected_links: Json
+          p_desired_owner_ids: string[]
+        }
+        Returns: Json
+      }
+      save_property_with_owners: {
+        Args: {
+          p_property: Json
+          p_owner_ids: string[]
+          p_expected_updated_at: string | null
+          p_expected_links: Json
+        }
+        Returns: Json
+      }
+      create_charges_reconciliation: {
+        Args: {
+          p_reconciliation: Json
+          p_receivable?: Json | null
+        }
+        Returns: Json
+      }
+      client_create_charges_reconciliation: {
+        Args: {
+          p_reconciliation: Json
+          p_receivable?: Json | null
+        }
+        Returns: Json
+      }
+      delete_charges_reconciliation: {
+        Args: {
+          p_id: string
+          p_portfolio_id: string
+          p_expected_updated_at: string
+        }
+        Returns: Json
+      }
+      client_delete_charges_reconciliation: {
+        Args: {
+          p_id: string
+          p_portfolio_id: string
+          p_expected_updated_at: string
+        }
+        Returns: Json
+      }
+      save_allocation_rule_with_shares: {
+        Args: {
+          p_rule: Json
+          p_shares: Json
+          p_expected_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      client_save_allocation_rule_with_shares: {
+        Args: {
+          p_rule: Json
+          p_shares: Json
+          p_expected_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      create_lease_with_schedule: {
+        Args: {
+          p_lease: Json
+          p_assignments: Json
+          p_receivables: Json
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      client_create_lease_with_schedule: {
+        Args: {
+          p_lease: Json
+          p_assignments: Json
+          p_receivables: Json
+          p_tenants: Json
+        }
+        Returns: Json
+      }
+      save_receipt_allocations: {
+        Args: {
+          p_receipt: Json
+          p_receivables: Json
+          p_allocations: Json
+          p_expected_receipt_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      client_save_receipt_allocations: {
+        Args: {
+          p_receipt: Json
+          p_receivables: Json
+          p_allocations: Json
+          p_expected_receipt_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      save_cost_entry_with_allocations: {
+        Args: {
+          p_entry: Json
+          p_allocations: Json
+          p_expected_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      client_save_cost_entry_with_allocations: {
+        Args: {
+          p_entry: Json
+          p_allocations: Json
+          p_expected_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      accept_portfolio_invitation: {
+        Args: { _token: string }
+        Returns: string
+      }
+      get_portfolio_invitation: {
+        Args: { _token: string }
+        Returns: {
+          id: string
+          portfolio_id: string
+          email: string
+          role: Database["public"]["Enums"]["portfolio_role"]
+          expires_at: string
+          accepted_at: string | null
+          portfolio_name: string
+        }[]
+      }
+      list_portfolio_members_for_management: {
+        Args: { _portfolio_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          email: string | null
+          role: Database["public"]["Enums"]["portfolio_role"]
+          joined_at: string
+        }[]
+      }
       has_portfolio_role: {
         Args: {
           _portfolio_id: string

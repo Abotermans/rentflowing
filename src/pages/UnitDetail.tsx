@@ -1,4 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { useBusinessNow } from "@/hooks/use-business-now";
 import { useState } from "react";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -8,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PriorityLabel } from "@/components/shared/PriorityLabel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DateInput } from "@/components/shared/DateInput";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, Home, Ruler, BedDouble, Bath, Sofa, CalendarClock, Clock, Building2, Globe, Pencil, AlertTriangle, Bell, Truck, Banknote, Plus, Trash2, DoorOpen, MoreVertical, Archive, ArchiveRestore, ArrowUpRight, Tag, ChevronDown, FileText } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -15,12 +18,13 @@ import { cn } from "@/lib/utils";
 import { formatCurrency, formatArea, formatDate, UNIT_TYPE_KEYS, getCountryName } from "@/lib/formatters";
 import { getTenantFullName, getLeaseStatus, getMoveInStatus, getMoveOutStatus, getUnitMillieme, DEFAULT_MILLIEME_KEY } from "@/types";
 import { MAINTENANCE_CATEGORY_LABELS } from "@/types/maintenance";
-import { getDerivedOccupancy } from "@/lib/occupancy";
+import { getDerivedOccupancy, isUnitOccupiedOn } from "@/lib/occupancy";
 import { useIntegrityState } from "@/hooks/use-integrity-state";
 import { canChangeUnitStatus } from "@/lib/integrity/unitIntegrity";
 import { DeleteDialog } from "@/components/shared/DeleteDialog";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +44,13 @@ import { MaintenanceTicketDialog } from "@/components/maintenance/MaintenanceTic
 import { CostEntryDialog } from "@/components/costs/CostEntryDialog";
 import { UnitProfitabilitySection } from "@/components/profitability/UnitProfitabilitySection";
 import { detailLinkClass } from "@/lib/detailLinks";
+import { formatMilliemeBase, getAllocationBaseAmount, getManagedOwnershipShare, getMilliemeCapacityForUnit, getUnitMilliemeCapacityViolations, parseMilliemeShareInput } from "@/lib/propertyOwnership";
+import { nonNegativeNumber, normalizedCode, positiveNumber } from "@/lib/validation";
+import { splitCostRecovery } from "@/lib/costRecovery";
+import { buildCostOverview } from "@/lib/costOverview";
+import { formatMoneyGroups, sumMoneyByCurrency, type MoneyGroup } from "@/lib/money";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
+import { isReceivableAllocatable } from "@/lib/reconciliation";
 
 import type { TranslationKey } from "@/i18n/translations";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -83,16 +94,18 @@ type EditSection = "info" | "financials" | "notes" | null;
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function UnitDetail() {
+  const businessNow = useBusinessNow();
   const { id } = useParams<{ id: string }>();
-  const { units, properties, leases, leaseUnitAssignments, updateUnit, deleteUnit, getActiveLease, tenants, getLeaseOutstanding, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, getCostCategoryById, getAllocationRuleById, costEntries, confirmMoveOut } = useAppData();
+  const { units, properties, leases, leaseUnitAssignments, updateUnitPersisted, deleteUnitPersisted, getActiveLease, tenants, getReceivableItemsByLease, getTenantUnappliedCredit, getTicketsByUnit, getCostEntriesByUnit, getAllocationResultsByUnit, getCostCategoryById, getAllocationRuleById, costEntries, costAllocationResults, confirmMoveOut } = useAppData();
   const { t } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
   const { toast } = useToast();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
   const navigate = useNavigate();
 
   // Sort state for the unified Costs & Taxes table (direct + allocated).
-  type CostRowKey = "source" | "label" | "category" | "nature" | "recovery" | "period" | "method" | "total" | "amount" | "ownerBorne" | "recoverable";
+  type CostRowKey = "source" | "label" | "category" | "nature" | "recovery" | "period" | "method";
   const { sort: costsSort, toggle: toggleCostsSort } = useTableSort<CostRowKey>();
 
   // Sort state for the per-unit leases table inside the Occupancy section.
@@ -104,6 +117,8 @@ export default function UnitDetail() {
 
   const [editSection, setEditSection] = useState<EditSection>(null);
   const [form, setForm] = useState<UnitFormData | null>(null);
+  const [infoSaveAttempted, setInfoSaveAttempted] = useState(false);
+  const [milliemeDrafts, setMilliemeDrafts] = useState<Record<string, string>>({});
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [pendingOverride, setPendingOverride] = useState<ValidationResult | null>(null);
   const [vacateValidation, setVacateValidation] = useState<ValidationResult | null>(null);
@@ -123,21 +138,48 @@ export default function UnitDetail() {
   const [vacateEndDate, setVacateEndDate] = useState("");
 
   const openEdit = (section: Exclude<EditSection, null>) => {
-    if (!unit) return;
+    if (!canWrite || !unit) return;
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = unit;
     setForm(rest);
+    setInfoSaveAttempted(false);
+    setMilliemeDrafts(Object.fromEntries(Object.entries(rest.milliemeShares ?? {}).map(([key, value]) => [key, String(value)])));
     setEditSection(section);
   };
-  const closeEdit = () => { setEditSection(null); setForm(null); };
+  const closeEdit = () => { setEditSection(null); setForm(null); setMilliemeDrafts({}); };
 
   const statusValidation = (() => {
     if (!unit || !form || form.currentStatus === unit.currentStatus) return null;
     return canChangeUnitStatus(unit.id, form.currentStatus, integrityState);
   })();
+  const milliemeViolations = unit && form && editSection === "info"
+    ? getUnitMilliemeCapacityViolations(form, property, units, unit.id)
+    : [];
+  const infoErrors: Partial<Record<"unitCode" | "unitLabel" | "surfaceArea" | "bedrooms" | "bathrooms", string>> = {};
+  if (form && unit && editSection === "info") {
+    if (!form.unitCode.trim()) infoErrors.unitCode = t("common.mandatoryField");
+    else if (units.some(other => other.id !== unit.id && other.propertyId === form.propertyId && normalizedCode(other.unitCode) === normalizedCode(form.unitCode))) {
+      infoErrors.unitCode = t("units.codesUniqueWithinProperty");
+    }
+    if (!form.unitLabel.trim()) infoErrors.unitLabel = t("common.mandatoryField");
+    if (form.surfaceArea != null && !positiveNumber(form.surfaceArea)) infoErrors.surfaceArea = t("units.positive");
+    if (!nonNegativeNumber(form.bedrooms)) infoErrors.bedrooms = t("units.nonNegative");
+    if (!nonNegativeNumber(form.bathrooms)) infoErrors.bathrooms = t("units.nonNegative");
+  }
+  const invalidMilliemeKey = Object.entries(milliemeDrafts).find(([, raw]) => !parseMilliemeShareInput(raw).valid)?.[0];
 
-  const persist = (patch: Partial<UnitFormData>) => {
-    if (!unit) return;
-    updateUnit({ ...unit, ...patch });
+  const saveUnit = async (next: Unit): Promise<boolean> => {
+    if (!canWrite) return false;
+    try {
+      await updateUnitPersisted(next);
+      return true;
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Unit could not be saved.", variant: "destructive" });
+      return false;
+    }
+  };
+
+  const persist = async (patch: Partial<UnitFormData>) => {
+    if (!unit || !await saveUnit({ ...unit, ...patch })) return;
     toast({ title: t("units.toastUpdated") });
     closeEdit();
   };
@@ -145,10 +187,8 @@ export default function UnitDetail() {
   const handleSave = () => {
     if (!unit || !form) return;
     if (editSection === "info") {
-      if (!form.unitCode.trim() || !form.unitLabel.trim()) {
-        toast({ title: t("common.validationError"), description: t("units.requiredCodeLabel"), variant: "destructive" });
-        return;
-      }
+      setInfoSaveAttempted(true);
+      if (Object.keys(infoErrors).length > 0 || invalidMilliemeKey || milliemeViolations.length > 0) return;
       if (form.currentStatus !== unit.currentStatus) {
         const v = canChangeUnitStatus(unit.id, form.currentStatus, integrityState);
         if (!v.allowed) {
@@ -176,19 +216,19 @@ export default function UnitDetail() {
     }
   };
 
-  const handleOverrideConfirm = (reason: string) => {
+  const handleOverrideConfirm = async (reason: string) => {
     if (!unit || !form || !pendingOverride) return;
+    if (!await saveUnit({
+      ...unit,
+      unitCode: form.unitCode, unitLabel: form.unitLabel, unitType: form.unitType,
+      floor: form.floor, surfaceArea: form.surfaceArea, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
+      furnished: form.furnished, availableFrom: form.availableFrom, currentStatus: form.currentStatus,
+    })) return;
     addOverride({
       entityType: "unit", entityId: unit.id,
       action: `status_change:${form.currentStatus}`,
       blockerCodes: pendingOverride.blockers.map(b => b.code),
       reason,
-    });
-    updateUnit({
-      ...unit,
-      unitCode: form.unitCode, unitLabel: form.unitLabel, unitType: form.unitType,
-      floor: form.floor, surfaceArea: form.surfaceArea, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
-      furnished: form.furnished, availableFrom: form.availableFrom, currentStatus: form.currentStatus,
     });
     toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
     setPendingOverride(null);
@@ -196,11 +236,11 @@ export default function UnitDetail() {
     closeEdit();
   };
 
-  const handleMakeVacant = () => {
+  const handleMakeVacant = async () => {
     if (!unit) return;
     const v = canChangeUnitStatus(unit.id, "vacant", integrityState);
     if (v.allowed) {
-      updateUnit({ ...unit, currentStatus: "vacant" });
+      if (!await saveUnit({ ...unit, currentStatus: "vacant" })) return;
       toast({ title: t("units.toastUpdated") });
       return;
     }
@@ -212,31 +252,32 @@ export default function UnitDetail() {
     toast({ title: t("units.statusChangeBlocked"), description: v.blockers.map(b => b.message).join(". "), variant: "destructive" });
   };
 
-  const handleVacateOverride = (reason: string) => {
+  const handleVacateOverride = async (reason: string) => {
     if (!unit || !vacateValidation) return;
+    if (!await saveUnit({ ...unit, currentStatus: "vacant" })) return;
     addOverride({
       entityType: "unit", entityId: unit.id,
       action: "status_change:vacant",
       blockerCodes: vacateValidation.blockers.map(b => b.code),
       reason,
     });
-    updateUnit({ ...unit, currentStatus: "vacant" });
     toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
     setVacateValidation(null);
     setVacateOverrideOpen(false);
   };
 
-  const handleDeleteUnit = (uid: string) => {
-    deleteUnit(uid);
+  const handleDeleteUnit = async (uid: string) => {
+    if (!canWrite) return;
+    await deleteUnitPersisted(uid);
     toast({ title: t("units.toastDeleted") || "Unit deleted" });
     navigate("/units");
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     if (!unit) return;
     const v = canChangeUnitStatus(unit.id, "archived", integrityState);
     if (v.allowed) {
-      updateUnit({ ...unit, currentStatus: "archived" });
+      if (!await saveUnit({ ...unit, currentStatus: "archived" })) return;
       toast({ title: t("units.toastArchived") });
       return;
     }
@@ -248,55 +289,60 @@ export default function UnitDetail() {
     toast({ title: t("units.archiveBlocked"), description: v.blockers.map(b => b.message).join(". "), variant: "destructive" });
   };
 
-  const handleArchiveOverride = (reason: string) => {
+  const handleArchiveOverride = async (reason: string) => {
     if (!unit || !archiveValidation) return;
+    if (!await saveUnit({ ...unit, currentStatus: "archived" })) return;
     addOverride({
       entityType: "unit", entityId: unit.id,
       action: "status_change:archived",
       blockerCodes: archiveValidation.blockers.map(b => b.code),
       reason,
     });
-    updateUnit({ ...unit, currentStatus: "archived" });
     toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
     setArchiveValidation(null);
     setArchiveOverrideOpen(false);
   };
 
-  const handleUnarchive = () => {
+  const handleUnarchive = async () => {
     if (!unit) return;
-    updateUnit({ ...unit, currentStatus: "vacant" });
+    if (!await saveUnit({ ...unit, currentStatus: "vacant" })) return;
     toast({ title: t("units.toastUnarchived") });
   };
 
   const openVacateWithLeaseEnd = () => {
-    setVacateEndDate(new Date().toISOString().split("T")[0]);
+    if (!canWrite) return;
+    setVacateEndDate(propertyBusinessDateISO(property));
     setVacateEndDialogOpen(true);
   };
 
-  const confirmVacateWithLeaseEnd = () => {
-    if (!unit) return;
+  const confirmVacateWithLeaseEnd = async () => {
+    if (!canWrite || !unit) return;
     const lease = getActiveLease(unit.id);
     if (!lease) {
       setVacateEndDialogOpen(false);
       return;
     }
-    const ed = vacateEndDate || new Date().toISOString().split("T")[0];
-    confirmMoveOut({
-      ...lease,
-      moveOutActualDate: ed,
-      moveOutScheduledDate: lease.moveOutScheduledDate || ed,
-      moveOutChecklist: {
-        noticeConfirmed: true,
-        moveOutDateConfirmed: true,
-        keysReturned: lease.moveOutChecklist.keysReturned,
-        moveOutMeterReadingCaptured: lease.moveOutChecklist.moveOutMeterReadingCaptured,
-        balanceReviewed: lease.moveOutChecklist.balanceReviewed,
-        guaranteeReviewCompleted: lease.moveOutChecklist.guaranteeReviewCompleted,
-      },
-      returnStatus: lease.returnStatus || "pending",
-    });
-    toast({ title: t("units.toastUpdated") });
-    setVacateEndDialogOpen(false);
+    const ed = vacateEndDate || propertyBusinessDateISO(property);
+    try {
+      await confirmMoveOut({
+        ...lease,
+        moveOutActualDate: ed,
+        moveOutScheduledDate: lease.moveOutScheduledDate || ed,
+        moveOutChecklist: {
+          noticeConfirmed: true,
+          moveOutDateConfirmed: true,
+          keysReturned: lease.moveOutChecklist.keysReturned,
+          moveOutMeterReadingCaptured: lease.moveOutChecklist.moveOutMeterReadingCaptured,
+          balanceReviewed: lease.moveOutChecklist.balanceReviewed,
+          guaranteeReviewCompleted: lease.moveOutChecklist.guaranteeReviewCompleted,
+        },
+        returnStatus: lease.returnStatus || "pending",
+      });
+      toast({ title: t("units.toastUpdated") });
+      setVacateEndDialogOpen(false);
+    } catch (error) {
+      toast({ title: t("settings.saveFailed"), description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+    }
   };
 
   if (!unit || !property) {
@@ -308,22 +354,31 @@ export default function UnitDetail() {
     );
   }
 
-  const occupancy = getDerivedOccupancy(unit.id, unit.currentStatus, leases, leaseUnitAssignments, unit);
-  const activeLease = occupancy.activeLease ?? getActiveLease(unit.id);
+  const today = propertyBusinessDateISO(property, businessNow);
+  const occupancy = getDerivedOccupancy(
+    unit.id, unit.currentStatus, leases, leaseUnitAssignments, unit,
+    today,
+  );
+  const activeLease = occupancy.activeLease ?? getActiveLease(unit.id, today);
   const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
-  const lifecycle = activeLease ? getLeaseStatus(activeLease) : null;
+  const lifecycle = activeLease ? getLeaseStatus(activeLease, today) : null;
   const moveIn = activeLease ? getMoveInStatus(activeLease) : null;
-  const moveOut = activeLease ? getMoveOutStatus(activeLease) : null;
+  const moveOut = activeLease ? getMoveOutStatus(activeLease, today) : null;
 
-  const leaseFinancials = activeLease ? getLeaseOutstanding(activeLease.id) : null;
   const receivables = activeLease ? getReceivableItemsByLease(activeLease.id) : [];
-  const unappliedCredit = tenant ? getTenantUnappliedCredit(tenant.id) : 0;
-  const today = new Date().toISOString().split("T")[0];
-  const nextDueItem = receivables.filter(ri => ri.outstandingAmount > 0 && ri.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+  const unappliedCredit = tenant && activeLease ? getTenantUnappliedCredit(tenant.id, property.currencyCode, activeLease.id) : 0;
+  const nextDueItem = receivables.filter(ri => isReceivableAllocatable(ri) && ri.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
-  // Every lease ever assigned to this unit (active + historical), one row per assignment.
+  // One row per lease; the latest assignment carries this unit's current share.
+  const seenLeaseIds = new Set<string>();
   const unitLeaseRows = leaseUnitAssignments
     .filter(a => a.unitId === unit.id)
+    .sort((a, b) => b.startDate.localeCompare(a.startDate))
+    .filter(a => {
+      if (seenLeaseIds.has(a.leaseId)) return false;
+      seenLeaseIds.add(a.leaseId);
+      return true;
+    })
     .map(a => {
       const lease = leases.find(l => l.id === a.leaseId);
       const leaseTenant = lease ? tenants.find(tn => tn.id === lease.primaryTenantId) : undefined;
@@ -337,8 +392,8 @@ export default function UnitDetail() {
       case "tenant": return row.tenant ? getTenantFullName(row.tenant) : "";
       case "start": return row.lease.startDate;
       case "end": return row.lease.endDate;
-      case "rent": return row.lease.monthlyRent + row.lease.monthlyCharges;
-      case "status": return getLeaseStatus(row.lease);
+      case "rent": return (row.assignment.rentShare ?? 0) + (row.assignment.chargesShare ?? 0);
+      case "status": return getLeaseStatus(row.lease, propertyBusinessDateISO(property, businessNow));
       default: return "";
     }
   });
@@ -377,7 +432,7 @@ export default function UnitDetail() {
               <StatusBadge status={occupancy.derived} />
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          {canWrite && <div className="flex items-center gap-2 shrink-0">
             {unit.currentStatus !== "archived" && !getActiveLease(unit.id) && (unit.currentStatus === "vacant" || unit.currentStatus === "reserved") && (
               <Button size="sm" onClick={() => setAddLeaseOpen(true)}>
                 <Plus className="h-4 w-4" />{t("occupancy.createLeaseAction")}
@@ -423,7 +478,7 @@ export default function UnitDetail() {
                 />
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          </div>}
         </div>
       </div>
 
@@ -437,15 +492,15 @@ export default function UnitDetail() {
             {occupancy.suggestedFix && (
               <p className="text-xs text-muted-foreground mb-2">{t(occupancy.suggestedFix.rationaleKey)}</p>
             )}
-            {occupancy.suggestedFix && (
+            {canWrite && occupancy.suggestedFix && (
               <div className="flex flex-wrap gap-2 mt-2">
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
                     const target = occupancy.suggestedFix!.targetStatus;
                     const prev = unit.currentStatus;
-                    updateUnit({ ...unit, currentStatus: target });
+                    if (!await saveUnit({ ...unit, currentStatus: target })) return;
                     addOverride({
                       entityType: "unit",
                       entityId: unit.id,
@@ -476,7 +531,7 @@ export default function UnitDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.unitInformation")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("info"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>
+              {canWrite && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("info"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>}
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", infoOpen && "rotate-180")} />
               </span>
@@ -518,7 +573,7 @@ export default function UnitDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.financialDefaults")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("financials"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>
+              {canWrite && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("financials"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>}
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", financialsOpen && "rotate-180")} />
               </span>
@@ -567,7 +622,7 @@ export default function UnitDetail() {
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.occupancySection")}</CardTitle>
-            {unit.currentStatus !== "archived" && (
+            {canWrite && unit.currentStatus !== "archived" && (
               <Button
                 size="sm"
                 className="mr-2"
@@ -593,13 +648,13 @@ export default function UnitDetail() {
                   <SortableTableHead sortKey="tenant" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("table.tenant")}</SortableTableHead>
                   <SortableTableHead sortKey="start" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.startDate")}</SortableTableHead>
                   <SortableTableHead sortKey="end" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("leases.endDate")}</SortableTableHead>
-                  <SortableTableHead sortKey="rent" sort={unitLeasesSort} onSort={toggleUnitLeasesSort} align="right">{t("leases.monthlyRent")}</SortableTableHead>
+                  <SortableTableHead sortKey="rent" sort={unitLeasesSort} onSort={toggleUnitLeasesSort} align="right">{t("common.total")}</SortableTableHead>
                   <SortableTableHead sortKey="status" sort={unitLeasesSort} onSort={toggleUnitLeasesSort}>{t("table.status")}</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedUnitLeaseRows.map(({ assignment, lease, tenant: leaseTenant }) => {
-                  const status = getLeaseStatus(lease);
+                  const status = getLeaseStatus(lease, propertyBusinessDateISO(property, businessNow));
                   return (
                     <TableRow key={assignment.id}>
                       <TableCell>
@@ -612,7 +667,7 @@ export default function UnitDetail() {
                       </TableCell>
                       <TableCell className="text-sm">{formatDate(lease.startDate, property.locale)}</TableCell>
                       <TableCell className="text-sm">{formatDate(lease.endDate, property.locale)}</TableCell>
-                      <TableCell className="text-sm text-right">{formatCurrency(lease.monthlyRent + lease.monthlyCharges, property.currencyCode, property.locale)}</TableCell>
+                      <TableCell className="text-sm text-right">{formatCurrency((assignment.rentShare ?? 0) + (assignment.chargesShare ?? 0), property.currencyCode, property.locale)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 flex-wrap">
                           <StatusBadge status={status} />
@@ -643,7 +698,7 @@ export default function UnitDetail() {
               <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
                 <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.maintenanceCount").replace("{count}", String(unitTickets.length))}
                 </CardTitle>
-                <Button
+                {canWrite && <Button
                   size="sm"
                   variant="outline"
                   className="mr-1"
@@ -653,7 +708,7 @@ export default function UnitDetail() {
                   }}
                 >
                   <Plus className="h-4 w-4 mr-2" />{t("maintenance.add")}
-                </Button>
+                </Button>}
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", maintenanceOpen && "rotate-180")} />
                 </span>
@@ -696,17 +751,19 @@ export default function UnitDetail() {
 
       {/* Costs & Taxes */}
       {(() => {
-        const directEntries = getCostEntriesByUnit(unit.id);
-        const allocResults = getAllocationResultsByUnit(unit.id);
-        const directTotal = directEntries.reduce((s, e) => s + e.amount, 0);
-        const allocTotal = allocResults.reduce((s, r) => s + r.allocatedAmount, 0);
-        const totalBurden = directTotal + allocTotal;
-        const ownerBorne = directEntries.filter(e => e.recoveryType === "owner-only").reduce((s, e) => s + e.amount, 0)
-          + allocResults.reduce((s, r) => s + r.ownerBurdenAmount, 0);
-        const recoverable = directEntries.filter(e => e.recoveryType === "tenant-recoverable").reduce((s, e) => s + e.amount, 0)
-          + allocResults.reduce((s, r) => s + r.recoverableAmount, 0);
-
-        if (totalBurden === 0) return null;
+        const activeCostById = new Map(costEntries.filter(entry => entry.status === "active").map(entry => [entry.id, entry]));
+        const directEntries = getCostEntriesByUnit(unit.id).filter(entry => entry.status === "active");
+        const allocResults = getAllocationResultsByUnit(unit.id).filter(result => {
+          const parent = activeCostById.get(result.costEntryId);
+          return parent?.unitId === null && parent.propertyId === unit.propertyId && result.propertyId === unit.propertyId;
+        });
+        if (directEntries.length === 0 && allocResults.length === 0) return null;
+        const overview = buildCostOverview(costEntries, costAllocationResults, properties, units);
+        const summary = overview.units.find(item => item.unitId === unit.id);
+        const hasAllocationExcess = overview.allocationExcesses.some(excess =>
+          allocResults.some(result => result.costEntryId === excess.costEntryId));
+        const display = (groups: MoneyGroup[] | undefined) =>
+          formatMoneyGroups(groups ?? [], formatCurrency(0, property.currencyCode, property.locale));
 
         return (
           <Collapsible open={costsOpen} onOpenChange={setCostsOpen}>
@@ -715,7 +772,7 @@ export default function UnitDetail() {
               <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
                 <CardTitle className="text-base font-medium flex-1 justify-start">{t("units.costsTaxesBurden")}
                 </CardTitle>
-                <Button
+                {canWrite && <Button
                   size="sm"
                   variant="outline"
                   className="mr-1"
@@ -725,7 +782,7 @@ export default function UnitDetail() {
                   }}
                 >
                   <Plus className="h-4 w-4 mr-2" />{t("costs.addEntry")}
-                </Button>
+                </Button>}
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", costsOpen && "rotate-180")} />
                 </span>
@@ -733,14 +790,20 @@ export default function UnitDetail() {
             </CollapsibleTrigger>
             <CollapsibleContent>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-md bg-muted/50 border">
+              {hasAllocationExcess && (
+                <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{t("costs.allocationExcessWarning")}</AlertDescription>
+                </Alert>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="min-w-0 p-3 rounded-md bg-muted/50 border">
                   <p className="text-xs text-muted-foreground">{t("units.ownerBorne")}</p>
-                  <p className="text-lg font-bold text-destructive">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</p>
+                  <p className="text-lg font-bold text-destructive break-words">{display(summary?.ownerBorne)}</p>
                 </div>
-                <div className="p-3 rounded-md bg-muted/50 border">
+                <div className="min-w-0 p-3 rounded-md bg-muted/50 border">
                   <p className="text-xs text-muted-foreground">{t("units.recoverable")}</p>
-                  <p className="text-lg font-bold text-success">{formatCurrency(recoverable, property.currencyCode, property.locale)}</p>
+                  <p className="text-lg font-bold text-success break-words">{display(summary?.recoverable)}</p>
                 </div>
               </div>
               {(() => {
@@ -760,24 +823,20 @@ export default function UnitDetail() {
                   totalCost: number;
                   ownerBorne: number;
                   recoverable: number;
+                  currencyCode: string;
                   milliemeShare?: number;
                   milliemeTotalShares?: number;
-                };
-                const splitRecovery = (amount: number, r: RecoveryType) => {
-                  if (r === "owner-only") return { owner: amount, rec: 0 };
-                  if (r === "tenant-recoverable") return { owner: 0, rec: amount };
-                  if (r === "partially-recoverable") {
-                    const half = Math.round((amount / 2) * 100) / 100;
-                    return { owner: half, rec: Math.round((amount - half) * 100) / 100 };
-                  }
-                  return { owner: 0, rec: 0 };
+                  milliemeBase?: number;
+                  milliemeAllocationMode?: "normalized" | "absolute";
+                  allocationBaseAmount?: number;
+                  ownedShares?: number;
                 };
                 const rows: Row[] = [];
                 for (const e of directEntries) {
-                  const s = splitRecovery(e.amount, e.recoveryType);
+                  const s = splitCostRecovery(e.amount, e.recoveryType, e.recoverablePercentage);
                   rows.push({
                     id: `d-${e.id}`,
-                      sourceEntryId: e.id,
+                    sourceEntryId: e.id,
                     source: "direct",
                     label: e.label,
                     category: getCostCategoryById(e.categoryId)?.name ?? "—",
@@ -789,20 +848,32 @@ export default function UnitDetail() {
                     method: null,
                     amount: e.amount,
                     totalCost: e.amount,
-                    ownerBorne: s.owner,
-                    recoverable: s.rec,
+                    ownerBorne: s.ownerBurdenAmount,
+                    recoverable: s.recoverableAmount,
+                    currencyCode: e.currencyCode || property.currencyCode,
                   });
                 }
                 for (const r of allocResults) {
                   const parent = costEntries.find(e => e.id === r.costEntryId);
                   const rule = getAllocationRuleById(parent?.allocationRuleId ?? "");
+                  const parentProperty = parent ? properties.find(p => p.id === parent.propertyId) : undefined;
+                  const allocationBaseAmount = parent && rule
+                    ? getAllocationBaseAmount(parent, rule, parentProperty, units)
+                    : parent?.amount ?? r.allocatedAmount;
+                  const ownershipKey = rule?.method === "millieme" && rule.milliemeAllocationMode === "absolute"
+                    ? rule.shareKey || DEFAULT_MILLIEME_KEY
+                    : DEFAULT_MILLIEME_KEY;
+                  const ownership = parent && parentProperty?.isPartiallyOwned
+                    ? getManagedOwnershipShare(parentProperty, units, parent.propertyId, ownershipKey)
+                    : null;
                   let milliemeShare: number | undefined;
                   let milliemeTotalShares: number | undefined;
+                  let milliemeBase: number | undefined = ownership?.base;
                   if (rule?.method === "millieme" && parent) {
                     const key = (rule.shareKey ?? DEFAULT_MILLIEME_KEY) || DEFAULT_MILLIEME_KEY;
                     let propUnits = units.filter(u => u.propertyId === parent.propertyId);
                     if (rule.applyOnlyToOccupiedUnits) {
-                      propUnits = propUnits.filter(u => u.currentStatus === "occupied");
+                      propUnits = propUnits.filter(u => isUnitOccupiedOn(u.id, parent.startDate, leases, leaseUnitAssignments));
                     }
                     if (!rule.includeUnavailableUnits) {
                       propUnits = propUnits.filter(u => u.currentStatus !== "unavailable");
@@ -812,6 +883,7 @@ export default function UnitDetail() {
                       .filter(s => s > 0);
                     milliemeTotalShares = shares.reduce((sum, s) => sum + s, 0);
                     milliemeShare = getUnitMillieme(unit, key);
+                    milliemeBase = parentProperty?.milliemeBase ?? unit.milliemeBase ?? 1000;
                   }
                   rows.push({
                     id: `a-${r.id}`,
@@ -829,8 +901,13 @@ export default function UnitDetail() {
                     totalCost: parent?.amount ?? r.allocatedAmount,
                     ownerBorne: r.ownerBurdenAmount,
                     recoverable: r.recoverableAmount,
+                    currencyCode: parent?.currencyCode || property.currencyCode,
                     milliemeShare,
                     milliemeTotalShares,
+                    milliemeBase,
+                    milliemeAllocationMode: rule?.milliemeAllocationMode ?? "normalized",
+                    allocationBaseAmount,
+                    ownedShares: ownership?.ownedShares,
                   });
                 }
                 if (rows.length === 0) return null;
@@ -843,10 +920,6 @@ export default function UnitDetail() {
                     case "recovery": return row.recovery;
                     case "period": return row.periodStart ?? "";
                     case "method": return row.method ?? "";
-                    case "total": return row.totalCost;
-                    case "amount": return row.amount;
-                    case "ownerBorne": return row.ownerBorne;
-                    case "recoverable": return row.recoverable;
                   }
                 });
                 const periodCell = (row: Row) => {
@@ -856,6 +929,11 @@ export default function UnitDetail() {
                   if (row.periodStart) return formatDate(row.periodStart, property.locale);
                   return row.frequency ? t(`costs.frequency.${row.frequency}` as TranslationKey) : "—";
                 };
+                const formatRowAmount = (row: Row, amount: number) =>
+                  formatCurrency(amount, row.currencyCode, property.locale);
+                const totalInvoices = sumMoneyByCurrency(sorted.map(row => ({
+                  amount: row.totalCost, currencyCode: row.currencyCode, locale: property.locale,
+                })));
                 return (
                   <div className="rounded border overflow-hidden">
                   <div className="max-h-[420px] overflow-y-auto">
@@ -869,10 +947,10 @@ export default function UnitDetail() {
                         <SortableTableHead sortKey="recovery" sort={costsSort} onSort={toggleCostsSort}>{t("units.recovery")}</SortableTableHead>
                         <SortableTableHead sortKey="period" sort={costsSort} onSort={toggleCostsSort}>{t("costs.period")}</SortableTableHead>
                         <SortableTableHead sortKey="method" sort={costsSort} onSort={toggleCostsSort}>{t("costs.allocationMethod")}</SortableTableHead>
-                        <SortableTableHead sortKey="total" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.totalCost")}</SortableTableHead>
-                        <SortableTableHead sortKey="amount" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.allocatedAmount")}</SortableTableHead>
-                        <SortableTableHead sortKey="ownerBorne" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.ownerBorne")}</SortableTableHead>
-                        <SortableTableHead sortKey="recoverable" sort={costsSort} onSort={toggleCostsSort} align="right">{t("costs.recoverable")}</SortableTableHead>
+                        <TableHead className="text-right">{t("costs.totalCost")}</TableHead>
+                        <TableHead className="text-right">{t("costs.allocatedAmount")}</TableHead>
+                        <TableHead className="text-right">{t("costs.ownerBorne")}</TableHead>
+                        <TableHead className="text-right">{t("costs.recoverable")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -898,22 +976,34 @@ export default function UnitDetail() {
                           <TableCell><StatusBadge status={row.recovery} /></TableCell>
                           <TableCell className="text-sm text-muted-foreground">{periodCell(row)}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{row.method ? t(`costs.methodOpt.${row.method}` as TranslationKey) : "—"}</TableCell>
-                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.totalCost, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatRowAmount(row, row.totalCost)}</TableCell>
                           <TableCell className="text-right font-mono text-sm text-muted-foreground" onClick={(e) => e.stopPropagation()}>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
-                                  {formatCurrency(row.amount, property.currencyCode, property.locale)}
+                                  {formatRowAmount(row, row.amount)}
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent side="left" className="max-w-sm p-3 text-xs space-y-2">
                                 <div className="text-sm border-b pb-1.5">{row.label}</div>
                                 <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
                                   <span className="text-muted-foreground">{t("reconciliation.overview.tip.fullCost")}</span>
-                                  <span className="text-right tabular-nums">{formatCurrency(row.totalCost, property.currencyCode, property.locale)}</span>
+                                  <span className="text-right tabular-nums">{formatRowAmount(row, row.totalCost)}</span>
+                                  {row.allocationBaseAmount !== undefined && row.allocationBaseAmount !== row.totalCost && (
+                                    <>
+                                      <span className="text-muted-foreground">{t("costs.allocationBase")}</span>
+                                      <span className="text-right tabular-nums">{formatRowAmount(row, row.allocationBaseAmount)}</span>
+                                    </>
+                                  )}
+                                  {row.ownedShares !== undefined && row.milliemeBase !== undefined && (
+                                    <>
+                                      <span className="text-muted-foreground">{t("properties.ownedShare")}</span>
+                                      <span className="text-right tabular-nums">{row.ownedShares} / {row.milliemeBase}</span>
+                                    </>
+                                  )}
                                   <span className="text-muted-foreground">{t("costs.unitShare")} ({unit.unitCode})</span>
                                   <span className="text-right tabular-nums">
-                                    {row.totalCost > 0 ? `${((row.amount / row.totalCost) * 100).toFixed(1)}%` : "—"}
+                                    {(row.allocationBaseAmount ?? row.totalCost) > 0 ? `${((row.amount / (row.allocationBaseAmount ?? row.totalCost)) * 100).toFixed(1)}%` : "—"}
                                   </span>
                                 </div>
                                 {typeof row.milliemeShare === "number" && typeof row.milliemeTotalShares === "number" && (
@@ -922,29 +1012,29 @@ export default function UnitDetail() {
                                     <span className="text-right tabular-nums">
                                       {t("costs.milliemeFormula")
                                         .replace("{share}", String(row.milliemeShare))
-                                        .replace("{totalShares}", String(row.milliemeTotalShares))
-                                        .replace("{amount}", formatCurrency(row.totalCost, property.currencyCode, property.locale))
-                                        .replace("{allocated}", formatCurrency(row.amount, property.currencyCode, property.locale))}
+                                        .replace("{totalShares}", String(row.milliemeAllocationMode === "absolute" ? row.milliemeBase ?? row.milliemeTotalShares : row.milliemeTotalShares))
+                                        .replace("{amount}", formatRowAmount(row, row.milliemeAllocationMode === "absolute" ? row.totalCost : row.allocationBaseAmount ?? row.totalCost))
+                                        .replace("{allocated}", formatRowAmount(row, row.amount))}
                                     </span>
                                   </div>
                                 )}
                                 <div className="grid grid-cols-[1fr_auto] gap-x-3 border-t pt-1.5">
                                   <span className="font-medium">{t("costs.allocatedAmount")}</span>
-                                  <span className="text-right font-semibold tabular-nums">{formatCurrency(row.amount, property.currencyCode, property.locale)}</span>
+                                  <span className="text-right font-semibold tabular-nums">{formatRowAmount(row, row.amount)}</span>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
-                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.ownerBorne, property.currencyCode, property.locale)}</TableCell>
-                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(row.recoverable, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatRowAmount(row, row.ownerBorne)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">{formatRowAmount(row, row.recoverable)}</TableCell>
                         </TableRow>
                       ))}
                       <TableRow className="bg-muted/30 border-t font-semibold hover:bg-muted/30">
                         <TableCell className="text-sm" colSpan={7}>{t("common.total")}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">{formatCurrency(sorted.reduce((s, r) => s + r.totalCost, 0), property.currencyCode, property.locale)}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">{formatCurrency(directTotal + allocTotal, property.currencyCode, property.locale)}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">{formatCurrency(recoverable, property.currencyCode, property.locale)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{display(totalInvoices)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{display(summary?.total)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{display(summary?.ownerBorne)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{display(summary?.recoverable)}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -966,7 +1056,7 @@ export default function UnitDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("common.notes")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("notes"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>
+              {canWrite && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEdit("notes"); }}><Pencil className="h-3.5 w-3.5" />{t("action.edit")}</Button>}
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", notesOpen && "rotate-180")} />
               </span>
@@ -988,8 +1078,8 @@ export default function UnitDetail() {
       </div>
 
       {/* Edit Dialog */}
-      <Dialog open={editSection !== null} onOpenChange={(v) => { if (!v) closeEdit(); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={canWrite && editSection !== null} onOpenChange={(v) => { if (!v) closeEdit(); }}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {editSection === "info" && t("detail.unitInformation")}
@@ -1000,8 +1090,8 @@ export default function UnitDetail() {
           {form && editSection === "info" && (
             <div className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>{t("units.unitCode")} *</Label><Input value={form.unitCode} onChange={e => setForm(f => f && ({ ...f, unitCode: e.target.value }))} /></div>
-                <div><Label>{t("units.label")} *</Label><Input value={form.unitLabel} onChange={e => setForm(f => f && ({ ...f, unitLabel: e.target.value }))} /></div>
+                <div><Label>{t("units.unitCode")} *</Label><Input value={form.unitCode} aria-invalid={infoSaveAttempted && !!infoErrors.unitCode} onChange={e => setForm(f => f && ({ ...f, unitCode: e.target.value }))} />{infoSaveAttempted && infoErrors.unitCode && <p className="text-xs text-destructive">{infoErrors.unitCode}</p>}</div>
+                <div><Label>{t("units.label")} *</Label><Input value={form.unitLabel} aria-invalid={infoSaveAttempted && !!infoErrors.unitLabel} onChange={e => setForm(f => f && ({ ...f, unitLabel: e.target.value }))} />{infoSaveAttempted && infoErrors.unitLabel && <p className="text-xs text-destructive">{infoErrors.unitLabel}</p>}</div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>{t("units.type")} *</Label>
@@ -1031,12 +1121,12 @@ export default function UnitDetail() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div><Label>{t("units.floor")}</Label><Input type="number" value={form.floor ?? ""} onChange={e => setForm(f => f && ({ ...f, floor: e.target.value ? Number(e.target.value) : null }))} /></div>
-                <div><Label>{t("units.surface")} ({property.measurementSystem === "imperial" ? "sq ft" : "m²"})</Label><Input type="number" value={form.surfaceArea ?? ""} onChange={e => setForm(f => f && ({ ...f, surfaceArea: e.target.value ? Number(e.target.value) : null }))} /></div>
-                <div><Label>{t("units.bedrooms")}</Label><Input type="number" min={0} value={form.bedrooms} onChange={e => setForm(f => f && ({ ...f, bedrooms: Number(e.target.value) }))} /></div>
+                <div><Label>{t("units.surface")} ({property.measurementSystem === "imperial" ? "sq ft" : "m²"})</Label><Input type="number" value={form.surfaceArea ?? ""} aria-invalid={infoSaveAttempted && !!infoErrors.surfaceArea} onChange={e => setForm(f => f && ({ ...f, surfaceArea: e.target.value ? Number(e.target.value) : null }))} />{infoSaveAttempted && infoErrors.surfaceArea && <p className="text-xs text-destructive">{infoErrors.surfaceArea}</p>}</div>
+                <div><Label>{t("units.bedrooms")}</Label><Input type="number" min={0} value={form.bedrooms} aria-invalid={infoSaveAttempted && !!infoErrors.bedrooms} onChange={e => setForm(f => f && ({ ...f, bedrooms: Number(e.target.value) }))} />{infoSaveAttempted && infoErrors.bedrooms && <p className="text-xs text-destructive">{infoErrors.bedrooms}</p>}</div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>{t("units.bathrooms")}</Label><Input type="number" min={0} value={form.bathrooms} onChange={e => setForm(f => f && ({ ...f, bathrooms: Number(e.target.value) }))} /></div>
-                <div><Label>{t("units.availableFrom")}</Label><Input type="date" value={form.availableFrom ?? ""} onChange={e => setForm(f => f && ({ ...f, availableFrom: e.target.value || null }))} /></div>
+                <div><Label>{t("units.bathrooms")}</Label><Input type="number" min={0} value={form.bathrooms} aria-invalid={infoSaveAttempted && !!infoErrors.bathrooms} onChange={e => setForm(f => f && ({ ...f, bathrooms: Number(e.target.value) }))} />{infoSaveAttempted && infoErrors.bathrooms && <p className="text-xs text-destructive">{infoErrors.bathrooms}</p>}</div>
+                <div><Label>{t("units.availableFrom")}</Label><DateInput value={form.availableFrom ?? ""} onChange={value => setForm(f => f && ({ ...f, availableFrom: value || null }))} /></div>
               </div>
               <div className="flex items-center gap-3">
                 <Switch checked={form.furnished} onCheckedChange={v => setForm(f => f && ({ ...f, furnished: v }))} />
@@ -1044,25 +1134,46 @@ export default function UnitDetail() {
               </div>
               <div className="space-y-2 border-t pt-3">
                 <Label className="text-sm font-medium">{t("units.milliemeShares")}</Label>
-                <p className="text-xs text-muted-foreground">{t("units.milliemeHelp")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("units.milliemeHelp").replace(
+                    "{base}",
+                    formatMilliemeBase(property.milliemeBase ?? unit.milliemeBase ?? 1000, property.locale),
+                  )}
+                </p>
                 <div className="grid grid-cols-2 gap-3">
-                  {((property.milliemeKeys?.length ? property.milliemeKeys : [DEFAULT_MILLIEME_KEY])).map(k => (
-                    <div key={k} className="flex items-center gap-2">
-                      <Label className="text-xs flex-1 capitalize">{k}</Label>
-                      <Input
-                        type="number" min={0} step={0.01} className="w-28 h-8 text-right"
-                        placeholder={`/ ${property.milliemeBase ?? 1000}`}
-                        value={(form.milliemeShares ?? {})[k] ?? ""}
-                        onChange={e => {
-                          const raw = e.target.value;
-                          const next = { ...(form.milliemeShares ?? {}) };
-                          if (raw === "") delete next[k];
-                          else next[k] = Math.max(0, Number(raw) || 0);
-                          setForm(f => f && ({ ...f, milliemeShares: next }));
-                        }}
-                      />
-                    </div>
-                  ))}
+                  {((property.milliemeKeys?.length ? property.milliemeKeys : [DEFAULT_MILLIEME_KEY])).map(k => {
+                    const capacity = getMilliemeCapacityForUnit(property, units, property.id, unit.id, k);
+                    const violation = milliemeViolations.find(item => item.key === k);
+                    const invalidDraft = !parseMilliemeShareInput(milliemeDrafts[k] ?? "").valid;
+                    return (
+                      <div key={k} className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs flex-1 capitalize">{k}</Label>
+                          <Input
+                            type="text" inputMode="decimal" className="w-28 h-8 text-right"
+                            aria-invalid={invalidDraft || !!violation}
+                            placeholder={`/ ${capacity.base}`}
+                            value={milliemeDrafts[k] ?? ""}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              setMilliemeDrafts(previous => ({ ...previous, [k]: raw }));
+                              const parsed = parseMilliemeShareInput(raw);
+                              if (!parsed.valid) return;
+                              const next = { ...(form.milliemeShares ?? {}) };
+                              if (parsed.value === null) delete next[k];
+                              else next[k] = parsed.value;
+                              setForm(f => f && ({ ...f, milliemeShares: next }));
+                            }}
+                          />
+                        </div>
+                        {invalidDraft && <p className="text-xs text-destructive">{t("units.milliemeInvalid")}</p>}
+                        {!invalidDraft && violation && <p className="text-xs text-destructive">{t("units.milliemeCapacityExceeded")
+                          .replace("{key}", k)
+                          .replace("{max}", String(violation.maxForUnit))
+                          .replace("{base}", String(violation.base))}</p>}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <div>
@@ -1099,7 +1210,7 @@ export default function UnitDetail() {
               <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => f && ({ ...f, notes: e.target.value }))} rows={5} /></div>
             </div>
           )}
-          <DialogFooter className="mt-6">
+          <DialogFooter>
             <Button variant="outline" onClick={closeEdit}>{t("action.cancel")}</Button>
             <Button onClick={handleSave}>{t("action.save")}</Button>
           </DialogFooter>
@@ -1108,7 +1219,7 @@ export default function UnitDetail() {
 
       {pendingOverride && (
         <OverrideConfirmDialog
-          open={overrideOpen}
+          open={canWrite && overrideOpen}
           onOpenChange={(v) => { setOverrideOpen(v); if (!v) setPendingOverride(null); }}
           validation={pendingOverride}
           actionLabel="Override and Save"
@@ -1118,7 +1229,7 @@ export default function UnitDetail() {
 
       {vacateValidation && (
         <OverrideConfirmDialog
-          open={vacateOverrideOpen}
+          open={canWrite && vacateOverrideOpen}
           onOpenChange={(v) => { setVacateOverrideOpen(v); if (!v) setVacateValidation(null); }}
           validation={vacateValidation}
           actionLabel="Override and Vacate"
@@ -1128,7 +1239,7 @@ export default function UnitDetail() {
 
       {archiveValidation && (
         <OverrideConfirmDialog
-          open={archiveOverrideOpen}
+          open={canWrite && archiveOverrideOpen}
           onOpenChange={(v) => { setArchiveOverrideOpen(v); if (!v) setArchiveValidation(null); }}
           validation={archiveValidation}
           actionLabel="Override and Archive"
@@ -1136,34 +1247,35 @@ export default function UnitDetail() {
         />
       )}
 
-      <Dialog open={vacateEndDialogOpen} onOpenChange={setVacateEndDialogOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={canWrite && vacateEndDialogOpen} onOpenChange={setVacateEndDialogOpen}>
+        <DialogContent>
           <DialogHeader><DialogTitle>{t("unit.vacateLeaseEndTitle")}</DialogTitle></DialogHeader>
           <p className="text-xs text-muted-foreground">{t("unit.vacateLeaseEndDescription")}</p>
           <div className="space-y-3 mt-3">
-            <div><Label>{t("lease.endDialog.endDate")}</Label><Input type="date" value={vacateEndDate} onChange={e => setVacateEndDate(e.target.value)} /></div>
+            <div><Label>{t("lease.endDialog.endDate")}</Label><DateInput value={vacateEndDate} onChange={setVacateEndDate} /></div>
           </div>
-          <DialogFooter className="mt-4">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setVacateEndDialogOpen(false)}>{t("action.cancel")}</Button>
             <Button onClick={confirmVacateWithLeaseEnd} disabled={!vacateEndDate}>{t("occupancy.makeVacantAction")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       <LeaseAddDialog
-        open={addLeaseOpen}
+        open={canWrite && addLeaseOpen}
         onOpenChange={setAddLeaseOpen}
+        onCreated={(lease) => navigate(`/leases/${lease.id}`)}
         prefillPropertyId={unit.propertyId}
         prefillUnitId={unit.id}
       />
       <MaintenanceTicketDialog
-        open={addTicketOpen}
+        open={canWrite && addTicketOpen}
         onOpenChange={setAddTicketOpen}
         prefillPropertyId={unit.propertyId}
         prefillUnitId={unit.id}
         lockUnit
       />
       <CostEntryDialog
-        open={addCostOpen}
+        open={canWrite && addCostOpen}
         onOpenChange={setAddCostOpen}
         prefillPropertyId={unit.propertyId}
         prefillUnitId={unit.id}

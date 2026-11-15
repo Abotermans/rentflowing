@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +18,8 @@ import {
   defaultPeriod, ytdPeriod, allTimePeriod,
   getUnitProfitability, type Period,
 } from "@/lib/profitability";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { useBusinessNow } from "@/hooks/use-business-now";
 import { ProfitabilityBar } from "./ProfitabilityBar";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { useTableSort, sortRows } from "@/hooks/use-table-sort";
@@ -49,17 +52,19 @@ function KpiCard({ label, value, hint, tone }: { label: string; value: string; h
 }
 
 export function PropertyProfitabilitySection({ propertyId }: { propertyId: string }) {
+  const businessNow = useBusinessNow();
   const { t } = useSettings();
   const { properties, units } = useAppData();
   const property = properties.find(p => p.id === propertyId);
   const [preset, setPreset] = useState<PresetKey>("12m");
   const [open, setOpen] = useState(true);
+  const today = propertyBusinessDateISO(property, businessNow);
 
   const period: Period = useMemo(() => {
-    if (preset === "ytd") return ytdPeriod();
-    if (preset === "all") return allTimePeriod();
-    return defaultPeriod();
-  }, [preset]);
+    if (preset === "ytd") return ytdPeriod(today);
+    if (preset === "all") return allTimePeriod(today);
+    return defaultPeriod(today);
+  }, [preset, today]);
 
   const p = usePropertyProfitability(propertyId, period);
   const inputs = useProfitabilityInputs();
@@ -115,6 +120,19 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
       </CollapsibleTrigger>
       <CollapsibleContent>
         <CardContent className="space-y-4">
+          {p.currencyMismatches.length > 0 || p.assignmentMismatchCount > 0 || p.scheduleCycleIssueCount > 0 ? (
+            <div className="space-y-2">
+              {p.currencyMismatches.length > 0 && <Alert variant="destructive"><AlertDescription>
+                {t("prof.currencyMismatch").replace("{expected}", cur).replace("{found}", p.currencyMismatches.join(", "))}
+              </AlertDescription></Alert>}
+              {p.assignmentMismatchCount > 0 && <Alert variant="destructive"><AlertDescription>
+                {t("prof.assignmentMismatch").replace("{count}", String(p.assignmentMismatchCount))}
+              </AlertDescription></Alert>}
+              {p.scheduleCycleIssueCount > 0 && <Alert variant="destructive"><AlertDescription>
+                {t("prof.scheduleCycleIssue").replace("{count}", String(p.scheduleCycleIssueCount))}
+              </AlertDescription></Alert>}
+            </div>
+          ) : (<>
           {/* Revenue vs Costs vs NOI summary bar */}
           <ProfitabilityBar revenue={p.revenue.egi} ownerBorne={p.recovery.ownerBorne} noi={p.noi}
             currencyCode={cur} locale={locale} />
@@ -209,12 +227,17 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
                 {sortedRows.map(({ unit, prof }) => {
                   const charges = prof.costs.directCharges + prof.costs.allocatedCharges;
                   const taxes = prof.costs.directTaxes + prof.costs.allocatedTaxes;
+                  const unreliable = prof.currencyMismatches.length > 0
+                    || prof.assignmentMismatchCount > 0 || prof.unitAttributionIssueCount > 0;
                   
                   return (
                 <TableRow key={unit.id}>
                       <TableCell className="text-sm">
                         <Link to={`/units/${unit.id}`} className={detailLinkClass}>{unit.unitCode}</Link>
                       </TableCell>
+                  {unreliable ? <TableCell colSpan={8} className="text-xs text-muted-foreground">
+                    {t("prof.unitRowUnavailable")}
+                  </TableCell> : <>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.revenue.billedRent, cur, locale)}</TableCell>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(prof.revenue.collectedRent, cur, locale)}</TableCell>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{formatCurrency(charges, cur, locale)}</TableCell>
@@ -223,6 +246,7 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
                       <TableCell className={cn("text-sm text-right tabular-nums font-medium", prof.noi < 0 && "text-destructive")}>{formatCurrency(prof.noi, cur, locale)}</TableCell>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{pct(prof.noiMargin)}</TableCell>
                       <TableCell className="text-sm text-right text-muted-foreground tabular-nums">{pct(prof.recovery.recoveryRatio)}</TableCell>
+                  </>}
                     </TableRow>
                   );
                 })}
@@ -231,6 +255,7 @@ export function PropertyProfitabilitySection({ propertyId }: { propertyId: strin
           </div>
 
           <p className="text-[11px] text-muted-foreground">{t("prof.operationalOnlyFooter")}</p>
+          </>)}
         </CardContent>
       </CollapsibleContent>
     </Card>

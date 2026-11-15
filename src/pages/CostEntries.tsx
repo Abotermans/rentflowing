@@ -25,13 +25,23 @@ import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import type { TranslationKey } from "@/i18n/translations";
 import { CostEntryDialog } from "@/components/costs/CostEntryDialog";
+import { getManagedOwnershipShare } from "@/lib/propertyOwnership";
+import { defaultPeriod } from "@/lib/profitability";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { useBusinessNow } from "@/hooks/use-business-now";
+import { recognizeCostAmountForPeriod } from "@/lib/costRecognition";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
+import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function CostEntries() {
+  const businessNow = useBusinessNow();
   const {
-    costEntries, properties, costCategories, deleteCostEntry,
+    loading: dataLoading, costEntries, properties, units, costCategories, deleteCostEntry,
     getPropertyById, getUnitById, getCostCategoryById, getAllocationRuleById,
   } = useAppData();
-  const { t } = useSettings();
+  const { t, locale } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
+  const { loading: portfolioLoading } = usePortfolio();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -51,34 +61,38 @@ export default function CostEntries() {
   const { sort, toggle } = useTableSort<ESortKey>();
 
   const openAdd = () => {
+    if (!canWrite) return;
     if (properties.length === 0) {
-      toast({ title: t("common.validationError"), description: "Create a property before adding cost entries.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("costs.createPropertyFirst"), variant: "destructive" });
       navigate("/properties");
       return;
     }
     if (costCategories.length === 0) {
-      toast({ title: t("common.validationError"), description: "Create a cost category before adding cost entries.", variant: "destructive" });
+      toast({ title: t("common.validationError"), description: t("costs.createCategoryFirst"), variant: "destructive" });
       navigate("/costs/categories");
       return;
     }
     setEditing(null);
     setSheetOpen(true);
   };
-  const openEdit = (e: CostEntry) => { setEditing(e); setSheetOpen(true); };
+  const openEdit = (e: CostEntry) => { if (!canWrite) return; setEditing(e); setSheetOpen(true); };
 
   useEffect(() => {
+    if (portfolioLoading || dataLoading) return;
     const editId = searchParams.get("edit");
     if (editId) {
       const entry = costEntries.find(e => e.id === editId);
-      if (entry) openEdit(entry);
-      searchParams.delete("edit");
-      setSearchParams(searchParams, { replace: true });
+      if (entry && canWrite) openEdit(entry);
+      const next = new URLSearchParams(searchParams);
+      next.delete("edit");
+      setSearchParams(next, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canWrite, costEntries, dataLoading, portfolioLoading, searchParams, setSearchParams]);
 
-  const handleDelete = (id: string) => {
-    deleteCostEntry(id);
+  const handleDelete = async (id: string) => {
+    if (!canWrite) return;
+    await deleteCostEntry(id);
     toast({ title: t("common.deleted") });
   };
 
@@ -117,18 +131,18 @@ export default function CostEntries() {
   const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
 
   return (
-    <div className="space-y-6">
+    <div className="page-shell">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("costs.entries")}</h1>
-          <p className="text-sm text-muted-foreground">{t("costs.entriesSubtitle")}</p>
+          <h1 className="page-title">{t("costs.entries")}</h1>
+          <p className="page-description">{t("costs.entriesSubtitle")}</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
-          <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />{t("costs.addEntry")}</Button>
+          {canWrite && <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1" />{t("costs.addEntry")}</Button>}
         </div>
       </div>
 
@@ -180,7 +194,7 @@ export default function CostEntries() {
                   <SortableTableHead sortKey="recovery" sort={sort} onSort={toggle}>{t("costs.recoveryType")}</SortableTableHead>
                   <SortableTableHead sortKey="period" sort={sort} onSort={toggle}>{t("costs.period")}</SortableTableHead>
                   <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
-                  <TableHead className="w-[80px]" />
+                  {canWrite && <TableHead className="w-[80px]" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -196,13 +210,39 @@ export default function CostEntries() {
                       <TableCell className="text-muted-foreground">{prop?.name ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{unit ? unit.unitLabel : t("costs.propertyLevel")}</TableCell>
                       <TableCell className="text-muted-foreground">{frequencyLabel(e.frequency)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatCurrency(e.amount, e.currencyCode)}</TableCell>
-                      <TableCell className="text-muted-foreground">{recoveryLabel(e.recoveryType)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        <div className="flex flex-col items-end">
+                          <span>{formatCurrency(e.amount, e.currencyCode, prop?.locale ?? locale)}</span>
+                          {e.recognitionMode === "amortized" && (
+                            <span className="text-xs text-muted-foreground">
+                              {t("costs.recognizedLast12Months")}: {formatCurrency(recognizeCostAmountForPeriod(
+                                e, e.amount,
+                                defaultPeriod(propertyBusinessDateISO(
+                                  properties.find(property => property.id === e.propertyId), businessNow,
+                                )),
+                              ), e.currencyCode, prop?.locale ?? locale)}
+                            </span>
+                          )}
+                          {!e.unitId && prop?.isPartiallyOwned && (
+                            <span className="text-xs text-muted-foreground">
+                              {t("costs.partialOwnershipListNote").replace(
+                                "{percent}",
+                                (getManagedOwnershipShare(prop, units, prop.id).ratio * 100).toFixed(2),
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {recoveryLabel(e.recoveryType)}{e.recoveryType === "partially-recoverable" ? ` (${e.recoverablePercentage ?? 50}%)` : ""}
+                      </TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">
-                        {formatDate(e.startDate)} – {e.endDate ? formatDate(e.endDate) : "—"}
+                        {e.recognitionMode === "amortized" && e.amortizationStartDate && e.amortizationEndDate
+                          ? `${formatDate(e.startDate)} · amortized ${formatDate(e.amortizationStartDate)} – ${formatDate(e.amortizationEndDate)}`
+                          : `${formatDate(e.startDate)} – ${e.endDate ? formatDate(e.endDate) : "—"}`}
                       </TableCell>
                       <TableCell><StatusBadge status={(e.status || "active") as CostEntryStatus} /></TableCell>
-                      <TableCell>
+                      {canWrite && <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${e.label}`} title={`Edit ${e.label}`} onClick={() => openEdit(e)}>
                             <Pencil className="h-3.5 w-3.5" />
@@ -214,7 +254,7 @@ export default function CostEntries() {
                             onDelete={handleDelete}
                           />
                         </div>
-                      </TableCell>
+                      </TableCell>}
                     </TableRow>
                   );
                 })}
@@ -227,7 +267,7 @@ export default function CostEntries() {
         </CardContent>
       </Card>
 
-      <CostEntryDialog open={sheetOpen} onOpenChange={setSheetOpen} editing={editing} />
+      <CostEntryDialog open={canWrite && sheetOpen} onOpenChange={setSheetOpen} editing={editing} />
     </div>
   );
 }

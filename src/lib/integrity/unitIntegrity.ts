@@ -1,9 +1,12 @@
 import { UnitStatus } from "@/types";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
 
 function activeLeasesForUnit(unitId: string, s: IntegrityState) {
-  const today = new Date().toISOString().slice(0, 10);
+  const unit = s.units.find(candidate => candidate.id === unitId);
+  const property = s.properties.find(candidate => candidate.id === unit?.propertyId);
+  const today = propertyBusinessDateISO(property);
   const activeLeaseIds = new Set(
     s.leaseUnitAssignments
       .filter(a => a.unitId === unitId && assignmentIsActiveOn(a, today))
@@ -12,9 +15,12 @@ function activeLeasesForUnit(unitId: string, s: IntegrityState) {
   // Defensive fallback: include legacy lease.unitId so unmigrated data and tests
   // that don't seed assignment rows still resolve correctly.
   s.leases.forEach(l => {
-    if (l.unitId === unitId && l.lifecycleStage === "active") activeLeaseIds.add(l.id);
+    if (l.unitId === unitId && l.lifecycleStage === "active" &&
+        !s.leaseUnitAssignments.some(a => a.leaseId === l.id)) activeLeaseIds.add(l.id);
   });
-  return s.leases.filter(l => activeLeaseIds.has(l.id) && l.lifecycleStage === "active");
+  return s.leases.filter(l => activeLeaseIds.has(l.id) && l.lifecycleStage === "active" &&
+    l.startDate <= today && (!l.endDate || l.endDate >= today) &&
+    (!l.moveOutActualDate || l.moveOutActualDate >= today));
 }
 
 function allLeasesTouchingUnit(unitId: string, s: IntegrityState) {
@@ -87,7 +93,7 @@ export function canChangeUnitStatus(unitId: string, targetStatus: UnitStatus, s:
       }
       break;
 
-    case "archived":
+    case "archived": {
       if (activeLeases.length > 0) {
         blockers.push({ code: "UNIT_ACTIVE_LEASE_EXISTS", message: "Cannot archive a unit with an active lease — vacate first" });
         return { allowed: false, blockers, warnings, overrideAllowed: false, recommendedAction: "Complete the move-out flow before archiving" };
@@ -98,6 +104,7 @@ export function canChangeUnitStatus(unitId: string, targetStatus: UnitStatus, s:
         return { allowed: false, blockers, warnings, overrideAllowed: true, recommendedAction: "Resolve open balances before archiving" };
       }
       break;
+    }
   }
 
   if (blockers.length > 0) return blocked(blockers, warnings);

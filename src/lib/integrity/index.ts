@@ -25,6 +25,7 @@ import { canDeleteTenant, canChangeTenantStatus } from "./tenantIntegrity";
 import { canDeleteLease, canChangeLeaseStatus } from "./leaseIntegrity";
 import { canDeleteReceivable, canDeleteCashReceipt } from "./financialIntegrity";
 import { canDeleteCostCategory, canDeleteCostEntry, canDeleteAllocationRule } from "./costIntegrity";
+import type { UnitStatus, TenantStatus, LifecycleStage } from "@/types";
 
 export function getDeletionImpact(entityType: IntegrityEntityType, entityId: string, s: IntegrityState): ValidationResult {
   switch (entityType) {
@@ -48,9 +49,9 @@ export function getStatusTransitionValidation(
   s: IntegrityState,
 ): ValidationResult {
   switch (entityType) {
-    case "unit": return canChangeUnitStatus(entityId, targetStatus as any, s);
-    case "tenant": return canChangeTenantStatus(entityId, targetStatus as any, s);
-    case "lease": return canChangeLeaseStatus(entityId, targetStatus as any, s);
+    case "unit": return canChangeUnitStatus(entityId, targetStatus as UnitStatus, s);
+    case "tenant": return canChangeTenantStatus(entityId, targetStatus as TenantStatus, s);
+    case "lease": return canChangeLeaseStatus(entityId, targetStatus as LifecycleStage, s);
     default: return { allowed: true, blockers: [], warnings: [], overrideAllowed: false };
   }
 }

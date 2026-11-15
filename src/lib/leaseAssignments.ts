@@ -1,5 +1,7 @@
-import type { Lease, LeaseUnitAssignment } from "@/types";
-import { isAncillaryUnitType, type Unit } from "@/types";
+import type { Lease, LeaseUnitAssignment } from "../types/index.ts";
+import { isAncillaryUnitType, type Unit } from "../types/index.ts";
+import { localTodayISO } from "./calendarToday.ts";
+import type { ReceivableItem } from "../types/receivables.ts";
 
 /** True when this unit represents an ancillary lease attachment. */
 export const isAncillaryLeaseUnit = (unit: Pick<Unit, "unitType"> | undefined) =>
@@ -16,7 +18,60 @@ export function assignmentIsActiveOn(a: LeaseUnitAssignment, isoDate: string): b
   return true;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+export function leaseOccupiesOn(
+  lease: Pick<Lease, "lifecycleStage" | "startDate" | "endDate" | "moveOutActualDate">,
+  isoDate: string,
+): boolean {
+  if (lease.lifecycleStage !== "active" && lease.lifecycleStage !== "signed") return false;
+  if (!lease.startDate || lease.startDate > isoDate) return false;
+  if (lease.endDate && lease.endDate < isoDate) return false;
+  if (lease.moveOutActualDate && lease.moveOutActualDate < isoDate) return false;
+  return true;
+}
+
+export function receivableHasPlausibleAssignment(
+  item: Pick<ReceivableItem, "leaseId" | "unitId" | "dueDate" | "cycleEndDate">,
+  assignments: readonly Pick<LeaseUnitAssignment, "leaseId" | "unitId" | "startDate" | "endDate">[],
+): boolean {
+  if (!item.leaseId || !item.unitId || !/^\d{4}-\d{2}-\d{2}$/.test(item.dueDate)) return false;
+  const monthStart = `${item.dueDate.slice(0, 7)}-01`;
+  const [year, month] = item.dueDate.slice(0, 7).split("-").map(Number);
+  if (month < 1 || month > 12) return false;
+  const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  const cycleEnd = item.cycleEndDate ?? monthEnd;
+  return assignments.some(assignment => assignment.leaseId === item.leaseId
+    && assignment.unitId === item.unitId && assignment.startDate <= cycleEnd
+    && (!assignment.endDate || assignment.endDate >= monthStart));
+}
+
+export function applyAssignmentShareChange(
+  assignments: readonly LeaseUnitAssignment[],
+  leaseId: string,
+  unitId: string,
+  effectiveDate: string,
+  field: "rentShare" | "chargesShare",
+  amount: number,
+  updatedAt: string,
+  newId: () => string,
+): LeaseUnitAssignment[] {
+  const next: LeaseUnitAssignment[] = [];
+  const priorDay = new Date(`${effectiveDate}T00:00:00Z`);
+  priorDay.setUTCDate(priorDay.getUTCDate() - 1);
+  const endBeforeEffective = priorDay.toISOString().slice(0, 10);
+  for (const assignment of assignments) {
+    if (assignment.leaseId !== leaseId || assignment.unitId !== unitId || !assignmentIsActiveOn(assignment, effectiveDate)) {
+      next.push(assignment);
+    } else if (assignment.startDate < effectiveDate) {
+      next.push({ ...assignment, endDate: endBeforeEffective, updatedAt });
+      next.push({ ...assignment, id: newId(), startDate: effectiveDate, [field]: amount, createdAt: updatedAt, updatedAt });
+    } else {
+      next.push({ ...assignment, [field]: amount, updatedAt });
+    }
+  }
+  return next;
+}
+
+const today = localTodayISO;
 
 export function getAssignmentsForLease(
   leaseId: string,
@@ -99,7 +154,7 @@ export function isUnitAssignedToActiveLease(
   return assignments.some(a =>
     a.unitId === unitId &&
     assignmentIsActiveOn(a, onDate) &&
-    leases.some(l => l.id === a.leaseId && l.lifecycleStage === "active"),
+    leases.some(l => l.id === a.leaseId && leaseOccupiesOn(l, onDate)),
   );
 }
 
@@ -129,7 +184,7 @@ export function sumLeaseShares(
   assignments: readonly LeaseUnitAssignment[],
   opts: { activeOnly?: boolean; onDate?: string } = {},
 ): { rent: number; charges: number } {
-  const onDate = opts.onDate ?? new Date().toISOString().slice(0, 10);
+  const onDate = opts.onDate ?? localTodayISO();
   const rows = assignments.filter(a => {
     if (a.leaseId !== leaseId) return false;
     if (opts.activeOnly && !assignmentIsActiveOn(a, onDate)) return false;
@@ -157,7 +212,7 @@ export function getActiveLeaseForUnit(
   if (matches.length === 0) return undefined;
   const sorted = [...matches].sort((x, y) => x.startDate.localeCompare(y.startDate));
   for (const a of sorted) {
-    const lease = leases.find(l => l.id === a.leaseId && l.lifecycleStage === "active");
+    const lease = leases.find(l => l.id === a.leaseId && leaseOccupiesOn(l, onDate));
     if (lease) return { lease, assignment: a };
   }
   return undefined;

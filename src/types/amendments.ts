@@ -1,3 +1,5 @@
+import type { RentFormula } from "./index.ts";
+
 export type AmendmentStatus =
   | "draft"
   | "scheduled"
@@ -18,6 +20,8 @@ export type AmendmentFieldName =
   | "unitEndDate"
   | "depositAmount"
   | "noticePeriodText"
+  | "rentFormula"
+  | "indexationSettings"
   | "tenantIds"
   | "billingTenantId"
   /** @deprecated Use `billingTenantId`. Kept for legacy amendment rows. */
@@ -36,6 +40,7 @@ export interface AmendmentChangeMetadata {
   unitId?: string;
   startDate?: string;
   endDate?: string | null;
+  originalLeaseEndDate?: string;
   tenantId?: string;
 }
 
@@ -76,8 +81,8 @@ export interface LeaseAmendment {
 
 /**
  * Snapshot of the lease's effective terms at a given date, derived by folding
- * the original lease record with every active amendment whose effectiveDate
- * is ≤ the target date.
+ * the reconstructed original terms with every applied amendment whose
+ * effectiveDate is on or before the target date.
  */
 export interface EffectiveLeaseTerms {
   leaseId: string;
@@ -87,6 +92,15 @@ export interface EffectiveLeaseTerms {
   endDate: string;
   depositAmount: number | null;
   noticePeriodText: string;
+  rentFormula: RentFormula;
+  indexationEnabled?: boolean;
+  indexationFrequency?: "yearly";
+  indexationBaseDate?: string | null;
+  indexationBaseIndex?: number | null;
+  indexationCurrentIndex?: number | null;
+  indexationCapPercent?: number | null;
+  indexationRoundingMode?: "nearest-cent" | "nearest-euro" | "none";
+  indexationNotes?: string;
   tenantIds: string[];
   billingTenantId: string;
   /** @deprecated Legacy mirror of `billingTenantId`. */

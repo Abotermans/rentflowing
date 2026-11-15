@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FormField } from "@/components/shared/FormField";
+import { DateInput } from "@/components/shared/DateInput";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+  Dialog, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tenant, TenantStatus, TenantKind } from "@/types";
 import { canChangeTenantStatus } from "@/lib/integrity/tenantIntegrity";
@@ -19,8 +21,16 @@ import { StatusTransitionAlert } from "@/components/shared/StatusTransitionAlert
 import { OverrideConfirmDialog } from "@/components/shared/OverrideConfirmDialog";
 import type { ValidationResult } from "@/lib/integrity/types";
 import { isValidEmail } from "@/lib/validation";
+import { deriveTenantStatusFromLeases } from "@/lib/tenantStatus";
 
 type TenantFormData = Omit<Tenant, "id" | "createdAt" | "updatedAt">;
+type TenantErrorKey =
+  | "firstName"
+  | "lastName"
+  | "companyName"
+  | "contactFirstName"
+  | "contactLastName"
+  | "email";
 
 const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -32,7 +42,7 @@ const emptyForm: TenantFormData = {
   kind: "individual",
   firstName: "", lastName: "", email: "", phone: "",
   dateOfBirth: null, identificationNumber: null, currentAddress: null,
-  status: "active", notes: "",
+  status: "applicant", notes: "",
   companyName: null, legalForm: null, registrationNumber: null, vatNumber: null,
   contactFirstName: null, contactLastName: null, contactRole: null,
 };
@@ -44,25 +54,31 @@ interface TenantDialogProps {
 }
 
 export function TenantDialog({ open, onOpenChange, editingTenant = null }: TenantDialogProps) {
-  const { addTenantPersisted, updateTenant } = useAppData();
+  const { addTenantPersisted, updateTenantPersisted } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
 
   const [form, setForm] = useState<TenantFormData>({ ...emptyForm });
+  const [errors, setErrors] = useState<Partial<Record<TenantErrorKey, string>>>({});
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [pendingOverrideValidation, setPendingOverrideValidation] = useState<ValidationResult | null>(null);
+  const linkedStatus = editingTenant
+    ? deriveTenantStatusFromLeases(integrityState.leases.filter(lease =>
+      lease.primaryTenantId === editingTenant.id || lease.coTenantIds.includes(editingTenant.id)))
+    : null;
 
   useEffect(() => {
     if (!open) return;
     if (editingTenant) {
       const { id, createdAt, updatedAt, ...rest } = editingTenant;
-      setForm(rest);
+      setForm({ ...rest, status: linkedStatus ?? rest.status });
     } else {
       setForm({ ...emptyForm });
     }
-  }, [open, editingTenant]);
+    setErrors({});
+  }, [open, editingTenant, linkedStatus]);
 
   const tenantStatusValidation = (() => {
     if (!editingTenant || form.status === editingTenant.status) return null;
@@ -70,48 +86,44 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
   })();
 
   const executeSave = async () => {
-    if (editingTenant) {
-      updateTenant({ ...editingTenant, ...form });
-      toast({ title: "Tenant updated" });
-    } else {
-      try {
+    try {
+      if (editingTenant) {
+        await updateTenantPersisted({ ...editingTenant, ...form });
+        toast({ title: "Tenant updated" });
+      } else {
         await addTenantPersisted(form);
         toast({ title: "Tenant added" });
-      } catch (err) {
-        toast({
-          title: "Validation Error",
-          description: err instanceof Error ? err.message : "Tenant could not be saved.",
-          variant: "destructive",
-        });
-        return;
       }
+    } catch (err) {
+      toast({
+        title: "Validation Error",
+        description: err instanceof Error ? err.message : "Tenant could not be saved.",
+        variant: "destructive",
+      });
+      return;
     }
     onOpenChange(false);
   };
 
   const handleSave = async () => {
+    const nextErrors: Partial<Record<TenantErrorKey, string>> = {};
     if (!form.email.trim()) {
-      toast({ title: "Validation Error", description: "Email is required.", variant: "destructive" });
-      return;
-    }
-    if (!isValidEmail(form.email)) {
-      toast({ title: "Validation Error", description: "Enter a valid email address.", variant: "destructive" });
-      return;
+      nextErrors.email = t("common.mandatoryField");
+    } else if (!isValidEmail(form.email)) {
+      nextErrors.email = t("common.invalidEmail");
     }
     if (form.kind === "individual") {
-      if (!form.firstName.trim() || !form.lastName.trim()) {
-        toast({ title: "Validation Error", description: "First name and last name are required.", variant: "destructive" });
-        return;
-      }
+      if (!form.firstName.trim()) nextErrors.firstName = t("common.mandatoryField");
+      if (!form.lastName.trim()) nextErrors.lastName = t("common.mandatoryField");
     } else {
-      if (!(form.companyName ?? "").trim()) {
-        toast({ title: "Validation Error", description: "Company name is required.", variant: "destructive" });
-        return;
-      }
-      if (!(form.contactFirstName ?? "").trim() || !(form.contactLastName ?? "").trim()) {
-        toast({ title: "Validation Error", description: "Main contact first and last name are required.", variant: "destructive" });
-        return;
-      }
+      if (!(form.companyName ?? "").trim()) nextErrors.companyName = t("common.mandatoryField");
+      if (!(form.contactFirstName ?? "").trim()) nextErrors.contactFirstName = t("common.mandatoryField");
+      if (!(form.contactLastName ?? "").trim()) nextErrors.contactLastName = t("common.mandatoryField");
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast({ title: "Validation Error", description: t("common.fixHighlightedFields"), variant: "destructive" });
+      return;
     }
     if (editingTenant && form.status !== editingTenant.status) {
       const validation = canChangeTenantStatus(editingTenant.id, form.status, integrityState);
@@ -128,8 +140,14 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
     await executeSave();
   };
 
-  const handleOverrideConfirm = (reason: string) => {
+  const handleOverrideConfirm = async (reason: string) => {
     if (!editingTenant || !pendingOverrideValidation) return;
+    try {
+      await updateTenantPersisted({ ...editingTenant, ...form });
+    } catch (err) {
+      toast({ title: "Validation Error", description: err instanceof Error ? err.message : "Tenant could not be saved.", variant: "destructive" });
+      return;
+    }
     addOverride({
       entityType: "tenant",
       entityId: editingTenant.id,
@@ -137,7 +155,6 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
       blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
       reason,
     });
-    updateTenant({ ...editingTenant, ...form });
     onOpenChange(false);
     toast({ title: "Tenant updated (overridden)", description: `Override reason: ${reason}` });
     setPendingOverrideValidation(null);
@@ -146,7 +163,7 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingTenant ? t("tenants.edit") : t("tenants.add")}</DialogTitle>
           </DialogHeader>
@@ -169,14 +186,20 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
             {form.kind === "individual" ? (
               <>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>{t("tenants.firstName")} *</Label><Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} /></div>
-                  <div><Label>{t("tenants.lastName")} *</Label><Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} /></div>
+                  <FormField label={t("tenants.firstName")} required error={errors.firstName}>
+                    <Input value={form.firstName} aria-invalid={!!errors.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} />
+                  </FormField>
+                  <FormField label={t("tenants.lastName")} required error={errors.lastName}>
+                    <Input value={form.lastName} aria-invalid={!!errors.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} />
+                  </FormField>
                 </div>
               </>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>{t("tenants.companyName")} *</Label><Input value={form.companyName ?? ""} onChange={e => setForm(f => ({ ...f, companyName: e.target.value || null }))} /></div>
+                  <FormField label={t("tenants.companyName")} required error={errors.companyName}>
+                    <Input value={form.companyName ?? ""} aria-invalid={!!errors.companyName} onChange={e => setForm(f => ({ ...f, companyName: e.target.value || null }))} />
+                  </FormField>
                   <div><Label>{t("tenants.legalForm")}</Label><Input value={form.legalForm ?? ""} placeholder="SARL, SAS, SCI…" onChange={e => setForm(f => ({ ...f, legalForm: e.target.value || null }))} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -186,15 +209,17 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
               </>
             )}
 
-            <div><Label>{t("tenants.email")} *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+            <FormField label={t("tenants.email")} required error={errors.email}>
+              <Input type="email" value={form.email} aria-invalid={!!errors.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+            </FormField>
             <div><Label>{t("tenants.phone")}</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
 
             <div className="grid grid-cols-2 gap-4">
               {form.kind === "individual" ? (
-                <div><Label>{t("tenants.dateOfBirth")}</Label><Input type="date" value={form.dateOfBirth ?? ""} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value || null }))} /></div>
+                <div><Label>{t("tenants.dateOfBirth")}</Label><DateInput value={form.dateOfBirth ?? ""} onChange={value => setForm(f => ({ ...f, dateOfBirth: value || null }))} /></div>
               ) : <div />}
-              <div><Label>{t("filter.status")} *</Label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as TenantStatus }))}>
+              <div title={linkedStatus ? t("tenants.statusLinkedLeases") : undefined}><Label>{t("filter.status")} *</Label>
+                <Select value={form.status} disabled={!!linkedStatus} onValueChange={v => setForm(f => ({ ...f, status: v as TenantStatus }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{TENANT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}><StatusBadge status={s.value} /></SelectItem>)}</SelectContent>
                 </Select>
@@ -214,8 +239,12 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
               <div className="space-y-3 pt-2 border-t">
                 <p className="text-sm font-medium text-foreground">{t("tenants.mainContact")}</p>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>{t("tenants.firstName")} *</Label><Input value={form.contactFirstName ?? ""} onChange={e => setForm(f => ({ ...f, contactFirstName: e.target.value || null }))} /></div>
-                  <div><Label>{t("tenants.lastName")} *</Label><Input value={form.contactLastName ?? ""} onChange={e => setForm(f => ({ ...f, contactLastName: e.target.value || null }))} /></div>
+                  <FormField label={t("tenants.firstName")} required error={errors.contactFirstName}>
+                    <Input value={form.contactFirstName ?? ""} aria-invalid={!!errors.contactFirstName} onChange={e => setForm(f => ({ ...f, contactFirstName: e.target.value || null }))} />
+                  </FormField>
+                  <FormField label={t("tenants.lastName")} required error={errors.contactLastName}>
+                    <Input value={form.contactLastName ?? ""} aria-invalid={!!errors.contactLastName} onChange={e => setForm(f => ({ ...f, contactLastName: e.target.value || null }))} />
+                  </FormField>
                 </div>
                 <div><Label>{t("tenants.contactRole")}</Label><Input value={form.contactRole ?? ""} placeholder="CEO, Property manager…" onChange={e => setForm(f => ({ ...f, contactRole: e.target.value || null }))} /></div>
               </div>
@@ -223,7 +252,7 @@ export function TenantDialog({ open, onOpenChange, editingTenant = null }: Tenan
 
             <div><Label>{t("common.notes")}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
-          <DialogFooter className="mt-6">
+          <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
             <Button onClick={handleSave}>{editingTenant ? t("action.save") : t("tenants.add")}</Button>
           </DialogFooter>

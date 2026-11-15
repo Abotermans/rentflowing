@@ -1,33 +1,42 @@
 import { useMemo, useState } from "react";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { addCalendarDaysISO } from "@/lib/calendarToday";
+import { useBusinessNow } from "@/hooks/use-business-now";
 import { Link } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DateInput } from "@/components/shared/DateInput";
 import { Trash2, Calculator, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { Lease } from "@/types";
 import type { ReconciliationResolution } from "@/types/chargesReconciliation";
-import { suggestResolution, computeLeaseCostOverview, type ReconciliationWindow } from "@/lib/chargesReconciliation";
+import { suggestResolution, computeLeaseCostOverview, findOverlappingReconciliation, type ReconciliationWindow } from "@/lib/chargesReconciliation";
 import { isAllInclusive } from "@/lib/leasePricing";
 import { detailLinkClass } from "@/lib/detailLinks";
 
 interface Props { lease: Lease; currency: string; locale: string; }
 
 export function ChargesReconciliationSection({ lease, currency, locale }: Props) {
+  const businessNow = useBusinessNow();
   const { t } = useSettings();
   const { toast } = useToast();
+  const canWrite = usePortfolioWriteAccess();
   const {
     getChargesReconciliationsByLease,
     previewChargesReconciliation,
@@ -37,32 +46,46 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
     units,
     costAllocationResults,
     costEntries,
+    properties,
   } = useAppData();
 
   const mode = lease.chargesBillingMode ?? "provision-reconciled";
   const allInclusive = isAllInclusive(lease);
   const history = getChargesReconciliationsByLease(lease.id);
   const [sectionOpen, setSectionOpen] = useState(true);
-  const today = new Date().toISOString().slice(0, 10);
+  const property = properties.find(candidate => candidate.id === lease.propertyId);
+  const today = propertyBusinessDateISO(property, businessNow);
   const lastEnd = history[0]?.periodEnd ?? null;
-  const defaultStart = lastEnd ?? lease.startDate;
+  const defaultStart = lastEnd ? addCalendarDaysISO(lastEnd, 1) : lease.startDate;
 
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [start, setStart] = useState(defaultStart);
   const [end, setEnd] = useState(today);
   const [resolution, setResolution] = useState<ReconciliationResolution>("none");
   const [notes, setNotes] = useState("");
 
   const window: ReconciliationWindow = { start, end };
-  const periodError = open && start && end && end < start
-    ? t("validation.dates.periodEndBeforeStart")
+  const overlappingPeriod = start && end && start <= end
+    ? findOverlappingReconciliation({ start, end }, history)
+    : undefined;
+  const periodError = open && start && end
+    ? end < start
+      ? t("validation.dates.periodEndBeforeStart")
+      : overlappingPeriod
+        ? t("reconciliation.periodOverlaps")
+            .replace("{start}", formatDate(overlappingPeriod.periodStart, locale))
+            .replace("{end}", formatDate(overlappingPeriod.periodEnd, locale))
+        : null
     : null;
   const breakdown = useMemo(() => {
     if (!open) return null;
-    if (!start || !end || end < start) return null;
+    if (!start || !end || end < start || overlappingPeriod) return null;
     return previewChargesReconciliation(lease.id, window);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, start, end, lease.id]);
+  }, [open, start, end, lease.id, overlappingPeriod]);
 
   const overview = useMemo(
     () => computeLeaseCostOverview(lease, leaseUnitAssignments, units, costAllocationResults, costEntries),
@@ -119,7 +142,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                 <TableCell className="text-xs">
                   {l.recoveryType === "owner-only" && t("reconciliation.overview.bearer.ownerOnly" as never)}
                   {l.recoveryType === "tenant-recoverable" && t("reconciliation.overview.bearer.tenantOnly" as never)}
-                  {l.recoveryType === "partially-recoverable" && t("reconciliation.overview.bearer.mix" as never)}
+                  {l.recoveryType === "partially-recoverable" && `${t("reconciliation.overview.bearer.mix" as never)} (${l.recoverablePercentage}%)`}
                   {l.recoveryType === "informational" && t("reconciliation.overview.bearer.informational" as never)}
                 </TableCell>
                 <TableCell className="text-xs text-right">
@@ -227,8 +250,8 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
   );
 
   const openDialog = () => {
-    const s = lastEnd ?? lease.startDate;
-    setStart(s);
+    if (!canWrite) return;
+    setStart(defaultStart);
     setEnd(today);
     setResolution("none");
     setNotes("");
@@ -243,11 +266,37 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [breakdown?.delta]);
 
-  const handleSave = () => {
-    if (!breakdown) return;
-    applyChargesReconciliation({ leaseId: lease.id, window, resolution, notes });
-    toast({ title: t("reconciliation.toast.created") });
-    setOpen(false);
+  const handleSave = async () => {
+    if (!canWrite || !breakdown || saving) return;
+    setSaving(true);
+    try {
+      await applyChargesReconciliation({ leaseId: lease.id, window, resolution, notes });
+      toast({ title: t("reconciliation.toast.created") });
+      setOpen(false);
+    } catch (error) {
+      toast({ title: t("reconciliation.toast.saveFailed"), description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!canWrite || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteChargesReconciliation(id);
+      toast({ title: t("reconciliation.toast.deleted") });
+      setDeleteId(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : undefined;
+      toast({
+        title: t("reconciliation.toast.deleteFailed"),
+        description: message === "reconciliation.deleteAllocated" ? t("reconciliation.toast.deleteAllocated") : message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (allInclusive) {
@@ -330,9 +379,9 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
             </span>
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); openDialog(); }}>
+            {canWrite && <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); openDialog(); }}>
               <Calculator className="h-3.5 w-3.5 mr-1" />{t("reconciliation.runButton")}
-            </Button>
+            </Button>}
             <span className="inline-flex items-center justify-center h-7 w-7">
               <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sectionOpen && "rotate-180")} />
             </span>
@@ -370,9 +419,9 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                     </TableCell>
                     <TableCell className="text-xs">{t(`reconciliation.resolution.${r.resolution === "carry-forward" ? "carry" : r.resolution}` as never)}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { deleteChargesReconciliation(r.id); toast({ title: t("reconciliation.toast.deleted") }); }}>
+                      {canWrite && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t("reconciliation.delete")} onClick={() => setDeleteId(r.id)}>
                         <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
+                      </Button>}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -382,8 +431,24 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
         )}
       </CardContent>
       </CollapsibleContent>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <AlertDialog open={canWrite && deleteId !== null} onOpenChange={(nextOpen) => { if (!nextOpen && !deleting) setDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("reconciliation.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("reconciliation.deleteConfirmDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t("action.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => { event.preventDefault(); if (deleteId) void handleDelete(deleteId); }}
+            >{t("reconciliation.delete")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <Dialog open={canWrite && open} onOpenChange={(nextOpen) => { if (!saving) setOpen(nextOpen); }}>
+        <DialogContent size="large">
           <DialogHeader>
             <DialogTitle>{t("reconciliation.dialogTitle")}</DialogTitle>
           </DialogHeader>
@@ -391,11 +456,11 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>{t("reconciliation.periodStart")}</Label>
-                <Input type="date" value={start} onChange={e => setStart(e.target.value)} />
+                <DateInput value={start} onChange={setStart} aria-invalid={Boolean(periodError)} />
               </div>
               <div>
                 <Label>{t("reconciliation.periodEnd")}</Label>
-                <Input type="date" value={end} onChange={e => setEnd(e.target.value)} />
+                <DateInput value={end} onChange={setEnd} aria-invalid={Boolean(periodError)} />
               </div>
             </div>
             {periodError && (
@@ -428,6 +493,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                       <TableHeader>
                         <TableRow className="h-8">
                           <TableHead className="h-8 text-xs">{t("reconciliation.col.cost")}</TableHead>
+                          <TableHead className="h-8 text-xs">{t("reconciliation.overview.col.unit")}</TableHead>
                           <TableHead className="h-8 text-xs">{t("reconciliation.col.period")}</TableHead>
                           <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.full")}</TableHead>
                           <TableHead className="h-8 text-xs text-right">{t("reconciliation.col.overlap")}</TableHead>
@@ -436,14 +502,15 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
                       </TableHeader>
                       <TableBody>
                         {breakdown.lines.length === 0 ? (
-                          <TableRow><TableCell colSpan={5} className="text-xs text-muted-foreground text-center py-3">{t("reconciliation.noCosts")}</TableCell></TableRow>
-                        ) : breakdown.lines.map(l => (
-                          <TableRow key={l.costEntryId} className="h-8">
+                          <TableRow><TableCell colSpan={6} className="text-xs text-muted-foreground text-center py-3">{t("reconciliation.noCosts")}</TableCell></TableRow>
+                        ) : breakdown.lines.map((l, index) => (
+                          <TableRow key={`${l.costEntryId}-${l.unitId ?? "legacy"}-${index}`} className="h-8">
                             <TableCell className="text-xs">
                               <Link to={`/costs/entries?edit=${l.costEntryId}`} className={detailLinkClass}>
                                 {l.label}
                               </Link>
                             </TableCell>
+                            <TableCell className="text-xs">{l.unitLabel ?? units.find(unit => unit.id === lease.unitId)?.unitCode ?? "—"}</TableCell>
                             <TableCell className="text-xs">{formatDate(l.costPeriodStart, locale)} → {formatDate(l.costPeriodEnd, locale)}</TableCell>
                             <TableCell className="text-xs text-right">{formatCurrency(l.fullRecoverable, currency, locale)}</TableCell>
                             <TableCell className="text-xs text-right">{l.overlapDays}/{l.totalDays} ({Math.round(l.proRataFactor * 100)}%)</TableCell>
@@ -492,7 +559,7 @@ export function ChargesReconciliationSection({ lease, currency, locale }: Props)
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>{t("action.cancel")}</Button>
-            <Button onClick={handleSave} disabled={!breakdown}>{t("reconciliation.confirm")}</Button>
+            <Button onClick={handleSave} disabled={!breakdown || saving}>{t("reconciliation.confirm")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

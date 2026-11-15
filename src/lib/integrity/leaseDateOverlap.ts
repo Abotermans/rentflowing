@@ -1,5 +1,6 @@
-import type { LifecycleStage } from "@/types";
-import type { IntegrityState } from "./types";
+import type { LifecycleStage } from "../../types/index.ts";
+import { formatDate } from "../formatters.ts";
+import type { IntegrityState } from "./types.ts";
 
 /**
  * Lifecycle stages whose assignments do NOT block other leases on the same unit.
@@ -27,7 +28,7 @@ export interface OverlapHit {
   otherEnd: string | null;
 }
 
-/** Inclusive overlap check; `null` endDate is treated as +infinity. */
+/** Touching end/start boundaries are allowed; `null` endDate is +infinity. */
 function rangesOverlap(
   aStart: string, aEnd: string | null,
   bStart: string, bEnd: string | null,
@@ -59,15 +60,19 @@ export function findOverlappingLeases(
       const otherLease = s.leases.find(l => l.id === other.leaseId);
       if (!otherLease) continue;
       if (IGNORED_STAGES.has(otherLease.lifecycleStage)) continue;
-      if (!rangesOverlap(p.startDate, p.endDate, other.startDate, other.endDate)) continue;
+      const otherStart = [other.startDate, otherLease.startDate].filter(Boolean).sort().at(-1) ?? other.startDate;
+      const otherEnd = [other.endDate, otherLease.endDate, otherLease.moveOutActualDate]
+        .filter((date): date is string => !!date).sort()[0] ?? null;
+      if (otherEnd && otherEnd <= otherStart) continue;
+      if (!rangesOverlap(p.startDate, p.endDate, otherStart, otherEnd)) continue;
       hits.push({
         unitId: p.unitId,
         otherLeaseId: other.leaseId,
         otherStage: otherLease.lifecycleStage,
         proposedStart: p.startDate,
         proposedEnd: p.endDate,
-        otherStart: other.startDate,
-        otherEnd: other.endDate,
+        otherStart,
+        otherEnd,
       });
     }
   }
@@ -75,7 +80,7 @@ export function findOverlappingLeases(
 }
 
 export function formatOverlapRange(startDate: string, endDate: string | null): string {
-  return `${startDate} – ${endDate ?? "open-ended"}`;
+  return `${formatDate(startDate)} – ${endDate ? formatDate(endDate) : "open-ended"}`;
 }
 
 export function formatOverlapConflictMessage(
@@ -85,7 +90,7 @@ export function formatOverlapConflictMessage(
   const proposedRange = formatOverlapRange(hit.proposedStart, hit.proposedEnd);
   const occupiedRange = formatOverlapRange(hit.otherStart, hit.otherEnd);
   const availability = hit.otherEnd
-    ? ` The unit is available from ${hit.otherEnd} onward.`
+    ? ` The unit is available from ${formatDate(hit.otherEnd)} onward.`
     : " The conflicting assignment has no end date, so the unit is unavailable until that assignment is closed.";
   return `Unit ${labels.unitLabel} is not available for ${proposedRange}: it overlaps lease ${labels.leaseRef} (${hit.otherStage}) during ${occupiedRange}.${availability}`;
 }

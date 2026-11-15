@@ -3,16 +3,19 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, AlertTriangle, MoreVertical } from "lucide-react";
+import { DateInput } from "@/components/shared/DateInput";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, Ban, Archive, TrendingUp, DoorOpen, Plus, Eye, Pencil, Trash2, AlertTriangle, MoreVertical } from "lucide-react";
 import { ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
@@ -33,7 +36,21 @@ import type { ValidationResult } from "@/lib/integrity/types";
 import { RentTiersEditor } from "@/components/shared/RentTiersEditor";
 import { PropertyProfitabilitySection } from "@/components/profitability/PropertyProfitabilitySection";
 import { PropertyOwnersPicker } from "@/components/properties/PropertyOwnersPicker";
+import { MilliemeKeysInput } from "@/components/properties/MilliemeKeysInput";
 import { detailLinkClass } from "@/lib/detailLinks";
+import { normalizedCode } from "@/lib/validation";
+import {
+  formatMilliemeBase,
+  getManagedOwnershipShare,
+  getPropertyMilliemeBaseViolations,
+  getUnitMilliemeCapacityViolations,
+  MILLIEME_BASE_OPTIONS,
+} from "@/lib/propertyOwnership";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
+import { buildCostOverview } from "@/lib/costOverview";
+import { formatMoneyGroups, type MoneyGroup } from "@/lib/money";
+import { businessTimeZoneChoices, defaultBusinessTimeZone, isValidBusinessTimeZone, propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { useBusinessNow } from "@/hooks/use-business-now";
 
 const UNIT_TYPE_VALUES: UnitType[] = ["apartment", "studio", "office", "parking", "storage", "house", "commercial-unit"];
 const UNIT_STATUS_VALUES: UnitStatus[] = ["vacant", "occupied", "reserved", "unavailable", "archived"];
@@ -49,9 +66,13 @@ const EUROPEAN_COUNTRIES = [
   { code: "AT", label: "Austria" }, { code: "LU", label: "Luxembourg" }, { code: "IE", label: "Ireland" },
   { code: "SE", label: "Sweden" }, { code: "DK", label: "Denmark" }, { code: "NO", label: "Norway" },
   { code: "FI", label: "Finland" }, { code: "PL", label: "Poland" }, { code: "CZ", label: "Czech Republic" },
-];
+].sort((a, b) => a.label.localeCompare(b.label));
 const CURRENCIES = ["EUR", "GBP", "CHF", "SEK", "DKK", "NOK", "PLN", "CZK"];
 type PropertyEditData = Omit<Property, "id" | "createdAt" | "updatedAt">;
+const getMilliemeBaseChoices = (base: number | undefined) => {
+  const current = base ?? 1000;
+  return Array.from(new Set([...MILLIEME_BASE_OPTIONS, current])).sort((a, b) => a - b);
+};
 const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
   vacant: "status.vacant",
   occupied: "status.occupied",
@@ -63,10 +84,12 @@ const UNIT_STATUS_LABEL_KEYS: Record<UnitStatus, TranslationKey> = {
 type UnitFormData = Omit<Unit, "id" | "createdAt" | "updatedAt">;
 
 export default function PropertyDetail() {
+  const businessNow = useBusinessNow();
   const { id } = useParams<{ id: string }>();
-  const { properties, units, leases, leaseUnitAssignments, getPropertyStats, addUnit, updateUnit, deleteUnit, updateProperty, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty, getOwnersForProperty, setPropertyOwners } = useAppData();
+  const { properties, units, leases, receivableItems, cashReceipts, costEntries, leaseUnitAssignments, getPropertyStats, addUnitPersisted, updateUnitPersisted, deleteUnitPersisted, savePropertyWithOwnersPersisted, deleteProperty, getActiveLease, tenants, getCostEntriesByProperty, getAllocationResultsByProperty, getOwnersForProperty } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
   const navigate = useNavigate();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
@@ -75,6 +98,14 @@ export default function PropertyDetail() {
 
   const property = properties.find(p => p.id === id);
   const propertyUnits = units.filter(u => u.propertyId === id);
+  const currencyLocked = propertyUnits.length > 0
+    || leases.some(lease => lease.propertyId === id)
+    || receivableItems.some(item => item.propertyId === id)
+    || cashReceipts.some(receipt => receipt.propertyId === id)
+    || costEntries.some(entry => entry.propertyId === id);
+  const ownershipPreview = property
+    ? getManagedOwnershipShare(property, units, property.id)
+    : { ownedShares: 0, base: 1000, ratio: 0 };
   const stats = id ? getPropertyStats(id) : null;
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -89,32 +120,58 @@ export default function PropertyDetail() {
   const [propertyEditOpen, setPropertyEditOpen] = useState(false);
   const [propertyForm, setPropertyForm] = useState<PropertyEditData | null>(null);
   const [propertyOwnerIds, setPropertyOwnerIds] = useState<string[]>([]);
+  const propertyFormOwnershipPreview = property && propertyForm
+    ? getManagedOwnershipShare({ milliemeBase: propertyForm.milliemeBase }, units, property.id)
+    : ownershipPreview;
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [localSettingsOpen, setLocalSettingsOpen] = useState(true);
   
   const [unitsOpen, setUnitsOpen] = useState(true);
   const [costsOpen, setCostsOpen] = useState(true);
   const openEditProperty = () => {
-    if (!property) return;
+    if (!canWrite || !property) return;
     const { id: _id, createdAt, updatedAt, ...rest } = property;
-    setPropertyForm(rest);
+    setPropertyForm({ ...rest, timeZone: rest.timeZone ?? defaultBusinessTimeZone(rest.countryCode) });
     setPropertyOwnerIds(getOwnersForProperty(property.id).map(o => o.id));
     setPropertyEditOpen(true);
   };
-  const handleSaveProperty = () => {
-    if (!property || !propertyForm) return;
-    if (!propertyForm.name.trim() || !propertyForm.referenceCode.trim() || !propertyForm.address1.trim() || !propertyForm.city.trim() || !propertyForm.countryCode) {
+  const handleSaveProperty = async () => {
+    if (!canWrite || !property || !propertyForm) return;
+    if (!propertyForm.name.trim() || !propertyForm.referenceCode.trim() || !propertyForm.address1.trim() || !propertyForm.city.trim() || !propertyForm.countryCode || !isValidBusinessTimeZone(propertyForm.timeZone)) {
       toast({ title: t("common.validationError"), description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
-    updateProperty({ ...property, ...propertyForm });
-    setPropertyOwners(property.id, propertyOwnerIds);
-    toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
-    setPropertyEditOpen(false);
+    if (currencyLocked && propertyForm.currencyCode !== property.currencyCode) {
+      toast({ title: t("common.validationError"), description: t("properties.currencyLocked"), variant: "destructive" });
+      return;
+    }
+    if (propertyForm.milliemeBase !== property.milliemeBase) {
+      const milliemeViolations = getPropertyMilliemeBaseViolations(propertyForm, units, property.id);
+      if (milliemeViolations.length > 0) {
+        const first = milliemeViolations[0];
+        toast({
+          title: t("common.validationError"),
+          description: t("properties.milliemeBaseCapacityExceeded")
+            .replace("{key}", first.key)
+            .replace("{total}", String(first.totalShares))
+            .replace("{base}", String(first.base)),
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    try {
+      await savePropertyWithOwnersPersisted({ ...property, ...propertyForm }, propertyOwnerIds);
+      toast({ title: `${t("properties.title")} ${t("common.updated").toLowerCase()}` });
+      setPropertyEditOpen(false);
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Property could not be saved.", variant: "destructive" });
+    }
   };
 
-  const openAddUnit = () => { setEditingUnit(null); setUnitForm({ ...emptyUnitForm }); setSheetOpen(true); };
+  const openAddUnit = () => { if (!canWrite) return; setEditingUnit(null); setUnitForm({ ...emptyUnitForm }); setSheetOpen(true); };
   const openEditUnit = (u: Unit) => {
+    if (!canWrite) return;
     setEditingUnit(u);
     const { id: _, createdAt, updatedAt, ...rest } = u;
     setUnitForm(rest);
@@ -125,20 +182,37 @@ export default function PropertyDetail() {
     return canChangeUnitStatus(editingUnit.id, unitForm.currentStatus, integrityState);
   })();
 
-  const executeUnitSave = () => {
-    if (editingUnit) {
-      updateUnit({ ...editingUnit, ...unitForm });
-      toast({ title: t("units.toastUpdated") });
-    } else {
-      addUnit(unitForm);
-      toast({ title: t("units.toastAdded") });
+  const executeUnitSave = async () => {
+    if (!canWrite) return;
+    try {
+      if (editingUnit) {
+        await updateUnitPersisted({ ...editingUnit, ...unitForm });
+        toast({ title: t("units.toastUpdated") });
+      } else {
+        await addUnitPersisted(unitForm);
+        toast({ title: t("units.toastAdded") });
+      }
+      setSheetOpen(false);
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Unit could not be saved.", variant: "destructive" });
     }
-    setSheetOpen(false);
   };
 
-  const handleSaveUnit = () => {
+  const handleSaveUnit = async () => {
+    if (!canWrite) return;
     if (!unitForm.unitCode.trim() || !unitForm.unitLabel.trim()) {
       toast({ title: t("common.validationError"), description: t("units.requiredCodeLabel"), variant: "destructive" });
+      return;
+    }
+    if (units.some(u => u.propertyId === unitForm.propertyId && u.id !== editingUnit?.id && normalizedCode(u.unitCode) === normalizedCode(unitForm.unitCode))) {
+      toast({ title: t("common.validationError"), description: t("units.codesUniqueWithinProperty"), variant: "destructive" });
+      return;
+    }
+    const milliemeViolations = getUnitMilliemeCapacityViolations(unitForm, property, units, editingUnit?.id);
+    if (milliemeViolations.length > 0) {
+      const first = milliemeViolations[0];
+      toast({ title: t("common.validationError"), description: t("units.milliemeCapacityExceeded")
+        .replace("{key}", first.key).replace("{max}", String(first.maxForUnit)).replace("{base}", String(first.base)), variant: "destructive" });
       return;
     }
     if (editingUnit && unitForm.currentStatus !== editingUnit.currentStatus) {
@@ -153,11 +227,18 @@ export default function PropertyDetail() {
         return;
       }
     }
-    executeUnitSave();
+    await executeUnitSave();
   };
 
-  const handleUnitOverrideConfirm = (reason: string) => {
+  const handleUnitOverrideConfirm = async (reason: string) => {
+    if (!canWrite) return;
     if (!editingUnit || !pendingOverrideValidation) return;
+    try {
+      await updateUnitPersisted({ ...editingUnit, ...unitForm });
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Unit could not be saved.", variant: "destructive" });
+      return;
+    }
     addOverride({
       entityType: "unit",
       entityId: editingUnit.id,
@@ -165,19 +246,20 @@ export default function PropertyDetail() {
       blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
       reason,
     });
-    updateUnit({ ...editingUnit, ...unitForm });
     setSheetOpen(false);
     toast({ title: t("units.updatedOverridden"), description: t("units.overrideReason").replace("{reason}", reason) });
     setPendingOverrideValidation(null);
   };
 
-  const handleDeleteUnit = (unitId: string) => {
-    deleteUnit(unitId);
+  const handleDeleteUnit = async (unitId: string) => {
+    if (!canWrite) return;
+    await deleteUnitPersisted(unitId);
     toast({ title: t("units.toastDeleted") });
   };
 
-  const handleDeleteProperty = (propertyId: string) => {
-    deleteProperty(propertyId);
+  const handleDeleteProperty = async (propertyId: string) => {
+    if (!canWrite) return;
+    await deleteProperty(propertyId);
     toast({ title: t("propertyDetail.toastDeleted") });
     navigate("/properties");
   };
@@ -193,10 +275,11 @@ export default function PropertyDetail() {
 
   const kpis = [
     { label: t("common.total"), value: stats?.total ?? 0, icon: DoorOpen, color: "text-foreground" },
-    { label: t("dashboard.occupied"), value: stats?.occupied ?? 0, icon: CheckCircle2, color: "text-success" },
+    { label: t("dashboard.occupied"), value: (stats?.occupied ?? 0) + (stats?.ancillaryLeased ?? 0), icon: CheckCircle2, color: "text-success" },
     { label: t("dashboard.vacantUnits"), value: stats?.vacant ?? 0, icon: XCircle, color: "text-warning" },
     { label: t("dashboard.reservedUnits"), value: stats?.reserved ?? 0, icon: Clock, color: "text-primary" },
     { label: t("dashboard.unavailableUnits"), value: stats?.unavailable ?? 0, icon: Ban, color: "text-muted-foreground" },
+    { label: t("status.archived"), value: stats?.archived ?? 0, icon: Archive, color: "text-muted-foreground" },
     { label: t("properties.occupancy"), value: `${stats?.occupancyRate ?? 0}%`, icon: TrendingUp, color: "text-success" },
   ];
 
@@ -220,7 +303,7 @@ export default function PropertyDetail() {
               <StatusBadge status={property.status} />
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          {canWrite && <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("propertyDetail.moreActions")}>
@@ -241,12 +324,12 @@ export default function PropertyDetail() {
                 />
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          </div>}
         </div>
       </div>
 
       {/* KPI cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
         {kpis.map(k => (
           <Card key={k.label}>
             <CardContent className="pt-4 pb-3">
@@ -270,9 +353,9 @@ export default function PropertyDetail() {
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.overview")}</CardTitle>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEditProperty(); }}>
+                {canWrite && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEditProperty(); }}>
                   <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
-                </Button>
+                </Button>}
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", overviewOpen && "rotate-180")} />
                 </span>
@@ -286,6 +369,8 @@ export default function PropertyDetail() {
             <div className="flex justify-between gap-2"><span className="text-sm text-muted-foreground">{t("properties.owners")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{(() => { const owners = getOwnersForProperty(property.id); if (owners.length === 0) return property.ownerName || "—"; return owners.map(o => o.name).join(", "); })()}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.country")}</span><span className="text-sm font-medium text-foreground">{getCountryName(property.countryCode)}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.type")}</span><span className="text-sm font-medium text-foreground">{t(PROPERTY_TYPE_KEYS[property.propertyType])}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.milliemeBase")}</span><span className="text-sm font-medium text-foreground">{formatMilliemeBase(property.milliemeBase ?? 1000, property.locale)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.partialOwnership")}</span><span className="text-sm font-medium text-foreground">{property.isPartiallyOwned ? t("common.yes") : t("common.no")}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("common.description")}</span><span className="text-sm font-medium text-foreground text-right max-w-[60%]">{property.description || "—"}</span></div>
           </CardContent>
           </CollapsibleContent>
@@ -297,9 +382,9 @@ export default function PropertyDetail() {
             <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
               <CardTitle className="text-base font-medium flex-1 justify-start">{t("detail.localSettings")}</CardTitle>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEditProperty(); }}>
+                {canWrite && <Button variant="outline" size="sm" className="h-8 gap-1" onClick={(e) => { e.stopPropagation(); openEditProperty(); }}>
                   <Pencil className="h-3.5 w-3.5" />{t("action.edit")}
-                </Button>
+                </Button>}
                 <span className="inline-flex items-center justify-center h-7 w-7">
                   <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", localSettingsOpen && "rotate-180")} />
                 </span>
@@ -310,6 +395,7 @@ export default function PropertyDetail() {
           <CardContent className="space-y-3">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.locale")}</span><span className="text-sm font-medium text-foreground font-mono">{property.locale}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.currency")}</span><span className="text-sm font-medium text-foreground">{property.currencyCode}</span></div>
+            <div className="flex justify-between gap-4"><span className="text-sm text-muted-foreground">{t("properties.timeZone")}</span><span className="text-sm font-medium text-foreground">{property.timeZone ?? defaultBusinessTimeZone(property.countryCode)}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">{t("properties.measurement")}</span><span className="text-sm font-medium text-foreground capitalize">{property.measurementSystem}</span></div>
           </CardContent>
           </CollapsibleContent>
@@ -325,9 +411,9 @@ export default function PropertyDetail() {
           <CardHeader className="py-3 cursor-pointer flex-row items-center space-y-0">
             <CardTitle className="text-base font-medium flex-1 justify-start">{t("nav.units")}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={(e) => { e.stopPropagation(); openAddUnit(); }}>
+              {canWrite && <Button size="sm" onClick={(e) => { e.stopPropagation(); openAddUnit(); }}>
                 <Plus className="h-4 w-4 mr-1.5" />{t("units.add")}
-              </Button>
+              </Button>}
               <span className="inline-flex items-center justify-center h-7 w-7">
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", unitsOpen && "rotate-180")} />
               </span>
@@ -338,7 +424,7 @@ export default function PropertyDetail() {
           {propertyUnits.length === 0 ? (
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">{t("detail.noUnitsInProperty")}</p>
-              <Button variant="link" className="mt-2" onClick={openAddUnit}>{t("detail.addFirstUnit")}</Button>
+              {canWrite && <Button variant="link" className="mt-2" onClick={openAddUnit}>{t("detail.addFirstUnit")}</Button>}
             </CardContent>
           ) : (
             <TooltipProvider>
@@ -356,12 +442,15 @@ export default function PropertyDetail() {
                       <TableHead>{t("occupancy.derivedLabel")}</TableHead>
                       <TableHead>{t("propertyDetail.tenant")}</TableHead>
                       <TableHead>{t("propertyDetail.lease")}</TableHead>
-                      <TableHead className="text-right">{t("units.actions")}</TableHead>
+                      {canWrite && <TableHead className="text-right">{t("units.actions")}</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {propertyUnits.map(u => {
-                      const occupancy = getDerivedOccupancy(u.id, u.currentStatus, leases, leaseUnitAssignments, u);
+                      const occupancy = getDerivedOccupancy(
+                        u.id, u.currentStatus, leases, leaseUnitAssignments, u,
+                        propertyBusinessDateISO(property, businessNow),
+                      );
                       const activeLease = occupancy.activeLease ?? getActiveLease(u.id);
                       const tenant = activeLease ? tenants.find(tn => tn.id === activeLease.primaryTenantId) : null;
                       return (
@@ -396,7 +485,7 @@ export default function PropertyDetail() {
                           <TableCell className="text-muted-foreground text-xs">
                             {activeLease ? <Link to={`/leases/${activeLease.id}`} className={detailLinkClass}>{activeLease.leaseReference}</Link> : "—"}
                           </TableCell>
-                          <TableCell className="text-right">
+                          {canWrite && <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
                               <Button variant="ghost" size="icon" className="h-8 w-8" asChild aria-label={`View ${u.unitCode}`} title={`View ${u.unitCode}`}>
                                 <Link to={`/units/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
@@ -404,7 +493,7 @@ export default function PropertyDetail() {
                               <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${u.unitCode}`} title={`Edit ${u.unitCode}`} onClick={() => openEditUnit(u)}><Pencil className="h-3.5 w-3.5" /></Button>
                               <DeleteDialog entityType="unit" entityId={u.id} entityLabel="unit" onDelete={handleDeleteUnit} />
                             </div>
-                          </TableCell>
+                          </TableCell>}
                         </TableRow>
                       );
                     })}
@@ -419,28 +508,17 @@ export default function PropertyDetail() {
 
       {/* Costs & Taxes */}
       {(() => {
-        const propEntries = getCostEntriesByProperty(property.id);
-        const propAllocResults = getAllocationResultsByProperty(property.id);
-        const directEntries = propEntries.filter(e => e.unitId);
-        const propertyLevelEntries = propEntries.filter(e => !e.unitId);
-
-        const totalCharges = propEntries.filter(e => !e.isTax).reduce((s, e) => s + e.amount, 0);
-        const totalTaxes = propEntries.filter(e => e.isTax).reduce((s, e) => s + e.amount, 0);
-        const ownerBorne = propEntries.filter(e => e.recoveryType === "owner-only").reduce((s, e) => s + e.amount, 0)
-          + propAllocResults.filter(r => r.recoveryType === "owner-only" || r.recoveryType === "partially-recoverable").reduce((s, r) => s + r.ownerBurdenAmount, 0)
-          - propEntries.filter(e => !e.unitId && (e.recoveryType === "owner-only" || e.recoveryType === "partially-recoverable")).reduce((s, e) => s + e.amount, 0);
-        const recoverable = propAllocResults.reduce((s, r) => s + r.recoverableAmount, 0)
-          + directEntries.filter(e => e.recoveryType === "tenant-recoverable").reduce((s, e) => s + e.amount, 0);
-        const totalCosts = totalCharges + totalTaxes;
-
-        // Unit burden summary
-        const unitBurden = propertyUnits.map(u => {
-          const directCosts = propEntries.filter(e => e.unitId === u.id);
-          const allocResults = propAllocResults.filter(r => r.unitId === u.id);
-          const directTotal = directCosts.reduce((s, e) => s + e.amount, 0);
-          const allocTotal = allocResults.reduce((s, r) => s + r.allocatedAmount, 0);
-          return { unit: u, directTotal, allocTotal, total: directTotal + allocTotal };
-        }).filter(x => x.total > 0);
+        const overview = buildCostOverview(
+          getCostEntriesByProperty(property.id), getAllocationResultsByProperty(property.id),
+          [property], propertyUnits,
+        );
+        const totals = overview.properties.find(item => item.propertyId === property.id);
+        const unitBurden = overview.units.flatMap(summary => {
+          const unit = propertyUnits.find(item => item.id === summary.unitId);
+          return unit && summary.total.length > 0 ? [{ ...summary, unit }] : [];
+        });
+        const display = (groups: MoneyGroup[] | undefined) =>
+          formatMoneyGroups(groups ?? [], formatCurrency(0, property.currencyCode, property.locale));
 
         return (
           <Collapsible open={costsOpen} onOpenChange={setCostsOpen}>
@@ -457,19 +535,25 @@ export default function PropertyDetail() {
             </CollapsibleTrigger>
             <CollapsibleContent>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div><p className="text-xs text-muted-foreground">{t("propertyDetail.totalCosts")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCosts, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("propertyDetail.charges")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalCharges, property.currencyCode, property.locale)}</p></div>
-                <div><p className="text-xs text-muted-foreground">{t("propertyDetail.taxes")}</p><p className="text-lg font-bold text-foreground">{formatCurrency(totalTaxes, property.currencyCode, property.locale)}</p></div>
+              {overview.allocationExcesses.length > 0 && (
+                <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{t("costs.allocationExcessWarning")}</AlertDescription>
+                </Alert>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="min-w-0"><p className="text-xs text-muted-foreground">{t("propertyDetail.totalCosts")}</p><p className="text-lg font-bold text-foreground break-words">{display(totals?.total)}</p></div>
+                <div className="min-w-0"><p className="text-xs text-muted-foreground">{t("propertyDetail.charges")}</p><p className="text-lg font-bold text-foreground break-words">{display(totals?.charges)}</p></div>
+                <div className="min-w-0"><p className="text-xs text-muted-foreground">{t("propertyDetail.taxes")}</p><p className="text-lg font-bold text-foreground break-words">{display(totals?.taxes)}</p></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-md bg-muted/50 border">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="min-w-0 p-3 rounded-md bg-muted/50 border">
                   <p className="text-xs text-muted-foreground">{t("costs.ownerBorne")}</p>
-                  <p className="text-lg font-bold text-destructive">{formatCurrency(ownerBorne, property.currencyCode, property.locale)}</p>
+                  <p className="text-lg font-bold text-destructive break-words">{display(totals?.ownerBorne)}</p>
                 </div>
-                <div className="p-3 rounded-md bg-muted/50 border">
+                <div className="min-w-0 p-3 rounded-md bg-muted/50 border">
                   <p className="text-xs text-muted-foreground">{t("costs.recoverable")}</p>
-                  <p className="text-lg font-bold text-success">{formatCurrency(recoverable, property.currencyCode, property.locale)}</p>
+                  <p className="text-lg font-bold text-success break-words">{display(totals?.recoverable)}</p>
                 </div>
               </div>
               {unitBurden.length > 0 && (
@@ -485,19 +569,19 @@ export default function PropertyDetail() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {unitBurden.map(({ unit: u, directTotal, allocTotal, total }) => (
+                      {unitBurden.map(({ unit: u, directCosts, allocatedCosts, total }) => (
                         <TableRow key={u.id}>
                           <TableCell className="font-medium text-sm"><Link to={`/units/${u.id}`} className={detailLinkClass}>{u.unitCode}</Link></TableCell>
-                          <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(directTotal, property.currencyCode, property.locale)}</TableCell>
-                          <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(allocTotal, property.currencyCode, property.locale)}</TableCell>
-                          <TableCell className="text-right text-sm font-bold text-foreground">{formatCurrency(total, property.currencyCode, property.locale)}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">{display(directCosts)}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">{display(allocatedCosts)}</TableCell>
+                          <TableCell className="text-right text-sm font-bold text-foreground">{display(total)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </>
               )}
-              {propEntries.length === 0 && <p className="text-sm text-muted-foreground">{t("propertyDetail.noCostEntries")}</p>}
+              {!totals && <p className="text-sm text-muted-foreground">{t("propertyDetail.noCostEntries")}</p>}
             </CardContent>
             </CollapsibleContent>
           </Card>
@@ -509,8 +593,8 @@ export default function PropertyDetail() {
       <PropertyProfitabilitySection propertyId={property.id} />
 
       {/* Unit Form Sheet */}
-      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={canWrite && sheetOpen} onOpenChange={setSheetOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingUnit ? t("units.edit") : t("units.add")}</DialogTitle>
           </DialogHeader>
@@ -545,7 +629,7 @@ export default function PropertyDetail() {
             <div className="grid grid-cols-3 gap-4">
               <div><Label>{t("units.floor")}</Label><Input type="number" value={unitForm.floor ?? ""} onChange={e => setUnitForm(f => ({ ...f, floor: e.target.value ? Number(e.target.value) : null }))} /></div>
               <div><Label>{t("propertyDetail.surfaceWithUnit").replace("{unit}", property.measurementSystem === "metric" ? "m²" : "sq ft")}</Label><Input type="number" value={unitForm.surfaceArea ?? ""} onChange={e => setUnitForm(f => ({ ...f, surfaceArea: e.target.value ? Number(e.target.value) : null }))} /></div>
-              <div><Label>{t("units.availableFrom")}</Label><Input type="date" value={unitForm.availableFrom ?? ""} onChange={e => setUnitForm(f => ({ ...f, availableFrom: e.target.value || null }))} /></div>
+              <div><Label>{t("units.availableFrom")}</Label><DateInput value={unitForm.availableFrom ?? ""} onChange={value => setUnitForm(f => ({ ...f, availableFrom: value || null }))} /></div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>{t("units.bedrooms")}</Label><Input type="number" min={0} value={unitForm.bedrooms} onChange={e => setUnitForm(f => ({ ...f, bedrooms: Number(e.target.value) || 0 }))} /></div>
@@ -569,7 +653,7 @@ export default function PropertyDetail() {
             </div>
             <div><Label>{t("units.notes")}</Label><Textarea value={unitForm.notes} onChange={e => setUnitForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
           </div>
-          <DialogFooter className="mt-6">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setSheetOpen(false)}>{t("action.cancel")}</Button>
             <Button onClick={handleSaveUnit}>{editingUnit ? t("action.saveChanges") : t("units.add")}</Button>
           </DialogFooter>
@@ -579,7 +663,7 @@ export default function PropertyDetail() {
       {/* Override Confirm Dialog */}
       {pendingOverrideValidation && (
         <OverrideConfirmDialog
-          open={overrideDialogOpen}
+          open={canWrite && overrideDialogOpen}
           onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) setPendingOverrideValidation(null); }}
           validation={pendingOverrideValidation}
           actionLabel={t("units.overrideAndSave")}
@@ -588,8 +672,8 @@ export default function PropertyDetail() {
       )}
 
       {/* Property Edit Dialog */}
-      <Dialog open={propertyEditOpen} onOpenChange={setPropertyEditOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={canWrite && propertyEditOpen} onOpenChange={setPropertyEditOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("properties.edit")}</DialogTitle>
           </DialogHeader>
@@ -634,7 +718,11 @@ export default function PropertyDetail() {
                 </div>
                 <div>
                   <Label>{t("properties.country")} *</Label>
-                  <Select value={propertyForm.countryCode} onValueChange={v => setPropertyForm(f => f && ({ ...f, countryCode: v }))}>
+                  <Select value={propertyForm.countryCode} onValueChange={v => setPropertyForm(f => f && ({
+                    ...f, countryCode: v,
+                    timeZone: !f.timeZone || f.timeZone === defaultBusinessTimeZone(f.countryCode)
+                      ? defaultBusinessTimeZone(v) : f.timeZone,
+                  }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {EUROPEAN_COUNTRIES.map(c => <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>)}
@@ -656,10 +744,11 @@ export default function PropertyDetail() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label>{t("properties.currency")} *</Label>
-                  <Select value={propertyForm.currencyCode} onValueChange={v => setPropertyForm(f => f && ({ ...f, currencyCode: v }))}>
+                  <Select value={propertyForm.currencyCode} disabled={currencyLocked} onValueChange={v => setPropertyForm(f => f && ({ ...f, currencyCode: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
+                  {currencyLocked && <p className="mt-1 text-xs text-muted-foreground">{t("properties.currencyLocked")}</p>}
                 </div>
                 <div>
                   <Label>{t("properties.locale")}</Label>
@@ -677,8 +766,69 @@ export default function PropertyDetail() {
                 </div>
               </div>
               <div>
+                <Label>{t("properties.timeZone")} *</Label>
+                <Select value={propertyForm.timeZone}
+                  onValueChange={v => setPropertyForm(f => f && ({ ...f, timeZone: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {businessTimeZoneChoices(propertyForm.timeZone).map(zone =>
+                      <SelectItem key={zone} value={zone}>{zone}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">{t("properties.timeZoneDesc")}</p>
+              </div>
+              <div>
                 <Label>{t("common.description")}</Label>
                 <Textarea value={propertyForm.description} onChange={e => setPropertyForm(f => f && ({ ...f, description: e.target.value }))} rows={3} />
+              </div>
+              <div className="space-y-2 border-t pt-3">
+                <Label className="text-sm font-medium">{t("properties.millieme")}</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">{t("properties.milliemeBase")}</Label>
+                    <Select
+                      value={String(propertyForm.milliemeBase ?? 1000)}
+                      onValueChange={v => setPropertyForm(f => f && ({ ...f, milliemeBase: Number(v) }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {getMilliemeBaseChoices(propertyForm.milliemeBase).map(base => (
+                          <SelectItem key={base} value={String(base)}>
+                            {MILLIEME_BASE_OPTIONS.includes(base as typeof MILLIEME_BASE_OPTIONS[number])
+                              ? formatMilliemeBase(base, propertyForm.locale)
+                              : t("properties.milliemeLegacyBase").replace("{base}", formatMilliemeBase(base, propertyForm.locale))}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">{t("properties.milliemeKeys")}</Label>
+                    <MilliemeKeysInput
+                      keys={propertyForm.milliemeKeys ?? ["general"]}
+                      onChange={keys => setPropertyForm(f => f && ({ ...f, milliemeKeys: keys }))}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("properties.milliemeKeysHelp")}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>{t("properties.partialOwnership")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("properties.partialOwnershipHelp")}</p>
+                  </div>
+                  <Switch
+                    checked={!!propertyForm.isPartiallyOwned}
+                    onCheckedChange={v => setPropertyForm(f => f && ({ ...f, isPartiallyOwned: v }))}
+                  />
+                </div>
+                {propertyForm.isPartiallyOwned && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("properties.ownedSharePreview")
+                      .replace("{shares}", String(propertyFormOwnershipPreview.ownedShares))
+                      .replace("{base}", String(propertyFormOwnershipPreview.base))
+                      .replace("{percent}", (propertyFormOwnershipPreview.ratio * 100).toFixed(2))}
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -1,8 +1,9 @@
 import type { Lease, Unit, UnitStatus } from "@/types";
 import type { LeaseUnitAssignment } from "@/types";
 import { isAncillaryUnitType } from "@/types";
-import { assignmentIsActiveOn } from "@/lib/leaseAssignments";
+import { assignmentIsActiveOn, leaseOccupiesOn } from "@/lib/leaseAssignments";
 import type { TranslationKey } from "@/i18n/translations";
+import { localTodayISO } from "@/lib/calendarToday";
 
 export type DerivedOccupancy =
   | "vacant"
@@ -38,6 +39,48 @@ export interface OccupancyWarning {
   params?: Record<string, string>;
 }
 
+export type OccupancyCategory = "occupied" | "ancillaryLeased" | "vacant" | "reserved" | "unavailable" | "archived";
+
+export function classifyUnitOccupancy(
+  unit: Pick<Unit, "unitType" | "currentStatus">,
+  hasActiveAssignment: boolean,
+): OccupancyCategory {
+  if (hasActiveAssignment) return isAncillaryUnitType(unit.unitType) ? "ancillaryLeased" : "occupied";
+  if (unit.currentStatus === "reserved" || unit.currentStatus === "unavailable" || unit.currentStatus === "archived") {
+    return unit.currentStatus;
+  }
+  return "vacant";
+}
+
+export function getOccupancyRate(occupiedPrimary: number, occupiedAncillary: number, totalUnits: number): number {
+  return totalUnits > 0 ? Math.round(((occupiedPrimary + occupiedAncillary) / totalUnits) * 100) : 0;
+}
+
+export function getLeaseOccupancyEndDate(lease: Pick<Lease, "endDate" | "moveOutActualDate">): string | null {
+  const dates = [lease.endDate, lease.moveOutActualDate].filter((date): date is string => Boolean(date));
+  return dates.length > 0 ? dates.reduce((earliest, date) => date < earliest ? date : earliest) : null;
+}
+
+function leaseCoversDate(lease: Pick<Lease, "startDate" | "endDate" | "moveOutActualDate">, date: string): boolean {
+  const endDate = getLeaseOccupancyEndDate(lease);
+  return lease.startDate <= date && (!endDate || date <= endDate);
+}
+
+/** Historical occupancy for allocating a cost at its service start date. */
+export function isUnitOccupiedOn(
+  unitId: string,
+  date: string,
+  leases: readonly Lease[],
+  assignments: readonly LeaseUnitAssignment[],
+): boolean {
+  return assignments.some(assignment => {
+    if (assignment.unitId !== unitId || !assignmentIsActiveOn(assignment, date)) return false;
+    const lease = leases.find(item => item.id === assignment.leaseId);
+    if (!lease || !["signed", "active", "ended", "terminated"].includes(lease.lifecycleStage)) return false;
+    return leaseCoversDate(lease, date);
+  });
+}
+
 /**
  * Compute derived occupancy state for a unit based on its active lease lifecycle.
  * This is the source of truth for occupancy display — manual `currentStatus` is secondary.
@@ -48,21 +91,22 @@ export function getDerivedOccupancy(
   leases: Lease[],
   assignments?: LeaseUnitAssignment[],
   unit?: Pick<Unit, "unitType">,
+  onDate: string = localTodayISO(),
 ): OccupancyInfo {
   // Prefer assignment-aware lookup when assignments are provided.
   let activeLease: Lease | undefined;
   let activeAssignment: LeaseUnitAssignment | undefined;
+  const hasUnitAssignments = assignments?.some(a => a.unitId === unitId) ?? false;
   if (assignments && assignments.length > 0) {
-    const today = new Date().toISOString().slice(0, 10);
-    const matches = assignments.filter(a => a.unitId === unitId && assignmentIsActiveOn(a, today));
+    const matches = assignments.filter(a => a.unitId === unitId && assignmentIsActiveOn(a, onDate));
     const sorted = [...matches].sort((a, b) => a.startDate.localeCompare(b.startDate));
     for (const a of sorted) {
-      const l = leases.find(x => x.id === a.leaseId && x.lifecycleStage === "active");
+      const l = leases.find(x => x.id === a.leaseId && leaseOccupiesOn(x, onDate));
       if (l) { activeLease = l; activeAssignment = a; break; }
     }
   }
-  if (!activeLease) {
-    activeLease = leases.find((l) => l.unitId === unitId && l.lifecycleStage === "active");
+  if (!activeLease && !hasUnitAssignments) {
+    activeLease = leases.find((l) => l.unitId === unitId && leaseOccupiesOn(l, onDate));
   }
   const occupancyRole: "primary" | "ancillary" | undefined = activeAssignment
     ? (unit && isAncillaryUnitType(unit.unitType) ? "ancillary" : "primary")

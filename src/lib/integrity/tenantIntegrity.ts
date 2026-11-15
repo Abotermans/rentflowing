@@ -1,4 +1,5 @@
 import { TenantStatus } from "@/types";
+import { deriveTenantStatusFromLeases } from "@/lib/tenantStatus";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 
 export function canDeleteTenant(tenantId: string, s: IntegrityState): ValidationResult {
@@ -32,13 +33,18 @@ export function canDeleteTenant(tenantId: string, s: IntegrityState): Validation
 export function canChangeTenantStatus(tenantId: string, targetStatus: TenantStatus, s: IntegrityState): ValidationResult {
   const blockers: IntegrityBlocker[] = [];
   const warnings: IntegrityWarning[] = [];
+  const linkedLeases = s.leases.filter(l => l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId));
+  const expectedStatus = deriveTenantStatusFromLeases(linkedLeases);
+  if (expectedStatus && targetStatus !== expectedStatus) {
+    blockers.push({
+      code: "TENANT_LEASE_STATUS_MISMATCH",
+      message: `Tenant status follows linked leases; the current status is ${expectedStatus}`,
+      entityType: "lease",
+      count: linkedLeases.length,
+    });
+  }
 
   if (targetStatus === "former") {
-    const activeLeases = s.leases.filter(l => (l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId)) && l.lifecycleStage === "active");
-    if (activeLeases.length > 0) {
-      blockers.push({ code: "TENANT_ACTIVE_LEASES", message: `Tenant has ${activeLeases.length} active lease(s) — end them first`, count: activeLeases.length });
-    }
-
     const openReceivables = s.receivableItems.filter(r => r.tenantId === tenantId && r.outstandingAmount > 0);
     if (openReceivables.length > 0) {
       warnings.push({ code: "TENANT_OPEN_BALANCES", message: `${openReceivables.length} open receivable(s) with outstanding balance`, severity: "high" });

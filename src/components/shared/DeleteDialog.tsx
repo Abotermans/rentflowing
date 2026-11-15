@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Trash2, ShieldAlert, Archive } from "lucide-react";
@@ -9,11 +9,19 @@ interface DeleteDialogProps {
   entityType: IntegrityEntityType;
   entityId: string;
   entityLabel?: string;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
   trigger?: React.ReactNode;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  pendingLabel?: string;
 }
 
-export function DeleteDialog({ entityType, entityId, entityLabel, onDelete, trigger }: DeleteDialogProps) {
+export function DeleteDialog({ entityType, entityId, entityLabel, onDelete, trigger, title, description, confirmLabel, cancelLabel, pendingLabel }: DeleteDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const integrityState = useIntegrityState();
   const result: ValidationResult = useMemo(
     () => getDeletionImpact(entityType, entityId, integrityState),
@@ -23,8 +31,22 @@ export function DeleteDialog({ entityType, entityId, entityLabel, onDelete, trig
   const entityName = entityLabel || entityType;
   const isBlocked = !result.allowed;
 
+  const handleDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(entityId);
+      setOpen(false);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : `Could not delete ${entityName}.`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={nextOpen => { if (!deleting) { setOpen(nextOpen); if (!nextOpen) setDeleteError(null); } }}>
       <AlertDialogTrigger asChild>
         {trigger ?? (
           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={`Delete ${entityName}`} title={`Delete ${entityName}`}>
@@ -36,7 +58,7 @@ export function DeleteDialog({ entityType, entityId, entityLabel, onDelete, trig
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             {isBlocked && <ShieldAlert className="h-5 w-5 text-destructive" />}
-            {isBlocked ? `Cannot Delete ${capitalize(entityName)}` : `Delete ${capitalize(entityName)}?`}
+            {isBlocked ? `Cannot Delete ${capitalize(entityName)}` : title ?? `Delete ${capitalize(entityName)}?`}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
@@ -75,7 +97,7 @@ export function DeleteDialog({ entityType, entityId, entityLabel, onDelete, trig
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    This action cannot be undone. This will permanently delete this {entityType}.
+                    {description ?? `This action cannot be undone. This will permanently delete this ${entityType}.`}
                   </p>
                   {result.warnings.length > 0 && (
                     <ul className="space-y-1">
@@ -91,14 +113,16 @@ export function DeleteDialog({ entityType, entityId, entityLabel, onDelete, trig
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {deleteError && <p role="alert" className="text-sm text-destructive">{deleteError}</p>}
         <AlertDialogFooter>
-          <AlertDialogCancel>{isBlocked ? "Close" : "Cancel"}</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>{isBlocked ? "Close" : cancelLabel ?? "Cancel"}</AlertDialogCancel>
           {!isBlocked && (
             <AlertDialogAction
-              onClick={() => onDelete(entityId)}
+              onClick={event => { event.preventDefault(); void handleDelete(); }}
+              disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleting ? pendingLabel ?? "Deleting..." : confirmLabel ?? "Delete"}
             </AlertDialogAction>
           )}
         </AlertDialogFooter>

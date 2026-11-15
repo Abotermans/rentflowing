@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { localTodayISO } from "@/lib/calendarToday";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,10 +27,10 @@ export function AmendmentConfirmDialog({ open, onOpenChange, lease, effectiveDat
   const { t, locale } = useSettings();
   const { units, tenants, amendments } = useAppData();
   const s = useIntegrityState();
-  const currency = "EUR";
+  const currency = s.properties.find(property => property.id === lease.propertyId)?.currencyCode ?? "EUR";
 
   const before = useMemo(
-    () => getEffectiveLeaseTerms(lease.id, effectiveDate || new Date().toISOString().slice(0, 10), s),
+    () => getEffectiveLeaseTerms(lease.id, effectiveDate || localTodayISO(), s),
     [lease.id, effectiveDate, s],
   );
 
@@ -38,13 +39,27 @@ export function AmendmentConfirmDialog({ open, onOpenChange, lease, effectiveDat
     const tn = tenants.find(x => x.id === id);
     return tn ? `${tn.firstName} ${tn.lastName}` : id;
   };
+  const formulaLabel = (months: unknown) => {
+    const value = Math.max(1, Number(months) || 1);
+    return value === 1 ? t("leases.formula.monthly") : `${value} ${t("rentPrepayment.monthsSuffix")}`;
+  };
+  const indexationLabel = (value: unknown) => {
+    const settings = value as Partial<Lease> | null;
+    if (!settings?.indexationEnabled) return t("common.no");
+    const indices = `${settings.indexationBaseIndex ?? "—"} → ${settings.indexationCurrentIndex ?? "—"}`;
+    const baseDate = settings.indexationBaseDate ? ` · ${formatDate(settings.indexationBaseDate, locale)}` : "";
+    const cap = settings.indexationCapPercent != null
+      ? ` · ${t("leaseDetail.indexationCap").replace("{percent}", String(settings.indexationCapPercent))}`
+      : "";
+    return `${indices}${baseDate}${cap}`;
+  };
 
   const previousActive = useMemo(
     () => amendments.find(a => a.leaseId === lease.id && a.status === "active") ?? null,
     [amendments, lease.id],
   );
 
-  const rows = useMemo(() => {
+  const rows = (() => {
     const out: { label: string; before: string; after: string }[] = [];
     const fmt = (n: number) => formatCurrency(n, currency, locale);
     for (const c of changes) {
@@ -57,6 +72,12 @@ export function AmendmentConfirmDialog({ open, onOpenChange, lease, effectiveDat
           break;
         case "noticePeriodText":
           out.push({ label: t("leases.noticePeriod"), before: before?.noticePeriodText || "—", after: String(c.newValue || "—") });
+          break;
+        case "rentFormula":
+          out.push({ label: t("amendments.rentFormula"), before: formulaLabel(c.oldValue), after: formulaLabel(c.newValue) });
+          break;
+        case "indexationSettings":
+          out.push({ label: t("leaseDetail.rentIndexation"), before: indexationLabel(c.oldValue), after: indexationLabel(c.newValue) });
           break;
         case "baseMonthlyRentTotal":
           out.push({ label: t("amendments.newRent"), before: fmt(before?.monthlyRent ?? 0), after: fmt(Number(c.newValue) || 0) });
@@ -96,7 +117,7 @@ export function AmendmentConfirmDialog({ open, onOpenChange, lease, effectiveDat
       }
     }
     return out;
-  }, [changes, before, lease, locale, t, units, tenants]);
+  })();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

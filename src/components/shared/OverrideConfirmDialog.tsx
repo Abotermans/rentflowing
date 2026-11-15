@@ -13,7 +13,7 @@ interface OverrideConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   validation: ValidationResult;
   actionLabel: string;
-  onOverride: (reason: string) => void;
+  onOverride: (reason: string) => void | boolean | Promise<void | boolean>;
 }
 
 const MIN_REASON_LENGTH = 10;
@@ -26,14 +26,21 @@ export function OverrideConfirmDialog({
   onOverride,
 }: OverrideConfirmDialogProps) {
   const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const canConfirm = reason.trim().length >= MIN_REASON_LENGTH;
 
-  const handleConfirm = () => {
-    if (!canConfirm) return;
-    onOverride(reason.trim());
-    setReason("");
-    onOpenChange(false);
+  const handleConfirm = async () => {
+    if (!canConfirm || saving) return;
+    setSaving(true);
+    try {
+      const result = await onOverride(reason.trim());
+      if (result === false) return;
+      setReason("");
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleOpenChange = (v: boolean) => {
@@ -82,7 +89,7 @@ export function OverrideConfirmDialog({
           {/* Reason field */}
           <div className="space-y-2">
             <Label htmlFor="override-reason" className="text-sm font-medium">
-              Override Reason <span className="text-destructive">*</span>
+              Override Reason *
             </Label>
             <Textarea
               id="override-reason"
@@ -107,7 +114,7 @@ export function OverrideConfirmDialog({
           <Button
             variant="destructive"
             onClick={handleConfirm}
-            disabled={!canConfirm}
+            disabled={!canConfirm || saving}
           >
             {actionLabel}
           </Button>

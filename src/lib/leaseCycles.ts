@@ -1,5 +1,6 @@
-import type { Lease } from "@/types";
-import type { ReceivableItem } from "@/types/receivables";
+import type { Lease } from "../types/index.ts";
+import type { ReceivableItem } from "../types/receivables.ts";
+import type { LeaseAmendment, LeaseAmendmentChange } from "../types/amendments.ts";
 
 export interface LeaseCycle {
   /** 1-based index of the cycle within the lease. */
@@ -17,7 +18,8 @@ export interface LeaseCycle {
 
 function addMonthsISO(iso: string, months: number): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1 + months, d));
+  const lastDay = new Date(Date.UTC(y, m + months, 0)).getUTCDate();
+  const dt = new Date(Date.UTC(y, m - 1 + months, Math.min(d, lastDay)));
   return dt.toISOString().slice(0, 10);
 }
 
@@ -25,12 +27,6 @@ function addDaysISO(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d + days));
   return dt.toISOString().slice(0, 10);
-}
-
-function monthsBetween(startISO: string, endISO: string): number {
-  const [ys, ms] = startISO.split("-").map(Number);
-  const [ye, me] = endISO.split("-").map(Number);
-  return (ye - ys) * 12 + (me - ms);
 }
 
 /**
@@ -46,19 +42,20 @@ function monthsBetween(startISO: string, endISO: string): number {
  * For `rentFormula = 1`, this returns one cycle per month.
  */
 export function computeCycles(lease: Pick<Lease, "rentFormula" | "startDate" | "endDate" | "monthlyRent" | "monthlyCharges">): LeaseCycle[] {
-  const N = Math.max(1, lease.rentFormula || 1);
+  const N = Math.max(1, Math.floor(lease.rentFormula || 1));
   if (!lease.startDate || !lease.endDate || lease.endDate < lease.startDate) return [];
 
-  const totalMonths = monthsBetween(lease.startDate, lease.endDate) + 1; // inclusive
   const cycles: LeaseCycle[] = [];
-  let cursor = lease.startDate;
-  let remaining = totalMonths;
+  let monthOffset = 0;
   let index = 1;
 
-  while (remaining > 0) {
-    const span = Math.min(N, remaining);
-    const cycleStart = cursor;
-    const cycleEnd = addDaysISO(addMonthsISO(cursor, span), -1);
+  while (addMonthsISO(lease.startDate, monthOffset) <= lease.endDate) {
+    const cycleStart = addMonthsISO(lease.startDate, monthOffset);
+    let span = 1;
+    while (span < N && addMonthsISO(lease.startDate, monthOffset + span) <= lease.endDate) {
+      span += 1;
+    }
+    const cycleEnd = addDaysISO(addMonthsISO(lease.startDate, monthOffset + span), -1);
     const clampedEnd = cycleEnd > lease.endDate ? lease.endDate : cycleEnd;
     const rentTotal = Math.round(lease.monthlyRent * span * 100) / 100;
     const chargesTotal = Math.round(lease.monthlyCharges * span * 100) / 100;
@@ -71,8 +68,7 @@ export function computeCycles(lease: Pick<Lease, "rentFormula" | "startDate" | "
       chargesTotal,
       total: Math.round((rentTotal + chargesTotal) * 100) / 100,
     });
-    cursor = addMonthsISO(cursor, span);
-    remaining -= span;
+    monthOffset += span;
     index += 1;
   }
 
@@ -89,9 +85,28 @@ export function getNextCycle(cycles: LeaseCycle[], todayISO: string): LeaseCycle
   return cycles.find(c => c.startDate > todayISO) ?? null;
 }
 
+/** The current formula's cycles restart when an applied formula amendment takes effect. */
+export function getRentFormulaSegmentStart(
+  lease: Pick<Lease, "id" | "startDate">,
+  asOfDate: string,
+  amendments: readonly LeaseAmendment[],
+  changes: readonly LeaseAmendmentChange[],
+): string {
+  const formulaAmendmentIds = new Set(changes.filter(change => change.fieldName === "rentFormula").map(change => change.amendmentId));
+  return amendments
+    .filter(amendment => amendment.leaseId === lease.id
+      && (amendment.status === "active" || amendment.status === "ended" || amendment.status === "terminated")
+      && amendment.effectiveDate <= asOfDate
+      && formulaAmendmentIds.has(amendment.id))
+    .reduce((latest, amendment) => amendment.effectiveDate > latest ? amendment.effectiveDate : latest, lease.startDate);
+}
+
 /** Sum allocated against rent + charges receivables generated for a given cycle. */
 export function getCyclePaidAmount(cycle: LeaseCycle, receivables: ReceivableItem[]): number {
   return receivables
-    .filter(r => r.cycleIndex === cycle.index && (r.itemType === "rent" || r.itemType === "charges"))
+    .filter(r => r.cycleIndex === cycle.index
+      && r.periodMonth === cycle.startDate.slice(0, 7)
+      && (!r.cycleEndDate || r.cycleEndDate === cycle.endDate)
+      && (r.itemType === "rent" || r.itemType === "charges"))
     .reduce((s, r) => s + r.allocatedAmount, 0);
 }

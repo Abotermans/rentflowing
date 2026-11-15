@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAppData } from "@/context/AppContext";
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export function PropertyOwnersPicker({ selectedIds, onChange }: Props) {
-  const { propertyOwners, createPropertyOwner } = useAppData();
+  const { propertyOwners, createPropertyOwnerPersisted } = useAppData();
   const { t } = useSettings();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -28,6 +29,7 @@ export function PropertyOwnersPicker({ selectedIds, onChange }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<PropertyOwnerType>("individual");
+  const [creating, setCreating] = useState(false);
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const selected = useMemo(
@@ -47,16 +49,23 @@ export function PropertyOwnersPicker({ selectedIds, onChange }: Props) {
     setOpen(false);
   };
 
-  const submitCreate = () => {
+  const submitCreate = async () => {
     const name = newName.trim();
     if (!name) {
       toast({ title: t("common.validationError"), description: t("propertyOwners.nameRequired"), variant: "destructive" });
       return;
     }
-    const created = createPropertyOwner({ name, type: newType });
-    onChange([...selectedIds, created.id]);
-    setCreateOpen(false);
-    setSearch("");
+    setCreating(true);
+    try {
+      const created = await createPropertyOwnerPersisted({ name, type: newType });
+      onChange([...selectedIds, created.id]);
+      setCreateOpen(false);
+      setSearch("");
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Property owner could not be saved.", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
   };
 
   const typeIcon = (type: PropertyOwnerType) => type === "corporation" ? Building2 : User;
@@ -144,8 +153,8 @@ export function PropertyOwnersPicker({ selectedIds, onChange }: Props) {
         </div>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={createOpen} onOpenChange={nextOpen => { if (!creating) setCreateOpen(nextOpen); }}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("propertyOwners.createTitle")}</DialogTitle>
           </DialogHeader>
@@ -166,8 +175,8 @@ export function PropertyOwnersPicker({ selectedIds, onChange }: Props) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>{t("action.cancel")}</Button>
-            <Button onClick={submitCreate}>{t("action.save")}</Button>
+            <Button variant="outline" disabled={creating} onClick={() => setCreateOpen(false)}>{t("action.cancel")}</Button>
+            <Button disabled={creating} onClick={submitCreate}>{t("action.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

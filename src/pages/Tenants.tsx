@@ -19,6 +19,8 @@ import { TenantDialog } from "@/components/tenants/TenantDialog";
 import { SortableTableHead } from "@/components/shared/SortableTableHead";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
 
 const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -29,6 +31,7 @@ const TENANT_STATUSES: { value: TenantStatus; label: string }[] = [
 export default function Tenants() {
   const { tenants, leases, units } = useAppData();
   const { t } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [filterKind, setFilterKind] = useState<string[]>([]);
@@ -38,8 +41,8 @@ export default function Tenants() {
   type TSortKey = "name" | "kind" | "email" | "phone" | "status" | "unit" | "lease";
   const { sort, toggle } = useTableSort<TSortKey>();
 
-  const openAdd = () => { setEditingTenant(null); setSheetOpen(true); };
-  const openEdit = (tenant: Tenant) => { setEditingTenant(tenant); setSheetOpen(true); };
+  const openAdd = () => { if (!canWrite) return; setEditingTenant(null); setSheetOpen(true); };
+  const openEdit = (tenant: Tenant) => { if (!canWrite) return; setEditingTenant(tenant); setSheetOpen(true); };
 
   const filtered = tenants.filter(tn => {
     const name = getTenantFullName(tn).toLowerCase();
@@ -54,10 +57,15 @@ export default function Tenants() {
     return matchSearch && matchStatus && matchKind;
   });
 
-  const getActiveLease = (tenantId: string) => leases.find(l => l.primaryTenantId === tenantId && l.lifecycleStage === "active");
+  const getActiveLeases = (tenantId: string) => leases
+    .filter(l =>
+      l.lifecycleStage === "active"
+      && (l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId)),
+    )
+    .sort((a, b) => a.leaseReference.localeCompare(b.leaseReference));
 
   const sorted = sortRows(filtered, sort, (tenant, key) => {
-    const activeLease = getActiveLease(tenant.id);
+    const activeLease = getActiveLeases(tenant.id)[0];
     const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
     switch (key) {
       case "name": return getTenantFullName(tenant);
@@ -73,17 +81,17 @@ export default function Tenants() {
   const { pageItems, page, pageSize, setPage, setPageSize, total, totalPages, from, to } = usePagination(sorted);
 
   return (
-    <div className="space-y-6">
+    <div className="page-shell">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("tenants.title")}</h1>
+          <h1 className="page-title">{t("tenants.title")}</h1>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
-          <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("tenants.add")}</Button>
+          {canWrite && <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("tenants.add")}</Button>}
         </div>
       </div>
 
@@ -113,7 +121,7 @@ export default function Tenants() {
       </div>
 
       {tenants.length === 0 ? (
-        <EmptyState icon={Users} title={t("tenants.empty")} description={t("tenants.emptyDesc")} actionLabel={t("tenants.add")} onAction={openAdd} />
+        <EmptyState icon={Users} title={t("tenants.empty")} description={t("tenants.emptyDesc")} actionLabel={canWrite ? t("tenants.add") : undefined} onAction={canWrite ? openAdd : undefined} />
       ) : filtered.length === 0 ? (
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
@@ -121,23 +129,30 @@ export default function Tenants() {
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableTableHead sortKey="name" sort={sort} onSort={toggle}>{t("tenants.name")}</SortableTableHead>
+                <SortableTableHead className="w-[1%] whitespace-nowrap" sortKey="name" sort={sort} onSort={toggle}>{t("tenants.name")}</SortableTableHead>
                 <SortableTableHead sortKey="kind" sort={sort} onSort={toggle}>{t("tenants.type")}</SortableTableHead>
                 <SortableTableHead sortKey="email" sort={sort} onSort={toggle}>{t("tenants.email")}</SortableTableHead>
                 <SortableTableHead sortKey="phone" sort={sort} onSort={toggle}>{t("tenants.phone")}</SortableTableHead>
                 <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("filter.status")}</SortableTableHead>
                 <SortableTableHead sortKey="unit" sort={sort} onSort={toggle}>{t("leases.unit")}</SortableTableHead>
                 <SortableTableHead sortKey="lease" sort={sort} onSort={toggle}>{t("leases.title")}</SortableTableHead>
-                <TableHead className="text-right">{t("tenants.actions")}</TableHead>
+                {canWrite && <TableHead className="text-right">{t("tenants.actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {pageItems.map(tenant => {
-                const activeLease = getActiveLease(tenant.id);
-                const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null;
+                const activeLeases = getActiveLeases(tenant.id);
+                const activeLease = activeLeases[0];
+                const linkedUnits = Array.from(new Map(
+                  activeLeases
+                    .map(lease => units.find(unit => unit.id === lease.unitId))
+                    .filter((unit): unit is NonNullable<typeof unit> => Boolean(unit))
+                    .map(unit => [unit.id, unit]),
+                ).values());
+                const unit = linkedUnits[0];
                 return (
                   <TableRow key={tenant.id} className="cursor-pointer" onClick={() => window.location.href = `/tenants/${tenant.id}`}>
-                    <TableCell className="text-muted-foreground">{getTenantFullName(tenant)}</TableCell>
+                    <TableCell className="w-[1%] whitespace-nowrap font-medium">{getTenantFullName(tenant)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="gap-1 font-normal">
                         {tenant.kind === "corporation"
@@ -149,14 +164,46 @@ export default function Tenants() {
                     <TableCell className="text-muted-foreground">{tenant.phone}</TableCell>
                     <TableCell><StatusBadge status={tenant.status} /></TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
+                      <div className="flex items-center gap-1.5">
+                        {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
+                        {linkedUnits.length > 1 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help rounded-sm bg-muted px-1.5 py-0.5 font-sans text-xs text-muted-foreground" tabIndex={0}>
+                                +{linkedUnits.length - 1}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <div className="space-y-1">
+                                {linkedUnits.map(linkedUnit => <div key={linkedUnit.id}>{linkedUnit.unitCode}</div>)}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{activeLease.leaseReference}</Link> : "—"}
+                      <div className="flex items-center gap-1.5">
+                        {activeLease ? <Link to={`/leases/${activeLease.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>{activeLease.leaseReference}</Link> : "—"}
+                        {activeLeases.length > 1 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help rounded-sm bg-muted px-1.5 py-0.5 font-sans text-xs text-muted-foreground" tabIndex={0}>
+                                +{activeLeases.length - 1}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <div className="space-y-1">
+                                {activeLeases.map(lease => <div key={lease.id}>{lease.leaseReference}</div>)}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openEdit(tenant); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                    </TableCell>
+                    {canWrite && <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Edit ${getTenantFullName(tenant)}`} onClick={e => { e.stopPropagation(); openEdit(tenant); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                    </TableCell>}
                   </TableRow>
                 );
               })}
@@ -166,7 +213,7 @@ export default function Tenants() {
         </Card>
       )}
 
-      <TenantDialog open={sheetOpen} onOpenChange={setSheetOpen} editingTenant={editingTenant} />
+      <TenantDialog open={canWrite && sheetOpen} onOpenChange={setSheetOpen} editingTenant={editingTenant} />
     </div>
   );
 }

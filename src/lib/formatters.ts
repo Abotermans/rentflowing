@@ -1,4 +1,4 @@
-import type { TranslationKey } from "@/i18n/translations";
+import type { TranslationKey } from "../i18n/translations.ts";
 
 /**
  * Canonical money format across the app:
@@ -46,21 +46,63 @@ export function formatNumber(
   return unit ? `${number}\u00A0${unit}` : number;
 }
 
-export function formatDate(dateStr: string, locale: string = "fr-FR"): string {
+export function formatDate(dateStr: string | null | undefined, locale: string = "fr-FR"): string {
   // Europe-first: always render DD/MM/YYYY regardless of locale to keep
   // month labels unambiguous (avoids e.g. nl-BE rendering "mrt" for March).
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
+  if (!dateStr) return "—";
+  const isoDate = dateStr.slice(0, 10);
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!isoMatch) return dateStr;
+  const [, yyyy, mm, dd] = isoMatch;
   return `${dd}/${mm}/${yyyy}`;
+}
+
+export function parseDisplayDate(displayDate: string): string | null {
+  const value = displayDate.trim();
+  if (!value) return null;
+
+  const displayMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+  if (displayMatch) {
+    const [, rawDay, rawMonth, rawYear] = displayMatch;
+    const day = Number(rawDay);
+    const month = Number(rawMonth);
+    const year = Number(rawYear);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    ) {
+      return `${rawYear}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+    return null;
+  }
+
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (isoMatch) {
+    const [, rawYear, rawMonth, rawDay] = isoMatch;
+    const year = Number(rawYear);
+    const month = Number(rawMonth);
+    const day = Number(rawDay);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    ) {
+      return value;
+    }
+  }
+
+  return null;
 }
 
 export function formatPeriodMonth(periodMonth: string | null | undefined): string {
   if (!periodMonth) return "—";
-  const [year, month] = periodMonth.split("-");
-  return `${month}-${year}`;
+  const match = /^(\d{4})-(\d{2})$/.exec(periodMonth);
+  if (!match) return periodMonth;
+  const [, year, month] = match;
+  return `01/${month}/${year}`;
 }
 
 export function formatArea(value: number, measurementSystem: "metric" | "imperial" = "metric"): string {

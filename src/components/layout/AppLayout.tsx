@@ -1,19 +1,22 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useSettings } from "@/context/SettingsContext";
 import { PortfolioSwitcher } from "./PortfolioSwitcher";
 import { UserMenu } from "./UserMenu";
 import { useAppData } from "@/context/AppContext";
+import { usePortfolio } from "@/context/PortfolioContext";
 import { useMemo, useState } from "react";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { getTenantFullName } from "@/types";
 
 export function AppLayout() {
   const { t } = useSettings();
-  const { loading, properties, units, tenants, leases } = useAppData();
+  const { loading, loadError, retryLoad, properties, units, tenants, leases } = useAppData();
+  const { loading: portfolioLoading, error: portfolioError, refresh: refreshPortfolios } = usePortfolio();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const searchItems = useMemo(() => [
@@ -36,17 +39,17 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="flex min-h-screen w-full bg-muted/20">
         <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center border-b border-border px-4 bg-background sticky top-0 z-10 gap-4">
-            <SidebarTrigger label={t("sidebar.toggle")} />
-            <div className="flex-1 flex items-center justify-center max-w-md mx-auto">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/95 px-3 sm:gap-4 sm:px-4">
+            <SidebarTrigger label={t("sidebar.toggle")} className="md:hidden" />
+            <div className="mx-auto flex min-w-0 max-w-xl flex-1 items-center justify-center">
               <div className="relative w-full">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder={t("common.searchPlaceholder")}
-                  className="pl-9 h-9 bg-muted/50 border-none focus-visible:bg-background focus-visible:ring-1"
+                  className="h-9 cursor-pointer border-transparent bg-muted/60 pl-9 shadow-none hover:border-border hover:bg-muted focus-visible:bg-background focus-visible:ring-2"
                   readOnly
                   role="button"
                   onClick={() => setSearchOpen(true)}
@@ -56,16 +59,23 @@ export function AppLayout() {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <PortfolioSwitcher />
               <UserMenu />
             </div>
           </header>
-          <main className="flex-1 p-6 overflow-auto">
-            {loading ? (
+          <main className="flex-1 overflow-auto p-4 sm:p-6">
+            {portfolioLoading || loading ? (
               <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 <span className="text-sm">Loading…</span>
+              </div>
+            ) : portfolioError || loadError ? (
+              <div role="alert" className="mx-auto flex max-w-md flex-col items-center gap-3 py-12 text-center">
+                <AlertCircle className="h-6 w-6 text-destructive" aria-hidden="true" />
+                <p className="font-medium text-foreground">{t("common.portfolioLoadFailed")}</p>
+                <p className="text-sm text-muted-foreground break-words">{portfolioError ?? loadError}</p>
+                <Button onClick={() => { if (portfolioError) void refreshPortfolios().catch(() => {}); else retryLoad(); }}>{t("common.retry")}</Button>
               </div>
             ) : (
               <Outlet />

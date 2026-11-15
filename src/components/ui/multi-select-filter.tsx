@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/context/SettingsContext";
 
 export interface MultiSelectOption {
   value: string;
   label: string;
   icon?: LucideIcon;
   iconClassName?: string;
+  content?: React.ReactNode;
 }
 
 export interface MultiSelectFilterProps {
@@ -33,9 +35,10 @@ export function MultiSelectFilter({
   onChange,
   className,
   searchPlaceholder,
-  emptyText = "No results",
+  emptyText,
   searchable = true,
 }: MultiSelectFilterProps) {
+  const { t } = useSettings();
   const [open, setOpen] = React.useState(false);
   const selectedSet = React.useMemo(() => new Set(values), [values]);
   const count = values.length;
@@ -45,65 +48,61 @@ export function MultiSelectFilter({
     else onChange([...values, value]);
   };
 
-  const clearAll = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    e?.preventDefault();
-    onChange([]);
-  };
+  const clearAll = () => onChange([]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "h-9 justify-between gap-2 px-3 font-normal",
-            count > 0 && "border-primary/50",
-            className,
-          )}
-        >
-          <span className="flex items-center gap-2 truncate">
-            {Icon ? <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : null}
-            <span className="truncate">{label}</span>
-            {count > 0 ? (
-              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                {count}
-              </span>
-            ) : null}
-          </span>
-          <span className="flex items-center gap-1 shrink-0">
-            {count > 0 ? (
-              <span
-                role="button"
-                tabIndex={-1}
-                aria-label="Clear"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={clearAll}
-                className="rounded p-0.5 hover:bg-muted text-muted-foreground"
-              >
-                <X className="h-3 w-3" />
-              </span>
-            ) : null}
-            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-          </span>
-        </Button>
-      </PopoverTrigger>
+      <div className="relative inline-flex max-w-full">
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-label={count > 0 ? `${label} (${count})` : label}
+            aria-expanded={open}
+            className={cn(
+              "h-9 justify-between gap-2 px-3 font-normal",
+              count > 0 && "border-primary/50 pr-10",
+              className,
+            )}
+          >
+            <span className={cn("flex items-center gap-2 truncate", count > 0 && "text-primary")}>
+              {Icon ? <Icon className={cn("h-3.5 w-3.5 shrink-0", count === 0 && "text-muted-foreground")} /> : null}
+              <span className="truncate">{label}</span>
+              {count > 0 ? (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
+                  {count}
+                </span>
+              ) : null}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        {count > 0 && (
+          <button
+            type="button"
+            aria-label={`${t("filter.clear")} ${label}`}
+            title={`${t("filter.clear")} ${label}`}
+            onClick={clearAll}
+            className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
       <PopoverContent className="w-64 p-0" align="start">
         <Command>
           {searchable ? (
-            <CommandInput placeholder={searchPlaceholder ?? `Search ${label.toLowerCase()}…`} className="h-9" />
+            <CommandInput placeholder={searchPlaceholder ?? t("filter.search")} className="h-9" />
           ) : null}
           <CommandList className="max-h-72">
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <div className="flex items-center justify-between px-2 py-1.5 border-b text-[11px] text-muted-foreground">
+            <CommandEmpty>{emptyText ?? t("filter.noResults")}</CommandEmpty>
+            <div className="flex items-center justify-between border-b px-2 py-1.5 text-xs text-muted-foreground">
               <button
                 type="button"
                 className="hover:text-foreground"
                 onClick={() => onChange(options.map(o => o.value))}
               >
-                Select all
+                {t("filter.selectAll")}
               </button>
               <button
                 type="button"
@@ -111,7 +110,7 @@ export function MultiSelectFilter({
                 onClick={() => onChange([])}
                 disabled={count === 0}
               >
-                Clear
+                {t("filter.clear")}
               </button>
             </div>
             <CommandGroup>
@@ -123,7 +122,7 @@ export function MultiSelectFilter({
                     key={opt.value}
                     value={`${opt.label} ${opt.value}`}
                     onSelect={() => toggle(opt.value)}
-                    className="flex items-center gap-2 cursor-pointer"
+                    className={cn("flex items-center gap-2 cursor-pointer", checked && "text-primary")}
                   >
                     <span
                       className={cn(
@@ -134,9 +133,9 @@ export function MultiSelectFilter({
                       {checked ? <Check className="h-3 w-3" /> : null}
                     </span>
                     {OptIcon ? (
-                      <OptIcon className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0", opt.iconClassName)} />
+                      <OptIcon className={cn("h-3.5 w-3.5 shrink-0", checked ? "text-current" : "text-muted-foreground", !checked && opt.iconClassName)} />
                     ) : null}
-                    <span className="truncate">{opt.label}</span>
+                    <span className="min-w-0 truncate">{opt.content ?? opt.label}</span>
                   </CommandItem>
                 );
               })}

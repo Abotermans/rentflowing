@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { localTodayISO } from "@/lib/calendarToday";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
@@ -6,9 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FormField } from "@/components/shared/FormField";
+import { PriorityLabel } from "@/components/shared/PriorityLabel";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { DateInput } from "@/components/shared/DateInput";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+  Dialog, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -20,6 +25,7 @@ import {
 } from "@/types/maintenance";
 
 type TicketFormData = Omit<MaintenanceTicket, "id">;
+type TicketErrorKey = "title" | "propertyId" | "unitId";
 
 interface MaintenanceTicketDialogProps {
   open: boolean;
@@ -46,7 +52,7 @@ export function MaintenanceTicketDialog({
     category: "general",
     priority: "medium",
     status: "open",
-    createdDate: new Date().toISOString().split("T")[0],
+    createdDate: localTodayISO(),
     scheduledDate: null,
     completedDate: null,
     assignedVendorId: null,
@@ -55,6 +61,7 @@ export function MaintenanceTicketDialog({
   });
 
   const [form, setForm] = useState<TicketFormData>(buildEmpty());
+  const [errors, setErrors] = useState<Partial<Record<TicketErrorKey, string>>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -64,12 +71,11 @@ export function MaintenanceTicketDialog({
     } else {
       setForm(buildEmpty());
     }
+    setErrors({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing, prefillPropertyId, prefillUnitId]);
 
   const formUnits = units.filter(u => u.propertyId === form.propertyId);
-  const canSubmit = !!form.title.trim() && !!form.propertyId && !!form.unitId;
-
   const handleSave = async () => {
     if (properties.length === 0) {
       toast({ title: t("common.validationError"), description: "Create a property before opening a maintenance ticket.", variant: "destructive" });
@@ -79,16 +85,13 @@ export function MaintenanceTicketDialog({
       toast({ title: t("common.validationError"), description: "Create a unit for this property before opening a maintenance ticket.", variant: "destructive" });
       return;
     }
-    if (!form.title.trim()) {
-      toast({ title: t("common.validationError"), description: "Ticket title is required.", variant: "destructive" });
-      return;
-    }
-    if (!form.propertyId) {
-      toast({ title: t("common.validationError"), description: "Select a property before creating the ticket.", variant: "destructive" });
-      return;
-    }
-    if (!form.unitId) {
-      toast({ title: t("common.validationError"), description: "Select a unit before creating the ticket.", variant: "destructive" });
+    const nextErrors: Partial<Record<TicketErrorKey, string>> = {};
+    if (!form.title.trim()) nextErrors.title = t("common.mandatoryField");
+    if (!form.propertyId) nextErrors.propertyId = t("common.mandatoryField");
+    if (!form.unitId) nextErrors.unitId = t("common.mandatoryField");
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast({ title: t("common.validationError"), description: t("common.fixHighlightedFields"), variant: "destructive" });
       return;
     }
     const dateErrors = validateDateOrder([
@@ -100,45 +103,43 @@ export function MaintenanceTicketDialog({
       toast({ title: t("validation.dates.title"), description: dateErrors.join(" "), variant: "destructive" });
       return;
     }
-    if (editing) {
-      updateTicket({ ...editing, ...form });
-      toast({ title: t("maintenance.toastUpdated") });
-    } else {
-      try {
+    try {
+      if (editing) {
+        await updateTicket({ ...editing, ...form });
+        toast({ title: t("maintenance.toastUpdated") });
+      } else {
         await addTicketPersisted(form);
         toast({ title: t("maintenance.toastCreated") });
-      } catch (err) {
-        toast({
-          title: t("common.validationError"),
-          description: err instanceof Error ? err.message : "Maintenance ticket could not be saved.",
-          variant: "destructive",
-        });
-        return;
       }
+    } catch (err) {
+      toast({ title: t("common.validationError"), description: err instanceof Error ? err.message : "Maintenance ticket could not be saved.", variant: "destructive" });
+      return;
     }
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader><DialogTitle>{editing ? t("maintenance.edit") : t("maintenance.newTicket")}</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-6">
-          <div><Label>{t("maintenance.titleField")} *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder={t("maintenance.briefPlaceholder")} /></div>
+          <FormField label={t("maintenance.titleField")} required error={errors.title}>
+            <Input value={form.title} aria-invalid={!!errors.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder={t("maintenance.briefPlaceholder")} />
+          </FormField>
           <div><Label>{t("common.description")}</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>{t("maintenance.property")} *</Label>
+            <FormField label={t("maintenance.property")} required error={errors.propertyId}>
               <Select value={form.propertyId} onValueChange={v => setForm(f => ({ ...f, propertyId: v, unitId: "" }))} disabled={lockUnit}>
-                <SelectTrigger><SelectValue placeholder={t("maintenance.selectProperty")} /></SelectTrigger>
+                <SelectTrigger aria-invalid={!!errors.propertyId}><SelectValue placeholder={t("maintenance.selectProperty")} /></SelectTrigger>
                 <SelectContent>{properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
-            </div>
-            <div><Label>{t("maintenance.unit")} *</Label>
+            </FormField>
+            <FormField label={t("maintenance.unit")} required error={errors.unitId}>
               <Select value={form.unitId} onValueChange={v => setForm(f => ({ ...f, unitId: v }))} disabled={lockUnit}>
-                <SelectTrigger><SelectValue placeholder={t("maintenance.selectUnit")} /></SelectTrigger>
+                <SelectTrigger aria-invalid={!!errors.unitId}><SelectValue placeholder={t("maintenance.selectUnit")} /></SelectTrigger>
                 <SelectContent>{formUnits.map(u => <SelectItem key={u.id} value={u.id}>{u.unitCode} — {u.unitLabel}</SelectItem>)}</SelectContent>
               </Select>
-            </div>
+            </FormField>
           </div>
           <div><Label>{t("maintenance.tenantOptional")}</Label>
             <Select value={form.tenantId ?? "none"} onValueChange={v => setForm(f => ({ ...f, tenantId: v === "none" ? null : v }))}>
@@ -158,16 +159,16 @@ export function MaintenanceTicketDialog({
             </div>
             <div><Label>{t("maintenance.priority")}</Label>
               <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v as MaintenancePriority }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{(Object.keys(MAINTENANCE_PRIORITY_KEYS) as MaintenancePriority[]).map(p => <SelectItem key={p} value={p}>{t(MAINTENANCE_PRIORITY_KEYS[p])}</SelectItem>)}</SelectContent>
+                <SelectTrigger><PriorityLabel priority={form.priority} /></SelectTrigger>
+                <SelectContent>{(Object.keys(MAINTENANCE_PRIORITY_KEYS) as MaintenancePriority[]).map(p => <SelectItem key={p} value={p} textValue={t(MAINTENANCE_PRIORITY_KEYS[p])}><PriorityLabel priority={p} /></SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><Label>{t("maintenance.status")}</Label>
               <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as MaintenanceStatus }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{(Object.keys(MAINTENANCE_STATUS_KEYS) as MaintenanceStatus[]).map(s => <SelectItem key={s} value={s}>{t(MAINTENANCE_STATUS_KEYS[s])}</SelectItem>)}</SelectContent>
+                <SelectTrigger><StatusBadge status={form.status} /></SelectTrigger>
+                <SelectContent>{(Object.keys(MAINTENANCE_STATUS_KEYS) as MaintenanceStatus[]).map(s => <SelectItem key={s} value={s} textValue={t(MAINTENANCE_STATUS_KEYS[s])}><StatusBadge status={s} /></SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>{t("maintenance.assignedVendor")}</Label>
@@ -181,15 +182,15 @@ export function MaintenanceTicketDialog({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>{t("maintenance.scheduledDate")}</Label><Input type="date" value={form.scheduledDate ?? ""} onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value || null }))} /></div>
-            <div><Label>{t("maintenance.completedDate")}</Label><Input type="date" value={form.completedDate ?? ""} onChange={e => setForm(f => ({ ...f, completedDate: e.target.value || null }))} /></div>
+            <div><Label>{t("maintenance.scheduledDate")}</Label><DateInput value={form.scheduledDate ?? ""} onChange={value => setForm(f => ({ ...f, scheduledDate: value || null }))} /></div>
+            <div><Label>{t("maintenance.completedDate")}</Label><DateInput value={form.completedDate ?? ""} onChange={value => setForm(f => ({ ...f, completedDate: value || null }))} /></div>
           </div>
           <div><Label>{t("maintenance.internalNotes")}</Label><Textarea value={form.internalNotes} onChange={e => setForm(f => ({ ...f, internalNotes: e.target.value }))} rows={3} /></div>
           <div><Label>{t("maintenance.residentNotes")}</Label><Textarea value={form.residentVisibleNotes} onChange={e => setForm(f => ({ ...f, residentVisibleNotes: e.target.value }))} rows={2} /></div>
         </div>
-        <DialogFooter className="mt-6">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
-          <Button onClick={handleSave} disabled={!canSubmit}>{editing ? t("action.save") : t("maintenance.createTicket")}</Button>
+          <Button onClick={handleSave}>{editing ? t("action.save") : t("maintenance.createTicket")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

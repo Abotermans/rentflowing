@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { localTodayISO } from "@/lib/calendarToday";
 import { useAppData } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { Button } from "@/components/ui/button";
@@ -7,11 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
+import { DateInput } from "@/components/shared/DateInput";
 import { getTenantFullName } from "@/types";
 import { getSourceTypeLabel } from "@/types/receivables";
 import type { CashReceiptSourceType } from "@/types/receivables";
-import { positiveNumber } from "@/lib/validation";
+import { parsePositiveMoney, positiveMoneyIssue } from "@/lib/validation";
+import { receiptCurrencyChoices } from "@/lib/currencies";
+import { leaseIncludesTenant } from "@/lib/reconciliation";
 import { toast as sonnerToast } from "sonner";
 
 interface CashReceiptDialogProps {
@@ -29,8 +34,12 @@ export function CashReceiptDialog({
   const { tenants, leases, properties, createCashReceiptPersisted } = useAppData();
 
   const [sourceType, setSourceType] = useState<CashReceiptSourceType>("bank-transfer");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(localTodayISO());
   const [amount, setAmount] = useState("");
+  const [amountTouched, setAmountTouched] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [currencyCode, setCurrencyCode] = useState("");
+  const [currencyError, setCurrencyError] = useState(false);
   const [tenantId, setTenantId] = useState(prefillTenantId ?? "");
   const [leaseId, setLeaseId] = useState(prefillLeaseId ?? "");
   const [reference, setReference] = useState("");
@@ -43,8 +52,12 @@ export function CashReceiptDialog({
   useEffect(() => {
     if (open) {
       setSourceType("bank-transfer");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(localTodayISO());
       setAmount("");
+      setAmountTouched(false);
+      setSaving(false);
+      setCurrencyCode("");
+      setCurrencyError(false);
       setTenantId(prefillTenantId ?? "");
       setLeaseId(prefillLeaseId ?? "");
       setReference(""); setRemittance(""); setPayerName(""); setPayerIban(""); setNotes("");
@@ -53,23 +66,34 @@ export function CashReceiptDialog({
   }, [open, prefillTenantId, prefillLeaseId]);
 
   const tenantLeases = tenantId
-    ? leases.filter(l => l.primaryTenantId === tenantId || l.coTenantIds.includes(tenantId))
-    : leases.filter(l => l.lifecycleStage === "active");
+    ? leases.filter(l => leaseIncludesTenant(l, tenantId))
+    : leases;
 
   const selectedLease = leaseId ? leases.find(l => l.id === leaseId) : undefined;
   const selectedProp = selectedLease ? properties.find(p => p.id === selectedLease.propertyId) : undefined;
-  const currency = selectedProp?.currencyCode ?? "EUR";
+  const { options: currencyOptions, defaultCurrency } = receiptCurrencyChoices(properties);
+  const currency = currencyCode || selectedProp?.currencyCode || defaultCurrency;
+  const amountIssue = positiveMoneyIssue(amount);
+  const amountError = amountTouched && amountIssue
+    ? t(amountIssue === "required" ? "common.mandatoryField"
+      : amountIssue === "positive" ? "common.positiveAmount" : "payments.dialog.invalidAmount")
+    : null;
 
   const handleSave = async () => {
-    if (!positiveNumber(amount)) {
-      sonnerToast.error(t("common.validationError"), { description: "Receipt amount must be greater than zero." });
-      return;
-    }
+    if (saving) return;
+    setAmountTouched(true);
+    const amt = parsePositiveMoney(amount);
+    if (amt === null) return;
     if (!date) {
       sonnerToast.error(t("validation.dates.title"), { description: t("validation.dates.paymentDateRequired") });
       return;
     }
-    const amt = parseFloat(amount);
+    if (!currency) {
+      setCurrencyError(true);
+      sonnerToast.error(t("common.validationError"), { description: t("payments.dialog.currencyRequired") });
+      return;
+    }
+    setSaving(true);
     try {
       await createCashReceiptPersisted({
       tenantId: tenantId || null,
@@ -99,13 +123,15 @@ export function CashReceiptDialog({
         description: err instanceof Error ? err.message : "Cash receipt could not be saved.",
       });
       return;
+    } finally {
+      setSaving(false);
     }
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader><DialogTitle>{t("payments.dialog.recordTitle")}</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-4">
           <div>
@@ -121,16 +147,33 @@ export function CashReceiptDialog({
           </div>
           <div>
             <Label>{t("payments.dialog.paymentDate")}</Label>
-            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <DateInput value={date} onChange={setDate} />
           </div>
           <div>
-            <Label>{t("payments.dialog.amountReceived")} ({currency})</Label>
-            <Input type="number" step="0.01" min="0" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
+            <Label htmlFor="receipt-amount">{t("payments.dialog.amountReceived")}{currency ? ` (${currency})` : ""} *</Label>
+            <Input id="receipt-amount" type="text" inputMode="decimal" value={amount}
+              onChange={e => setAmount(e.target.value)} onBlur={() => setAmountTouched(true)}
+              aria-invalid={!!amountError} aria-describedby={amountError ? "receipt-amount-error" : undefined}
+              className={amountError ? "border-destructive" : undefined} placeholder="0.00" />
+            {amountError && <p id="receipt-amount-error" className="text-xs text-destructive mt-1">{amountError}</p>}
           </div>
+            <div>
+              <Label>{t("properties.currency")} *</Label>
+              <Select value={currency} onValueChange={value => { setCurrencyCode(value); setCurrencyError(false); }}>
+                <SelectTrigger className={currencyError ? "border-destructive" : undefined}><SelectValue placeholder={t("payments.dialog.selectCurrency")} /></SelectTrigger>
+                <SelectContent>
+                  {currencyOptions.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {currencyError && <p className="text-xs text-destructive mt-1">{t("payments.dialog.currencyRequired")}</p>}
+              {selectedProp && currency && currency !== selectedProp.currencyCode && (
+                <p className="text-xs text-warning mt-1">{t("payments.dialog.currencyMismatchWarning")}</p>
+              )}
+            </div>
           {!lockTenant && (
             <div>
               <Label>{t("payments.dialog.tenantOptional")}</Label>
-              <Select value={tenantId || "__none__"} onValueChange={v => { const nv = v === "__none__" ? "" : v; setTenantId(nv); setLeaseId(""); }}>
+              <Select value={tenantId || "__none__"} onValueChange={v => { const nv = v === "__none__" ? "" : v; setTenantId(nv); setLeaseId(""); setCurrencyCode(""); }}>
                 <SelectTrigger><SelectValue placeholder={t("payments.dialog.selectTenant")} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">{t("payments.dialog.none")}</SelectItem>
@@ -143,7 +186,7 @@ export function CashReceiptDialog({
           )}
           <div>
             <Label>{t("payments.dialog.leaseOptional")}</Label>
-            <Select value={leaseId || "__none__"} onValueChange={v => setLeaseId(v === "__none__" ? "" : v)}>
+            <Select value={leaseId || "__none__"} onValueChange={v => { setLeaseId(v === "__none__" ? "" : v); setCurrencyCode(""); }}>
               <SelectTrigger><SelectValue placeholder={t("payments.dialog.selectLease")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">{t("payments.dialog.none")}</SelectItem>
@@ -178,8 +221,11 @@ export function CashReceiptDialog({
             <Label>{t("payments.dialog.autoAllocate")}</Label>
             <Switch checked={autoAllocate} onCheckedChange={setAutoAllocate} />
           </div>
-          <Button onClick={handleSave} disabled={!positiveNumber(amount)} className="w-full">{t("payments.recordCashReceipt")}</Button>
         </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>{t("action.cancel")}</Button>
+          <Button onClick={handleSave} disabled={saving}>{t("payments.recordCashReceipt")}</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

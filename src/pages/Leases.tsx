@@ -1,4 +1,7 @@
 import { useState, useMemo } from "react";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
+import { useBusinessNow } from "@/hooks/use-business-now";
+import { isLeaseEndingWithinDays } from "@/lib/leaseExpiry";
 import { useAppData } from "@/context/AppContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +12,8 @@ import { FileText, Plus, Search, Pencil, Bell, Clock, CheckCircle2, Undo2, Alert
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatMoneyGroups } from "@/lib/money";
+import { groupReceivableBalances } from "@/lib/receivableBalances";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { LEASE_STATUS_ICONS, PROPERTY_ICON } from "@/lib/filterIcons";
@@ -40,6 +45,8 @@ import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/common/TablePagination";
 import { LeaseEditDialog } from "@/components/leases/LeaseEditDialog";
 import { LeaseAddDialog } from "@/components/leases/LeaseAddDialog";
+import { cn } from "@/lib/utils";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
 
 const LEASE_STAGES: { value: LifecycleStage; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -81,17 +88,19 @@ const GUARANTEE_DISPLAY: Record<GuaranteeStatus, { icon: LucideIcon; labelKey: T
 const ALLOWED_TRANSITIONS: Record<LifecycleStage, LifecycleStage[]> = {
   draft: ["draft", "pending-signature"],
   "pending-signature": ["pending-signature", "draft", "signed"],
-  signed: ["signed", "active", "terminated"],
+  signed: ["signed", "pending-signature", "active", "terminated"],
   active: ["active", "ended", "terminated"],
   ended: ["ended", "terminated"],
   terminated: ["terminated"],
 };
 
 export default function Leases() {
+  const businessNow = useBusinessNow();
   const navigate = useNavigate();
-  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLease, addTenant, getActiveLease, getGuaranteeByLease, getLeaseAssignments, setLeaseUnits, getAncillaryLeaseUnits, getReceivableItemsByLease } = useAppData();
+  const { leases, tenants, units, properties, leaseUnitAssignments, addLease, updateLeasePersisted, updateLeaseWithAssignmentsPersisted, getActiveLease, getGuaranteeByLease, getLeaseAssignments, getAncillaryLeaseUnits, getReceivableItemsByLease } = useAppData();
   const { toast } = useToast();
   const { t } = useSettings();
+  const canWrite = usePortfolioWriteAccess();
   const integrityState = useIntegrityState();
   const { addOverride } = useOverrideHistory();
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
@@ -104,7 +113,7 @@ export default function Leases() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingLease, setEditingLease] = useState<Lease | null>(null);
 
-  type LSortKey = "reference" | "tenant" | "property" | "unit" | "formula" | "status" | "guarantee" | "start" | "end" | "total" | "receivables";
+  type LSortKey = "reference" | "tenant" | "unit" | "formula" | "status" | "guarantee" | "start" | "end" | "total" | "receivables";
   const { sort, toggle } = useTableSort<LSortKey>();
 
   const emptyForm: LeaseFormData = {
@@ -156,6 +165,7 @@ export default function Leases() {
   const [pendingExistingTenantId, setPendingExistingTenantId] = useState<string>("");
 
   const openAdd = () => {
+    if (!canWrite) return;
     if (properties.length === 0) {
       toast({ title: t("common.validationError"), description: "Create a property before adding leases.", variant: "destructive" });
       navigate("/properties");
@@ -176,10 +186,11 @@ export default function Leases() {
     setSheetOpen(true);
   };
   const openEdit = (l: Lease) => {
+    if (!canWrite) return;
     setEditingLease(l);
     const { id, createdAt, updatedAt, ...rest } = l;
     setForm(rest);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = propertyBusinessDateISO(properties.find(property => property.id === l.propertyId));
     const all = getLeaseAssignments(l.id)
       .filter(a => !a.endDate || a.endDate >= today)
       .sort((a, b) => Number(isMainRow(b)) - Number(isMainRow(a)));
@@ -213,16 +224,7 @@ export default function Leases() {
     return LEASE_STAGES.filter(s => allowed.includes(s.value));
   }, [editingLease]);
 
-  const executeLeaseSave = () => {
-    const persistAssignments = (leaseId: string) => {
-      const draft = unitRows.map(r => ({
-        unitId: r.unitId,
-        rentShare: r.rentShare,
-        chargesShare: r.chargesShare,
-        startDate: form.startDate,
-      }));
-      setLeaseUnits(leaseId, form.propertyId, draft);
-    };
+  const executeLeaseSave = async () => {
     // Derive lease-level totals + primary unit id from the rows table.
     const primaryRow = unitRows.find(isMainRow);
     const totalRent = unitRows.reduce((s, r) => s + (r.rentShare ?? 0), 0);
@@ -234,13 +236,32 @@ export default function Leases() {
       monthlyCharges: totalCharges,
     };
     if (editingLease) {
-      updateLease({ ...editingLease, ...formToPersist });
-      persistAssignments(editingLease.id);
+      try {
+        await updateLeaseWithAssignmentsPersisted({ ...editingLease, ...formToPersist }, unitRows.map(row => ({
+          unitId: row.unitId, rentShare: row.rentShare, chargesShare: row.chargesShare,
+          startDate: form.startDate,
+        })));
+      } catch (error) {
+        toast({ title: "Lease could not be saved", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+        return;
+      }
       toast({ title: "Lease updated" });
     } else {
-      const created = addLease({ ...formToPersist });
-      persistAssignments(created.id);
+      let created: Lease;
+      try {
+        created = await addLease({ ...formToPersist }, { receivableAssignments: unitRows.map(r => ({
+          unitId: r.unitId,
+          rentShare: r.rentShare,
+          chargesShare: r.chargesShare,
+          startDate: form.startDate,
+          endDate: null,
+        })) });
+      } catch (error) {
+        toast({ title: "Lease could not be saved", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+        return;
+      }
       toast({ title: "Lease added" });
+      navigate(`/leases/${created.id}`);
     }
     setSheetOpen(false);
   };
@@ -344,11 +365,17 @@ export default function Leases() {
         description: unitsValidation.warnings.map(w => w.message).join(". "),
       });
     }
-    executeLeaseSave();
+    void executeLeaseSave();
   };
 
-  const handleLeaseOverrideConfirm = (reason: string) => {
+  const handleLeaseOverrideConfirm = async (reason: string) => {
     if (!editingLease || !pendingOverrideValidation) return;
+    try {
+      await updateLeasePersisted({ ...editingLease, ...form });
+    } catch (error) {
+      toast({ title: "Lease could not be saved", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      return;
+    }
     addOverride({
       entityType: "lease",
       entityId: editingLease.id,
@@ -356,42 +383,39 @@ export default function Leases() {
       blockerCodes: pendingOverrideValidation.blockers.map(b => b.code),
       reason,
     });
-    updateLease({ ...editingLease, ...form });
     setSheetOpen(false);
     toast({ title: "Lease updated (overridden)", description: `Override reason: ${reason}` });
     setPendingOverrideValidation(null);
   };
 
 
-  const now = new Date();
-  const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-
   // Derive a lease-level receivables status from its receivable items.
   // Used both in the table cell and as a sort key.
-  const todayStr = new Date().toISOString().slice(0, 10);
   const getLeaseReceivablesSummary = (leaseId: string) => {
+    const lease = leases.find(item => item.id === leaseId);
+    const today = propertyBusinessDateISO(properties.find(property => property.id === lease?.propertyId), businessNow);
     const items = getReceivableItemsByLease(leaseId).filter(
       ri => ri.status !== "cancelled" && ri.status !== "written-off",
     );
     if (items.length === 0) {
-      return { state: "none" as const, outstanding: 0, overdue: 0, rank: 0, currencyCode: null as string | null };
+      return { state: "none" as const, outstanding: [], overdue: [], rank: 0 };
     }
-    let outstanding = 0;
-    let overdue = 0;
-    let anyAllocated = false;
-    for (const ri of items) {
-      outstanding += ri.outstandingAmount;
-      if (ri.outstandingAmount > 0 && ri.dueDate < todayStr) overdue += ri.outstandingAmount;
-      if (ri.allocatedAmount > 0) anyAllocated = true;
-    }
+    const { outstanding, overdue } = groupReceivableBalances(items, () => today);
+    const anyAllocated = items.some(ri => ri.allocatedAmount > 0);
     let state: "paid" | "open" | "partial" | "overdue";
     let rank: number;
-    if (outstanding <= 0) { state = "paid"; rank = 1; }
-    else if (overdue > 0) { state = "overdue"; rank = 4; }
+    if (outstanding.length === 0) { state = "paid"; rank = 1; }
+    else if (overdue.length > 0) { state = "overdue"; rank = 4; }
     else if (anyAllocated) { state = "partial"; rank = 2; }
     else { state = "open"; rank = 3; }
-    return { state, outstanding, overdue, rank, currencyCode: items[0].currencyCode };
+    return { state, outstanding, overdue, rank };
   };
+
+  const dateForLease = (lease: Lease) => propertyBusinessDateISO(
+    properties.find(property => property.id === lease.propertyId),
+    businessNow,
+  );
+  const leaseStatus = (lease: Lease) => getLeaseStatus(lease, dateForLease(lease));
 
   const filtered = leases.filter(l => {
     const tenant = tenants.find(t => t.id === l.primaryTenantId);
@@ -400,25 +424,23 @@ export default function Leases() {
     const matchSearch = !q || l.leaseReference.toLowerCase().includes(q) ||
       (tenant ? getTenantFullName(tenant).toLowerCase().includes(q) : false) ||
       (prop?.name.toLowerCase().includes(q) ?? false);
-    const matchStatus = filterStatus.length === 0 || filterStatus.includes(getLeaseStatus(l));
+    const matchStatus = filterStatus.length === 0 || filterStatus.includes(leaseStatus(l));
     const matchProperty = filterProperty.length === 0 || filterProperty.includes(l.propertyId);
-    const matchEnding = !filterEndingSoon || (l.lifecycleStage === "active" && new Date(l.endDate) <= in90Days);
-    const matchNotice = !filterUnderNotice || l.noticeGiven;
+    const matchEnding = !filterEndingSoon || isLeaseEndingWithinDays(l, dateForLease(l), 90);
+    const matchNotice = !filterUnderNotice || leaseStatus(l) === "under-notice";
     return matchSearch && matchStatus && matchProperty && matchEnding && matchNotice;
   });
 
   const sorted = sortRows(filtered, sort, (l, key) => {
     const tenant = tenants.find(t => t.id === l.primaryTenantId);
-    const prop = properties.find(p => p.id === l.propertyId);
     const unit = units.find(u => u.id === l.unitId);
     const guarantee = getGuaranteeByLease(l.id);
     switch (key) {
       case "reference": return l.leaseReference;
       case "tenant": return tenant ? getTenantFullName(tenant) : "";
-      case "property": return prop?.name ?? "";
       case "unit": return unit?.unitCode ?? "";
       case "formula": return l.rentFormula;
-      case "status": return getLeaseStatus(l);
+      case "status": return leaseStatus(l);
       case "guarantee": return guarantee?.status ?? null;
       case "start": return l.startDate;
       case "end": return l.endDate;
@@ -502,17 +524,17 @@ export default function Leases() {
     }));
   };
   return (
-    <div className="space-y-6">
+    <div className="page-shell">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("leases.title")}</h1>
+          <h1 className="page-title">{t("leases.title")}</h1>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] w-full [field-sizing:content]" />
           </div>
-          <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("leases.add")}</Button>
+          {canWrite && <Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" />{t("leases.add")}</Button>}
         </div>
       </div>
 
@@ -523,7 +545,12 @@ export default function Leases() {
             icon={FileCheck}
             values={filterStatus}
             onChange={setFilterStatus}
-            options={LEASE_STATUS_FILTERS.map(s => ({ value: s.value, label: s.label, icon: LEASE_STATUS_ICONS[s.value] }))}
+            options={LEASE_STATUS_FILTERS.map(s => ({
+              value: s.value,
+              label: s.label,
+              icon: LEASE_STATUS_ICONS[s.value],
+              content: <StatusBadge status={s.value} />,
+            }))}
           />
           <MultiSelectFilter
             label={t("filter.property")}
@@ -533,10 +560,10 @@ export default function Leases() {
             options={properties.map(p => ({ value: p.id, label: p.name, icon: PROPERTY_ICON }))}
           />
           <Button variant={filterEndingSoon ? "default" : "outline"} size="sm" className="h-9 font-normal" onClick={() => setFilterEndingSoon(!filterEndingSoon)}>
-            <Clock className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />{t("filter.endingSoon")}
+            <Clock className={cn("h-3.5 w-3.5 mr-1.5", filterEndingSoon ? "text-primary-foreground" : "text-muted-foreground")} />{t("filter.endingSoon")}
           </Button>
           <Button variant={filterUnderNotice ? "default" : "outline"} size="sm" className="h-9 font-normal" onClick={() => setFilterUnderNotice(!filterUnderNotice)}>
-            <Bell className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />{t("filter.underNotice")}
+            <Bell className={cn("h-3.5 w-3.5 mr-1.5", filterUnderNotice ? "text-primary-foreground" : "text-muted-foreground")} />{t("filter.underNotice")}
           </Button>
         </div>
         <span className="text-sm text-muted-foreground whitespace-nowrap mt-1.5">
@@ -545,7 +572,7 @@ export default function Leases() {
       </div>
 
       {leases.length === 0 ? (
-        <EmptyState icon={FileText} title={t("leases.empty")} description={t("leases.emptyDesc")} actionLabel={t("leases.add")} onAction={openAdd} />
+        <EmptyState icon={FileText} title={t("leases.empty")} description={t("leases.emptyDesc")} actionLabel={canWrite ? t("leases.add") : undefined} onAction={canWrite ? openAdd : undefined} />
       ) : filtered.length === 0 ? (
         <EmptyState icon={Search} title={t("filter.noResults")} description={t("filter.noResultsDesc")} />
       ) : (
@@ -555,7 +582,6 @@ export default function Leases() {
               <TableRow>
                 <SortableTableHead sortKey="reference" sort={sort} onSort={toggle}>{t("leases.reference")}</SortableTableHead>
                 <SortableTableHead sortKey="tenant" sort={sort} onSort={toggle}>{t("leases.tenant")}</SortableTableHead>
-                <SortableTableHead sortKey="property" sort={sort} onSort={toggle}>{t("leases.property")}</SortableTableHead>
                 <SortableTableHead sortKey="unit" sort={sort} onSort={toggle}>{t("leases.unit")}</SortableTableHead>
                 <SortableTableHead sortKey="formula" sort={sort} onSort={toggle}>{t("leases.formula")}</SortableTableHead>
                 <SortableTableHead sortKey="status" sort={sort} onSort={toggle}>{t("leases.status")}</SortableTableHead>
@@ -564,7 +590,7 @@ export default function Leases() {
                 <SortableTableHead sortKey="end" sort={sort} onSort={toggle}>{t("leases.end")}</SortableTableHead>
                 <SortableTableHead sortKey="total" sort={sort} onSort={toggle} align="right">{t("leases.total")}</SortableTableHead>
                 <SortableTableHead sortKey="receivables" sort={sort} onSort={toggle}>{t("leases.receivables")}</SortableTableHead>
-                <TableHead className="text-right">{t("leases.actions")}</TableHead>
+                {canWrite && <TableHead className="text-right">{t("leases.actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -586,16 +612,13 @@ export default function Leases() {
                       {tenant ? <Link to={`/tenants/${tenant.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{getTenantFullName(tenant)}</Link> : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {prop ? <Link to={`/properties/${prop.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{prop.name}</Link> : "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         {unit ? <Link to={`/units/${unit.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{unit.unitCode}</Link> : "—"}
                         {ancillaryCount > 0 && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span
-                                className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground cursor-help"
+                                className="cursor-help rounded-sm bg-muted px-1.5 py-0.5 text-xs uppercase text-muted-foreground"
                               >
                                 +{ancillaryCount}
                               </span>
@@ -617,18 +640,31 @@ export default function Leases() {
                         : `${l.rentFormula} ${t("units.advancePeriodMonths").toLowerCase().replace(/\s*\(.*\)/, "")}`}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={getLeaseStatus(l)} />
+                      <StatusBadge status={leaseStatus(l)} />
                     </TableCell>
                     <TableCell>
                       {guarantee ? (
                         (() => {
                           const d = GUARANTEE_DISPLAY[guarantee.status];
                           const Icon = d.icon;
+                          const label = t(d.labelKey);
                           return (
-                            <div className={`flex items-center gap-1.5 text-xs ${d.className}`}>
-                              <Icon className="h-3.5 w-3.5" />
-                              <span>{t(d.labelKey)}</span>
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  aria-label={label}
+                                  className={cn(
+                                    "inline-flex h-8 w-8 cursor-help items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                    d.className,
+                                  )}
+                                  role="img"
+                                  tabIndex={0}
+                                >
+                                  <Icon className="h-4 w-4" aria-hidden="true" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">{label}</TooltipContent>
+                            </Tooltip>
                           );
                         })()
                       ) : (
@@ -644,69 +680,85 @@ export default function Leases() {
                         if (s.state === "none") {
                           return <span className="text-xs text-muted-foreground">—</span>;
                         }
-                        const cur = s.currencyCode ?? prop?.currencyCode ?? "EUR";
-                        const locale = prop?.locale;
                         if (s.state === "paid") {
+                          const label = t("payments.paid");
                           return (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center gap-1.5 text-xs text-success cursor-help">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  <span>{t("payments.paid")}</span>
-                                </div>
+                                <span
+                                  aria-label={label}
+                                  className="inline-flex h-8 w-8 cursor-help items-center justify-center rounded-md text-success hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                  role="img"
+                                  tabIndex={0}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                                </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top">
-                                <span>{formatCurrency(s.outstanding, cur, locale)}</span>
-                              </TooltipContent>
+                              <TooltipContent side="top">{label}</TooltipContent>
                             </Tooltip>
                           );
                         }
                         if (s.state === "overdue") {
+                          const label = t("payments.overdue");
                           return (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center gap-1.5 text-xs text-destructive cursor-help">
-                                  <AlertTriangle className="h-3.5 w-3.5" />
-                                  <span>{t("payments.overdue")}</span>
-                                </div>
+                                <span
+                                  aria-label={label}
+                                  className="inline-flex h-8 w-8 cursor-help items-center justify-center rounded-md text-destructive hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                  role="img"
+                                  tabIndex={0}
+                                >
+                                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                                </span>
                               </TooltipTrigger>
                               <TooltipContent side="top">
-                                <span>{formatCurrency(s.overdue, cur, locale)}</span>
+                                {label} · {formatMoneyGroups(s.overdue)}
                               </TooltipContent>
                             </Tooltip>
                           );
                         }
                         if (s.state === "partial") {
+                          const label = t("payments.partiallyPaid");
                           return (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center gap-1.5 text-xs text-warning cursor-help">
-                                  <Clock className="h-3.5 w-3.5" />
-                                  <span>{t("payments.partiallyPaid")}</span>
-                                </div>
+                                <span
+                                  aria-label={label}
+                                  className="inline-flex h-8 w-8 cursor-help items-center justify-center rounded-md text-warning hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                  role="img"
+                                  tabIndex={0}
+                                >
+                                  <Clock className="h-4 w-4" aria-hidden="true" />
+                                </span>
                               </TooltipTrigger>
                               <TooltipContent side="top">
-                                <span>{formatCurrency(s.outstanding, cur, locale)}</span>
+                                {label} · {formatMoneyGroups(s.outstanding)}
                               </TooltipContent>
                             </Tooltip>
                           );
                         }
+                        const label = t("payments.due");
                         return (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-help">
-                                <Clock className="h-3.5 w-3.5" />
-                                <span>{t("payments.due")}</span>
-                              </div>
+                              <span
+                                aria-label={label}
+                                className="inline-flex h-8 w-8 cursor-help items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                role="img"
+                                tabIndex={0}
+                              >
+                                <Clock className="h-4 w-4" aria-hidden="true" />
+                              </span>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                              <span>{formatCurrency(s.outstanding, cur, locale)}</span>
+                              {label} · {formatMoneyGroups(s.outstanding)}
                             </TooltipContent>
                           </Tooltip>
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="text-right">
+                    {canWrite && <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {l.lifecycleStage === "draft" && (
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit(l); }}>
@@ -714,7 +766,7 @@ export default function Leases() {
                           </Button>
                         )}
                       </div>
-                    </TableCell>
+                    </TableCell>}
                   </TableRow>
                 );
               })}
@@ -727,7 +779,7 @@ export default function Leases() {
       {editingLease && (
         <LeaseEditDialog
           lease={editingLease}
-          open={sheetOpen}
+          open={canWrite && sheetOpen}
           onOpenChange={(open) => {
             setSheetOpen(open);
             if (!open) setEditingLease(null);
@@ -736,13 +788,13 @@ export default function Leases() {
       )}
 
       {!editingLease && (
-      <LeaseAddDialog open={sheetOpen} onOpenChange={setSheetOpen} />
+      <LeaseAddDialog open={canWrite && sheetOpen} onOpenChange={setSheetOpen} onCreated={(lease) => navigate(`/leases/${lease.id}`)} />
       )}
 
       {/* Override Confirm Dialog */}
       {pendingOverrideValidation && (
         <OverrideConfirmDialog
-          open={overrideDialogOpen}
+          open={canWrite && overrideDialogOpen}
           onOpenChange={(v) => { setOverrideDialogOpen(v); if (!v) setPendingOverrideValidation(null); }}
           validation={pendingOverrideValidation}
           actionLabel="Override and Save"

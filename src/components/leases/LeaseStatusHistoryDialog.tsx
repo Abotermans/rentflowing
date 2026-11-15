@@ -1,10 +1,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, RefreshCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useSettings } from "@/context/SettingsContext";
 import { useLeaseStatusHistory } from "@/hooks/useLeaseStatusHistory";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import type { TranslationKey } from "@/i18n/translations";
 import type { LifecycleStage } from "@/types";
 
 interface Props {
@@ -25,9 +27,22 @@ function formatDateTime(iso: string): string {
   return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
 }
 
+const reasonKeys: Record<string, TranslationKey> = {
+  "natural-expiry": "lease.statusHistory.reason.naturalExpiry",
+  "notice-completed": "lease.statusHistory.reason.noticeCompleted",
+  terminated: "lease.statusHistory.reason.terminated",
+  "signature-canceled": "lease.statusHistory.reason.signatureCanceled",
+  "sent-for-signature": "lease.statusHistory.reason.sentForSignature",
+  signed: "lease.statusHistory.reason.signed",
+  activated: "lease.statusHistory.reason.activated",
+  edited: "lease.statusHistory.reason.edited",
+  backfill: "lease.statusHistory.reason.backfill",
+  "scheduled-date-transition": "lease.statusHistory.reason.scheduledDateTransition",
+};
+
 export function LeaseStatusHistoryDialog({ open, onOpenChange, leaseId, leaseReference, currentStage }: Props) {
   const { t } = useSettings();
-  const { entries, loading } = useLeaseStatusHistory(open ? leaseId : null);
+  const { entries, loading, error, reload } = useLeaseStatusHistory(open ? leaseId : null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,6 +57,13 @@ export function LeaseStatusHistoryDialog({ open, onOpenChange, leaseId, leaseRef
         <div className="mt-4">
           {loading ? (
             <p className="text-xs text-muted-foreground italic px-3 py-6 text-center">{t("lease.statusHistory.loading")}</p>
+          ) : error ? (
+            <div role="alert" className="flex flex-col items-center gap-3 px-3 py-6 text-center">
+              <p className="text-sm text-destructive">{t("lease.statusHistory.loadFailed")}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
+                <RefreshCcw className="h-4 w-4 mr-2" />{t("common.retry")}
+              </Button>
+            </div>
           ) : entries.length === 0 ? (
             <p className="text-xs text-muted-foreground italic px-3 py-6 text-center">{t("lease.statusHistory.empty")}</p>
           ) : (
@@ -67,7 +89,7 @@ export function LeaseStatusHistoryDialog({ open, onOpenChange, leaseId, leaseRef
                           <StatusBadge status={e.toStage as LifecycleStage} />
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">{e.reason || "—"}</TableCell>
+                      <TableCell className="text-xs">{e.reason ? (reasonKeys[e.reason] ? t(reasonKeys[e.reason]) : e.reason) : "—"}</TableCell>
                       <TableCell className="text-xs max-w-[220px]">
                         {e.notes ? (
                           <Tooltip>

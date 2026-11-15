@@ -1,15 +1,16 @@
-import type { Lease, LeaseUnitAssignment, Unit } from "@/types";
+import type { Lease, LeaseUnitAssignment, Unit } from "../types/index.ts";
 import type {
   LeaseAmendment,
   LeaseAmendmentChange,
   EffectiveLeaseTerms,
   AmendmentStatus,
-} from "@/types/amendments";
-import { assignmentIsActiveOn, isMainLeaseUnit } from "@/lib/leaseAssignments";
-import type { IntegrityState } from "@/lib/integrity/types";
-import { validateAmendment } from "@/lib/integrity/amendmentIntegrity";
+} from "../types/amendments.ts";
+import { assignmentIsActiveOn, isMainLeaseUnit } from "./leaseAssignments.ts";
+import type { IntegrityState } from "./integrity/types.ts";
+import { validateAmendment } from "./integrity/amendmentIntegrity.ts";
+import { localTodayISO } from "./calendarToday.ts";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = localTodayISO;
 
 /** All amendments of a lease, sorted by (effectiveDate, amendmentNumber). */
 export function getLeaseAmendments(
@@ -84,10 +85,38 @@ interface State {
   amendmentChanges: readonly LeaseAmendmentChange[];
 }
 
-/**
- * Baseline terms = lease record + assignments that started on or before lease.startDate.
- * This is the "original contract" view, never mutated by amendments.
- */
+function originalUnitEndDates(
+  lease: Lease,
+  s: State,
+  appliedChanges: readonly LeaseAmendmentChange[],
+): Map<string, string> {
+  const initialUnitIds = new Set(s.leaseUnitAssignments
+    .filter(a => a.leaseId === lease.id && a.startDate <= lease.startDate)
+    .map(a => a.unitId));
+  const ends = new Map<string, string>();
+  for (const unitId of initialUnitIds) {
+    const firstChange = appliedChanges.find(c =>
+      c.fieldName === "unitEndDate" && c.metadata?.unitId === unitId);
+    if (firstChange?.oldValue !== undefined) {
+      ends.set(unitId, String(firstChange.oldValue ?? ""));
+      continue;
+    }
+    const rows = s.leaseUnitAssignments.filter(a => a.leaseId === lease.id && a.unitId === unitId);
+    ends.set(unitId, rows.some(a => !a.endDate) ? "" : rows.reduce(
+      (latest, a) => a.endDate && a.endDate > latest ? a.endDate : latest, "",
+    ));
+  }
+  return ends;
+}
+
+function latestUnitEnd(ends: Iterable<string>): string {
+  const dates = [...ends];
+  return dates.some(date => !date) ? "" : dates.reduce(
+    (latest, date) => date > latest ? date : latest, "",
+  );
+}
+
+/** Rebuild original terms from preserved assignments and recorded pre-amendment values. */
 export function getOriginalLeaseTerms(
   leaseId: string,
   s: State,
@@ -97,18 +126,64 @@ export function getOriginalLeaseTerms(
   const originalAssignments = s.leaseUnitAssignments.filter(
     a => a.leaseId === leaseId && a.startDate <= lease.startDate,
   );
+  const appliedChanges = getLeaseAmendments(leaseId, s.amendments)
+    .filter(a => a.status === "active" || a.status === "ended")
+    .flatMap(a => getAmendmentChanges(a.id, s.amendmentChanges));
+  const firstOldValue = (fieldName: LeaseAmendmentChange["fieldName"]) =>
+    appliedChanges.find(c => c.fieldName === fieldName)?.oldValue;
+  const rentWasAmended = appliedChanges.some(c => c.fieldName === "unitRentShare" || c.fieldName === "baseMonthlyRentTotal" || c.fieldName === "unitAssignments");
+  const chargesWereAmended = appliedChanges.some(c => c.fieldName === "unitChargesShare" || c.fieldName === "baseMonthlyChargesTotal" || c.fieldName === "unitAssignments");
+  const firstRentChange = appliedChanges.find(c => c.fieldName === "unitRentShare" || c.fieldName === "baseMonthlyRentTotal" || c.fieldName === "unitAssignments");
+  const firstChargesChange = appliedChanges.find(c => c.fieldName === "unitChargesShare" || c.fieldName === "baseMonthlyChargesTotal" || c.fieldName === "unitAssignments");
+  const firstRentBase = appliedChanges.find(c => c.amendmentId === firstRentChange?.amendmentId && c.fieldName === "baseMonthlyRentTotal");
+  const firstChargesBase = appliedChanges.find(c => c.amendmentId === firstChargesChange?.amendmentId && c.fieldName === "baseMonthlyChargesTotal");
+  const originalBaseRent = firstRentBase?.oldValue == null ? NaN : Number(firstRentBase.oldValue);
+  const originalBaseCharges = firstChargesBase?.oldValue == null ? NaN : Number(firstChargesBase.oldValue);
+  const firstEndChange = appliedChanges.find(c =>
+    c.fieldName === "leaseEndDate" || c.fieldName === "unitEndDate" || c.fieldName === "unitAssignments",
+  );
+  const originalEnd = firstEndChange?.fieldName === "leaseEndDate" ? firstEndChange.oldValue : undefined;
+  const recordedOriginalEnd = firstEndChange?.metadata?.originalLeaseEndDate;
+  const originalEnds = firstEndChange?.fieldName === "unitEndDate"
+    || (firstEndChange?.fieldName === "unitAssignments" && firstEndChange.changeType === "add")
+    ? originalUnitEndDates(lease, s, appliedChanges) : undefined;
+  const inferredOriginalEnd = originalEnds?.size ? latestUnitEnd(originalEnds.values()) : undefined;
+  const originalDeposit = firstOldValue("depositAmount");
+  const originalNotice = firstOldValue("noticePeriodText");
+  const originalFormula = firstOldValue("rentFormula");
+  const originalPrimaryTenant = firstOldValue("primaryTenantId");
+  const originalCoTenants = firstOldValue("coTenantIds");
+  const originalTenantIds = firstOldValue("tenantIds");
+  const originalBillingTenant = firstOldValue("billingTenantId");
+  const originalIndexation = firstOldValue("indexationSettings") as Partial<EffectiveLeaseTerms> | undefined;
   return {
     leaseId,
     asOfDate: lease.startDate,
-    monthlyRent: lease.monthlyRent,
-    monthlyCharges: lease.monthlyCharges,
-    endDate: lease.endDate,
-    depositAmount: lease.depositOrGuaranteeAmount,
-    noticePeriodText: lease.noticePeriodText,
-    tenantIds: lease.tenantIds ?? [lease.primaryTenantId, ...lease.coTenantIds].filter(Boolean),
-    billingTenantId: lease.billingTenantId ?? lease.primaryTenantId,
-    primaryTenantId: lease.primaryTenantId,
-    coTenantIds: [...lease.coTenantIds],
+    monthlyRent: Number.isFinite(originalBaseRent) ? originalBaseRent : rentWasAmended && originalAssignments.length > 0
+      ? originalAssignments.reduce((sum, assignment) => sum + (assignment.rentShare ?? 0), 0)
+      : lease.monthlyRent,
+    monthlyCharges: Number.isFinite(originalBaseCharges) ? originalBaseCharges : chargesWereAmended && originalAssignments.length > 0
+      ? originalAssignments.reduce((sum, assignment) => sum + (assignment.chargesShare ?? 0), 0)
+      : lease.monthlyCharges,
+    endDate: originalEnd !== undefined ? String(originalEnd ?? "")
+      : recordedOriginalEnd !== undefined ? recordedOriginalEnd
+      : inferredOriginalEnd !== undefined ? inferredOriginalEnd
+      : lease.endDate,
+    depositAmount: originalDeposit === undefined ? lease.depositOrGuaranteeAmount : originalDeposit == null ? null : Number(originalDeposit),
+    noticePeriodText: originalNotice === undefined ? lease.noticePeriodText : String(originalNotice ?? ""),
+    rentFormula: originalFormula === undefined ? (lease.rentFormula || 1) : Math.max(1, Number(originalFormula) || 1) as Lease["rentFormula"],
+    indexationEnabled: originalIndexation?.indexationEnabled ?? lease.indexationEnabled ?? false,
+    indexationFrequency: originalIndexation?.indexationFrequency ?? lease.indexationFrequency ?? "yearly",
+    indexationBaseDate: originalIndexation?.indexationBaseDate !== undefined ? originalIndexation.indexationBaseDate : lease.indexationBaseDate ?? lease.startDate ?? null,
+    indexationBaseIndex: originalIndexation?.indexationBaseIndex !== undefined ? originalIndexation.indexationBaseIndex : lease.indexationBaseIndex ?? null,
+    indexationCurrentIndex: originalIndexation?.indexationCurrentIndex !== undefined ? originalIndexation.indexationCurrentIndex : lease.indexationCurrentIndex ?? null,
+    indexationCapPercent: originalIndexation?.indexationCapPercent !== undefined ? originalIndexation.indexationCapPercent : lease.indexationCapPercent ?? null,
+    indexationRoundingMode: originalIndexation?.indexationRoundingMode ?? lease.indexationRoundingMode ?? "nearest-cent",
+    indexationNotes: originalIndexation?.indexationNotes ?? lease.indexationNotes ?? "",
+    tenantIds: Array.isArray(originalTenantIds) ? originalTenantIds as string[] : lease.tenantIds ?? [lease.primaryTenantId, ...lease.coTenantIds].filter(Boolean),
+    billingTenantId: typeof originalBillingTenant === "string" ? originalBillingTenant : lease.billingTenantId ?? lease.primaryTenantId,
+    primaryTenantId: typeof originalPrimaryTenant === "string" ? originalPrimaryTenant : lease.primaryTenantId,
+    coTenantIds: Array.isArray(originalCoTenants) ? originalCoTenants as string[] : [...lease.coTenantIds],
     units: originalAssignments
       .slice()
       .sort((x, y) => {
@@ -157,9 +232,24 @@ export function getEffectiveLeaseTerms(
     }));
   terms = { ...terms, units: liveUnits };
 
-  for (const am of getActiveAmendmentsOn(leaseId, date, s.amendments)) {
+  let rentTotalSource: "explicit" | "shares" | null = null;
+  let chargesTotalSource: "explicit" | "shares" | null = null;
+  let lastEndChange: "lease" | "unit" | null = null;
+  let hasStructuralUnitChange = false;
+  const datedUnitEndChanges: LeaseAmendmentChange[] = [];
+  for (const am of getLeaseAmendments(leaseId, s.amendments).filter(a =>
+    (a.status === "active" || a.status === "ended") && a.effectiveDate <= date,
+  )) {
     const changes = getAmendmentChanges(am.id, s.amendmentChanges);
+    const explicitRent = changes.some(c => c.fieldName === "baseMonthlyRentTotal");
+    const explicitCharges = changes.some(c => c.fieldName === "baseMonthlyChargesTotal");
+    const structuralChange = changes.some(c => c.fieldName === "unitAssignments" || c.fieldName === "unitEndDate");
+    const rentShareChange = structuralChange || changes.some(c => c.fieldName === "unitRentShare");
+    const chargesShareChange = structuralChange || changes.some(c => c.fieldName === "unitChargesShare");
     for (const c of changes) {
+      if (c.fieldName === "unitEndDate" || c.fieldName === "unitAssignments") lastEndChange = "unit";
+      if (c.fieldName === "unitAssignments") hasStructuralUnitChange = true;
+      if (c.fieldName === "unitEndDate") datedUnitEndChanges.push(c);
       switch (c.fieldName) {
         case "baseMonthlyRentTotal":
           terms.monthlyRent = Number(c.newValue) || 0;
@@ -168,7 +258,8 @@ export function getEffectiveLeaseTerms(
           terms.monthlyCharges = Number(c.newValue) || 0;
           break;
         case "leaseEndDate":
-          terms.endDate = String(c.newValue);
+          terms.endDate = String(c.newValue ?? "");
+          lastEndChange = "lease";
           break;
         case "unitEndDate":
           // Per-unit end dates are applied via live assignment rows in
@@ -181,8 +272,32 @@ export function getEffectiveLeaseTerms(
         case "noticePeriodText":
           terms.noticePeriodText = String(c.newValue ?? "");
           break;
+        case "rentFormula":
+          terms.rentFormula = Math.max(1, Number(c.newValue) || 1) as typeof terms.rentFormula;
+          break;
+        case "indexationSettings": {
+          const value = (c.newValue ?? {}) as Partial<typeof terms>;
+          terms = {
+            ...terms,
+            indexationEnabled: value.indexationEnabled ?? terms.indexationEnabled ?? false,
+            indexationFrequency: "yearly",
+            indexationBaseDate: value.indexationBaseDate !== undefined ? value.indexationBaseDate : terms.indexationBaseDate ?? null,
+            indexationBaseIndex: value.indexationBaseIndex !== undefined ? (value.indexationBaseIndex == null ? null : Number(value.indexationBaseIndex)) : terms.indexationBaseIndex ?? null,
+            indexationCurrentIndex: value.indexationCurrentIndex !== undefined ? (value.indexationCurrentIndex == null ? null : Number(value.indexationCurrentIndex)) : terms.indexationCurrentIndex ?? null,
+            indexationCapPercent: value.indexationCapPercent !== undefined ? (value.indexationCapPercent == null ? null : Number(value.indexationCapPercent)) : terms.indexationCapPercent ?? null,
+            indexationRoundingMode: value.indexationRoundingMode ?? terms.indexationRoundingMode ?? "nearest-cent",
+            indexationNotes: value.indexationNotes ?? "",
+          };
+          break;
+        }
         case "primaryTenantId":
           terms.primaryTenantId = String(c.newValue);
+          break;
+        case "tenantIds":
+          if (Array.isArray(c.newValue)) terms.tenantIds = c.newValue as string[];
+          break;
+        case "billingTenantId":
+          terms.billingTenantId = String(c.newValue);
           break;
         case "coTenantIds":
           if (c.changeType === "add" && c.metadata?.tenantId) {
@@ -202,6 +317,10 @@ export function getEffectiveLeaseTerms(
           break;
       }
     }
+    if (explicitRent) rentTotalSource = "explicit";
+    else if (rentShareChange) rentTotalSource = "shares";
+    if (explicitCharges) chargesTotalSource = "explicit";
+    else if (chargesShareChange) chargesTotalSource = "shares";
   }
 
   // Recompute rent/charges totals from live unit shares — assignments are the
@@ -209,16 +328,27 @@ export function getEffectiveLeaseTerms(
   if (liveUnits.length > 0) {
     const sumRent = liveUnits.reduce((s2, u) => s2 + u.rentShare, 0);
     const sumCharges = liveUnits.reduce((s2, u) => s2 + u.chargesShare, 0);
-    if (sumRent > 0) terms.monthlyRent = sumRent;
-    if (sumCharges > 0) terms.monthlyCharges = sumCharges;
+    if (rentTotalSource === "shares" || (rentTotalSource === null && sumRent > 0)) terms.monthlyRent = sumRent;
+    if (chargesTotalSource === "shares" || (chargesTotalSource === null && sumCharges > 0)) terms.monthlyCharges = sumCharges;
   }
 
-  // Lease end date = latest end date across live assignments (per-unit
-  // end dates are authoritative once their amendment is activated).
-  const liveAssignments = s.leaseUnitAssignments
-    .filter(a => a.leaseId === leaseId && assignmentIsActiveOn(a, date) && !!a.endDate);
-  if (liveAssignments.length > 0) {
-    const max = liveAssignments.reduce((m, a) => ((a.endDate as string) > m ? (a.endDate as string) : m), liveAssignments[0].endDate as string);
+  // Ended assignments still define the contractual end when the requested
+  // date is after every unit has left the lease.
+  const datedAssignments = s.leaseUnitAssignments
+    .filter(a => a.leaseId === leaseId && a.startDate <= date && !!a.endDate);
+  if (lastEndChange === "unit" && !hasStructuralUnitChange && datedUnitEndChanges.length > 0) {
+    const allAppliedChanges = getLeaseAmendments(leaseId, s.amendments)
+      .filter(a => a.status === "active" || a.status === "ended")
+      .flatMap(a => getAmendmentChanges(a.id, s.amendmentChanges));
+    const ends = originalUnitEndDates(lease, s, allAppliedChanges);
+    for (const change of datedUnitEndChanges) {
+      if (change.metadata?.unitId && ends.has(change.metadata.unitId)) {
+        ends.set(change.metadata.unitId, String(change.newValue ?? ""));
+      }
+    }
+    if (ends.size > 0) terms.endDate = latestUnitEnd(ends.values());
+  } else if (lastEndChange === "unit" && datedAssignments.length > 0) {
+    const max = datedAssignments.reduce((m, a) => ((a.endDate as string) > m ? (a.endDate as string) : m), datedAssignments[0].endDate as string);
     terms.endDate = max;
   }
 

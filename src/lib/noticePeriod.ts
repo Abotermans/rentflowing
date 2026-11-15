@@ -24,14 +24,22 @@ export function serializeNotice(value: string, unit: NoticeUnit): string {
  * Returns "" when the inputs are invalid so callers can fall back gracefully.
  */
 export function addNoticePeriod(isoDate: string, value: string | number, unit: NoticeUnit): string {
-  if (!isoDate) return "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "";
   const n = typeof value === "number" ? value : parseInt(value, 10);
-  if (!Number.isFinite(n) || n <= 0) return "";
-  const d = new Date(`${isoDate}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return "";
-  if (unit === "days") d.setDate(d.getDate() + n);
-  else if (unit === "weeks") d.setDate(d.getDate() + n * 7);
-  else if (unit === "months") d.setMonth(d.getMonth() + n);
-  else if (unit === "years") d.setFullYear(d.getFullYear() + n);
+  if (!Number.isSafeInteger(n) || n <= 0) return "";
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  if (d.toISOString().slice(0, 10) !== isoDate) return "";
+  if (unit === "days" || unit === "weeks") {
+    d.setUTCDate(d.getUTCDate() + n * (unit === "weeks" ? 7 : 1));
+  } else if (unit === "months" || unit === "years") {
+    const targetMonth = month - 1 + n * (unit === "years" ? 12 : 1);
+    const lastDay = new Date(Date.UTC(year, targetMonth + 1, 0)).getUTCDate();
+    d.setUTCDate(1);
+    d.setUTCMonth(targetMonth);
+    d.setUTCDate(Math.min(day, lastDay));
+  } else {
+    return "";
+  }
   return d.toISOString().slice(0, 10);
 }

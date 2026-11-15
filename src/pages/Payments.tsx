@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { localTodayISO } from "@/lib/calendarToday";
+import { useBusinessNow } from "@/hooks/use-business-now";
+import { propertyBusinessDateISO } from "@/lib/businessTimeZone";
 import { useAppData } from "@/context/AppContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,16 +13,18 @@ import {
   PROPERTY_ICON, RECEIVABLE_STATUS_ICONS, RECEIVABLE_TYPE_ICONS, RECEIPT_STATUS_ICONS,
 } from "@/lib/filterIcons";
 import { CircleDot, Tag } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormDialogContent as DialogContent, FormDialogFooter as DialogFooter } from "@/components/shared/FormDialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { DateInput } from "@/components/shared/DateInput";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getTenantFullName } from "@/types";
-import { getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel } from "@/types/receivables";
+import { computeReceivableStatus, getItemTypeLabel, getSourceTypeLabel, getAllocationTypeLabel, isReceiptAllocatable } from "@/types/receivables";
 import type { CashReceiptSourceType, ReceivableItemType } from "@/types/receivables";
 import { Plus, AlertTriangle, CheckCircle2, Clock, Search, ArrowRightLeft, Banknote, CircleDollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -31,18 +36,34 @@ import { TablePagination } from "@/components/common/TablePagination";
 import { QuickPayReceivableDialog } from "@/components/payments/QuickPayReceivableDialog";
 import { useToast } from "@/hooks/use-toast";
 import { positiveNumber } from "@/lib/validation";
+import { receiptCurrencyChoices } from "@/lib/currencies";
+import { isReceivableAllocatable, leaseIncludesTenant, receiptMatchesReceivable } from "@/lib/reconciliation";
+import { reviewManualAllocationDraft } from "@/lib/manualAllocationDraft";
+import { reviewScheduledReceivableDuplicates } from "@/lib/receivableDuplicates";
+import { getLeaseBillingSlotKey } from "@/lib/leaseReceivables";
+import { usePortfolio } from "@/context/PortfolioContext";
+import { usePortfolioWriteAccess } from "@/hooks/use-portfolio-write-access";
+import { deleteDuplicateLeaseReceivables } from "@/lib/repo";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Payments() {
   const { t } = useSettings();
   const { toast } = useToast();
+  const { currentPortfolio } = usePortfolio();
+  const canWrite = usePortfolioWriteAccess();
   const {
+    retryLoad,
     receivableItems, cashReceipts, allocations,
     leases, tenants, properties, units,
     createCashReceiptPersisted, allocateCashReceipt, autoAllocateCashReceipt,
     getReceivableItemsByLease, getReceivableItemsByTenant,
   } = useAppData();
 
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [receivableStatusFilter, setReceivableStatusFilter] = useState<string[]>([]);
+  const [receiptStatusFilter, setReceiptStatusFilter] = useState<string[]>([]);
   const [propertyFilter, setPropertyFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [overdueOnly, setOverdueOnly] = useState(false);
@@ -51,11 +72,34 @@ export default function Payments() {
   const [addReceiptOpen, setAddReceiptOpen] = useState(false);
   const [allocateReceiptId, setAllocateReceiptId] = useState<string | null>(null);
   const [quickPayRiId, setQuickPayRiId] = useState<string | null>(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateCleanupBusy, setDuplicateCleanupBusy] = useState(false);
+  const duplicateReview = reviewScheduledReceivableDuplicates(receivableItems, allocations);
+  const canCleanDuplicates = currentPortfolio?.role === "owner" || currentPortfolio?.role === "admin";
+
+  const cleanDuplicateReceivables = async () => {
+    if (!canCleanDuplicates || duplicateCleanupBusy || !currentPortfolio) return;
+    const items = reviewScheduledReceivableDuplicates(receivableItems, allocations).removable;
+    if (items.length === 0) return;
+    setDuplicateCleanupBusy(true);
+    try {
+      const deleted = await deleteDuplicateLeaseReceivables(currentPortfolio.id, items);
+      toast({ title: t("payments.duplicates.cleaned"), description: `${deleted} ${t("payments.duplicates.rows")}` });
+      setDuplicateDialogOpen(false);
+    } catch (error) {
+      toast({ title: t("settings.saveFailed"), description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+    } finally {
+      retryLoad();
+      setDuplicateCleanupBusy(false);
+    }
+  };
 
   // Add receipt form
   const [formSourceType, setFormSourceType] = useState<CashReceiptSourceType>("bank-transfer");
-  const [formDate, setFormDate] = useState(new Date().toISOString().split("T")[0]);
+  const [formDate, setFormDate] = useState(localTodayISO());
   const [formAmount, setFormAmount] = useState("");
+  const [formCurrencyCode, setFormCurrencyCode] = useState("");
+  const [formCurrencyError, setFormCurrencyError] = useState(false);
   const [formTenantId, setFormTenantId] = useState("");
   const [formLeaseId, setFormLeaseId] = useState("");
   const [formReference, setFormReference] = useState("");
@@ -67,8 +111,9 @@ export default function Payments() {
 
   // Manual allocation form
   const [allocAmounts, setAllocAmounts] = useState<Record<string, string>>({});
+  const [allocationSaving, setAllocationSaving] = useState(false);
 
-  const today = new Date().toISOString().split("T")[0];
+  const businessNow = useBusinessNow();
 
   type RvSortKey = "dueDate" | "tenant" | "lease" | "property" | "type" | "label" | "expected" | "allocated" | "outstanding" | "status";
   const { sort: rvSort, toggle: rvToggle } = useTableSort<RvSortKey>("dueDate", "desc");
@@ -87,15 +132,12 @@ export default function Payments() {
     const tenant = ri.tenantId ? tenants.find(tn => tn.id === ri.tenantId) : undefined;
     const prop = ri.propertyId ? properties.find(p => p.id === ri.propertyId) : undefined;
     const unit = ri.unitId ? units.find(u => u.id === ri.unitId) : undefined;
-    let effectiveStatus = ri.status;
-    if (ri.outstandingAmount > 0 && ri.dueDate < today && (ri.status === "open" || ri.status === "partially-paid")) {
-      effectiveStatus = "overdue";
-    }
+    const effectiveStatus = computeReceivableStatus(ri, propertyBusinessDateISO(prop, businessNow));
     return { ...ri, lease, tenant, prop, unit, effectiveStatus };
   });
 
   const filteredReceivables = enrichedReceivables.filter(ri => {
-    if (statusFilter.length > 0 && !statusFilter.includes(ri.effectiveStatus)) return false;
+    if (receivableStatusFilter.length > 0 && !receivableStatusFilter.includes(ri.effectiveStatus)) return false;
     if (propertyFilter.length > 0 && (!ri.prop?.id || !propertyFilter.includes(ri.prop.id))) return false;
     if (typeFilter.length > 0 && !typeFilter.includes(ri.itemType)) return false;
     if (overdueOnly && ri.effectiveStatus !== "overdue") return false;
@@ -132,7 +174,7 @@ export default function Payments() {
   }).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
   const filteredReceipts = enrichedReceipts.filter(cr => {
-    if (statusFilter.length > 0 && !statusFilter.includes(cr.status)) return false;
+    if (receiptStatusFilter.length > 0 && !receiptStatusFilter.includes(cr.status)) return false;
     if (propertyFilter.length > 0 && (!cr.prop?.id || !propertyFilter.includes(cr.prop.id))) return false;
     if (unmatchedOnly && cr.unmatchedAmount <= 0) return false;
     if (search) {
@@ -185,10 +227,18 @@ export default function Payments() {
 
   const selectedLease = formLeaseId ? leases.find(l => l.id === formLeaseId) : undefined;
   const selectedProp = selectedLease ? properties.find(p => p.id === selectedLease.propertyId) : undefined;
+  const { options: currencyOptions, defaultCurrency } = receiptCurrencyChoices(properties);
+  const receiptCurrency = formCurrencyCode || selectedProp?.currencyCode || defaultCurrency;
 
   const handleAddReceipt = async () => {
+    if (!canWrite) return;
     if (!positiveNumber(formAmount)) {
       toast({ title: t("common.validationError"), description: "Receipt amount must be greater than zero.", variant: "destructive" });
+      return;
+    }
+    if (!receiptCurrency) {
+      setFormCurrencyError(true);
+      toast({ title: t("common.validationError"), description: t("payments.dialog.currencyRequired"), variant: "destructive" });
       return;
     }
     const amt = parseFloat(formAmount);
@@ -205,7 +255,7 @@ export default function Payments() {
       bookingDate: null,
       valueDate: null,
       amountReceived: amt,
-      currencyCode: selectedProp?.currencyCode ?? "EUR",
+      currencyCode: receiptCurrency,
       payerName: formPayerName || null,
       payerIban: formPayerIban || null,
       payerBic: null,
@@ -227,32 +277,28 @@ export default function Payments() {
       return;
     }
     setAddReceiptOpen(false);
-    setFormAmount(""); setFormReference(""); setFormNotes(""); setFormPayerName(""); setFormPayerIban(""); setFormRemittance("");
+    setFormAmount(""); setFormCurrencyCode(""); setFormCurrencyError(false); setFormReference(""); setFormNotes(""); setFormPayerName(""); setFormPayerIban(""); setFormRemittance("");
     setFormTenantId(""); setFormLeaseId("");
   };
 
   // Manual allocation
   const allocReceipt = allocateReceiptId ? cashReceipts.find(r => r.id === allocateReceiptId) : null;
   const allocOpenItems = allocReceipt ? receivableItems.filter(ri => {
-    if (ri.outstandingAmount <= 0) return false;
-    if (ri.currencyCode !== allocReceipt.currencyCode) return false;
-    if (allocReceipt.leaseId && ri.leaseId === allocReceipt.leaseId) return true;
-    if (allocReceipt.tenantId && ri.tenantId === allocReceipt.tenantId) return true;
-    return false;
+    if (!isReceivableAllocatable(ri)) return false;
+    return receiptMatchesReceivable(allocReceipt, ri);
   }) : [];
-  const positiveAllocTotal = () => Object.values(allocAmounts).reduce((s, v) => {
-    const n = parseFloat(v);
-    return s + (Number.isFinite(n) && n > 0 ? n : 0);
-  }, 0);
+  const allocationDraft = reviewManualAllocationDraft(allocAmounts, allocOpenItems);
 
-  const handleManualAllocate = () => {
-    if (!allocateReceiptId) return;
-    const manualAllocs = Object.entries(allocAmounts)
-      .filter(([, v]) => parseFloat(v) > 0)
-      .map(([riId, v]) => ({ receivableItemId: riId, amount: parseFloat(v) }));
+  const handleManualAllocate = async () => {
+    if (!canWrite) return;
+    if (!allocateReceiptId || allocationSaving) return;
+    if (allocationDraft.issues.size > 0) {
+      toast({ title: t("common.validationError"), description: t("payments.dialog.invalidAmount"), variant: "destructive" });
+      return;
+    }
+    const manualAllocs = allocationDraft.allocations;
     if (manualAllocs.length === 0) return;
-    const total = manualAllocs.reduce((s, a) => s + a.amount, 0);
-    if (allocReceipt && total > allocReceipt.unmatchedAmount) {
+    if (allocReceipt && allocationDraft.total > allocReceipt.unmatchedAmount) {
       toast({ title: t("common.validationError"), description: "Allocation total cannot exceed the receipt unmatched amount.", variant: "destructive" });
       return;
     }
@@ -264,24 +310,46 @@ export default function Payments() {
       toast({ title: t("common.validationError"), description: "Each allocation must match the receipt currency and stay within the receivable outstanding amount.", variant: "destructive" });
       return;
     }
-    allocateCashReceipt(allocateReceiptId, manualAllocs);
-    setAllocateReceiptId(null);
-    setAllocAmounts({});
+    setAllocationSaving(true);
+    try {
+      await allocateCashReceipt(allocateReceiptId, manualAllocs);
+      setAllocateReceiptId(null);
+      setAllocAmounts({});
+    } catch (error) {
+      toast({ title: t("settings.saveFailed"), description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+    } finally {
+      setAllocationSaving(false);
+    }
+  };
+
+  const handleAutoAllocate = async () => {
+    if (!canWrite) return;
+    if (!allocateReceiptId || allocationSaving) return;
+    setAllocationSaving(true);
+    try {
+      await autoAllocateCashReceipt(allocateReceiptId);
+      setAllocateReceiptId(null);
+      setAllocAmounts({});
+    } catch (error) {
+      toast({ title: t("settings.saveFailed"), description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+    } finally {
+      setAllocationSaving(false);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-shell">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("payments.pageTitle")}</h1>
-          <p className="text-sm text-muted-foreground">{t("payments.pageSubtitle")}</p>
+          <h1 className="page-title">{t("payments.pageTitle")}</h1>
+          <p className="page-description">{t("payments.pageSubtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative inline-flex">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex min-w-0 flex-1 sm:inline-flex sm:flex-none">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 min-w-[180px] max-w-[400px] [field-sizing:content]" />
+            <Input placeholder={t("action.search")} value={search} onChange={e => setSearch(e.target.value)} className="h-9 min-w-[180px] max-w-[400px] pl-9 sm:w-auto" />
           </div>
-          <Button onClick={() => setAddReceiptOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>
+          {canWrite && <Button onClick={() => setAddReceiptOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />{t("payments.recordCashReceipt")}</Button>}
         </div>
       </div>
 
@@ -305,8 +373,8 @@ export default function Payments() {
             <MultiSelectFilter
               label={t("payments.filter.status")}
               icon={CircleDot}
-              values={statusFilter}
-              onChange={setStatusFilter}
+              values={receivableStatusFilter}
+              onChange={setReceivableStatusFilter}
               options={[
                 { value: "open", label: t("payments.filter.open"), icon: RECEIVABLE_STATUS_ICONS.open },
                 { value: "paid", label: t("payments.filter.paid"), icon: RECEIVABLE_STATUS_ICONS.paid },
@@ -326,6 +394,12 @@ export default function Payments() {
             <Button variant={overdueOnly ? "default" : "outline"} size="sm" className="h-9 font-normal" onClick={() => setOverdueOnly(!overdueOnly)}>
               <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />{t("payments.filter.overdueOnly")}
             </Button>
+            {canCleanDuplicates && (duplicateReview.removable.length > 0 || duplicateReview.ambiguousGroups.length > 0) && (
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setDuplicateDialogOpen(true)}>
+                <AlertTriangle className="mr-1.5 h-4 w-4" />
+                {t("payments.duplicates.review")} ({duplicateReview.removable.length || duplicateReview.ambiguousGroups.length})
+              </Button>
+            )}
           </div>
           {filteredReceivables.length === 0 ? (
             <EmptyState icon={Search} title={t("payments.empty.receivables")} description={t("payments.empty.receivablesDesc")} />
@@ -344,7 +418,7 @@ export default function Payments() {
                     <SortableTableHead sortKey="allocated" sort={rvSort} onSort={rvToggle} align="right">{t("payments.table.allocated")}</SortableTableHead>
                     <SortableTableHead sortKey="outstanding" sort={rvSort} onSort={rvToggle} align="right">{t("payments.table.outstanding")}</SortableTableHead>
                     <SortableTableHead sortKey="status" sort={rvSort} onSort={rvToggle}>{t("payments.table.status")}</SortableTableHead>
-                    <TableHead className="text-right">{t("table.action")}</TableHead>
+                    {canWrite && <TableHead className="text-right">{t("table.action")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -360,7 +434,7 @@ export default function Payments() {
                       <TableCell className="text-right text-muted-foreground">{formatCurrency(ri.allocatedAmount, ri.currencyCode, ri.prop?.locale)}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{ri.outstandingAmount > 0 ? formatCurrency(ri.outstandingAmount, ri.currencyCode, ri.prop?.locale) : "—"}</TableCell>
                       <TableCell><StatusBadge status={ri.effectiveStatus} /></TableCell>
-                      <TableCell className="text-right">
+                      {canWrite && <TableCell className="text-right">
                         {ri.outstandingAmount > 0 && ri.status !== "cancelled" && ri.status !== "disputed" && ri.status !== "written-off" ? (
                           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setQuickPayRiId(ri.id)}>
                             <CircleDollarSign className="h-3 w-3" />{t("payments.action.markPaid")}
@@ -368,7 +442,7 @@ export default function Payments() {
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
-                      </TableCell>
+                      </TableCell>}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -391,8 +465,8 @@ export default function Payments() {
             <MultiSelectFilter
               label={t("payments.filter.status")}
               icon={CircleDot}
-              values={statusFilter}
-              onChange={setStatusFilter}
+              values={receiptStatusFilter}
+              onChange={setReceiptStatusFilter}
               options={[
                 { value: "matched", label: t("payments.filter.matched"), icon: RECEIPT_STATUS_ICONS.matched },
                 { value: "partially-matched", label: t("payments.filter.partiallyMatched"), icon: RECEIPT_STATUS_ICONS["partially-matched"] },
@@ -420,7 +494,7 @@ export default function Payments() {
                     <SortableTableHead sortKey="source" sort={crSort} onSort={crToggle}>{t("payments.table.source")}</SortableTableHead>
                     <SortableTableHead sortKey="reference" sort={crSort} onSort={crToggle}>{t("payments.table.reference")}</SortableTableHead>
                     <SortableTableHead sortKey="status" sort={crSort} onSort={crToggle}>{t("payments.table.status")}</SortableTableHead>
-                    <TableHead className="text-right">{t("table.action")}</TableHead>
+                    {canWrite && <TableHead className="text-right">{t("table.action")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -435,15 +509,15 @@ export default function Payments() {
                       <TableCell className="text-muted-foreground">{getSourceTypeLabel(t, cr.sourceType)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{cr.reference ?? "—"}</TableCell>
                       <TableCell><StatusBadge status={cr.status} /></TableCell>
-                      <TableCell>
-                        {cr.unmatchedAmount > 0 ? (
+                      {canWrite && <TableCell>
+                        {isReceiptAllocatable(cr) ? (
                           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => { setAllocateReceiptId(cr.id); setAllocAmounts({}); }}>
                             <ArrowRightLeft className="h-3 w-3" />{t("payments.action.allocate")}
                           </Button>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
-                      </TableCell>
+                      </TableCell>}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -509,10 +583,56 @@ export default function Payments() {
           )}
         </TabsContent>
       </Tabs>
+      <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{duplicateReview.removable.length > 0 ? t("payments.duplicates.title") : t("payments.duplicates.review")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {duplicateReview.removable.length > 0
+                ? `${duplicateReview.removable.length} ${t("payments.duplicates.description")}`
+                : t("payments.duplicates.reviewOnly")}
+              {duplicateReview.ambiguousGroups.length > 0 && ` ${duplicateReview.ambiguousGroups.length} ${t("payments.duplicates.ambiguous")}`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {duplicateReview.ambiguousGroups.length > 0 && (
+            <ul className="max-h-64 space-y-3 overflow-y-auto text-sm text-muted-foreground">
+              {duplicateReview.ambiguousGroups.map(group => {
+                const first = group[0];
+                const reference = leases.find(lease => lease.id === first.leaseId)?.leaseReference ?? first.leaseId;
+                return <li key={getLeaseBillingSlotKey(first)} className="border-b pb-2 last:border-0">
+                  <div className="font-medium text-foreground">
+                    <Link to={`/leases/${first.leaseId}`} className="hover:text-primary hover:underline" onClick={() => setDuplicateDialogOpen(false)}>{reference}</Link>
+                    {" · "}{formatDate(first.dueDate)}{" · "}{getItemTypeLabel(t, first.itemType)}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    {group.map(item => (
+                      <span key={item.id} className="inline-flex items-center gap-1.5">
+                        {units.find(unit => unit.id === item.unitId)?.unitCode ?? "—"}
+                        {formatCurrency(item.expectedAmount, item.currencyCode)}
+                        <StatusBadge status={item.status} />
+                      </span>
+                    ))}
+                  </div>
+                </li>;
+              })}
+            </ul>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={duplicateCleanupBusy}>
+              {t(duplicateReview.removable.length > 0 ? "action.cancel" : "action.close")}
+            </AlertDialogCancel>
+            {duplicateReview.removable.length > 0 && (
+              <AlertDialogAction disabled={duplicateCleanupBusy} onClick={event => { event.preventDefault(); void cleanDuplicateReceivables(); }}>
+                {t("payments.duplicates.delete")}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ===== ADD CASH RECEIPT SHEET ===== */}
-      <Dialog open={addReceiptOpen} onOpenChange={setAddReceiptOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <Dialog open={canWrite && addReceiptOpen} onOpenChange={setAddReceiptOpen}>
+        <DialogContent>
           <DialogHeader><DialogTitle>{t("payments.dialog.recordTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
@@ -528,15 +648,28 @@ export default function Payments() {
             </div>
             <div>
               <Label>{t("payments.dialog.paymentDate")}</Label>
-              <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
+              <DateInput value={formDate} onChange={setFormDate} />
             </div>
             <div>
-              <Label>{t("payments.dialog.amountReceived")} ({selectedProp?.currencyCode ?? "EUR"})</Label>
+              <Label>{t("payments.dialog.amountReceived")}{receiptCurrency ? ` (${receiptCurrency})` : ""}</Label>
               <Input type="number" step="0.01" min="0" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" />
             </div>
+              <div>
+                <Label>{t("properties.currency")} *</Label>
+                <Select value={receiptCurrency} onValueChange={value => { setFormCurrencyCode(value); setFormCurrencyError(false); }}>
+                  <SelectTrigger className={formCurrencyError ? "border-destructive" : undefined}><SelectValue placeholder={t("payments.dialog.selectCurrency")} /></SelectTrigger>
+                  <SelectContent>
+                    {currencyOptions.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {formCurrencyError && <p className="text-xs text-destructive mt-1">{t("payments.dialog.currencyRequired")}</p>}
+                {selectedProp && receiptCurrency && receiptCurrency !== selectedProp.currencyCode && (
+                  <p className="text-xs text-warning mt-1">{t("payments.dialog.currencyMismatchWarning")}</p>
+                )}
+              </div>
             <div>
               <Label>{t("payments.dialog.tenantOptional")}</Label>
-              <Select value={formTenantId || "__none__"} onValueChange={v => setFormTenantId(v === "__none__" ? "" : v)}>
+              <Select value={formTenantId || "__none__"} onValueChange={v => { setFormTenantId(v === "__none__" ? "" : v); setFormLeaseId(""); setFormCurrencyCode(""); }}>
                 <SelectTrigger><SelectValue placeholder={t("payments.dialog.selectTenant")} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">{t("payments.dialog.none")}</SelectItem>
@@ -548,11 +681,11 @@ export default function Payments() {
             </div>
             <div>
               <Label>{t("payments.dialog.leaseOptional")}</Label>
-              <Select value={formLeaseId || "__none__"} onValueChange={v => setFormLeaseId(v === "__none__" ? "" : v)}>
+              <Select value={formLeaseId || "__none__"} onValueChange={v => { setFormLeaseId(v === "__none__" ? "" : v); setFormCurrencyCode(""); }}>
                 <SelectTrigger><SelectValue placeholder={t("payments.dialog.selectLease")} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">{t("payments.dialog.none")}</SelectItem>
-                  {leases.filter(l => l.lifecycleStage === "active").map(l => {
+                  {leases.filter(l => !formTenantId || leaseIncludesTenant(l, formTenantId)).map(l => {
                     const tn = tenants.find(x => x.id === l.primaryTenantId);
                     return <SelectItem key={l.id} value={l.id}>{l.leaseReference} — {tn ? getTenantFullName(tn) : ""}</SelectItem>;
                   })}
@@ -583,14 +716,17 @@ export default function Payments() {
               <Label>{t("payments.dialog.autoAllocate")}</Label>
               <Switch checked={formAutoAllocate} onCheckedChange={setFormAutoAllocate} />
             </div>
-            <Button onClick={handleAddReceipt} disabled={!positiveNumber(formAmount)} className="w-full">{t("payments.recordCashReceipt")}</Button>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddReceiptOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleAddReceipt} disabled={!positiveNumber(formAmount)}>{t("payments.recordCashReceipt")}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* ===== MANUAL ALLOCATION SHEET ===== */}
-      <Dialog open={!!allocateReceiptId} onOpenChange={v => { if (!v) { setAllocateReceiptId(null); setAllocAmounts({}); } }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={canWrite && !!allocateReceiptId} onOpenChange={v => { if (!v) { setAllocateReceiptId(null); setAllocAmounts({}); } }}>
+        <DialogContent>
           <DialogHeader><DialogTitle>{t("payments.dialog.manualTitle")}</DialogTitle></DialogHeader>
           {allocReceipt && (
             <div className="space-y-4 mt-4">
@@ -606,31 +742,35 @@ export default function Payments() {
                 <>
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase">{t("payments.dialog.openItems")}</p>
-                    {allocOpenItems.map(ri => (
-                      <div key={ri.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
+                    {allocOpenItems.map(ri => {
+                      const issue = allocationDraft.issues.get(ri.id);
+                      return <div key={ri.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-foreground truncate">{ri.label}</p>
                           <p className="text-xs text-muted-foreground">{getItemTypeLabel(t, ri.itemType)} · {t("payments.dialog.dueShort")} {formatDate(ri.dueDate)} · {t("payments.dialog.outstandingShort")} {formatCurrency(ri.outstandingAmount, ri.currencyCode)}</p>
                         </div>
-                        <Input
-                          type="number" step="0.01" min="0"
-                          max={Math.min(ri.outstandingAmount, allocReceipt.unmatchedAmount)}
-                          className="w-24 h-8 text-sm"
-                          value={allocAmounts[ri.id] ?? ""}
-                          onChange={e => {
-                            const raw = e.target.value;
-                            const n = parseFloat(raw);
-                            setAllocAmounts(prev => ({ ...prev, [ri.id]: Number.isFinite(n) && n < 0 ? "0" : raw }));
-                          }}
-                          placeholder="0.00"
-                        />
-                      </div>
-                    ))}
+                        <div className="w-28 shrink-0">
+                          <Input
+                            type="text" inputMode="decimal"
+                            aria-label={`${ri.label} ${t("payments.dialog.amount")}`}
+                            aria-invalid={!!issue}
+                            aria-describedby={issue ? `allocation-error-${ri.id}` : undefined}
+                            className={`h-8 text-sm ${issue ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                            value={allocAmounts[ri.id] ?? ""}
+                            onChange={e => setAllocAmounts(prev => ({ ...prev, [ri.id]: e.target.value }))}
+                            placeholder="0.00"
+                          />
+                          {issue && <p id={`allocation-error-${ri.id}`} className="mt-1 text-xs text-destructive">
+                            {t(issue === "exceeds" ? "payments.dialog.exceedsReceivable" : "payments.dialog.invalidAmount")}
+                          </p>}
+                        </div>
+                      </div>;
+                    })}
                   </div>
 
                   {/* Allocation summary */}
                   {(() => {
-                    const totalAllocating = positiveAllocTotal();
+                    const totalAllocating = allocationDraft.total;
                     const remaining = Math.round((allocReceipt.unmatchedAmount - totalAllocating) * 100) / 100;
                     return (
                       <div className="p-3 bg-muted/50 rounded-md space-y-1 border">
@@ -643,24 +783,26 @@ export default function Payments() {
                           <span className={`font-medium ${remaining < 0 ? "text-destructive" : "text-foreground"}`}>{formatCurrency(remaining, allocReceipt.currencyCode)}</span>
                         </div>
                         {remaining < 0 && <p className="text-xs text-destructive">{t("payments.dialog.exceedsUnmatched")}</p>}
+                        {[...allocationDraft.issues.values()].includes("stale") && <p className="text-xs text-destructive">{t("payments.dialog.staleSelection")}</p>}
                       </div>
                     );
                   })()}
                 </>
               )}
 
-              <div className="flex gap-2">
-                <Button onClick={handleManualAllocate} disabled={allocOpenItems.length === 0 || positiveAllocTotal() <= 0 || positiveAllocTotal() > allocReceipt.unmatchedAmount} className="flex-1">{t("payments.dialog.applyManual")}</Button>
-                <Button variant="outline" onClick={() => { autoAllocateCashReceipt(allocateReceiptId!); setAllocateReceiptId(null); setAllocAmounts({}); }} disabled={allocOpenItems.length === 0}>{t("payments.dialog.autoAllocateBtn")}</Button>
-              </div>
             </div>
           )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAllocateReceiptId(null); setAllocAmounts({}); }} disabled={allocationSaving}>{t("action.cancel")}</Button>
+            <Button variant="outline" onClick={handleAutoAllocate} disabled={allocationSaving || allocOpenItems.length === 0}>{t("payments.dialog.autoAllocateBtn")}</Button>
+            <Button onClick={handleManualAllocate} disabled={allocationSaving || allocOpenItems.length === 0 || allocationDraft.issues.size > 0 || allocationDraft.total <= 0 || allocationDraft.total > (allocReceipt?.unmatchedAmount ?? 0)}>{t("payments.dialog.applyManual")}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* ===== QUICK PAY RECEIVABLE ===== */}
       <QuickPayReceivableDialog
-        receivableItemId={quickPayRiId}
+        receivableItemId={canWrite ? quickPayRiId : null}
         onOpenChange={(open) => { if (!open) setQuickPayRiId(null); }}
       />
     </div>

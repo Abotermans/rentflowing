@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Briefcase, Trash2, Mail, Copy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -22,12 +22,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { singleRowMutationError } from "@/lib/repo/mutationAcknowledgement";
+import type { Tables } from "@/integrations/supabase/types";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { formatDate } from "@/lib/formatters";
 import { isValidEmail } from "@/lib/validation";
+import { readCreatePortfolioUserError } from "@/lib/createPortfolioUserError";
 
 type Role = "owner" | "admin" | "editor" | "viewer";
+type MemberRow = Pick<Tables<"portfolio_members">, "id" | "user_id" | "role" | "joined_at"> & { email?: string | null };
 
 export default function PortfolioSettings() {
   const { currentPortfolio, currentPortfolioId, refresh } = usePortfolio();
@@ -42,22 +47,24 @@ export default function PortfolioSettings() {
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [locale, setLocale] = useState("en");
-  const [members, setMembers] = useState<any[]>([]);
-  const [invites, setInvites] = useState<any[]>([]);
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [loadedPortfolioId, setLoadedPortfolioId] = useState<string | null>(null);
+  const [memberLoadError, setMemberLoadError] = useState(false);
+  const memberLoadGeneration = useRef(0);
+  const [invites, setInvites] = useState<Tables<"portfolio_invitations">[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("editor");
   const [busy, setBusy] = useState(false);
 
-  // Add-member form
+  // Existing-account membership form
   const [newEmail, setNewEmail] = useState("");
-  const [newFirst, setNewFirst] = useState("");
-  const [newLast, setNewLast] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<Role>("editor");
   const [addBusy, setAddBusy] = useState(false);
   const inviteEmailValid = inviteEmail.trim().length > 0 && isValidEmail(inviteEmail);
   const newEmailValid = newEmail.trim().length > 0 && isValidEmail(newEmail);
-  const canAddMember = newEmailValid && newPassword.length >= 8 && !addBusy;
+  const canAddMember = newEmailValid && !addBusy && !memberLoadError && !!currentPortfolioId && loadedPortfolioId === currentPortfolioId;
+  const visibleMembers = loadedPortfolioId === currentPortfolioId ? members : [];
+  const currentMemberLoadError = loadedPortfolioId === currentPortfolioId && memberLoadError;
 
   // Delete portfolio
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -71,35 +78,48 @@ export default function PortfolioSettings() {
     setLocale(currentPortfolio.default_locale);
   }, [currentPortfolio]);
 
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
     if (!currentPortfolioId) return;
-    const { data } = await supabase
-      .from("portfolio_members")
-      .select("id, user_id, role, joined_at")
-      .eq("portfolio_id", currentPortfolioId);
+    const generation = ++memberLoadGeneration.current;
+    setLoadedPortfolioId(null);
+    setMembers([]);
+    setInvites([]);
+    setMemberLoadError(false);
+    const { data, error } = canManage
+      ? await supabase.rpc("list_portfolio_members_for_management", { _portfolio_id: currentPortfolioId })
+      : await supabase
+          .from("portfolio_members")
+          .select("id, user_id, role, joined_at")
+          .eq("portfolio_id", currentPortfolioId);
+    if (generation !== memberLoadGeneration.current) return;
+    setMemberLoadError(!!error);
     setMembers(data ?? []);
+    setLoadedPortfolioId(currentPortfolioId);
     const { data: invs } = await supabase
       .from("portfolio_invitations")
       .select("*")
       .eq("portfolio_id", currentPortfolioId)
       .is("accepted_at", null)
       .order("created_at", { ascending: false });
+    if (generation !== memberLoadGeneration.current) return;
     setInvites(invs ?? []);
-  };
+  }, [canManage, currentPortfolioId]);
 
-  useEffect(() => { loadMembers(); }, [currentPortfolioId]);
+  useEffect(() => { void loadMembers(); }, [loadMembers]);
 
   if (!currentPortfolio) return <div className="text-sm text-muted-foreground">No portfolio selected.</div>;
 
   const saveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("portfolios")
       .update({ name, default_currency: currency, default_locale: locale })
-      .eq("id", currentPortfolio.id);
+      .eq("id", currentPortfolio.id)
+      .select("id");
     setBusy(false);
-    if (error) toast({ title: "Could not save", description: error.message, variant: "destructive" });
+    const failure = singleRowMutationError(error, data, "Portfolio update");
+    if (failure) toast({ title: "Could not save", description: failure, variant: "destructive" });
     else { toast({ title: "Portfolio updated" }); refresh(); }
   };
 
@@ -111,35 +131,39 @@ export default function PortfolioSettings() {
       return;
     }
     setBusy(true);
-    const { error } = await supabase.from("portfolio_invitations").insert({
+    const { data, error } = await supabase.from("portfolio_invitations").insert({
       portfolio_id: currentPortfolioId,
       email: inviteEmail,
       role: inviteRole,
       invited_by: user.id,
-    });
+    }).select("id");
     setBusy(false);
-    if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+    const failure = singleRowMutationError(error, data, "Invitation creation");
+    if (failure) { toast({ title: "Failed", description: failure, variant: "destructive" }); return; }
     toast({ title: "Invitation created", description: "Copy the link from the list and share it with them." });
     setInviteEmail("");
     loadMembers();
   };
 
   const revokeInvite = async (id: string) => {
-    const { error } = await supabase.from("portfolio_invitations").delete().eq("id", id);
-    if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+    const { data, error } = await supabase.from("portfolio_invitations").delete().eq("id", id).select("id");
+    const failure = singleRowMutationError(error, data, "Invitation revocation");
+    if (failure) { toast({ title: "Failed", description: failure, variant: "destructive" }); return; }
     loadMembers();
   };
 
   const removeMember = async (id: string, userId: string) => {
     if (userId === user?.id) { toast({ title: "Use 'Leave' from your profile.", variant: "destructive" }); return; }
-    const { error } = await supabase.from("portfolio_members").delete().eq("id", id);
-    if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+    const { data, error } = await supabase.from("portfolio_members").delete().eq("id", id).select("id");
+    const failure = singleRowMutationError(error, data, "Member removal");
+    if (failure) { toast({ title: "Failed", description: failure, variant: "destructive" }); return; }
     loadMembers();
   };
 
   const changeRole = async (id: string, role: Role) => {
-    const { error } = await supabase.from("portfolio_members").update({ role }).eq("id", id);
-    if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+    const { data, error } = await supabase.from("portfolio_members").update({ role }).eq("id", id).select("id");
+    const failure = singleRowMutationError(error, data, "Member role change");
+    if (failure) { toast({ title: "Failed", description: failure, variant: "destructive" }); return; }
     loadMembers();
   };
 
@@ -150,34 +174,27 @@ export default function PortfolioSettings() {
       toast({ title: "Invalid email", description: "Enter a valid email address before adding a member.", variant: "destructive" });
       return;
     }
-    if (newPassword.length < 8) {
-      toast({ title: "Password too short", description: "Member passwords must be at least 8 characters.", variant: "destructive" });
-      return;
-    }
     setAddBusy(true);
     const { data, error } = await supabase.functions.invoke("create-portfolio-user", {
       body: {
         portfolio_id: currentPortfolioId,
         email: newEmail,
-        password: newPassword,
         role: newRole,
-        first_name: newFirst || null,
-        last_name: newLast || null,
       },
     });
-    setAddBusy(false);
     if (error) {
-      toast({ title: "Could not add member", description: error.message, variant: "destructive" });
+      const message = await readCreatePortfolioUserError(error);
+      setAddBusy(false);
+      toast({ title: "Could not add member", description: message, variant: "destructive" });
       return;
     }
-    const resp = data as { created?: boolean; email?: string };
+    setAddBusy(false);
+    const resp = data as { email?: string };
     toast({
-      title: resp?.created ? "User created & added" : "Existing user added",
-      description: resp?.created
-        ? `Share the password with ${resp.email}. They can sign in immediately.`
-        : `${resp?.email} now has access to this portfolio.`,
+      title: "Existing user added",
+      description: `${resp?.email} now has access to this portfolio.`,
     });
-    setNewEmail(""); setNewFirst(""); setNewLast(""); setNewPassword(""); setNewRole("editor");
+    setNewEmail(""); setNewRole("editor");
     loadMembers();
   };
 
@@ -190,10 +207,11 @@ export default function PortfolioSettings() {
   const deletePortfolio = async () => {
     if (!currentPortfolio) return;
     setDeleteBusy(true);
-    const { error } = await supabase.from("portfolios").delete().eq("id", currentPortfolio.id);
+    const { data, error } = await supabase.from("portfolios").delete().eq("id", currentPortfolio.id).select("id");
     setDeleteBusy(false);
-    if (error) {
-      toast({ title: "Could not delete portfolio", description: error.message, variant: "destructive" });
+    const failure = singleRowMutationError(error, data, "Portfolio deletion");
+    if (failure) {
+      toast({ title: "Could not delete portfolio", description: failure, variant: "destructive" });
       return;
     }
     toast({ title: "Portfolio deleted" });
@@ -311,10 +329,16 @@ export default function PortfolioSettings() {
                 <strong>Editor</strong> — edit business data.{" "}
                 <strong>Viewer</strong> — read-only.
               </div>
-              {members.map((m) => (
+              {currentMemberLoadError && (
+                <div role="alert" className="flex items-center justify-between gap-3 text-sm text-destructive">
+                  <span>Member list unavailable. Changes are temporarily disabled.</span>
+                  <Button type="button" size="sm" variant="outline" onClick={() => void loadMembers()}>Retry</Button>
+                </div>
+              )}
+              {visibleMembers.map((m) => (
                 <div key={m.id} className="flex items-center justify-between border rounded-md px-3 py-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm truncate">{m.user_id === user?.id ? (user?.email ?? "You") : "Portfolio member"}</span>
+                    <span className="text-sm truncate">{(canManage ? m.email : null) ?? (m.user_id === user?.id ? (user?.email ?? "You") : "Portfolio member")}</span>
                     {m.user_id === user?.id && <Badge variant="outline">You</Badge>}
                   </div>
                   <div className="flex items-center gap-2">
@@ -345,27 +369,15 @@ export default function PortfolioSettings() {
           {canManage && (
             <Card className="mt-4">
               <CardHeader>
-                <CardTitle>Add a member</CardTitle>
-                <CardDescription>Create a new user with a password and add them to this portfolio. They can sign in immediately with the credentials you set.</CardDescription>
+                <CardTitle>Add an existing account</CardTitle>
+                <CardDescription>Only accounts with a confirmed email can be added directly. Send an invitation to someone who needs to create an account.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={addMember} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2 col-span-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
                       <Label htmlFor="ne">Email</Label>
                       <Input id="ne" type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} aria-invalid={!newEmailValid} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="nf">First name</Label>
-                      <Input id="nf" value={newFirst} onChange={(e) => setNewFirst(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="nl">Last name</Label>
-                      <Input id="nl" value={newLast} onChange={(e) => setNewLast(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="np">Password (min 8 chars)</Label>
-                      <Input id="np" type="password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label>Role</Label>
@@ -380,7 +392,7 @@ export default function PortfolioSettings() {
                       </Select>
                     </div>
                   </div>
-                  <Button type="submit" disabled={!canAddMember}>{addBusy ? "Adding…" : "Create & add"}</Button>
+                  <Button type="submit" disabled={!canAddMember}>{addBusy ? "Adding…" : "Add member"}</Button>
                 </form>
               </CardContent>
             </Card>
@@ -417,7 +429,7 @@ export default function PortfolioSettings() {
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{i.email}</div>
                     <div className="text-xs text-muted-foreground">
-                      <span className="capitalize">{i.role}</span> · expires {new Date(i.expires_at).toLocaleDateString()}
+                      <span className="capitalize">{i.role}</span> · expires {formatDate(i.expires_at)}
                     </div>
                   </div>
                   <div className="flex gap-2">

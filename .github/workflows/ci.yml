@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm run check:tracked-env
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run check:migrations
+      - run: npm run lint
+      - run: npx tsc --noEmit -p tsconfig.app.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - run: deno check supabase/functions/create-portfolio-user/index.ts supabase/functions/advance-receivables/index.ts supabase/functions/cleanup-lease-document-files/index.ts
+      - run: npm run test -- --run
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+      - run: node -e "const fs=require('node:fs'),c=require('node:crypto'),r=require('./dist/release.json'); const hash=p=>c.createHash('sha256').update(fs.readFileSync('./dist/'+p)).digest('hex'); const keyHash=c.createHash('sha256').update('sb_publishable_ci_placeholder').digest('hex'); const assets=Object.entries(r.assetSha256||{}); if(r.revision!==process.env.GITHUB_SHA||r.dirty!==false||r.indexSha256!==hash('index.html')||r.backendOrigin!=='https://ci-placeholder.supabase.co'||r.publishableKeySha256!==keyHash||!assets.length||assets.some(([p,h])=>hash(p)!==h)) process.exit(1)"
+      - if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git diff --check "origin/$BASE_REF...HEAD"
+      - if: github.event_name == 'push'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: git diff --check "$BEFORE_SHA" HEAD

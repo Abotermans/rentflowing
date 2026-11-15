@@ -1,4 +1,6 @@
 import { isAncillaryUnitType } from "@/types";
+import { Decimal } from "@/lib/decimal";
+import { isISOCalendarDate } from "@/lib/dateValidation";
 import { IntegrityState, ValidationResult, IntegrityBlocker, IntegrityWarning, ok, blocked, allowedWithWarnings } from "./types";
 import { findOverlappingLeases, formatOverlapConflictMessage } from "./leaseDateOverlap";
 
@@ -10,16 +12,21 @@ export interface DraftAssignment {
   chargesShare: number | null;
 }
 
+function followingDay(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+}
+
 /**
  * Validate a draft set of units for a lease. Used by the lease form to surface
  * blockers (multiple properties, duplicate primary, unit already leased, …)
- * and warnings (no primary residential, internal share doesn't match totals).
+ * and warnings (no primary residential, operationally unavailable units).
  */
 export function validateLeaseUnits(
   leaseId: string | null,
   propertyId: string,
   draft: DraftAssignment[],
-  _totals: { monthlyRent: number; monthlyCharges: number },
+  totals: { monthlyRent: number; monthlyCharges: number },
   s: IntegrityState,
   leaseDates?: { startDate?: string | null; endDate?: string | null },
 ): ValidationResult {
@@ -37,12 +44,49 @@ export function validateLeaseUnits(
   }).length;
   if (mainCount === 0) {
     blockers.push({ code: "LUA_NO_PRIMARY", message: "A lease must include at least one residential or main commercial unit" });
+  } else if (draft.every(d => !!(d.startDate || leaseDates?.startDate))) {
+    const firstAssignmentDate = draft.map(d => d.startDate || leaseDates?.startDate || "").sort()[0];
+    const mainWindows = draft.flatMap(d => {
+      const unit = s.units.find(u => u.id === d.unitId);
+      if (!unit || isAncillaryUnitType(unit.unitType)) return [];
+      const startDate = d.startDate || leaseDates?.startDate || "";
+      const endDate = d.endDate ?? leaseDates?.endDate ?? null;
+      return [{ startDate, endDate }];
+    }).sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const lastAssignmentDate = draft.some(d => !d.endDate && !leaseDates?.endDate)
+      ? null
+      : draft.map(d => d.endDate ?? leaseDates?.endDate ?? "").sort().at(-1) ?? null;
+    let coveredThrough = mainWindows[0]?.endDate ?? null;
+    let uncoveredFrom = mainWindows[0]?.startDate > firstAssignmentDate ? firstAssignmentDate : null;
+    for (const window of mainWindows.slice(1)) {
+      if (uncoveredFrom || coveredThrough === null) break;
+      if (window.startDate > followingDay(coveredThrough)) {
+        uncoveredFrom = followingDay(coveredThrough);
+        break;
+      }
+      if (window.endDate === null || window.endDate > coveredThrough) coveredThrough = window.endDate;
+    }
+    if (!uncoveredFrom && coveredThrough !== null &&
+        (lastAssignmentDate === null || coveredThrough < lastAssignmentDate)) {
+      uncoveredFrom = followingDay(coveredThrough);
+    }
+    if (uncoveredFrom) {
+      blockers.push({
+        code: "LUA_MAIN_COVERAGE_GAP",
+        message: `No residential or main commercial unit is assigned from ${uncoveredFrom}. Keep a main unit assigned throughout the lease`,
+      });
+    }
   }
 
   // Same property
   for (const d of draft) {
     const u = s.units.find(x => x.id === d.unitId);
-    if (u && u.propertyId !== propertyId) {
+    if (!u) {
+      blockers.push({
+        code: "LUA_UNIT_MISSING",
+        message: `Unit ${d.unitId || "selection"} is no longer available. Select it again`,
+      });
+    } else if (u.propertyId !== propertyId) {
       blockers.push({
         code: "LUA_PROPERTY_MISMATCH",
         message: `Unit ${u.unitCode} does not belong to the selected property`,
@@ -109,11 +153,58 @@ export function validateLeaseUnits(
         message: `Unit ${label} is missing its rent or charges amount`,
       });
     } else {
-      if (d.rentShare < 0) {
-        blockers.push({ code: "LUA_SHARE_NEGATIVE", message: `Unit ${label} has a negative rent` });
+      if (!Number.isFinite(d.rentShare) || d.rentShare < 0) {
+        blockers.push({ code: "LUA_SHARE_INVALID", message: `Unit ${label} needs a finite, non-negative rent amount` });
       }
-      if (d.chargesShare < 0) {
-        blockers.push({ code: "LUA_SHARE_NEGATIVE", message: `Unit ${label} has negative charges` });
+      if (!Number.isFinite(d.chargesShare) || d.chargesShare < 0) {
+        blockers.push({ code: "LUA_SHARE_INVALID", message: `Unit ${label} needs a finite, non-negative charges amount` });
+      }
+    }
+  }
+
+  if (draft.every(d => d.rentShare != null && Number.isFinite(d.rentShare) && d.rentShare >= 0
+    && d.chargesShare != null && Number.isFinite(d.chargesShare) && d.chargesShare >= 0)) {
+    const rent = draft.reduce((sum, d) => sum.plus(d.rentShare!), new Decimal(0)).toDecimalPlaces(2);
+    const charges = draft.reduce((sum, d) => sum.plus(d.chargesShare!), new Decimal(0)).toDecimalPlaces(2);
+    if (!Number.isFinite(totals.monthlyRent) || totals.monthlyRent < 0
+      || !rent.eq(new Decimal(totals.monthlyRent).toDecimalPlaces(2))) {
+      blockers.push({
+        code: "LUA_RENT_TOTAL_MISMATCH",
+        message: `Unit rent amounts total ${rent.toFixed(2)}, but the lease monthly rent is ${totals.monthlyRent}`,
+      });
+    }
+    if (!Number.isFinite(totals.monthlyCharges) || totals.monthlyCharges < 0
+      || !charges.eq(new Decimal(totals.monthlyCharges).toDecimalPlaces(2))) {
+      blockers.push({
+        code: "LUA_CHARGES_TOTAL_MISMATCH",
+        message: `Unit charges amounts total ${charges.toFixed(2)}, but the lease monthly charges are ${totals.monthlyCharges}`,
+      });
+    }
+    if (Number.isFinite(totals.monthlyRent) && Number.isFinite(totals.monthlyCharges)
+      && rent.eq(new Decimal(totals.monthlyRent).toDecimalPlaces(2))
+      && charges.eq(new Decimal(totals.monthlyCharges).toDecimalPlaces(2))
+      && draft.every(d => isISOCalendarDate(d.startDate)
+        && (!d.endDate || isISOCalendarDate(d.endDate) && d.endDate >= d.startDate))) {
+      const startDate = leaseDates?.startDate || draft.map(d => d.startDate).sort()[0];
+      const endDate = leaseDates?.endDate || (draft.some(d => !d.endDate)
+        ? null : draft.map(d => d.endDate).sort().at(-1));
+      const boundaryDates = [...new Set([
+        startDate,
+        ...draft.map(d => d.startDate),
+        ...draft.flatMap(d => d.endDate && d.endDate < "9999-12-31" ? [followingDay(d.endDate)] : []),
+      ])].filter(date => date >= startDate && (!endDate || date <= endDate)).sort();
+      for (const date of boundaryDates) {
+        const active = draft.filter(d => d.startDate <= date
+          && (!d.endDate || d.endDate >= date));
+        const activeRent = active.reduce((sum, d) => sum.plus(d.rentShare!), new Decimal(0)).toDecimalPlaces(2);
+        const activeCharges = active.reduce((sum, d) => sum.plus(d.chargesShare!), new Decimal(0)).toDecimalPlaces(2);
+        if (!activeRent.eq(rent) || !activeCharges.eq(charges)) {
+          blockers.push({
+            code: "LUA_BILLING_WINDOW_MISMATCH",
+            message: `On ${date}, the assigned units total ${activeRent.toFixed(2)} rent and ${activeCharges.toFixed(2)} charges, but the lease totals are ${rent.toFixed(2)} and ${charges.toFixed(2)}. Add dated price changes through an amendment`,
+          });
+          break;
+        }
       }
     }
   }

@@ -1,3 +1,6 @@
+import type { TranslationKey } from "../i18n/translations.ts";
+import { localTodayISO } from "../lib/calendarToday.ts";
+
 // ========== RECEIVABLE ITEM ==========
 
 export type ReceivableItemType =
@@ -126,19 +129,23 @@ export interface ReceiptAllocation {
 // ========== HELPER FUNCTIONS ==========
 
 export function computeReceivableStatus(
-  item: Pick<ReceivableItem, "expectedAmount" | "allocatedAmount" | "outstandingAmount" | "dueDate" | "status">
+  item: Pick<ReceivableItem, "expectedAmount" | "allocatedAmount" | "outstandingAmount" | "dueDate" | "status">,
+  asOfDate = localTodayISO(),
 ): ReceivableItemStatus {
   // Don't override manually-set terminal statuses
   if (item.status === "cancelled" || item.status === "disputed" || item.status === "written-off") {
     return item.status;
   }
   if (item.outstandingAmount <= 0) return "paid";
-  const today = new Date().toISOString().split("T")[0];
   if (item.allocatedAmount > 0 && item.outstandingAmount > 0) {
-    return item.dueDate < today ? "overdue" : "partially-paid";
+    return item.dueDate < asOfDate ? "overdue" : "partially-paid";
   }
-  if (item.dueDate < today) return "overdue";
+  if (item.dueDate < asOfDate) return "overdue";
   return "open";
+}
+
+export function isReceivableOutstanding(item: Pick<ReceivableItem, "outstandingAmount" | "status">): boolean {
+  return item.outstandingAmount > 0 && item.status !== "cancelled" && item.status !== "written-off";
 }
 
 export function computeReceiptStatus(
@@ -148,9 +155,21 @@ export function computeReceiptStatus(
   if (receipt.status === "exception" || receipt.status === "reversed" || receipt.status === "refunded") {
     return receipt.status;
   }
+  if (!Number.isFinite(receipt.amountReceived) || receipt.amountReceived <= 0
+    || !Number.isFinite(receipt.unmatchedAmount) || receipt.unmatchedAmount < 0
+    || receipt.unmatchedAmount > receipt.amountReceived) {
+    return "exception";
+  }
   if (receipt.unmatchedAmount <= 0) return "matched";
   if (receipt.unmatchedAmount < receipt.amountReceived) return "partially-matched";
   return "unmatched";
+}
+
+export function isReceiptAllocatable(receipt: Pick<CashReceipt, "amountReceived" | "unmatchedAmount" | "status">): boolean {
+  return Number.isFinite(receipt.amountReceived) && receipt.amountReceived > 0
+    && Number.isFinite(receipt.unmatchedAmount) && receipt.unmatchedAmount > 0
+    && receipt.unmatchedAmount <= receipt.amountReceived
+    && (receipt.status === "imported" || receipt.status === "unmatched" || receipt.status === "partially-matched");
 }
 
 // ========== AUTO-ALLOCATION PRIORITY ==========
@@ -206,9 +225,9 @@ export const ALLOCATION_TYPE_LABELS: Record<AllocationTypeValue, string> = {
 // ========== LOCALIZED LABEL HELPERS ==========
 // Pass the translator from useSettings().t — never shadow it with a loop iterator.
 
-type Translator = (key: any) => string;
+type Translator = (key: TranslationKey) => string;
 
-const ITEM_TYPE_TKEY: Record<ReceivableItemType, string> = {
+const ITEM_TYPE_TKEY: Record<ReceivableItemType, TranslationKey> = {
   "rent": "payments.itemType.rent",
   "charges": "payments.itemType.charges",
   "charges-adjustment": "payments.itemType.chargesAdjustment",
@@ -222,7 +241,7 @@ const ITEM_TYPE_TKEY: Record<ReceivableItemType, string> = {
   "other": "payments.itemType.other",
 };
 
-const SOURCE_TYPE_TKEY: Record<CashReceiptSourceType, string> = {
+const SOURCE_TYPE_TKEY: Record<CashReceiptSourceType, TranslationKey> = {
   "bank-transfer": "payments.sourceType.bankTransfer",
   "instant-transfer": "payments.sourceType.instantTransfer",
   "direct-debit": "payments.sourceType.directDebit",
@@ -232,7 +251,7 @@ const SOURCE_TYPE_TKEY: Record<CashReceiptSourceType, string> = {
   "manual": "payments.sourceType.manual",
 };
 
-const ALLOC_TYPE_TKEY: Record<AllocationTypeValue, string> = {
+const ALLOC_TYPE_TKEY: Record<AllocationTypeValue, TranslationKey> = {
   "automatic": "payments.allocType.automatic",
   "manual": "payments.allocType.manual",
   "rule-based": "payments.allocType.ruleBased",

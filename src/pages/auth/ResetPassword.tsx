@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ResetPassword() {
-  const { updatePassword } = useAuth();
+  const { loading, passwordRecovery, updatePassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [password, setPassword] = useState("");
@@ -16,6 +16,7 @@ export default function ResetPassword() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!passwordRecovery) return;
     setBusy(true);
     const { error } = await updatePassword(password);
     setBusy(false);
@@ -26,6 +27,24 @@ export default function ResetPassword() {
     toast({ title: "Password updated" });
     navigate("/", { replace: true });
   };
+
+  if (loading) {
+    return <div role="status" className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Checking recovery link…</div>;
+  }
+
+  if (!passwordRecovery) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Recovery link required</CardTitle>
+            <CardDescription>Open the password-reset link from your email to set a new password.</CardDescription>
+          </CardHeader>
+          <CardContent><Button asChild className="w-full"><Link to="/forgot-password">Request a new link</Link></Button></CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
