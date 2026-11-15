@@ -8,22 +8,24 @@ supersede this section or the more recent entries immediately following it.
 
 ## Release branch and Edge deployment check (2026-11-15)
 
-The clean candidate is PR #1, branch `codex/release-20261115`. Its first CI
-run passed 921 tests in 163 files, lint, TypeScript, build, migration checks,
+The clean candidate is PR #1, branch `codex/release-20261115`. Its current CI
+run passed 924 tests in 164 files, lint, TypeScript, build, migration checks,
 and Deno checks. Lovable preview followed that branch, but the published site
-was not updated. An attempted Lovable deployment found a real packaging bug:
+was not updated. An initial Lovable deployment found a real packaging bug:
 the two scheduled Edge functions imported application modules outside
 `supabase/functions`, which Lovable's deploy bundler could not resolve. The
 candidate now contains a reproducibly generated, self-contained shared Edge
-module and CI checks that it matches its source. This fix still needs a green
-CI run and a successful Lovable deployment to count as verified.
+module and CI checks that it matches its source. The corrected build passed
+CI and Lovable deployed both scheduled functions from commit `1cd2410`; the
+Lovable function list shows both as Active. Deployment does not prove that a
+scheduled invocation succeeds.
 
-The target currently has neither scheduled function deployed nor any Cron jobs
-or `scheduled_job_health` successes. Its `SCHEDULED_JOB_SECRET` is also absent.
+The target now has `pg_cron` and `pg_net` installed, but has zero Cron jobs and
+zero `scheduled_job_health` successes. Its `SCHEDULED_JOB_SECRET` is absent.
 Do not enable scheduled billing until the authenticated job setup and the
-remaining release gates have been checked. The Lovable agent created a separate
-backend-connection edit commit; reconcile that branch before publishing or
-merging. The public Lovable host still lacks required security headers and
+remaining release gates have been checked. The Lovable agent's separate
+backend-connection edit commit was merged into the release branch without
+overwriting application changes. The public Lovable host still lacks required security headers and
 `/release.json`. The release decision remains **NO-GO**.
 
 | Gate | Current evidence | Release action |
